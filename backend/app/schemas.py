@@ -41,6 +41,7 @@ class OfferOut(BaseModel):
     is_bundle: bool
     seller: str | None  # vânzătorul efectiv (marketplace / persoană fizică)
     is_marketplace: bool  # vândut de un terț -> nu intră în minimul pieței și în recomandare
+    suspicious_price: bool  # second hand mult sub MSRP: posibil țeapă / defect / greșeală
     condition: str  # new | refurbished | used
     grade: str | None  # gradul estetic (refurbished)
     location: str | None  # second hand: orașul din anunț

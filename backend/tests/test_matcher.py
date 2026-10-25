@@ -94,3 +94,21 @@ def test_used_condition_passes_only_when_allowed():
     assert match("PS5 Slim Digital 1TB", PRODUCTS, condition="refurbished").kind == "excluded"
     r = match("PS5 Slim Digital 1TB", PRODUCTS, condition="refurbished", allow_used=True)
     assert r.product_slug == "ps5-slim-digital-1tb"
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Cumpar Playstation in Timisoara PS4 PS5. Doar in Timisoara",  # titluri reale Publi24
+        "cumpar ps5 slim",
+        "Colectez Cumpar Console Defecte Playstation 4 5 Xbox",
+        "Curatare si Igienizare PlayStation 5 4 Xbox",
+    ],
+)
+def test_wanted_ads_and_services_are_not_offers(title):
+    assert match_title(title, allow_used=True).kind in ("excluded", "accessory")  # oricum nu devine ofertă
+
+
+def test_for_sale_ad_still_matches():
+    r = match_title("Vând PS5 Slim Digital Edițion", allow_used=True)
+    assert (r.kind, r.product_slug) == ("product", "ps5-slim-digital-1tb")

@@ -32,6 +32,8 @@ SLUGS = {
 CONDITION_RE = re.compile(
     r"\b(refurbished|resigilat\w*|reconditionat\w*|second[ -]?hand|folosit\w*|utilizat\w*|renewed|open[ -]?box|ca nou)\b"
 )
+# anunțuri care nu sunt oferte de vânzare: cereri de cumpărare, servicii
+NOT_FOR_SALE_RE = re.compile(r"^\W*(cumpar|caut|colectez)\b|\b(curatare|igienizare|reparatii|reparatie|service)\b")
 CONSOLE_RE = re.compile(r"\b(consola|console)\b")
 ACCESSORY_RE = re.compile(
     r"\b(controller|dualsense|joystick|gamepad|joc|game|husa|skin|stand|suport|incarcator|incarcare|charging|"
@@ -63,6 +65,8 @@ def match_title(title: str, allow_used: bool = False) -> MatchResult:
 
     if "ps5" not in t:
         return MatchResult("accessory", reason="nu este PS5")
+    if NOT_FOR_SALE_RE.search(t):
+        return MatchResult("excluded", reason="nu e o ofertă de vânzare (cerere de cumpărare / serviciu)")
     if not allow_used and CONDITION_RE.search(t):
         return MatchResult("excluded", reason="nu este nou (resigilat/refurbished/second hand)")
     console = CONSOLE_RE.search(t)

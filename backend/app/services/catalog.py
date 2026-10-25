@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
 from functools import lru_cache
 
 from sqlalchemy import select
@@ -59,7 +60,7 @@ def load_offers(session: Session, product_id: int, source: str, used: bool = Fal
         .join(Shop)
         .where(Offer.product_id == product_id, Offer.source == source)
         .where((Offer.condition != "new") if used else (Offer.condition == "new") & (Shop.kind == "retail"))
-        .options(selectinload(Offer.shop), selectinload(Offer.price_points))
+        .options(selectinload(Offer.shop), selectinload(Offer.price_points), selectinload(Offer.product))
     )
     return [o for o in session.scalars(stmt) if o.price_points]
 
@@ -70,6 +71,15 @@ def is_marketplace(offer: Offer) -> bool:
         return False
     seller = offer.seller.lower().replace(" ", "")
     return not (seller.startswith(offer.shop.slug) or seller.startswith(offer.shop.name.lower().replace(" ", "")))
+
+
+# sub acest procent din MSRP un anunț second hand e aproape sigur țeapă, defect sau greșeală de preț
+SUSPICIOUS_BELOW_MSRP = 0.40
+
+
+def suspicious_price(offer: Offer, price) -> bool:
+    msrp = offer.product.msrp_ron
+    return offer.condition != "new" and msrp is not None and price < msrp * Decimal(str(SUSPICIOUS_BELOW_MSRP))
 
 
 def comparable(offers: list[Offer]) -> list[Offer]:

@@ -111,3 +111,22 @@ def test_olx_searches_all_name_variants():
     urls = list(OlxScraper(None).discover_product_urls())
     for q in ("q-ps5/", "q-playstation-5/", "q-playstation5/"):
         assert any(u.endswith(q) for u in urls)
+
+
+def test_publi24_cards():
+    from scrapers.publi24 import parse_publi24_listing
+
+    def card(href, title, price, loc, date):
+        return (
+            f'<div class="article-item"><h2 class="article-title"><a href="{href}"> {title} </a></h2>'
+            f'<p class="article-location"><i></i><span>{loc}</span></p><p class="article-date"><i></i><span>{date}</span></p>'
+            f'<div class="article-info"><span class="article-lbl"><span class="article-price">{price}</span></span></div></div>'
+        )
+
+    html = card("https://www.publi24.ro/anunturi/x/anunt/ps5/abc.html", "Vând PS5 Slim Digital", "2 699 RON", "Campina, Prahova", "20 octombrie") + card(
+        "https://www.publi24.ro/anunturi/x/anunt/b/def.html", "Schimb PS5", "Schimb", "Iasi, Iasi", "azi 10:00"
+    )
+    offers = parse_publi24_listing(html)
+    assert len(offers) == 1
+    o = offers[0]
+    assert (o.price, o.location, o.posted_label, o.condition) == (Decimal("2699.00"), "Campina, Prahova", "20 octombrie", "used")

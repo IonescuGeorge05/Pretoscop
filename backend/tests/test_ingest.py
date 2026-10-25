@@ -63,3 +63,15 @@ def test_ean_saved_on_product_when_missing_but_not_from_bundle(session):
     assert product.ean is None
     record_offer(session, shop, product, scraped("3899.99", ean="0711719000000"), is_bundle=False)
     assert product.ean == "0711719000000"
+
+
+def test_suspicious_second_hand_price_below_40pct_of_msrp():
+    from app.models import Offer
+    from app.services.catalog import suspicious_price
+
+    pro = Product(slug="ps5-pro-2tb", family="PlayStation 5", name="PS5 Pro", edition="digital", storage_gb=2000,
+                  msrp_ron=Decimal("4579"))
+    used, new = Offer(condition="used", product=pro), Offer(condition="new", product=pro)
+    assert suspicious_price(used, Decimal("500"))  # „PS5 Pro 500 lei” real de pe Publi24
+    assert not suspicious_price(used, Decimal("3000"))
+    assert not suspicious_price(new, Decimal("500"))  # regula e doar pentru second hand / refurbished

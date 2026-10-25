@@ -10,13 +10,13 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from decimal import Decimal
 from urllib.parse import urljoin, urlparse
-from urllib.robotparser import RobotFileParser
 
 import httpx
 from selectolax.parser import HTMLParser
 
 from app.config import settings
 from scrapers import jsonld
+from scrapers.robots import Robots
 
 log = logging.getLogger("scrapers")
 
@@ -49,8 +49,13 @@ class RobotsDisallowed(Exception):
     pass
 
 
+def agent_token() -> str:
+    """Numele robotului, cum apare în `User-agent:` din robots.txt."""
+    return f"{settings.app_name}Bot"
+
+
 def user_agent() -> str:
-    return f"{settings.app_name}Bot/0.1 (+price comparison prototype; contact: {settings.scraper_contact})"
+    return f"{agent_token()}/0.1 (+price comparison prototype; contact: {settings.scraper_contact})"
 
 
 BLOCK_MARKERS = ("captcha", "cf-challenge", "challenge-platform", "attention required", "access denied")
@@ -73,7 +78,7 @@ class PoliteClient:
             transport=transport,
         )
         self._last_request: dict[str, float] = {}
-        self._robots: dict[str, RobotFileParser] = {}
+        self._robots: dict[str, Robots] = {}
 
     def close(self) -> None:
         self.http.close()
@@ -86,27 +91,26 @@ class PoliteClient:
                 time.sleep(delay)
         self._last_request[domain] = time.monotonic()
 
-    def _robots_for(self, url: str) -> RobotFileParser:
+    def _robots_for(self, url: str) -> Robots:
         parts = urlparse(url)
         origin = f"{parts.scheme}://{parts.netloc}"
         if origin not in self._robots:
-            rp = RobotFileParser()
             self._wait(parts.netloc)
             try:
                 resp = self.http.get(origin + "/robots.txt")
                 if resp.status_code in (401, 403):
-                    rp.disallow_all = True
+                    robots = Robots(disallow_all=True)
                 elif resp.status_code >= 400:
-                    rp.allow_all = True
+                    robots = Robots(allow_all=True)  # RFC 9309: robots.txt lipsă = totul permis
                 else:
-                    rp.parse(resp.text.splitlines())
+                    robots = Robots(resp.text)
             except httpx.HTTPError:
-                rp.disallow_all = True  # fără robots.txt lizibil nu riscăm
-            self._robots[origin] = rp
+                robots = Robots(disallow_all=True)  # fără robots.txt lizibil nu riscăm
+            self._robots[origin] = robots
         return self._robots[origin]
 
     def get(self, url: str) -> httpx.Response:
-        if not self._robots_for(url).can_fetch(user_agent(), url):
+        if not self._robots_for(url).allowed(agent_token(), url):
             raise RobotsDisallowed(url)
         domain = urlparse(url).netloc
         for attempt in range(self.retries + 1):

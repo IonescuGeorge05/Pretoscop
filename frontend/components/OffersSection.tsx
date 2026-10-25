@@ -68,6 +68,14 @@ function OfferDetails({ o, isBest }: { o: Offer; isBest: boolean }) {
           Marketplace · {o.seller}
         </div>
       )}
+      {o.suspicious_price && (
+        <div
+          className="mt-0.5 inline-block rounded bg-red-100 px-1.5 py-0.5 text-[11px] font-medium text-red-900 dark:bg-red-950 dark:text-red-200"
+          title="Prețul e sub 40% din prețul recomandat de producător. Verifică atent: poate fi țeapă, consolă defectă sau o greșeală în anunț."
+        >
+          ⚠ Preț suspect de mic
+        </div>
+      )}
       {o.grade && <div className="text-xs font-normal text-muted">Stare estetică: <strong className="text-ink">{o.grade}</strong></div>}
       {o.condition === "used" && (
         <div className="text-xs font-normal text-muted">
@@ -127,7 +135,10 @@ export default function OffersSection({ offers, title = "Oferte" }: { offers: Of
   }
 
   // „cel mai bun” = primul în stoc vândut de magazin (ofertele marketplace sunt doar afișate)
-  const best = (offers.find((o) => o.in_stock && !o.is_marketplace) ?? offers.find((o) => o.in_stock))?.id;
+  const best = (
+    offers.find((o) => o.in_stock && !o.is_marketplace && !o.suspicious_price) ??
+    offers.find((o) => o.in_stock && !o.suspicious_price)
+  )?.id;
 
   return (
     <section aria-labelledby="offers-title">

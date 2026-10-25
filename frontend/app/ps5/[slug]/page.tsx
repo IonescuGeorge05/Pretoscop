@@ -95,11 +95,11 @@ export default async function ProductPage({ params, searchParams }: Props) {
         <p className="max-w-3xl text-sm text-muted">
           Nu intră în comparația principală și nici în recomandare. <strong className="text-ink">Refurbished</strong> = console
           verificate și revândute de o firmă, cu garanție (Flip, pe grade estetice). <strong className="text-ink">Second hand</strong>{" "}
-          = anunțuri de la persoane fizice (OLX), fără garanție: penalizarea de garanție (0,5%/lună lipsă) se vede în prețul
+          = anunțuri de la persoane fizice (Publi24; OLX prin import manual), fără garanție: penalizarea de garanție (0,5%/lună lipsă) se vede în prețul
           final, iar transportul depinde de vânzător.
         </p>
         <OffersSection offers={product.refurbished} title="Refurbished (Flip)" />
-        <OffersSection offers={product.secondhand} title="Second hand (OLX)" />
+        <OffersSection offers={product.secondhand} title="Second hand (Publi24, OLX)" />
       </section>
 
       {product.bundles.length > 0 && (

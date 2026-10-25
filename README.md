@@ -87,6 +87,7 @@ Starea magazinelor, testată pe 25.10.2026 cu clientul `httpx` al aplicației:
 | Flanco | ⛔ blocat | Cloudflare 403 |
 | Altex | ⛔ blocat | Akamai 403; listarea e randată client-side |
 | Flip (refurbished) | ✅ funcționează | URL-uri din sitemap; toate gradele estetice dintr-o pagină (`__NEXT_DATA__`) |
+| Publi24 (second hand) | ✅ funcționează | caută „ps5”, „playstation 5”, „playstation5” în categoria Console, câte 3 pagini; titlu, preț, locație, dată din cardurile listei |
 | OLX (second hand) | ⛔ blocat automat | CloudFront 403 pentru clientul aplicației, chiar și la `robots.txt`. Caută „ps5”, „playstation 5”, „playstation5” și reține locația; până la un acord cu OLX se folosește **importul manual** din `/admin` |
 
 **Prețul tăiat.** eMAG îl pune într-un obiect JSON din pagină. Dacă există o reducere, e „cel mai mic preț din ultimele 30 de zile” (directiva UE Omnibus); altfel e prețul inițial. La evoMAG apare doar vizual (selector CSS, de verificat pe un produs redus).
@@ -94,6 +95,10 @@ Starea magazinelor, testată pe 25.10.2026 cu clientul `httpx` al aplicației:
 **Marketplace.** La eMAG, JSON-LD-ul spune cine vinde efectiv oferta (`seller`). Ofertele de la terți apar în tabel cu eticheta „Marketplace · vânzător”, dar **nu intră** în minimul pieței, în grafic și în recomandare: prețurile resellerilor ar distorsiona istoricul.
 
 **Refurbished și second hand.** Magazinele au `kind: refurbished | secondhand` în `shops.yaml`. Ofertele lor apar în secțiuni separate pe pagina modelului, nu în comparația principală.
+
+**robots.txt.** Folosim un parser propriu conform RFC 9309 (`scrapers/robots.py`). `urllib.robotparser` din Python nu înțelege `*`/`$` și taie `?` final; de exemplu, transforma `Disallow: /anunturi/?` de la Publi24 în „totul interzis”.
+
+**Anunțuri suspecte.** Un anunț second hand / refurbished sub 40% din MSRP e marcat „preț suspect de mic” (posibil țeapă, defect sau greșeală) și nu intră în prețul „de la”. Anunțurile „Cumpăr…”, „Colectez…” și serviciile (curățare, reparații) sunt ignorate.
 
 **Import manual OLX.** În `/admin` încarci o pagină de rezultate OLX salvată din browser (Ctrl+S → „Pagină web, doar HTML”). Aplicația nu face nicio cerere către OLX; anunțurile trec prin același matcher ca la scraping (`ingest_offers`). Anunțurile neimportate din nou dispar după 3 zile, ca să nu rămână în listă unele deja vândute.
 

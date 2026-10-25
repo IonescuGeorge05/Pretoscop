@@ -49,6 +49,7 @@ def offer_out(view: catalog.OfferView, fake: FakeDiscount | None = None) -> sche
         is_bundle=o.is_bundle,
         seller=o.seller,
         is_marketplace=catalog.is_marketplace(o),
+        suspicious_price=catalog.suspicious_price(o, p.price),
         condition=o.condition,
         grade=o.grade,
         location=o.location,
@@ -82,7 +83,11 @@ def health() -> dict:
 
 
 def _cheapest(views: list[catalog.OfferView], condition: str) -> float | None:
-    prices = [float(v.breakdown.final_price) for v in views if v.offer.condition == condition and not v.offer.is_bundle]
+    prices = [
+        float(v.breakdown.final_price)
+        for v in views
+        if v.offer.condition == condition and not v.offer.is_bundle and not catalog.suspicious_price(v.offer, v.point.price)
+    ]
     return min(prices) if prices else None
 
 

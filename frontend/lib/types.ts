@@ -38,6 +38,7 @@ export interface Offer {
   is_bundle: boolean;
   seller: string | null;
   is_marketplace: boolean;
+  suspicious_price: boolean;
   condition: "new" | "refurbished" | "used";
   grade: string | null;
   location: string | null;

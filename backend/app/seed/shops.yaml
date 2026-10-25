@@ -66,3 +66,13 @@
   shipping_verified: false
   default_warranty_months: 0  # persoane fizice: fără garanție
   affiliate_url_template: null
+
+- slug: publi24
+  name: Publi24
+  kind: secondhand
+  base_url: https://www.publi24.ro
+  search_url_template: https://www.publi24.ro/anunturi/electronice/console-jocuri/console/?q={query}
+  shipping_rules: {free_over: null, flat: 0}  # predare personală sau curier plătit separat (neinclus)
+  shipping_verified: false
+  default_warranty_months: 0  # persoane fizice: fără garanție
+  affiliate_url_template: null

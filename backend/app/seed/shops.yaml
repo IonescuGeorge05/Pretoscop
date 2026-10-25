@@ -1,0 +1,47 @@
+# Magazinele urmărite. `search_url_template` primește {query} (url-encoded).
+# ATENȚIE: shipping_rules și default_warranty_months sunt PLACEHOLDERE.
+# Cât timp shipping_verified: false, UI-ul afișează "transport estimat".
+- slug: emag
+  name: eMAG
+  base_url: https://www.emag.ro
+  search_url_template: https://www.emag.ro/search/{query}
+  shipping_rules: {free_over: 200, flat: 19.99}  # TODO verify
+  shipping_verified: false
+  default_warranty_months: 24  # TODO verify
+  affiliate_url_template: null  # pentru viitor (2Performant/Profitshare)
+
+- slug: altex
+  name: Altex
+  base_url: https://altex.ro
+  search_url_template: https://altex.ro/cauta/?q={query}
+  shipping_rules: {free_over: 250, flat: 24.99}  # TODO verify
+  shipping_verified: false
+  default_warranty_months: 24  # TODO verify
+  affiliate_url_template: null
+
+- slug: flanco
+  name: Flanco
+  base_url: https://www.flanco.ro
+  search_url_template: https://www.flanco.ro/catalogsearch/result/?q={query}
+  shipping_rules: {free_over: 250, flat: 19.99}  # TODO verify
+  shipping_verified: false
+  default_warranty_months: 24  # TODO verify
+  affiliate_url_template: null
+
+- slug: pcgarage
+  name: PC Garage
+  base_url: https://www.pcgarage.ro
+  search_url_template: https://www.pcgarage.ro/cauta/{query}/
+  shipping_rules: {free_over: null, flat: 29.99}  # TODO verify (null = transport plătit la orice valoare)
+  shipping_verified: false
+  default_warranty_months: 24  # TODO verify
+  affiliate_url_template: null
+
+- slug: evomag
+  name: evoMAG
+  base_url: https://www.evomag.ro
+  search_url_template: https://www.evomag.ro/cautare/{query}
+  shipping_rules: {free_over: 500, flat: 24.99}  # TODO verify
+  shipping_verified: false
+  default_warranty_months: 24  # TODO verify
+  affiliate_url_template: null

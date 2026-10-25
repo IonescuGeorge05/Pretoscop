@@ -1,0 +1,64 @@
+# Variantele PlayStation 5. Fiecare = un `product`, grupate sub `family`.
+# EAN-urile NU sunt inventate: rămân null până le găsește un scraper (JSON-LD gtin13).
+# model_code: prefix verificat la nivel de generație; "x" = cifră necunoscută (de verificat per regiune).
+# msrp_ron: ESTIMAT din prețul recomandat Sony pentru zona euro x ~5,09 lei/EUR, rotunjit la x99.
+#           TODO verify cu prețurile recomandate Sony România, apoi msrp_verified: true.
+- slug: ps5-disc-825gb
+  name: PlayStation 5 Standard (cu unitate disc), 825 GB
+  family: PlayStation 5
+  edition: disc
+  storage_gb: 825
+  model_code: CFI-1xxx
+  ean: null
+  image_url: null
+  msrp_ron: 2799  # TODO verify
+  msrp_verified: false
+  msrp_note: "Estimat din RRP UE 549,99 € (după majorarea din 2022) x 5,09 lei/€"
+
+- slug: ps5-digital-825gb
+  name: PlayStation 5 Digital Edition, 825 GB
+  family: PlayStation 5
+  edition: digital
+  storage_gb: 825
+  model_code: CFI-1xxx
+  ean: null
+  image_url: null
+  msrp_ron: 2299  # TODO verify
+  msrp_verified: false
+  msrp_note: "Estimat din RRP UE 449,99 € (după majorarea din 2022) x 5,09 lei/€"
+
+- slug: ps5-slim-disc-1tb
+  name: PlayStation 5 Slim cu unitate disc, 1 TB
+  family: PlayStation 5
+  edition: disc
+  storage_gb: 1000
+  model_code: CFI-2xxx
+  ean: null
+  image_url: null
+  msrp_ron: 2799  # TODO verify
+  msrp_verified: false
+  msrp_note: "Estimat din RRP UE 549,99 € x 5,09 lei/€"
+
+- slug: ps5-slim-digital-1tb
+  name: PlayStation 5 Slim Digital Edition, 1 TB
+  family: PlayStation 5
+  edition: digital
+  storage_gb: 1000
+  model_code: CFI-2xxx
+  ean: null
+  image_url: null
+  msrp_ron: 2549  # TODO verify
+  msrp_verified: false
+  msrp_note: "Estimat din RRP UE 499,99 € (după majorarea din aprilie 2025) x 5,09 lei/€"
+
+- slug: ps5-pro-2tb
+  name: PlayStation 5 Pro, 2 TB (fără unitate disc)
+  family: PlayStation 5
+  edition: digital
+  storage_gb: 2000
+  model_code: CFI-7xxx
+  ean: null
+  image_url: null
+  msrp_ron: 4079  # TODO verify
+  msrp_verified: false
+  msrp_note: "Estimat din RRP UE 799,99 € x 5,09 lei/€"

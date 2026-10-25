@@ -1,0 +1,71 @@
+name: ${APP_SLUG:-pretoscop}
+
+x-backend-env: &backend-env
+  APP_NAME: ${APP_NAME:-Pretoscop}
+  DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg://pretoscop:pretoscop@db:5432/pretoscop}
+  ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+  DATA_MODE: ${DATA_MODE:-mock}
+  SCRAPING_ENABLED: ${SCRAPING_ENABLED:-true}
+  SCRAPE_INTERVAL_HOURS: ${SCRAPE_INTERVAL_HOURS:-6}
+  SCRAPE_JITTER_MINUTES: ${SCRAPE_JITTER_MINUTES:-30}
+  SCRAPER_CONTACT: ${SCRAPER_CONTACT:-contact@example.com}
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pretoscop}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-pretoscop}
+      POSTGRES_DB: ${POSTGRES_DB:-pretoscop}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./backend
+    restart: unless-stopped
+    # migrații + seed + istoric demo (regenerat dacă nu e de azi), apoi serverul
+    command: sh -c "alembic upgrade head && python -m app.seed.load && python -m app.seed.mock_history --if-stale && uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    environment: *backend-env
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  worker:
+    build: ./backend
+    restart: unless-stopped
+    command: python -m app.worker
+    environment: *backend-env
+    depends_on:
+      api:
+        condition: service_healthy
+
+  web:
+    build: ./frontend
+    restart: unless-stopped
+    environment:
+      API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:8000}
+      APP_NAME: ${APP_NAME:-Pretoscop}
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:

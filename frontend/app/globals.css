@@ -1,0 +1,57 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --surface: 247 247 245;
+  --card: 255 255 255;
+  --ink: 17 17 17;
+  --muted: 92 91 87;
+  --line: 226 225 220;
+  --brand: 37 99 235;
+
+  /* serii grafic: sloturi categoriale fixe per magazin (paletă validată CVD) */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --series-5: #e87ba4;
+  --series-6: #008300;
+  --series-7: #6250d6;
+  --series-8: #e34948;
+  --chart-ink: #0b0b0b;
+  --chart-grid: #e6e5e0;
+  --chart-event: #8a8983;
+  --chart-muted: #63625c;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --surface: 20 20 19;
+    --card: 30 30 29;
+    --ink: 240 239 236;
+    --muted: 175 174 166;
+    --line: 58 58 55;
+    --brand: 96 140 245;
+
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+    --series-5: #d55181;
+    --series-6: #008300;
+    --series-7: #9085e9;
+    --series-8: #e66767;
+    --chart-ink: #f0efec;
+    --chart-grid: #34342f;
+    --chart-event: #8f8e86;
+    --chart-muted: #a9a89f;
+    color-scheme: dark;
+  }
+}
+
+body {
+  background: rgb(var(--surface));
+  color: rgb(var(--ink));
+}

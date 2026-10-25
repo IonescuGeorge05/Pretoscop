@@ -15,6 +15,13 @@ function Estimated({ show, title }: { show: boolean; title: string }) {
 }
 
 function ShippingCell({ o }: { o: Offer }) {
+  if (o.condition === "used") {
+    return (
+      <span title="Persoană fizică: predare personală sau livrare plătită separat (cost variabil, neinclus în prețul final)">
+        Neinclus
+      </span>
+    );
+  }
   return (
     <>
       {o.breakdown.shipping === 0 ? "Gratuit" : formatLei(o.breakdown.shipping)}
@@ -27,7 +34,7 @@ function WarrantyCell({ o }: { o: Offer }) {
   const b = o.breakdown;
   return (
     <>
-      {b.warranty_months} luni
+      {b.warranty_months > 0 ? `${b.warranty_months} luni` : "Fără garanție"}
       <Estimated show={o.warranty_estimated} title="Garanția standard a magazinului (nu apare pe pagina produsului)" />
       {b.warranty_penalty > 0 && (
         <div className="text-xs text-red-700 dark:text-red-400">+{formatLei(b.warranty_penalty)} penalizare</div>
@@ -43,6 +50,28 @@ function PriceCell({ o }: { o: Offer }) {
       {o.old_price && <div className="whitespace-nowrap text-xs text-muted line-through tabular-nums">{formatLei(o.old_price)}</div>}
       {o.fake_discount && (
         <div className="text-xs font-semibold text-red-700 dark:text-red-400">⚠ reducere falsă</div>
+      )}
+    </>
+  );
+}
+
+/** Detalii sub numele magazinului: vânzător marketplace, grad refurbished, titlul anunțului. */
+function OfferDetails({ o, isBest }: { o: Offer; isBest: boolean }) {
+  return (
+    <>
+      {isBest && <div className="text-xs font-normal text-brand">cel mai bun preț final</div>}
+      {o.is_marketplace && (
+        <div
+          className="mt-0.5 inline-block rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-200"
+          title="Vândut de un terț prin marketplace-ul magazinului. Nu intră în minimul pieței și în recomandare."
+        >
+          Marketplace · {o.seller}
+        </div>
+      )}
+      {o.grade && <div className="text-xs font-normal text-muted">Stare estetică: <strong className="text-ink">{o.grade}</strong></div>}
+      {o.condition === "used" && o.seller && <div className="text-xs font-normal text-muted">{o.seller}</div>}
+      {(o.is_bundle || o.condition === "used") && o.title && (
+        <div className="max-w-xs text-xs font-normal text-muted">{o.title}</div>
       )}
     </>
   );
@@ -82,10 +111,16 @@ export default function OffersSection({ offers, title = "Oferte" }: { offers: Of
   }, [selected]);
 
   if (!offers.length) {
-    return <p className="rounded-xl border border-line bg-card p-4 text-sm text-muted">Nicio ofertă disponibilă.</p>;
+    return (
+      <section>
+        <h2 className="text-lg font-semibold">{title}</h2>
+        <p className="mt-3 rounded-xl border border-line bg-card p-4 text-sm text-muted">Nicio ofertă disponibilă.</p>
+      </section>
+    );
   }
 
-  const best = offers.find((o) => o.in_stock)?.id;
+  // „cel mai bun” = primul în stoc vândut de magazin (ofertele marketplace sunt doar afișate)
+  const best = (offers.find((o) => o.in_stock && !o.is_marketplace) ?? offers.find((o) => o.in_stock))?.id;
 
   return (
     <section aria-labelledby="offers-title">
@@ -103,7 +138,10 @@ export default function OffersSection({ offers, title = "Oferte" }: { offers: Of
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 font-semibold">
                 <input type="checkbox" checked={selected.includes(o.id)} onChange={() => toggle(o.id)} aria-label={`Compară ${o.shop.name}`} />
-                {o.shop.name}
+                <span>
+                  {o.shop.name}
+                  <OfferDetails o={o} isBest={o.id === best} />
+                </span>
               </label>
               <span className={`text-xs ${o.in_stock ? "text-green-700 dark:text-green-400" : "text-muted"}`}>
                 {o.in_stock ? "În stoc" : "Stoc epuizat"}
@@ -147,17 +185,20 @@ export default function OffersSection({ offers, title = "Oferte" }: { offers: Of
                 </td>
                 <td className="px-3 py-3 font-medium">
                   {o.shop.name}
-                  {o.id === best && <div className="text-xs font-normal text-brand">cel mai bun preț final</div>}
-                  {o.is_bundle && o.title && <div className="max-w-xs text-xs font-normal text-muted">{o.title}</div>}
+                  <OfferDetails o={o} isBest={o.id === best} />
                 </td>
                 <td className="px-3 py-3 text-right"><PriceCell o={o} /></td>
                 <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums"><ShippingCell o={o} /></td>
                 <td className="whitespace-nowrap px-3 py-3 text-right"><WarrantyCell o={o} /></td>
                 <td className="whitespace-nowrap px-3 py-3 text-right text-base font-bold tabular-nums">
                   {formatLei(o.breakdown.final_price)}
-                  <div className="text-xs font-normal text-muted">{formatLei(o.breakdown.cost_per_warranty_month)} / lună garanție</div>
+                  <div className="text-xs font-normal text-muted">
+                    {o.breakdown.warranty_months > 0
+                      ? `${formatLei(o.breakdown.cost_per_warranty_month)} / lună garanție`
+                      : "fără garanție"}
+                  </div>
                 </td>
-                <td className={`px-3 py-3 text-xs ${o.in_stock ? "text-green-700 dark:text-green-400" : "text-muted"}`}>
+                <td className={`whitespace-nowrap px-3 py-3 text-xs ${o.in_stock ? "text-green-700 dark:text-green-400" : "text-muted"}`}>
                   {o.in_stock ? "În stoc" : "Epuizat"}
                 </td>
                 <td className="px-3 py-3 text-right"><GoButton o={o} /></td>

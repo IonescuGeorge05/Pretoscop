@@ -8,7 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
 
 from app.config import settings
-from app.models import Offer, PricePoint, Product
+from app.models import Offer, PricePoint, Product, Shop
 from app.services.pricing import PriceBreakdown, final_price
 from recommender.calendar import Event, load_calendar
 from recommender.rules import HistoryPoint, OfferHistory, Recommendation, recommend
@@ -52,13 +52,29 @@ class OfferView:
     breakdown: PriceBreakdown
 
 
-def load_offers(session: Session, product_id: int, source: str) -> list[Offer]:
+def load_offers(session: Session, product_id: int, source: str, used: bool = False) -> list[Offer]:
+    """`used=False`: produse noi din magazine (retail). `used=True`: refurbished + second hand."""
     stmt = (
         select(Offer)
-        .where(Offer.product_id == product_id, Offer.source == source, Offer.condition == "new")
+        .join(Shop)
+        .where(Offer.product_id == product_id, Offer.source == source)
+        .where((Offer.condition != "new") if used else (Offer.condition == "new") & (Shop.kind == "retail"))
         .options(selectinload(Offer.shop), selectinload(Offer.price_points))
     )
     return [o for o in session.scalars(stmt) if o.price_points]
+
+
+def is_marketplace(offer: Offer) -> bool:
+    """Oferta e vândută de un terț prin marketplace-ul magazinului (ex. eMAG Marketplace)."""
+    if offer.shop.kind != "retail" or not offer.seller:
+        return False
+    seller = offer.seller.lower().replace(" ", "")
+    return not (seller.startswith(offer.shop.slug) or seller.startswith(offer.shop.name.lower().replace(" ", "")))
+
+
+def comparable(offers: list[Offer]) -> list[Offer]:
+    """Ofertele care intră în minimul pieței, grafic și recomandare: produs simplu, vândut de magazin."""
+    return [o for o in offers if not o.is_bundle and not is_marketplace(o)]
 
 
 def _aware(dt: datetime) -> datetime:
@@ -97,7 +113,7 @@ def to_history(offer: Offer) -> OfferHistory:
 
 
 def product_recommendation(product: Product, offers: list[Offer], today: date | None = None) -> Recommendation:
-    histories = [to_history(o) for o in offers if not o.is_bundle]
+    histories = [to_history(o) for o in comparable(offers)]
     msrp = float(product.msrp_ron) if product.msrp_ron is not None else None
     return recommend(histories, today or date.today(), calendar(), msrp=msrp)
 

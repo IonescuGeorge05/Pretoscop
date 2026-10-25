@@ -57,12 +57,13 @@ def _code_matches(pattern: str, mpn: str) -> bool:
     return re.match(regex, mpn.upper().replace(" ", "")) is not None
 
 
-def match_title(title: str) -> MatchResult:
+def match_title(title: str, allow_used: bool = False) -> MatchResult:
+    """`allow_used=True` pentru surse second hand / refurbished, unde „ca nou”, „folosit” sunt normale."""
     t = normalize(title)
 
     if "ps5" not in t:
         return MatchResult("accessory", reason="nu este PS5")
-    if CONDITION_RE.search(t):
+    if not allow_used and CONDITION_RE.search(t):
         return MatchResult("excluded", reason="nu este nou (resigilat/refurbished/second hand)")
     console = CONSOLE_RE.search(t)
     accessory = ACCESSORY_RE.search(t)
@@ -105,10 +106,11 @@ def match(
     ean: str | None = None,
     mpn: str | None = None,
     condition: str = "new",
+    allow_used: bool = False,
 ) -> MatchResult:
-    if condition != "new":
+    if condition != "new" and not allow_used:
         return MatchResult("excluded", reason=f"stare: {condition}")
-    by_title = match_title(title)
+    by_title = match_title(title, allow_used)
     if by_title.kind in ("excluded", "accessory"):
         return by_title
 

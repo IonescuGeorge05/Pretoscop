@@ -1,6 +1,7 @@
 # Magazinele urmărite. `search_url_template` primește {query} (url-encoded).
 # ATENȚIE: shipping_rules și default_warranty_months sunt PLACEHOLDERE.
 # Cât timp shipping_verified: false, UI-ul afișează "transport estimat".
+# kind: retail (produse noi) | refurbished | secondhand — doar `retail` intră în comparația principală.
 - slug: emag
   name: eMAG
   base_url: https://www.emag.ro
@@ -44,4 +45,24 @@
   shipping_rules: {free_over: 500, flat: 24.99}  # TODO verify
   shipping_verified: false
   default_warranty_months: 24  # TODO verify
+  affiliate_url_template: null
+
+- slug: flip
+  name: Flip
+  kind: refurbished
+  base_url: https://flip.ro
+  search_url_template: https://flip.ro/console-jocuri/sony/
+  shipping_rules: {free_over: null, flat: 19.99}  # din datele paginii (curier; gratuit doar cu abonament Genius)
+  shipping_verified: true
+  default_warranty_months: 24  # din datele paginii (WARRANTY_24_MONTHS_RO)
+  affiliate_url_template: null
+
+- slug: olx
+  name: OLX
+  kind: secondhand
+  base_url: https://www.olx.ro
+  search_url_template: https://www.olx.ro/electronice-si-electrocasnice/laptop-calculator-gaming/playstation/q-{query}/
+  shipping_rules: {free_over: null, flat: 0}  # TODO: predare personală sau Livrare OLX (cost variabil, neinclus)
+  shipping_verified: false
+  default_warranty_months: 0  # persoane fizice: fără garanție
   affiliate_url_template: null

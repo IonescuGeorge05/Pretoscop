@@ -1,8 +1,10 @@
 # Variantele PlayStation 5. Fiecare = un `product`, grupate sub `family`.
 # EAN-urile NU sunt inventate: rămân null până le găsește un scraper (JSON-LD gtin13).
 # model_code: prefix verificat la nivel de generație; "x" = cifră necunoscută (de verificat per regiune).
-# msrp_ron: ESTIMAT din prețul recomandat Sony pentru zona euro x ~5,09 lei/EUR, rotunjit la x99.
-#           TODO verify cu prețurile recomandate Sony România, apoi msrp_verified: true.
+# msrp_ron: prețul recomandat Sony pentru Europa (EUR), în vigoare din 2 aprilie 2026
+#           (https://blog.playstation.com/2026/03/27/new-price-changes-for-ps5-ps5-pro-and-playstation-portal-remote-player/),
+#           convertit la ~5,09 lei/€ și rotunjit la x9. Sony nu publică un preț separat în lei -> rămâne „estimat”.
+#           Modelele originale (CFI-1xxx) nu mai sunt produse: folosim MSRP-ul ediției echivalente actuale.
 - slug: ps5-disc-825gb
   name: PlayStation 5 Standard (cu unitate disc), 825 GB
   family: PlayStation 5
@@ -11,9 +13,9 @@
   model_code: CFI-1xxx
   ean: null
   image_url: null
-  msrp_ron: 2799  # TODO verify
+  msrp_ron: 3309
   msrp_verified: false
-  msrp_note: "Estimat din RRP UE 549,99 € (după majorarea din 2022) x 5,09 lei/€"
+  msrp_note: "649,99 € x 5,09 lei/€ (preț UE PS5 cu disc din 02.04.2026; modelul original nu mai e produs, se folosește ediția actuală)"
 
 - slug: ps5-digital-825gb
   name: PlayStation 5 Digital Edition, 825 GB
@@ -23,9 +25,9 @@
   model_code: CFI-1xxx
   ean: null
   image_url: null
-  msrp_ron: 2299  # TODO verify
+  msrp_ron: 3049
   msrp_verified: false
-  msrp_note: "Estimat din RRP UE 449,99 € (după majorarea din 2022) x 5,09 lei/€"
+  msrp_note: "599,99 € x 5,09 lei/€ (preț UE PS5 Digital din 02.04.2026; modelul original nu mai e produs, se folosește ediția actuală)"
 
 - slug: ps5-slim-disc-1tb
   name: PlayStation 5 Slim cu unitate disc, 1 TB
@@ -35,9 +37,9 @@
   model_code: CFI-2xxx
   ean: null
   image_url: null
-  msrp_ron: 2799  # TODO verify
+  msrp_ron: 3309
   msrp_verified: false
-  msrp_note: "Estimat din RRP UE 549,99 € x 5,09 lei/€"
+  msrp_note: "649,99 € x 5,09 lei/€ (preț UE PS5 cu disc din 02.04.2026)"
 
 - slug: ps5-slim-digital-1tb
   name: PlayStation 5 Slim Digital Edition, 1 TB
@@ -47,9 +49,9 @@
   model_code: CFI-2xxx
   ean: null
   image_url: null
-  msrp_ron: 2549  # TODO verify
+  msrp_ron: 3049
   msrp_verified: false
-  msrp_note: "Estimat din RRP UE 499,99 € (după majorarea din aprilie 2025) x 5,09 lei/€"
+  msrp_note: "599,99 € x 5,09 lei/€ (preț UE PS5 Digital din 02.04.2026)"
 
 - slug: ps5-pro-2tb
   name: PlayStation 5 Pro, 2 TB (fără unitate disc)
@@ -59,6 +61,6 @@
   model_code: CFI-7xxx
   ean: null
   image_url: null
-  msrp_ron: 4079  # TODO verify
+  msrp_ron: 4579
   msrp_verified: false
-  msrp_note: "Estimat din RRP UE 799,99 € x 5,09 lei/€"
+  msrp_note: "899,99 € x 5,09 lei/€ (preț UE PS5 Pro din 02.04.2026)"

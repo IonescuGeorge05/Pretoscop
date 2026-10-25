@@ -73,3 +73,24 @@ def test_ambiguous_mpn_falls_back_to_title():
 def test_non_new_condition_excluded_even_with_ean():
     r = match("Consola PS5 Slim Disc 1TB", PRODUCTS, ean="5940000000001", condition="refurbished")
     assert r.kind == "excluded"
+
+
+@pytest.mark.parametrize(
+    "title,slug",
+    [
+        ("Sony PlayStation 5 Slim Digital Edition, 1 TB, White, Ca nou", "ps5-slim-digital-1tb"),  # Flip
+        ("Sony PlayStation 5 Disc Edition, 825 GB, White, Foarte bun", "ps5-disc-825gb"),  # Flip
+        ("Vand ps5 slim digital edition", "ps5-slim-digital-1tb"),  # OLX
+        ("Playstation 5, Digital Edition 825 GB, folosita putin", "ps5-digital-825gb"),  # OLX
+    ],
+)
+def test_used_sources_accept_condition_words(title, slug):
+    assert match_title(title).kind in ("excluded", "product")  # pe sursele noi, „ca nou”/„folosit” exclud
+    r = match_title(title, allow_used=True)
+    assert (r.kind, r.product_slug) == ("product", slug)
+
+
+def test_used_condition_passes_only_when_allowed():
+    assert match("PS5 Slim Digital 1TB", PRODUCTS, condition="refurbished").kind == "excluded"
+    r = match("PS5 Slim Digital 1TB", PRODUCTS, condition="refurbished", allow_used=True)
+    assert r.product_slug == "ps5-slim-digital-1tb"

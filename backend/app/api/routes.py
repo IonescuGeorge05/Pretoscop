@@ -1,5 +1,6 @@
 from dataclasses import asdict
 from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
 from statistics import median
 from typing import Literal
 
@@ -11,7 +12,9 @@ from sqlalchemy.orm import Session, selectinload
 from app import schemas
 from app.config import settings
 from app.db import get_session
-from app.models import Click, Offer, Product
+from app.models import Click, ManualMatch, Offer, Product, Shop, UnmatchedListing
+from app.services.ingest import record_offer
+from scrapers.base import ScrapedOffer
 from app.services import catalog
 from app.services.pricing import compare as compare_breakdowns
 from app.services.scrape_runner import run_shop
@@ -42,6 +45,10 @@ def offer_out(view: catalog.OfferView, fake: FakeDiscount | None = None) -> sche
         warranty_estimated=o.warranty_months is None,
         shipping_estimated=not o.shop.shipping_verified,
         is_bundle=o.is_bundle,
+        seller=o.seller,
+        is_marketplace=catalog.is_marketplace(o),
+        condition=o.condition,
+        grade=o.grade,
         source=o.source,
         last_seen_at=o.last_seen_at,
         price_since=p.ts,
@@ -70,6 +77,11 @@ def health() -> dict:
     return {"status": "ok", "app": settings.app_name}
 
 
+def _cheapest(views: list[catalog.OfferView], condition: str) -> float | None:
+    prices = [float(v.breakdown.final_price) for v in views if v.offer.condition == condition and not v.offer.is_bundle]
+    return min(prices) if prices else None
+
+
 @router.get("/products", response_model=schemas.ProductList)
 def list_products(source: str | None = SourceParam, session: Session = Depends(get_session)):
     """Modelele PS5 cu cel mai bun preț final curent (doar oferte noi, fără pachete, în stoc)."""
@@ -78,13 +90,20 @@ def list_products(source: str | None = SourceParam, session: Session = Depends(g
     for p in session.scalars(select(Product).order_by(Product.id)):
         offers = catalog.load_offers(session, p.id, src)
         views = [v for v in catalog.current_views(offers) if not v.offer.is_bundle]
-        best = next((v for v in views if v.point.in_stock), None)
+        direct = set(map(id, catalog.comparable(offers)))
+        # cel mai bun preț: întâi ofertele vândute de magazin; marketplace doar dacă nu există altele
+        best = next((v for v in views if v.point.in_stock and id(v.offer) in direct), None) or next(
+            (v for v in views if v.point.in_stock), None
+        )
+        used = [v for v in catalog.current_views(catalog.load_offers(session, p.id, src, used=True)) if v.point.in_stock]
         rec = catalog.product_recommendation(p, offers)
         out.append(
             schemas.ProductSummary(
                 **product_base(p),
                 best_offer=offer_out(best) if best else None,
                 offers_count=len(views),
+                refurbished_from=_cheapest(used, "refurbished"),
+                secondhand_from=_cheapest(used, "used"),
                 recommendation=schemas.RecommendationBadge(
                     verdict=rec.verdict, label=catalog.VERDICT_LABELS[rec.verdict], confidence=rec.confidence
                 ),
@@ -104,6 +123,7 @@ def product_detail(slug: str, source: str | None = SourceParam, session: Session
     rec = catalog.product_recommendation(p, offers)
     fakes = {f.offer_id: f for f in rec.fake_discounts}
     views = catalog.current_views(offers)
+    used = catalog.current_views(catalog.load_offers(session, p.id, src, used=True))
     return schemas.ProductDetail(
         **product_base(p),
         source=src,
@@ -111,6 +131,8 @@ def product_detail(slug: str, source: str | None = SourceParam, session: Session
         available_sources=catalog.available_sources(session, p.id),
         offers=[offer_out(v, fakes.get(v.offer.id)) for v in views if not v.offer.is_bundle],
         bundles=[offer_out(v) for v in views if v.offer.is_bundle],
+        refurbished=[offer_out(v) for v in used if v.offer.condition == "refurbished"],
+        secondhand=[offer_out(v) for v in used if v.offer.condition != "refurbished"],
         recommendation=recommendation_out(rec),
     )
 
@@ -131,7 +153,7 @@ def product_history(
     if p is None:
         raise HTTPException(404, "Produs inexistent")
     src = catalog.resolve_source(source)
-    offers = [o for o in catalog.load_offers(session, p.id, src) if not o.is_bundle]
+    offers = catalog.comparable(catalog.load_offers(session, p.id, src))
     histories = [(o.shop.slug, catalog.to_history(o)) for o in offers]
     shops = {o.shop.slug: o.shop.name for o in offers}
 
@@ -267,17 +289,16 @@ def out(offer_id: int, request: Request, session: Session = Depends(get_session)
     return RedirectResponse(target, status_code=307)
 
 
-@router.post("/admin/scrape", response_model=schemas.ScrapeStarted, status_code=202)
-def admin_scrape(
-    background: BackgroundTasks,
-    shop: str | None = None,
-    x_admin_token: str | None = Header(None),
-):
-    """Pornește manual scraperul (un magazin sau toate). Header: X-Admin-Token."""
+def require_admin(x_admin_token: str | None = Header(None)) -> None:
     if not settings.admin_token:
         raise HTTPException(503, "ADMIN_TOKEN nu este configurat")
     if x_admin_token != settings.admin_token:
         raise HTTPException(401, "Token invalid")
+
+
+@router.post("/admin/scrape", response_model=schemas.ScrapeStarted, status_code=202, dependencies=[Depends(require_admin)])
+def admin_scrape(background: BackgroundTasks, shop: str | None = None):
+    """Pornește manual scraperul (un magazin sau toate). Header: X-Admin-Token."""
     shops = [shop] if shop else list(REGISTRY)
     unknown = [s for s in shops if s not in REGISTRY]
     if unknown:
@@ -285,3 +306,79 @@ def admin_scrape(
     for s in shops:
         background.add_task(run_shop, s)
     return schemas.ScrapeStarted(shops=shops)
+
+
+@router.get("/admin/unmatched", response_model=list[schemas.UnmatchedOut], dependencies=[Depends(require_admin)])
+def admin_unmatched(session: Session = Depends(get_session)):
+    """Anunțurile pe care matcher-ul nu le-a putut asocia sigur unui model (pentru verificare manuală)."""
+    rows = session.scalars(
+        select(UnmatchedListing).options(selectinload(UnmatchedListing.shop)).order_by(UnmatchedListing.scraped_at.desc())
+    )
+    return [
+        schemas.UnmatchedOut(
+            id=r.id,
+            shop=r.shop.name,
+            shop_kind=r.shop.kind,
+            url=r.url,
+            title=r.title,
+            reason=r.reason,
+            price=float(r.raw["price"]) if r.raw.get("price") else None,
+            in_stock=r.raw.get("in_stock"),
+            seller=r.raw.get("seller"),
+            scraped_at=r.scraped_at,
+        )
+        for r in rows
+    ]
+
+
+def _resolve_unmatched(session: Session, row_id: int, product: Product | None, is_bundle: bool, ignored: bool) -> None:
+    row = session.get(UnmatchedListing, row_id)
+    if row is None:
+        raise HTTPException(404, "Anunț inexistent")
+    mm = session.scalar(select(ManualMatch).where(ManualMatch.shop_id == row.shop_id, ManualMatch.url == row.url))
+    if mm is None:
+        mm = ManualMatch(shop_id=row.shop_id, url=row.url, created_at=datetime.now(UTC))
+        session.add(mm)
+    mm.product_id = product.id if product else None
+    mm.is_bundle, mm.ignored = is_bundle, ignored
+    if product is not None and row.raw.get("price"):
+        # oferta apare imediat, din datele colectate deja; scrape-urile următoare o actualizează
+        raw = row.raw
+        record_offer(
+            session,
+            session.get(Shop, row.shop_id),
+            product,
+            ScrapedOffer(
+                shop_slug="",
+                url=row.url,
+                title=row.title,
+                price=Decimal(raw["price"]),
+                old_price=Decimal(raw["old_price"]) if raw.get("old_price") else None,
+                in_stock=bool(raw.get("in_stock", True)),
+                ean=None,
+                mpn=raw.get("mpn"),
+                warranty_months=raw.get("warranty_months"),
+                condition=raw.get("condition") or "new",
+                scraped_at=row.scraped_at,
+                seller=raw.get("seller"),
+                grade=raw.get("grade"),
+            ),
+            is_bundle,
+        )
+    session.delete(row)
+    session.commit()
+
+
+@router.post("/admin/unmatched/{row_id}/assign", status_code=204, dependencies=[Depends(require_admin)])
+def admin_assign(row_id: int, body: schemas.AssignIn, session: Session = Depends(get_session)):
+    """Asociază anunțul cu un model; reținut pentru scrape-urile viitoare (tabelul manual_matches)."""
+    product = catalog.get_product(session, body.product_slug)
+    if product is None:
+        raise HTTPException(404, "Produs inexistent")
+    _resolve_unmatched(session, row_id, product, body.is_bundle, ignored=False)
+
+
+@router.post("/admin/unmatched/{row_id}/ignore", status_code=204, dependencies=[Depends(require_admin)])
+def admin_ignore(row_id: int, session: Session = Depends(get_session)):
+    """Ignoră anunțul (ex. consolă modificată, PS4); nu mai apare la scrape-urile viitoare."""
+    _resolve_unmatched(session, row_id, None, False, ignored=True)

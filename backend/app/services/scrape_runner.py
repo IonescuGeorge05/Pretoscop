@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
-from app.models import Product, Shop
+from app.models import ManualMatch, Product, Shop
 from app.services.ingest import record_offer, record_unmatched
 from scrapers.base import BlockedError, PoliteClient, RobotsDisallowed
 from scrapers.matcher import ProductRef, match
@@ -22,11 +22,23 @@ log = logging.getLogger("scrape")
 
 def scrape_shop(session: Session, shop: Shop, client: PoliteClient) -> Counter:
     products = {p.slug: p for p in session.scalars(select(Product))}
+    by_id = {p.id: p for p in products.values()}
     refs = [ProductRef(p.slug, p.ean, p.model_code) for p in products.values()]
+    manual = {m.url: m for m in session.scalars(select(ManualMatch).where(ManualMatch.shop_id == shop.id))}
+    allow_used = shop.kind in ("secondhand", "refurbished")
     stats: Counter = Counter()
     for scraped in REGISTRY[shop.slug](client).scrape():
         stats["listings"] += 1
-        result = match(scraped.title, refs, scraped.ean, scraped.mpn, scraped.condition)
+        # o asociere făcută de mână în pagina de admin are prioritate față de reguli
+        if (m := manual.get(scraped.url)) is not None:
+            if m.ignored:
+                stats["ignored_manual"] += 1
+            else:
+                _, changed = record_offer(session, shop, by_id[m.product_id], scraped, m.is_bundle)
+                stats["matched_manual"] += 1
+                stats["price_points_written"] += int(changed)
+            continue
+        result = match(scraped.title, refs, scraped.ean, scraped.mpn, scraped.condition, allow_used)
         if result.kind == "product":
             _, changed = record_offer(session, shop, products[result.product_slug], scraped, result.is_bundle)
             stats["bundles" if result.is_bundle else "matched"] += 1

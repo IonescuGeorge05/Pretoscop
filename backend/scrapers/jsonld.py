@@ -84,7 +84,10 @@ def extract_product(html: str) -> dict | None:
             availability = str(offers.get("availability", ""))
             condition = str(offers.get("itemCondition") or node.get("itemCondition") or "NewCondition")
             ean = normalize_gtin(node.get("gtin13") or node.get("gtin") or node.get("ean") or offers.get("gtin13"))
+            seller = offers.get("seller")
+            seller_name = seller.get("name") if isinstance(seller, dict) else None
             return {
+                "seller": seller_name.replace("™", "").strip() if seller_name else None,
                 "title": node.get("name"),
                 "price": parse_price(price),
                 "in_stock": ("InStock" in availability or "LimitedAvailability" in availability)

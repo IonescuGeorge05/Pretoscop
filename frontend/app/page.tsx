@@ -50,6 +50,13 @@ export default async function Home({ searchParams }: { searchParams: { source?: 
                 ) : (
                   <p className="text-sm text-muted">Nicio ofertă în stoc momentan.</p>
                 )}
+                {(p.refurbished_from || p.secondhand_from) && (
+                  <p className="mt-2 text-xs text-muted">
+                    {p.refurbished_from && <>Refurbished de la <strong className="text-ink">{formatLei(p.refurbished_from)}</strong></>}
+                    {p.refurbished_from && p.secondhand_from && " · "}
+                    {p.secondhand_from && <>Second hand de la <strong className="text-ink">{formatLei(p.secondhand_from)}</strong></>}
+                  </p>
+                )}
               </div>
               <div className="mt-4">
                 <VerdictBadge verdict={p.recommendation.verdict} label={p.recommendation.label} />

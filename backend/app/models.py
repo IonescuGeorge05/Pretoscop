@@ -56,6 +56,7 @@ class Shop(Base):
     default_warranty_months: Mapped[int] = mapped_column(Integer, default=24)
     affiliate_url_template: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default="active")  # active | blocked
+    kind: Mapped[str] = mapped_column(String(20), default="retail")  # retail | secondhand | refurbished
     status_reason: Mapped[str | None] = mapped_column(Text)
     last_scraped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
@@ -77,6 +78,8 @@ class Offer(Base):
     is_bundle: Mapped[bool] = mapped_column(Boolean, default=False)
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     source: Mapped[str] = mapped_column(String(10), default="real")  # real | mock
+    seller: Mapped[str | None] = mapped_column(Text)  # cine vinde efectiv (marketplace); None = magazinul
+    grade: Mapped[str | None] = mapped_column(String(30))  # refurbished: Bun / Foarte bun / Excelent / Ca nou
 
     product: Mapped[Product] = relationship(back_populates="offers")
     shop: Mapped[Shop] = relationship(back_populates="offers")
@@ -116,6 +119,8 @@ class UnmatchedListing(Base):
     raw: Mapped[dict] = mapped_column(JSONType, default=dict)
     scraped_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
 
+    shop: Mapped[Shop] = relationship()
+
 
 class Click(Base):
     __tablename__ = "clicks"
@@ -126,3 +131,18 @@ class Click(Base):
     target_url: Mapped[str] = mapped_column(Text)
     referer: Mapped[str | None] = mapped_column(Text)
     user_agent: Mapped[str | None] = mapped_column(Text)
+
+
+class ManualMatch(Base):
+    """Asociere făcută de mână din pagina de admin; are prioritate față de matcher la scrape-urile următoare."""
+
+    __tablename__ = "manual_matches"
+    __table_args__ = (UniqueConstraint("shop_id", "url", name="uq_manual_matches_shop_url"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    shop_id: Mapped[int] = mapped_column(ForeignKey("shops.id"))
+    url: Mapped[str] = mapped_column(Text)
+    product_id: Mapped[int | None] = mapped_column(ForeignKey("products.id"))
+    is_bundle: Mapped[bool] = mapped_column(Boolean, default=False)
+    ignored: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

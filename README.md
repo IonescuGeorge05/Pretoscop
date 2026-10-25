@@ -86,6 +86,16 @@ Starea magazinelor, testată pe 25.10.2026 cu clientul `httpx` al aplicației:
 | PC Garage | ⛔ blocat | Cloudflare 403 pentru clientul httpx (JSON-LD-ul e curat, ar fi primul candidat dacă permit accesul) |
 | Flanco | ⛔ blocat | Cloudflare 403 |
 | Altex | ⛔ blocat | Akamai 403; listarea e randată client-side |
+| Flip (refurbished) | ✅ funcționează | URL-uri din sitemap; toate gradele estetice dintr-o pagină (`__NEXT_DATA__`) |
+| OLX (second hand) | ⛔ blocat | CloudFront 403 pentru clientul aplicației. Parserul e gata și testat; așteaptă acces (ex. acord cu OLX) |
+
+**Prețul tăiat.** eMAG îl pune într-un obiect JSON din pagină. Dacă există o reducere, e „cel mai mic preț din ultimele 30 de zile” (directiva UE Omnibus); altfel e prețul inițial. La evoMAG apare doar vizual (selector CSS, de verificat pe un produs redus).
+
+**Marketplace.** La eMAG, JSON-LD-ul spune cine vinde efectiv oferta (`seller`). Ofertele de la terți apar în tabel cu eticheta „Marketplace · vânzător”, dar **nu intră** în minimul pieței, în grafic și în recomandare: prețurile resellerilor ar distorsiona istoricul.
+
+**Refurbished și second hand.** Magazinele au `kind: refurbished | secondhand` în `shops.yaml`. Ofertele lor apar în secțiuni separate pe pagina modelului, nu în comparația principală.
+
+**Asocieri manuale.** Pagina http://localhost:3000/admin listează anunțurile ajunse la `unmatched`. Te autentifici cu `ADMIN_TOKEN` din `.env`. Alegi modelul și apeși „Asociază”: oferta apare imediat, iar asocierea e salvată în `manual_matches` și are prioritate la scrape-urile următoare. „Ignoră” scoate anunțul definitiv.
 
 **Scrape manual:**
 
@@ -140,7 +150,17 @@ Restul (prețul final, istoricul, recomandările, API-ul) nu depinde de familia 
 
 ## MSRP
 
-Fiecare produs are `msrp_ron` (preț recomandat de producător), afișat sub titlu, pe carduri și ca linie punctată pe grafic. Recomandarea îl folosește doar ca **context**: nu schimbă verdictul. Valorile din `models.yaml` sunt **estimate** din prețurile recomandate Sony pentru zona euro × 5,09 lei/€ (`msrp_verified: false`, apar cu „estimat” în UI). TODO: verificare cu Sony România.
+Fiecare produs are `msrp_ron` (preț recomandat de producător), afișat sub titlu, pe carduri și ca linie punctată pe grafic. Recomandarea îl folosește doar ca **context**: nu schimbă verdictul.
+
+Sursa valorilor: prețurile recomandate Sony pentru Europa în vigoare din **2 aprilie 2026** ([PlayStation Blog](https://blog.playstation.com/2026/03/27/new-price-changes-for-ps5-ps5-pro-and-playstation-portal-remote-player/)), convertite la ~5,09 lei/€:
+
+| Model | Preț UE | MSRP |
+|---|---|---|
+| PS5 cu disc | 649,99 € | 3 309 lei |
+| PS5 Digital | 599,99 € | 3 049 lei |
+| PS5 Pro | 899,99 € | 4 579 lei |
+
+Sony nu publică un preț separat în lei, deci valorile rămân marcate „estimat”. Modelele originale (CFI-1xxx) nu se mai produc; pentru ele folosim MSRP-ul ediției actuale echivalente.
 
 ## Istoric: colectare, goluri și date din trecut
 

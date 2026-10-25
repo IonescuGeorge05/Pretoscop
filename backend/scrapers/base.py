@@ -35,6 +35,8 @@ class ScrapedOffer:
     condition: str  # "new" | "refurbished" | ...
     scraped_at: datetime
     raw: dict = field(default_factory=dict)
+    seller: str | None = None  # vânzătorul efectiv (marketplace); None = magazinul însuși
+    grade: str | None = None  # gradul estetic la refurbished
 
 
 class BlockedError(Exception):
@@ -198,6 +200,7 @@ class BaseScraper(ABC):
             condition=data.get("condition") or "new",
             scraped_at=datetime.now(UTC),
             raw={"jsonld": data.get("raw"), "og": og},
+            seller=data.get("seller"),
         )
 
     @staticmethod

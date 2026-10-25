@@ -36,6 +36,8 @@ def record_offer(
     offer.warranty_months = scraped.warranty_months
     offer.condition = scraped.condition
     offer.is_bundle = is_bundle
+    offer.seller = scraped.seller
+    offer.grade = scraped.grade
     offer.last_seen_at = scraped.scraped_at
     if shop.affiliate_url_template:
         offer.affiliate_url = shop.affiliate_url_template.format(url=quote(scraped.url, safe=""))
@@ -64,7 +66,7 @@ def record_offer(
         last.confirmed_at = scraped.scraped_at
 
     # EAN găsit de scraper -> se salvează pe produs dacă lipsește (nu din pachete, nu dacă e deja folosit)
-    if scraped.ean and not is_bundle and product.ean is None:
+    if scraped.ean and not is_bundle and scraped.condition == "new" and product.ean is None:
         taken = session.scalar(select(Product.id).where(Product.ean == scraped.ean))
         if taken is None:
             product.ean = scraped.ean
@@ -88,5 +90,9 @@ def record_unmatched(session: Session, shop: Shop, scraped: ScrapedOffer, reason
         "in_stock": scraped.in_stock,
         "ean": scraped.ean,
         "mpn": scraped.mpn,
+        "seller": scraped.seller,
+        "grade": scraped.grade,
+        "condition": scraped.condition,
+        "warranty_months": scraped.warranty_months,
     }
     session.flush()

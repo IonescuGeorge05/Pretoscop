@@ -90,6 +90,18 @@ export default async function ProductPage({ params, searchParams }: Props) {
         <OffersSection offers={product.offers} />
       </div>
 
+      <section className="mt-10 space-y-3">
+        <h2 className="text-xl font-bold tracking-tight">Refurbished și second hand</h2>
+        <p className="max-w-3xl text-sm text-muted">
+          Nu intră în comparația principală și nici în recomandare. <strong className="text-ink">Refurbished</strong> = console
+          verificate și revândute de o firmă, cu garanție (Flip, pe grade estetice). <strong className="text-ink">Second hand</strong>{" "}
+          = anunțuri de la persoane fizice (OLX), fără garanție: penalizarea de garanție (0,5%/lună lipsă) se vede în prețul
+          final, iar transportul depinde de vânzător.
+        </p>
+        <OffersSection offers={product.refurbished} title="Refurbished (Flip)" />
+        <OffersSection offers={product.secondhand} title="Second hand (OLX)" />
+      </section>
+
       {product.bundles.length > 0 && (
         <div className="mt-8">
           <OffersSection offers={product.bundles} title="Pachete (cu jocuri / accesorii) — excluse din comparația principală" />

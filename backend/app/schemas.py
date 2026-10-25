@@ -39,6 +39,10 @@ class OfferOut(BaseModel):
     warranty_estimated: bool  # garanția vine din default-ul magazinului, nu din pagina produsului
     shipping_estimated: bool  # regulile de transport nu sunt verificate
     is_bundle: bool
+    seller: str | None  # vânzătorul efectiv (marketplace / persoană fizică)
+    is_marketplace: bool  # vândut de un terț -> nu intră în minimul pieței și în recomandare
+    condition: str  # new | refurbished | used
+    grade: str | None  # gradul estetic (refurbished)
     source: str
     last_seen_at: datetime
     price_since: datetime
@@ -79,6 +83,8 @@ class ProductBase(BaseModel):
 class ProductSummary(ProductBase):
     best_offer: OfferOut | None
     offers_count: int
+    refurbished_from: float | None  # cel mai mic preț final refurbished în stoc
+    secondhand_from: float | None  # cel mai mic preț final second hand
     recommendation: RecommendationBadge
 
 
@@ -94,6 +100,8 @@ class ProductDetail(ProductBase):
     available_sources: list[str]
     offers: list[OfferOut]
     bundles: list[OfferOut]
+    refurbished: list[OfferOut]
+    secondhand: list[OfferOut]
     recommendation: RecommendationOut
 
 
@@ -155,3 +163,21 @@ class CompareOut(BaseModel):
 class ScrapeStarted(BaseModel):
     shops: list[str]
     status: str = "started"
+
+
+class UnmatchedOut(BaseModel):
+    id: int
+    shop: str
+    shop_kind: str
+    url: str
+    title: str
+    reason: str | None
+    price: float | None
+    in_stock: bool | None
+    seller: str | None
+    scraped_at: datetime
+
+
+class AssignIn(BaseModel):
+    product_slug: str
+    is_bundle: bool = False

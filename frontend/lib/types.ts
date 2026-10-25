@@ -36,6 +36,10 @@ export interface Offer {
   warranty_estimated: boolean;
   shipping_estimated: boolean;
   is_bundle: boolean;
+  seller: string | null;
+  is_marketplace: boolean;
+  condition: "new" | "refurbished" | "used";
+  grade: string | null;
   source: "real" | "mock";
   last_seen_at: string;
   price_since: string;
@@ -70,6 +74,8 @@ export interface ProductBase {
 export interface ProductSummary extends ProductBase {
   best_offer: Offer | null;
   offers_count: number;
+  refurbished_from: number | null;
+  secondhand_from: number | null;
   recommendation: { verdict: Verdict; label: string; confidence: number };
 }
 
@@ -85,6 +91,8 @@ export interface ProductDetail extends ProductBase {
   available_sources: string[];
   offers: Offer[];
   bundles: Offer[];
+  refurbished: Offer[];
+  secondhand: Offer[];
   recommendation: Recommendation;
 }
 
@@ -115,4 +123,17 @@ export interface Compare {
   diffs: { component: string; label: string; a: number; b: number; diff: number }[];
   winner_offer_id: number | null;
   explanation: string;
+}
+
+export interface Unmatched {
+  id: number;
+  shop: string;
+  shop_kind: string;
+  url: string;
+  title: string;
+  reason: string | null;
+  price: number | null;
+  in_stock: boolean | null;
+  seller: string | null;
+  scraped_at: string;
 }

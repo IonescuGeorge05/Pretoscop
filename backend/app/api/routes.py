@@ -17,9 +17,11 @@ from app.services.ingest import record_offer
 from scrapers.base import ScrapedOffer
 from app.services import catalog
 from app.services.pricing import compare as compare_breakdowns
-from app.services.scrape_runner import run_shop
+from app.services.scrape_runner import ingest_offers, run_shop
 from recommender.calendar import events_between
 from recommender.rules import FakeDiscount, Recommendation, point_at
+from scrapers.olx import CATEGORY_URL as OLX_CATEGORY_URL
+from scrapers.olx import parse_olx_listing
 from scrapers.registry import REGISTRY
 
 router = APIRouter(prefix="/api")
@@ -49,6 +51,8 @@ def offer_out(view: catalog.OfferView, fake: FakeDiscount | None = None) -> sche
         is_marketplace=catalog.is_marketplace(o),
         condition=o.condition,
         grade=o.grade,
+        location=o.location,
+        posted_label=o.posted_label,
         source=o.source,
         last_seen_at=o.last_seen_at,
         price_since=p.ts,
@@ -362,6 +366,7 @@ def _resolve_unmatched(session: Session, row_id: int, product: Product | None, i
                 scraped_at=row.scraped_at,
                 seller=raw.get("seller"),
                 grade=raw.get("grade"),
+                location=raw.get("location"),
             ),
             is_bundle,
         )
@@ -382,3 +387,23 @@ def admin_assign(row_id: int, body: schemas.AssignIn, session: Session = Depends
 def admin_ignore(row_id: int, session: Session = Depends(get_session)):
     """Ignoră anunțul (ex. consolă modificată, PS4); nu mai apare la scrape-urile viitoare."""
     _resolve_unmatched(session, row_id, None, False, ignored=True)
+
+
+@router.post("/admin/import/olx", response_model=schemas.ImportResult, dependencies=[Depends(require_admin)])
+async def admin_import_olx(request: Request, session: Session = Depends(get_session)):
+    """Import manual: corpul cererii e HTML-ul unei pagini de rezultate OLX salvate din browser (Ctrl+S).
+    Nu face nicio cerere către OLX; anunțurile trec prin același matcher ca la scraping."""
+    html = (await request.body()).decode("utf-8", errors="ignore")
+    offers = parse_olx_listing(OLX_CATEGORY_URL, html)
+    if not offers:
+        raise HTTPException(422, "Nu am găsit anunțuri în fișier. Salvează pagina de rezultate OLX (Ctrl+S).")
+    shop = session.scalar(select(Shop).where(Shop.slug == "olx"))
+    stats = ingest_offers(session, shop, offers)
+    session.commit()
+    return schemas.ImportResult(
+        listings=stats["listings"],
+        matched=stats["matched"] + stats["matched_manual"],
+        bundles=stats["bundles"],
+        unmatched=stats["unmatched"],
+        ignored=stats["accessory"] + stats["excluded"] + stats["ignored_manual"],
+    )

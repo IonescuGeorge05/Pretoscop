@@ -69,7 +69,14 @@ function OfferDetails({ o, isBest }: { o: Offer; isBest: boolean }) {
         </div>
       )}
       {o.grade && <div className="text-xs font-normal text-muted">Stare estetică: <strong className="text-ink">{o.grade}</strong></div>}
-      {o.condition === "used" && o.seller && <div className="text-xs font-normal text-muted">{o.seller}</div>}
+      {o.condition === "used" && (
+        <div className="text-xs font-normal text-muted">
+          {o.location && <strong className="text-ink">{o.location}</strong>}
+          {o.location && o.posted_label && " · "}
+          {o.posted_label && `postat ${o.posted_label.toLowerCase().startsWith("azi") || o.posted_label.toLowerCase().startsWith("ieri") ? o.posted_label.toLowerCase() : `pe ${o.posted_label}`}`}
+          {!o.location && !o.posted_label && o.seller}
+        </div>
+      )}
       {(o.is_bundle || o.condition === "used") && o.title && (
         <div className="max-w-xs text-xs font-normal text-muted">{o.title}</div>
       )}

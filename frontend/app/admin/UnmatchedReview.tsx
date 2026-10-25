@@ -93,6 +93,54 @@ function Row({
   );
 }
 
+function OlxImport({ token, onImported }: { token: string; onImported: () => void }) {
+  const [status, setStatus] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const upload = async (file: File) => {
+    setBusy(true);
+    setStatus(null);
+    const res = await fetch("/api/admin/import/olx", {
+      method: "POST",
+      headers: { "x-admin-token": token, "content-type": "text/html; charset=utf-8" },
+      body: await file.text(),
+    });
+    setBusy(false);
+    if (!res.ok) {
+      const body = await res.json().catch(() => null);
+      setStatus(body?.detail ?? `Eroare ${res.status}`);
+      return;
+    }
+    const r = await res.json();
+    setStatus(
+      `${r.listings} anunțuri citite: ${r.matched} asociate, ${r.bundles} pachete, ${r.unmatched} de verificat mai jos, ${r.ignored} ignorate (accesorii, PS4 etc.).`,
+    );
+    onImported();
+  };
+
+  return (
+    <section className="mb-8 rounded-xl border border-line bg-card p-4">
+      <h2 className="font-semibold">Import manual OLX</h2>
+      <p className="mt-1 text-sm text-muted">
+        OLX blochează colectarea automată, așa că anunțurile se aduc din browserul tău: deschide în browser o căutare
+        OLX (ex. „ps5”, „playstation 5”), apasă <kbd className="rounded border border-line px-1">Ctrl</kbd>+
+        <kbd className="rounded border border-line px-1">S</kbd> → „Pagină web, doar HTML” și încarcă fișierul aici.
+        Aplicația nu face nicio cerere către OLX. Repetă pentru fiecare căutare / pagină; duplicatele se recunosc.
+        Anunțurile dispar din listă după 3 zile fără un import nou.
+      </p>
+      <input
+        type="file"
+        accept=".html,.htm,text/html"
+        disabled={busy}
+        onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
+        className="mt-3 block text-sm"
+      />
+      {busy && <p className="mt-2 text-sm text-muted">Se importă…</p>}
+      {status && <p className="mt-2 text-sm">{status}</p>}
+    </section>
+  );
+}
+
 export default function UnmatchedReview({ products }: { products: { slug: string; name: string }[] }) {
   const [token, setToken] = useState("");
   const [input, setInput] = useState("");
@@ -148,6 +196,7 @@ export default function UnmatchedReview({ products }: { products: { slug: string
 
   return (
     <div className="mt-6">
+      <OlxImport token={token} onImported={() => load(token)} />
       {error && <p className="text-sm text-red-700 dark:text-red-400">{error}</p>}
       {items === null && !error && <p className="text-sm text-muted">Se încarcă…</p>}
       {items && (

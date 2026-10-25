@@ -38,6 +38,8 @@ def record_offer(
     offer.is_bundle = is_bundle
     offer.seller = scraped.seller
     offer.grade = scraped.grade
+    offer.location = scraped.location
+    offer.posted_label = scraped.posted_label
     offer.last_seen_at = scraped.scraped_at
     if shop.affiliate_url_template:
         offer.affiliate_url = shop.affiliate_url_template.format(url=quote(scraped.url, safe=""))
@@ -92,6 +94,7 @@ def record_unmatched(session: Session, shop: Shop, scraped: ScrapedOffer, reason
         "mpn": scraped.mpn,
         "seller": scraped.seller,
         "grade": scraped.grade,
+        "location": scraped.location,
         "condition": scraped.condition,
         "warranty_months": scraped.warranty_months,
     }

@@ -43,6 +43,8 @@ class OfferOut(BaseModel):
     is_marketplace: bool  # vândut de un terț -> nu intră în minimul pieței și în recomandare
     condition: str  # new | refurbished | used
     grade: str | None  # gradul estetic (refurbished)
+    location: str | None  # second hand: orașul din anunț
+    posted_label: str | None  # second hand: data afișată în anunț
     source: str
     last_seen_at: datetime
     price_since: datetime
@@ -176,6 +178,14 @@ class UnmatchedOut(BaseModel):
     in_stock: bool | None
     seller: str | None
     scraped_at: datetime
+
+
+class ImportResult(BaseModel):
+    listings: int
+    matched: int
+    bundles: int
+    unmatched: int  # ajung în /admin pentru asociere manuală
+    ignored: int  # accesorii, PS4 etc.
 
 
 class AssignIn(BaseModel):

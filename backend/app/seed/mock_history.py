@@ -51,6 +51,7 @@ PRICE_HIKE_RATIO = {
     "ps5-slim-digital-1tb": 0.833,
     "ps5-pro-2tb": 0.889,
 }
+OLX_CITIES = ["București, Sectorul 3", "Cluj-Napoca", "Iași", "Timișoara", "Brașov", "Constanța", "Craiova"]
 FLIP_GRADES = {"Bun": 0.80, "Foarte bun": 0.84, "Excelent": 0.88, "Ca nou": 0.92}  # față de prețul nou
 SHOP_FACTOR = {"emag": 1.0, "altex": 1.012, "flanco": 1.008, "pcgarage": 0.995, "evomag": 0.975}
 SHOP_WARRANTY = {"evomag": 12}  # restul: default-ul magazinului (24)
@@ -262,6 +263,7 @@ def add_secondary_offers(session, product, shops, today, rng, now) -> int:
                 title=f"[DEMO] Vând {product.name.split(',')[0]}, stare foarte bună",
                 changes=[(posted, Decimal(int(price / 50) * 50), True)],
                 now=now, condition="used", is_bundle=False, seller="persoană fizică", warranty_months=0,
+                location=rng.choice(OLX_CITIES), posted_label=f"{posted.day:02d}.{posted.month:02d}.{posted.year}",
             )
     return n
 

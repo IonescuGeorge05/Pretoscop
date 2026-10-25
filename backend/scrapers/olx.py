@@ -1,8 +1,10 @@
-"""OLX.ro — anunțuri second hand. Datele se iau direct din lista de rezultate (titlu, preț, link),
+"""OLX.ro — anunțuri second hand. Datele se iau direct din lista de rezultate (titlu, preț, link, locație),
 fără a deschide fiecare anunț: mai puține cereri, iar anunțurile oricum nu au date structurate.
+Se caută după mai multe forme ale numelui (ps5, playstation 5, playstation5); duplicatele se elimină după URL.
 
 Atenție (testat 10.2026): CloudFront răspunde 403 clientului aplicației -> magazinul ajunge `blocked`.
-Nu ocolim blocarea; parserul e gata pentru momentul în care avem acces (ex. acord cu OLX)."""
+Nu ocolim blocarea. Până la un acord cu OLX, datele se pot aduce prin importul manual din /admin:
+utilizatorul salvează în browser pagina de rezultate, iar `parse_olx_listing` o citește din fișier."""
 
 import re
 from collections.abc import Iterable, Iterator
@@ -14,7 +16,8 @@ from selectolax.parser import HTMLParser
 from scrapers.base import BaseScraper, ScrapedOffer
 from scrapers.jsonld import parse_price
 
-LISTING_URL = "https://www.olx.ro/electronice-si-electrocasnice/laptop-calculator-gaming/playstation/q-playstation-5/"
+CATEGORY_URL = "https://www.olx.ro/electronice-si-electrocasnice/laptop-calculator-gaming/playstation/"
+QUERIES = ["ps5", "playstation-5", "playstation5"]  # forma din URL a căutărilor „ps5”, „playstation 5”, „playstation5”
 PRICE_RE = re.compile(r"([\d][\d .]*(?:,\d{1,2})?)\s*lei", re.I)
 
 
@@ -31,7 +34,7 @@ def parse_olx_listing(page_url: str, html: str) -> list[ScrapedOffer]:
         m = PRICE_RE.search(price_node.text(separator=" "))
         if not m:
             continue  # „Schimb”, „Gratuit” etc.
-        location = card.css_first('[data-testid="location-date"]')
+        location, posted = split_location(card.css_first('[data-testid="location-date"]'))
         offers.append(
             ScrapedOffer(
                 shop_slug="olx",
@@ -45,24 +48,34 @@ def parse_olx_listing(page_url: str, html: str) -> list[ScrapedOffer]:
                 warranty_months=0,  # persoane fizice: fără garanție
                 condition="used",
                 scraped_at=now,
-                raw={
-                    "negotiable": "negociabil" in price_node.text().lower(),
-                    "location": location.text(strip=True) if location else None,
-                },
+                raw={"negotiable": "negociabil" in price_node.text().lower()},
                 seller="persoană fizică",
+                location=location,
+                posted_label=posted,
             )
         )
     return offers
 
 
+def split_location(node) -> tuple[str | None, str | None]:
+    """„Iasi - Azi la 16:59” -> („Iasi”, „Azi la 16:59”); „Bucuresti, Sectorul 1 - 02 octombrie 2026” idem."""
+    if node is None:
+        return None, None
+    text = node.text(strip=True)
+    place, sep, when = text.rpartition(" - ")
+    return (place, when) if sep else (text, None)
+
+
 class OlxScraper(BaseScraper):
     shop_slug = "olx"
-    pages = 3
+    pages = 2  # pagini per căutare
 
     def discover_product_urls(self) -> Iterable[str]:
-        yield LISTING_URL
-        for n in range(2, self.pages + 1):
-            yield f"{LISTING_URL}?page={n}"
+        for q in QUERIES:
+            url = f"{CATEGORY_URL}q-{q}/"
+            yield url
+            for n in range(2, self.pages + 1):
+                yield f"{url}?page={n}"
 
     def scrape(self) -> Iterator[ScrapedOffer]:
         seen = set()

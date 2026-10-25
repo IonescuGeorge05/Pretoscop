@@ -80,6 +80,8 @@ class Offer(Base):
     source: Mapped[str] = mapped_column(String(10), default="real")  # real | mock
     seller: Mapped[str | None] = mapped_column(Text)  # cine vinde efectiv (marketplace); None = magazinul
     grade: Mapped[str | None] = mapped_column(String(30))  # refurbished: Bun / Foarte bun / Excelent / Ca nou
+    location: Mapped[str | None] = mapped_column(Text)  # second hand: orașul din anunț
+    posted_label: Mapped[str | None] = mapped_column(Text)  # second hand: data afișată în anunț
 
     product: Mapped[Product] = relationship(back_populates="offers")
     shop: Mapped[Shop] = relationship(back_populates="offers")

@@ -4,6 +4,7 @@ import json
 import logging
 import time
 from collections import Counter
+from collections.abc import Iterable
 from datetime import UTC, datetime
 
 import httpx
@@ -13,7 +14,7 @@ from sqlalchemy.orm import Session
 from app.db import SessionLocal
 from app.models import ManualMatch, Product, Shop
 from app.services.ingest import record_offer, record_unmatched
-from scrapers.base import BlockedError, PoliteClient, RobotsDisallowed
+from scrapers.base import BlockedError, PoliteClient, RobotsDisallowed, ScrapedOffer
 from scrapers.matcher import ProductRef, match
 from scrapers.registry import REGISTRY
 
@@ -21,13 +22,18 @@ log = logging.getLogger("scrape")
 
 
 def scrape_shop(session: Session, shop: Shop, client: PoliteClient) -> Counter:
+    return ingest_offers(session, shop, REGISTRY[shop.slug](client).scrape())
+
+
+def ingest_offers(session: Session, shop: Shop, scraped_offers: Iterable[ScrapedOffer]) -> Counter:
+    """Asociere + salvare pentru anunțuri colectate (automat de scraper sau importate manual din /admin)."""
     products = {p.slug: p for p in session.scalars(select(Product))}
     by_id = {p.id: p for p in products.values()}
     refs = [ProductRef(p.slug, p.ean, p.model_code) for p in products.values()]
     manual = {m.url: m for m in session.scalars(select(ManualMatch).where(ManualMatch.shop_id == shop.id))}
     allow_used = shop.kind in ("secondhand", "refurbished")
     stats: Counter = Counter()
-    for scraped in REGISTRY[shop.slug](client).scrape():
+    for scraped in scraped_offers:
         stats["listings"] += 1
         # o asociere făcută de mână în pagina de admin are prioritate față de reguli
         if (m := manual.get(scraped.url)) is not None:

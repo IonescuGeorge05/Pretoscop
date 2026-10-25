@@ -10,7 +10,8 @@ export default async function AdminPage() {
   const { products } = await getProducts();
   return (
     <>
-      <h1 className="text-2xl font-bold tracking-tight">Anunțuri nepotrivite</h1>
+      <h1 className="text-2xl font-bold tracking-tight">Admin</h1>
+      <h2 className="mt-4 text-lg font-semibold">Anunțuri nepotrivite</h2>
       <p className="mt-1 max-w-3xl text-sm text-muted">
         Anunțuri pe care regulile nu le-au putut asocia sigur unui model (de ex. „Slim, 1TB” fără „Disc” sau
         „Digital”). Alege modelul și apasă <strong className="text-ink">Asociază</strong>: oferta apare imediat, iar la

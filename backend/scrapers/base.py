@@ -37,6 +37,8 @@ class ScrapedOffer:
     raw: dict = field(default_factory=dict)
     seller: str | None = None  # vânzătorul efectiv (marketplace); None = magazinul însuși
     grade: str | None = None  # gradul estetic la refurbished
+    location: str | None = None  # second hand: orașul din anunț
+    posted_label: str | None = None  # second hand: data afișată în anunț
 
 
 class BlockedError(Exception):

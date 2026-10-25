@@ -40,6 +40,8 @@ export interface Offer {
   is_marketplace: boolean;
   condition: "new" | "refurbished" | "used";
   grade: string | null;
+  location: string | null;
+  posted_label: string | null;
   source: "real" | "mock";
   last_seen_at: string;
   price_since: string;

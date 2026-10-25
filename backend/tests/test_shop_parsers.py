@@ -91,4 +91,23 @@ def test_olx_listing_cards():
     assert [o.url for o in offers] == ["https://www.olx.ro/d/oferta/ps5-slim-IDa.html", "https://www.olx.ro/d/oferta/ps5-IDb.html"]
     assert [o.price for o in offers] == [Decimal("3000.00"), Decimal("2300.00")]
     assert offers[1].raw["negotiable"] is True
+    assert (offers[0].location, offers[0].posted_label) == ("Iasi", "Azi la 10:00")
     assert all(o.condition == "used" and o.warranty_months == 0 for o in offers)
+
+
+def test_olx_location_split_keeps_sector():
+    from selectolax.parser import HTMLParser
+
+    from scrapers.olx import split_location
+
+    node = HTMLParser('<p data-testid="location-date">Bucuresti, Sectorul 1 - 02 octombrie 2026</p>').css_first("p")
+    assert split_location(node) == ("Bucuresti, Sectorul 1", "02 octombrie 2026")
+    assert split_location(None) == (None, None)
+
+
+def test_olx_searches_all_name_variants():
+    from scrapers.olx import OlxScraper
+
+    urls = list(OlxScraper(None).discover_product_urls())
+    for q in ("q-ps5/", "q-playstation-5/", "q-playstation5/"):
+        assert any(u.endswith(q) for u in urls)

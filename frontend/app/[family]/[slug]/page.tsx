@@ -15,12 +15,14 @@ type Props = { params: { family: string; slug: string }; searchParams: { source?
 
 const RANGES = ["30d", "90d", "1y"];
 
-// mod static: toate paginile de produs se generează la build din snapshot; mod server: la cerere
-export async function generateStaticParams() {
-  if (!IS_STATIC) return [];
-  const { products } = await getProducts();
-  return products.map((p) => ({ family: p.family_slug, slug: p.slug }));
-}
+// mod static: toate paginile de produs se generează la build din snapshot.
+// Mod server: funcția NU trebuie să existe — altfel Next tratează pagina ca statică și cade la datele live (500).
+export const generateStaticParams = IS_STATIC
+  ? async () => {
+      const { products } = await getProducts();
+      return products.map((p) => ({ family: p.family_slug, slug: p.slug }));
+    }
+  : undefined;
 
 async function load(slug: string, source?: string, range?: string, granularity?: string) {
   try {

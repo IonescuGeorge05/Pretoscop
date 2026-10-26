@@ -141,6 +141,14 @@ Starea magazinelor, testată pe 25.10.2026 cu clientul `httpx` al aplicației:
 
 **Alerte OLX pe email (automat).** Pe olx.ro salvezi căutările (de ex. „ps5”, „iphone 18 pro”) cu notificări pe email, apoi completezi `IMAP_USER` și `IMAP_PASSWORD` în `.env`. La Gmail, parola e o „parolă pentru aplicații”, creată din contul Google după activarea verificării în 2 pași. Worker-ul citește la 30 de minute emailurile necitite de la OLX, extrage anunțurile și le marchează citite. Nu se face nicio cerere către OLX. Formatul emailurilor nu e documentat: parserul caută generic linkurile spre anunțuri și prețul de lângă ele, deci poate avea nevoie de ajustări după primul email real.
 
+**Căutare web (Brave Search API, opțional).** Cu `BRAVE_API_KEY` în `.env`, worker-ul face două lucruri:
+- **la 12 ore**, caută anunțuri OLX în indexul motorului de căutare. Nu accesăm OLX; păstrăm doar anunțurile individuale cu preț și mai noi de 30 de zile. E un supliment: rezultatele pot fi vechi sau incomplete.
+- **săptămânal**, descoperă magazine: caută produsele urmărite și listează în `/admin` domeniile `.ro` noi. Butonul „Verifică” testează pentru fiecare robots.txt, sitemap și datele structurate de pe pagina de produs.
+
+Brave are un credit lunar gratuit de ~1 000 de căutări, cere card și menționarea Brave pe site. Google Custom Search e închis pentru clienți noi.
+
+`/admin` → „Surse automate” arată dacă emailul și căutarea sunt configurate. Are butoane de test și de rulare imediată.
+
 **Import manual OLX.** În `/admin` încarci o pagină de rezultate OLX salvată din browser (Ctrl+S → „Pagină web, doar HTML”). Aplicația nu face nicio cerere către OLX; anunțurile trec prin același matcher ca la scraping (`ingest_offers`). Anunțurile neimportate din nou dispar după 3 zile, ca să nu rămână în listă unele deja vândute.
 
 **Asocieri manuale.** Pagina http://localhost:3000/admin listează anunțurile ajunse la `unmatched`. Te autentifici cu `ADMIN_TOKEN` din `.env`. Alegi modelul și apeși „Asociază”: oferta apare imediat, iar asocierea e salvată în `manual_matches` și are prioritate la scrape-urile următoare. „Ignoră” scoate anunțul definitiv.

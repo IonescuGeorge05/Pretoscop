@@ -28,5 +28,10 @@ class Settings(BaseSettings):
     olx_alert_sender: str = "olx.ro"
     email_poll_minutes: int = 30
 
+    # căutare web prin Brave Search API (opțional): anunțuri OLX din index + descoperire de magazine
+    brave_api_key: str = ""
+    search_interval_hours: float = 12
+    discovery_interval_days: float = 7
+
 
 settings = Settings()

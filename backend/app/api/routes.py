@@ -4,6 +4,7 @@ from decimal import Decimal
 from statistics import median
 from typing import Literal
 
+import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy import select
@@ -13,12 +14,14 @@ from app import schemas
 from app.config import settings
 from app.families import families, family_slug
 from app.db import get_session
-from app.models import Click, ManualMatch, Offer, Product, Shop, UnmatchedListing
+from app.models import Click, DiscoveredShop, ManualMatch, Offer, Product, Shop, UnmatchedListing
 from app.services.ingest import record_offer
 from scrapers.base import ScrapedOffer
 from app.services import catalog
 from app.services.pricing import compare as compare_breakdowns
+from app.services import olx_email, web_search
 from app.services.feed_import import import_feed
+from app.services.shop_check import check_shop
 from app.services.scrape_runner import ingest_offers, run_shop
 from recommender.calendar import events_between
 from recommender.rules import FakeDiscount, Recommendation, point_at
@@ -438,3 +441,64 @@ def admin_shops(session: Session = Depends(get_session)):
         {"slug": s.slug, "name": s.name, "kind": s.kind, "status": s.status, "has_feed": bool(s.feed and s.feed.get("url"))}
         for s in session.scalars(select(Shop).order_by(Shop.id))
     ]
+
+
+# ---------- surse care cer configurare: alerte OLX pe email, căutare web (Brave)
+
+
+@router.get("/admin/sources", response_model=dict, dependencies=[Depends(require_admin)])
+def admin_sources():
+    return {
+        "email_configured": bool(settings.imap_user),
+        "email_user": settings.imap_user or None,
+        "search_configured": bool(settings.brave_api_key),
+    }
+
+
+@router.post("/admin/email/test", response_model=dict, dependencies=[Depends(require_admin)])
+def admin_email_test():
+    return olx_email.test_connection()
+
+
+@router.post("/admin/email/run", response_model=dict, dependencies=[Depends(require_admin)])
+def admin_email_run():
+    return olx_email.run()
+
+
+@router.post("/admin/search/run", response_model=dict, dependencies=[Depends(require_admin)])
+def admin_search_run(what: Literal["olx", "discovery"] = "olx"):
+    try:
+        return web_search.run_olx_search() if what == "olx" else web_search.run_discovery()
+    except httpx.HTTPStatusError as exc:
+        raise HTTPException(502, f"Brave Search a răspuns {exc.response.status_code}: verifică BRAVE_API_KEY") from exc
+
+
+@router.get("/admin/discovered", response_model=list[dict], dependencies=[Depends(require_admin)])
+def admin_discovered(session: Session = Depends(get_session)):
+    rows = session.scalars(
+        select(DiscoveredShop).where(DiscoveredShop.status == "new").order_by(DiscoveredShop.hits.desc())
+    )
+    return [
+        {"id": r.id, "domain": r.domain, "example_url": r.example_url, "example_title": r.example_title,
+         "query": r.query, "hits": r.hits, "last_seen": r.last_seen, "check": r.check}
+        for r in rows
+    ]
+
+
+@router.post("/admin/discovered/{row_id}/check", response_model=dict, dependencies=[Depends(require_admin)])
+def admin_discovered_check(row_id: int, session: Session = Depends(get_session)):
+    row = session.get(DiscoveredShop, row_id)
+    if row is None:
+        raise HTTPException(404, "Inexistent")
+    row.check = check_shop(row.example_url)
+    session.commit()
+    return row.check
+
+
+@router.post("/admin/discovered/{row_id}/ignore", status_code=204, dependencies=[Depends(require_admin)])
+def admin_discovered_ignore(row_id: int, session: Session = Depends(get_session)):
+    row = session.get(DiscoveredShop, row_id)
+    if row is None:
+        raise HTTPException(404, "Inexistent")
+    row.status = "ignored"
+    session.commit()

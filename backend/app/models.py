@@ -149,3 +149,20 @@ class ManualMatch(Base):
     is_bundle: Mapped[bool] = mapped_column(Boolean, default=False)
     ignored: Mapped[bool] = mapped_column(Boolean, default=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class DiscoveredShop(Base):
+    """Domeniu găsit prin căutare web la produsele urmărite; candidat pentru scraping sau cerere de feed."""
+
+    __tablename__ = "discovered_shops"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    domain: Mapped[str] = mapped_column(String(200), unique=True)
+    example_url: Mapped[str] = mapped_column(Text)
+    example_title: Mapped[str | None] = mapped_column(Text)
+    query: Mapped[str | None] = mapped_column(Text)
+    hits: Mapped[int] = mapped_column(Integer, default=1)
+    first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    status: Mapped[str] = mapped_column(String(20), default="new")  # new | ignored
+    check: Mapped[dict | None] = mapped_column(JSONType)

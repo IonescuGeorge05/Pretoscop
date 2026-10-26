@@ -19,6 +19,7 @@ def _pattern(path: str) -> re.Pattern:
 class Robots:
     def __init__(self, text: str = "", allow_all: bool = False, disallow_all: bool = False):
         self.allow_all, self.disallow_all = allow_all, disallow_all
+        self.sitemaps = re.findall(r"(?im)^\s*sitemap:\s*(\S+)", text)
         self.groups: list[tuple[set[str], list[tuple[bool, str, re.Pattern]]]] = []
         agents: set[str] = set()
         rules: list = []

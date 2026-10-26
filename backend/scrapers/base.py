@@ -141,7 +141,10 @@ class PoliteClient:
                     raise BlockedError(f"Cloudflare 503 la {url}")
                 if attempt == self.retries:
                     resp.raise_for_status()
-                time.sleep(2**attempt * 3)
+                # 429: site-ul ne cere să încetinim -> respectăm Retry-After (plafonat), altfel backoff exponențial
+                retry_after = resp.headers.get("retry-after", "")
+                wait = min(int(retry_after), 120) if retry_after.isdigit() else 2**attempt * 3
+                time.sleep(max(wait, 2**attempt * 3))
                 continue
             if resp.status_code == 200 and len(resp.text) < 20000:
                 head = resp.text[:5000].lower()

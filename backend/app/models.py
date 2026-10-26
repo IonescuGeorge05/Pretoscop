@@ -166,3 +166,15 @@ class DiscoveredShop(Base):
     last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     status: Mapped[str] = mapped_column(String(20), default="new")  # new | ignored
     check: Mapped[dict | None] = mapped_column(JSONType)
+
+
+class ProcessedEmail(Base):
+    """Email OLX deja citit de aplicație. Căsuța utilizatorului nu se modifică (nu marcăm „citit”)."""
+
+    __tablename__ = "processed_emails"
+
+    message_id: Mapped[str] = mapped_column(String(500), primary_key=True)
+    subject: Mapped[str | None] = mapped_column(Text)
+    received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    offers_found: Mapped[int] = mapped_column(Integer, default=0)
+    processed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))

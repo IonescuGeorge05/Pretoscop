@@ -460,6 +460,12 @@ def admin_email_test():
     return olx_email.test_connection()
 
 
+@router.post("/admin/email/preview", response_model=dict, dependencies=[Depends(require_admin)])
+def admin_email_preview(days: int = 7):
+    """Ce s-ar importa din emailurile OLX recente, fără a salva nimic."""
+    return olx_email.preview(days)
+
+
 @router.post("/admin/email/run", response_model=dict, dependencies=[Depends(require_admin)])
 def admin_email_run():
     return olx_email.run()

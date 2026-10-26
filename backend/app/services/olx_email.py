@@ -21,7 +21,7 @@ from email.policy import default as default_policy
 from selectolax.parser import HTMLParser
 from sqlalchemy import select
 
-from app.config import settings
+from app.config import imap_server, settings
 from app.db import SessionLocal
 from app.models import Shop
 from app.services.scrape_runner import ingest_offers
@@ -100,20 +100,27 @@ def test_connection() -> dict:
     if not settings.imap_user:
         return {"ok": False, "error": "IMAP_USER nu e setat în .env"}
     try:
-        with imaplib.IMAP4_SSL(settings.imap_host) as imap:
+        with imaplib.IMAP4_SSL(imap_server(settings)) as imap:
             imap.login(settings.imap_user, settings.imap_password)
             imap.select(settings.imap_folder, readonly=True)
             _, unseen = imap.search(None, "UNSEEN", "FROM", f'"{settings.olx_alert_sender}"')
             _, total = imap.search(None, "FROM", f'"{settings.olx_alert_sender}"')
-        return {"ok": True, "user": settings.imap_user, "olx_unread": len(unseen[0].split()), "olx_total": len(total[0].split())}
+        return {"ok": True, "user": settings.imap_user, "server": imap_server(settings), "olx_unread": len(unseen[0].split()), "olx_total": len(total[0].split())}
     except (imaplib.IMAP4.error, OSError) as exc:
-        return {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+        error = f"{type(exc).__name__}: {exc}"
+        hint = (
+            "Parola trebuie să fie o „parolă pentru aplicații” creată din setările de securitate ale contului "
+            "(Gmail/Yahoo/Outlook), nu parola obișnuită."
+            if "AUTHENTICATIONFAILED" in error.upper() or "invalid credentials" in error.lower()
+            else None
+        )
+        return {"ok": False, "server": imap_server(settings), "error": error, "hint": hint}
 
 
 def fetch_alert_emails() -> list[str]:
     """HTML-ul emailurilor necitite de la OLX; le marchează citite."""
     bodies: list[str] = []
-    with imaplib.IMAP4_SSL(settings.imap_host) as imap:
+    with imaplib.IMAP4_SSL(imap_server(settings)) as imap:
         imap.login(settings.imap_user, settings.imap_password)
         imap.select(settings.imap_folder)
         _, data = imap.search(None, "UNSEEN", "FROM", f'"{settings.olx_alert_sender}"')

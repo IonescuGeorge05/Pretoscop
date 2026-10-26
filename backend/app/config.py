@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     scraper_contact: str = "contact@example.com"
 
     # alerte OLX pe email (opțional): căsuța în care OLX trimite notificările căutărilor salvate
-    imap_host: str = "imap.gmail.com"
+    imap_host: str = ""  # gol = dedus din adresa de email (vezi imap_server)
     imap_user: str = ""
     imap_password: str = ""  # la Gmail: „parolă pentru aplicații”, nu parola contului
     imap_folder: str = "INBOX"
@@ -32,6 +32,28 @@ class Settings(BaseSettings):
     brave_api_key: str = ""
     search_interval_hours: float = 12
     discovery_interval_days: float = 7
+
+
+# serverele IMAP ale furnizorilor uzuali, după domeniul adresei
+IMAP_SERVERS = {
+    "gmail.com": "imap.gmail.com",
+    "googlemail.com": "imap.gmail.com",
+    "yahoo.com": "imap.mail.yahoo.com",
+    "yahoo.ro": "imap.mail.yahoo.com",
+    "ymail.com": "imap.mail.yahoo.com",
+    "outlook.com": "outlook.office365.com",
+    "hotmail.com": "outlook.office365.com",
+    "live.com": "outlook.office365.com",
+    "icloud.com": "imap.mail.me.com",
+    "me.com": "imap.mail.me.com",
+}
+
+
+def imap_server(s: "Settings") -> str:
+    if s.imap_host:
+        return s.imap_host
+    domain = s.imap_user.rsplit("@", 1)[-1].lower()
+    return IMAP_SERVERS.get(domain, f"imap.{domain}")
 
 
 settings = Settings()

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 
 import { formatLei } from "@/lib/format";
+import { compareOffers } from "@/lib/compare";
+import { IS_STATIC } from "@/lib/static";
 import type { Compare, Offer } from "@/lib/types";
 
 function Estimated({ show, title }: { show: boolean; title: string }) {
@@ -85,7 +87,7 @@ function OfferDetails({ o, isBest }: { o: Offer; isBest: boolean }) {
           {!o.location && !o.posted_label && o.seller}
         </div>
       )}
-      {(o.is_bundle || o.condition === "used") && o.title && (
+      {(o.is_bundle || o.condition === "used" || o.source === "real") && o.title && (
         <div className="max-w-xs text-xs font-normal text-muted">{o.title}</div>
       )}
     </>
@@ -95,7 +97,7 @@ function OfferDetails({ o, isBest }: { o: Offer; isBest: boolean }) {
 function GoButton({ o }: { o: Offer }) {
   return (
     <a
-      href={o.out_url}
+      href={IS_STATIC ? o.shop_url : o.out_url}
       target="_blank"
       rel="nofollow noopener sponsored"
       className="inline-block whitespace-nowrap rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
@@ -117,13 +119,18 @@ export default function OffersSection({ offers, title = "Oferte" }: { offers: Of
     setComparison(null);
     setError(null);
     if (selected.length !== 2) return;
+    if (IS_STATIC) {
+      const [a, b] = selected.map((id) => offers.find((o) => o.id === id)!);
+      setComparison(compareOffers(a, b));
+      return;
+    }
     const ctrl = new AbortController();
     fetch(`/api/compare?offer_a=${selected[0]}&offer_b=${selected[1]}`, { signal: ctrl.signal })
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
       .then(setComparison)
       .catch((e) => e.name !== "AbortError" && setError("Nu am putut compara ofertele."));
     return () => ctrl.abort();
-  }, [selected]);
+  }, [selected, offers]);
 
   if (!offers.length) {
     return (

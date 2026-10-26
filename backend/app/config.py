@@ -20,5 +20,13 @@ class Settings(BaseSettings):
     scrape_jitter_minutes: int = 30
     scraper_contact: str = "contact@example.com"
 
+    # alerte OLX pe email (opțional): căsuța în care OLX trimite notificările căutărilor salvate
+    imap_host: str = "imap.gmail.com"
+    imap_user: str = ""
+    imap_password: str = ""  # la Gmail: „parolă pentru aplicații”, nu parola contului
+    imap_folder: str = "INBOX"
+    olx_alert_sender: str = "olx.ro"
+    email_poll_minutes: int = 30
+
 
 settings = Settings()

@@ -32,7 +32,8 @@ class OfferOut(BaseModel):
     id: int
     shop: ShopOut
     title: str | None
-    out_url: str  # /api/out/{id}
+    out_url: str  # /api/out/{id} (redirect + logare click)
+    shop_url: str  # link direct către magazin (afiliere dacă există); folosit de site-ul static
     in_stock: bool
     old_price: float | None
     breakdown: PriceBreakdownOut
@@ -83,7 +84,11 @@ class ProductBase(BaseModel):
     msrp_note: str | None
 
 
-class ProductSummary(ProductBase):
+class ProductWithFamily(ProductBase):
+    family_slug: str  # pentru URL: /<family_slug>/<slug>
+
+
+class ProductSummary(ProductWithFamily):
     best_offer: OfferOut | None
     offers_count: int
     refurbished_from: float | None  # cel mai mic preț final refurbished în stoc
@@ -91,13 +96,21 @@ class ProductSummary(ProductBase):
     recommendation: RecommendationBadge
 
 
+class FamilyOut(BaseModel):
+    slug: str
+    family: str
+    title: str
+    description: str
+
+
 class ProductList(BaseModel):
     source: str
     is_demo: bool
+    families: list[FamilyOut]
     products: list[ProductSummary]
 
 
-class ProductDetail(ProductBase):
+class ProductDetail(ProductWithFamily):
     source: str
     is_demo: bool
     available_sources: list[str]

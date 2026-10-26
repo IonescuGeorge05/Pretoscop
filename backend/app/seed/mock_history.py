@@ -84,6 +84,24 @@ SCENARIOS = {
     "ps5-pro-2tb": Scenario(trend_pct_per_year=-5, recent_shift_pct=5, recent_days=25),
 }
 
+# produse fără scenariu dedicat (ex. iPhone): ieftinire lentă după lansare
+DEFAULT_SCENARIO = Scenario(trend_pct_per_year=-8)
+# promo Altex la Pro 256 GB -> „Cumpără acum”; Pro Max 256 GB se ieftinește constant -> regula de trend
+SCENARIOS["iphone-18-pro-256gb"] = Scenario(trend_pct_per_year=-8, flash_sale_shop="altex", flash_sale_pct=7, flash_sale_days=4)
+SCENARIOS["iphone-18-pro-max-256gb"] = Scenario(trend_pct_per_year=-60)
+
+# istoricul începe la lansare pentru produsele noi (nu există prețuri înainte)
+LAUNCH_DATE = {"iPhone 18 Pro": date(2026, 9, 18)}
+# produsele fără preț de bază fix pornesc de la MSRP x acest factor
+DEFAULT_BASE_OF_MSRP = 0.97
+
+
+def base_price(product) -> float | None:
+    if product.slug in BASE_PRICE:
+        return BASE_PRICE[product.slug]
+    return float(product.msrp_ron) * DEFAULT_BASE_OF_MSRP if product.msrp_ron else None
+
+
 FAKE_DISCOUNT = {"product": "ps5-slim-digital-1tb", "shop": "flanco", "rise_pct": 13, "rise_days_before": 21, "since": 6}
 
 
@@ -112,10 +130,12 @@ def simulate(
     calendar: list[Event],
     rng: random.Random,
     market_noise: list[float],
+    product_base: float,
+    launch: date | None = None,
 ) -> list[tuple[date, Decimal, Decimal | None, bool]]:
     """Zilele în care se schimbă ceva: (zi, preț, preț_tăiat, în_stoc)."""
-    sc = SCENARIOS[product_slug]
-    base = BASE_PRICE[product_slug] * SHOP_FACTOR[shop_slug]
+    sc = SCENARIOS.get(product_slug, DEFAULT_SCENARIO)
+    base = product_base * SHOP_FACTOR[shop_slug]
     start = today - timedelta(days=DAYS - 1)
     participates = {e: rng.random() < 0.85 for e in calendar}
     depth = {e: EVENT_DISCOUNT[e.slug] * rng.uniform(0.7, 1.2) for e in calendar}
@@ -126,11 +146,13 @@ def simulate(
 
     for i in range(DAYS):
         day = start + timedelta(days=i)
+        if launch and day < launch:
+            continue
         days_ago = (today - day).days
         noise = market_noise[i] + shop_noise[i]
         regular = base * (1 + sc.trend_pct_per_year / 100 * (i - DAYS) / 365 + noise)
         if day < PRICE_HIKE_DATE:
-            regular *= PRICE_HIKE_RATIO[product_slug]
+            regular *= PRICE_HIKE_RATIO.get(product_slug, 1.0)
         if sc.recent_days and days_ago < sc.recent_days:
             regular *= 1 + sc.recent_shift_pct / 100
 
@@ -177,7 +199,8 @@ def generate(session: Session, today: date | None = None, seed: int = 42) -> int
     now = datetime.now(UTC)
     count = 0
     for product in products:
-        if product.slug not in BASE_PRICE:
+        pbase = base_price(product)
+        if pbase is None:
             continue
         market_noise = random_walk(rng, MARKET_NOISE)
         for shop in shops:
@@ -187,7 +210,7 @@ def generate(session: Session, today: date | None = None, seed: int = 42) -> int
             offer = Offer(
                 product_id=product.id,
                 shop_id=shop.id,
-                url=template.format(query=quote_plus(product.name.split(",")[0])),
+                url=template.format(query=quote_plus(product.name.replace(",", ""))),
                 title=f"[DEMO] {product.name} — {shop.name}",
                 warranty_months=SHOP_WARRANTY.get(shop.slug),
                 condition="new",
@@ -197,7 +220,9 @@ def generate(session: Session, today: date | None = None, seed: int = 42) -> int
             )
             session.add(offer)
             session.flush()
-            changes = simulate(product.slug, shop.slug, today, calendar, rng, market_noise)
+            changes = simulate(
+                product.slug, shop.slug, today, calendar, rng, market_noise, pbase, LAUNCH_DATE.get(product.family)
+            )
             for i, (day, price, old, in_stock) in enumerate(changes):
                 ts = datetime.combine(day, time(6, 0), tzinfo=UTC)
                 # demo = colectare continuă: fiecare preț e confirmat până la următoarea schimbare
@@ -208,7 +233,7 @@ def generate(session: Session, today: date | None = None, seed: int = 42) -> int
                     )
                 )
                 count += 1
-        count += add_secondary_offers(session, product, shops_by_slug, today, rng, now)
+        count += add_secondary_offers(session, product, shops_by_slug, today, rng, now, pbase)
     session.commit()
     return count
 
@@ -227,10 +252,11 @@ def _add_offer(session, product, shop, url, title, changes, now, **fields) -> in
     return len(changes)
 
 
-def add_secondary_offers(session, product, shops, today, rng, now) -> int:
+def add_secondary_offers(session, product, shops, today, rng, now, base: float) -> int:
     """Oferte demo în afara comparației principale: marketplace, refurbished (Flip), second hand (OLX)."""
-    base = BASE_PRICE[product.slug]
     n = 0
+    is_phone = product.family != "PlayStation 5"
+    first_day = LAUNCH_DATE.get(product.family, today - timedelta(days=60))
     if product.slug == "ps5-slim-digital-1tb" and "emag" in shops:
         # vânzător terț pe eMAG cu preț umflat: apare cu eticheta „Marketplace”, nu în minimul pieței
         n += _add_offer(
@@ -244,7 +270,7 @@ def add_secondary_offers(session, product, shops, today, rng, now) -> int:
     if "flip" in shops:
         for grade, factor in FLIP_GRADES.items():
             price = base * factor
-            changes = [(today - timedelta(days=60), psychological(price * 1.03), rng.random() < 0.7),
+            changes = [(max(first_day, today - timedelta(days=60)), psychological(price * 1.03), rng.random() < 0.7),
                        (today - timedelta(days=rng.randint(5, 25)), psychological(price), rng.random() < 0.6)]
             n += _add_offer(
                 session, product, shops["flip"],
@@ -255,11 +281,12 @@ def add_secondary_offers(session, product, shops, today, rng, now) -> int:
             )
     if "olx" in shops:
         for k in range(rng.randint(2, 3)):
-            price = base * rng.uniform(0.62, 0.8)
+            # telefoanele noi apar pe OLX mai ales sigilate, aproape de prețul din magazin
+            price = base * (rng.uniform(0.82, 0.95) if is_phone else rng.uniform(0.62, 0.8))
             posted = today - timedelta(days=rng.randint(1, 20))
             n += _add_offer(
                 session, product, shops["olx"],
-                url=shops["olx"].search_url_template.format(query="playstation-5") + f"#demo-{product.slug}-{k}",
+                url=shops["olx"].search_url_template.format(query="iphone-18-pro" if is_phone else "playstation-5") + f"#demo-{product.slug}-{k}",
                 title=f"[DEMO] Vând {product.name.split(',')[0]}, stare foarte bună",
                 changes=[(posted, Decimal(int(price / 50) * 50), True)],
                 now=now, condition="used", is_bundle=False, seller="persoană fizică", warranty_months=0,

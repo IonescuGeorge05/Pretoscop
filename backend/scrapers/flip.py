@@ -49,6 +49,11 @@ def parse_flip_page(url: str, html: str) -> list[ScrapedOffer]:
     return list(seen.values())
 
 
+def model_id(url: str) -> str:
+    """https://flip.ro/magazin/apple/<slug>/75272914/?shape=Bun -> 75272914"""
+    return url.split("?")[0].rstrip("/").rsplit("/", 1)[-1]
+
+
 class FlipScraper(BaseScraper):
     shop_slug = "flip"
     sitemap_url = "https://flip.ro/sitemap.xml"  # căutarea (?search=) e interzisă în robots.txt
@@ -56,10 +61,16 @@ class FlipScraper(BaseScraper):
     def discover_product_urls(self) -> Iterable[str]:
         xml = self.client.get(self.sitemap_url).text
         for loc in re.findall(r"<loc>([^<]+)</loc>", xml):
-            if "/magazin/" in loc and "playstation-5" in loc:
+            if "/magazin/" in loc and ("playstation-5" in loc or "iphone-18-pro" in loc):
                 yield loc
 
     def scrape(self) -> Iterator[ScrapedOffer]:
+        # o pagină conține și variantele „surori” (culori, stocări, grade): sărim paginile deja acoperite
+        covered: set[str] = set()
         for url in list(self.discover_product_urls())[: self.max_products]:
+            if model_id(url) in covered:
+                continue
             resp = self.client.get(url)
-            yield from parse_flip_page(str(resp.url), resp.text)
+            for offer in parse_flip_page(str(resp.url), resp.text):
+                covered.add(model_id(offer.url))
+                yield offer

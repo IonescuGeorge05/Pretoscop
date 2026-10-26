@@ -41,7 +41,9 @@ def record_offer(
     offer.location = scraped.location
     offer.posted_label = scraped.posted_label
     offer.last_seen_at = scraped.scraped_at
-    if shop.affiliate_url_template:
+    if scraped.raw.get("affiliate_url"):  # link de afiliere venit direct din feed
+        offer.affiliate_url = scraped.raw["affiliate_url"]
+    elif shop.affiliate_url_template:
         offer.affiliate_url = shop.affiliate_url_template.format(url=quote(scraped.url, safe=""))
     session.flush()
 

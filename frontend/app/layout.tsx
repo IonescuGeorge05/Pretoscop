@@ -5,14 +5,14 @@ import { appName } from "@/lib/format";
 
 import "./globals.css";
 
-export const dynamic = "force-dynamic";
-
 export async function generateMetadata(): Promise<Metadata> {
   const name = appName();
   return {
-    title: { default: `${name} — prețuri reale PlayStation 5`, template: `%s | ${name}` },
+    // site-ul static nu e încă lansat public: nu-l indexăm (NOINDEX=0 la lansare)
+    robots: process.env.NEXT_PUBLIC_NOINDEX === "1" ? { index: false, follow: false } : undefined,
+    title: { default: `${name} — prețuri reale, istoric și recomandări`, template: `%s | ${name}` },
     description:
-      "Compară prețurile PlayStation 5 din toate magazinele din România: preț final real (cu transport și garanție), istoric și recomandări.",
+      "Compară prețurile din toate magazinele din România: preț final real (cu transport și garanție), istoric, reduceri false și recomandări.",
   };
 }
 
@@ -29,8 +29,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               {name}
             </Link>
             <div className="flex gap-4 text-sm text-muted">
-              <Link href="/" className="hover:text-ink">
-                Modele PS5
+              <Link href="/#ps5" className="hover:text-ink">
+                PS5
+              </Link>
+              <Link href="/#iphone-18-pro" className="hover:text-ink">
+                iPhone 18 Pro
               </Link>
               <Link href="/despre" className="hover:text-ink">
                 Metodologie

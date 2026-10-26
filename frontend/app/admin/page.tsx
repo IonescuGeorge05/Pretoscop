@@ -1,12 +1,16 @@
 import type { Metadata } from "next";
 
 import { getProducts } from "@/lib/api";
+import { IS_STATIC } from "@/lib/static";
 
 import UnmatchedReview from "./UnmatchedReview";
 
 export const metadata: Metadata = { title: "Admin — anunțuri nepotrivite", robots: { index: false } };
 
 export default async function AdminPage() {
+  if (IS_STATIC) {
+    return <p className="py-16 text-center text-muted">Pagina de admin e disponibilă doar în aplicația locală.</p>;
+  }
   const { products } = await getProducts();
   return (
     <>

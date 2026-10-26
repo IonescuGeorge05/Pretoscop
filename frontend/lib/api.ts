@@ -1,5 +1,6 @@
-// Folosit doar din componente server (SSR); componentele client trec prin proxy-ul /api.
+// Folosit doar din componente server. Mod normal: API-ul FastAPI. Mod static: fișierele din public/data.
 import type { History, ProductDetail, ProductList } from "./types";
+import { IS_STATIC } from "./static";
 
 const API = process.env.API_INTERNAL_URL ?? "http://localhost:8000";
 
@@ -13,10 +14,28 @@ async function get<T>(path: string, params: Record<string, string | undefined> =
   return res.json() as Promise<T>;
 }
 
-export const getProducts = (source?: string) => get<ProductList>("/api/products", { source });
+async function readSnapshot<T>(rel: string): Promise<T> {
+  const { readFile } = await import("node:fs/promises");
+  const { join } = await import("node:path");
+  try {
+    return JSON.parse(await readFile(join(process.cwd(), "public", "data", rel), "utf-8")) as T;
+  } catch {
+    throw new NotFound(rel);
+  }
+}
+
+export const getProducts = (source?: string) =>
+  IS_STATIC ? readSnapshot<ProductList>("products.json") : get<ProductList>("/api/products", { source });
 
 export const getProduct = (slug: string, source?: string) =>
-  get<ProductDetail>(`/api/products/${encodeURIComponent(slug)}`, { source });
+  IS_STATIC
+    ? readSnapshot<ProductDetail>(`product/${slug}.json`)
+    : get<ProductDetail>(`/api/products/${encodeURIComponent(slug)}`, { source });
 
 export const getHistory = (slug: string, source?: string, range = "90d", granularity = "day") =>
-  get<History>(`/api/products/${encodeURIComponent(slug)}/history`, { source, range, granularity });
+  IS_STATIC
+    ? readSnapshot<History>(`history/${slug}/${range}-${granularity}.json`)
+    : get<History>(`/api/products/${encodeURIComponent(slug)}/history`, { source, range, granularity });
+
+export const getSnapshotMeta = () =>
+  readSnapshot<{ generated_at: string; source: string }>("meta.json").catch(() => null);

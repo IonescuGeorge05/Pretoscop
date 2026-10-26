@@ -7,3 +7,5 @@ node_modules/
 .next/
 *.log
 *.tsbuildinfo
+frontend/public/data/
+frontend/out/

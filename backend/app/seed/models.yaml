@@ -64,3 +64,101 @@
   msrp_ron: 4579
   msrp_verified: false
   msrp_note: "899,99 € x 5,09 lei/€ (preț UE PS5 Pro din 02.04.2026)"
+
+# ---------- iPhone 18 Pro / Pro Max (lansat 18.09.2026). Culorile nu sunt produse separate.
+# msrp_ron: prețul Apple din zona euro (Franța/Olanda) x 5,09 lei/€; Apple nu are magazin oficial în România.
+- slug: iphone-18-pro-256gb
+  name: Apple iPhone 18 Pro, 256 GB
+  family: iPhone 18 Pro
+  edition: pro
+  storage_gb: 256
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_ron: 7529
+  msrp_verified: false
+  msrp_note: "1479 € x 5,09 lei/€ (preț Apple Franța, lansare 18.09.2026)"
+
+- slug: iphone-18-pro-512gb
+  name: Apple iPhone 18 Pro, 512 GB
+  family: iPhone 18 Pro
+  edition: pro
+  storage_gb: 512
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_ron: 8799
+  msrp_verified: false
+  msrp_note: "1729 € x 5,09 lei/€ (preț Apple Franța, lansare 18.09.2026)"
+
+- slug: iphone-18-pro-1tb
+  name: Apple iPhone 18 Pro, 1 TB
+  family: iPhone 18 Pro
+  edition: pro
+  storage_gb: 1000
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_ron: 11349
+  msrp_verified: false
+  msrp_note: "2229 € x 5,09 lei/€ (preț Apple Franța, lansare 18.09.2026)"
+
+- slug: iphone-18-pro-2tb
+  name: Apple iPhone 18 Pro, 2 TB
+  family: iPhone 18 Pro
+  edition: pro
+  storage_gb: 2000
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_ron: 15159
+  msrp_verified: false
+  msrp_note: "2979 € x 5,09 lei/€ (preț Apple Franța, lansare 18.09.2026)"
+
+- slug: iphone-18-pro-max-256gb
+  name: Apple iPhone 18 Pro Max, 256 GB
+  family: iPhone 18 Pro
+  edition: pro-max
+  storage_gb: 256
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_ron: 8289
+  msrp_verified: false
+  msrp_note: "1629 € x 5,09 lei/€ (preț Apple Franța, lansare 18.09.2026)"
+
+- slug: iphone-18-pro-max-512gb
+  name: Apple iPhone 18 Pro Max, 512 GB
+  family: iPhone 18 Pro
+  edition: pro-max
+  storage_gb: 512
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_ron: 9559
+  msrp_verified: false
+  msrp_note: "1879 € x 5,09 lei/€ (preț Apple Franța, lansare 18.09.2026)"
+
+- slug: iphone-18-pro-max-1tb
+  name: Apple iPhone 18 Pro Max, 1 TB
+  family: iPhone 18 Pro
+  edition: pro-max
+  storage_gb: 1000
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_ron: 12109
+  msrp_verified: false
+  msrp_note: "2379 € x 5,09 lei/€ (preț Apple Franța, lansare 18.09.2026)"
+
+- slug: iphone-18-pro-max-2tb
+  name: Apple iPhone 18 Pro Max, 2 TB
+  family: iPhone 18 Pro
+  edition: pro-max
+  storage_gb: 2000
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_ron: 15929
+  msrp_verified: false
+  msrp_note: "3129 € x 5,09 lei/€ (preț Apple Franța, lansare 18.09.2026)"

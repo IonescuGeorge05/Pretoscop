@@ -20,6 +20,7 @@ class Thresholds:
     median_window_days: int = 30
     fake_rise_pct: float = 8.0
     fake_rise_window_days: int = 30
+    falling_trend_pct: float = 3.0  # produs nou care s-a ieftinit constant cu peste atât în 30 de zile
     fake_min_history_days: int = 14
     base_confidence: float = 0.9
     volatility_free_cv: float = 0.04  # coef. de variație tolerat fără penalizare
@@ -247,7 +248,7 @@ def recommend(
     if history_days < t.min_history_days:
         # fără verdict, dar spunem ce știm deja: prețul de azi față de MSRP și între magazine
         reasons = [
-            f"Avem date de preț pentru doar {history_days} zile; e nevoie de minimum {t.min_history_days} "
+            f"Avem date de preț pentru doar {history_days} {'zi' if history_days == 1 else 'zile'}; e nevoie de minimum {t.min_history_days} "
             "pentru o recomandare."
         ]
         if span_days > history_days + 1:
@@ -343,7 +344,25 @@ def recommend(
         return f"{e.name} {when}; nu avem încă istoric pentru acest eveniment, deci nu putem estima scăderea."
 
     reasons: list[str]
-    if current <= p10:
+    # produs nou cu preț în scădere continuă: minimul de azi e doar cel mai recent pas, nu un preț excelent
+    month_ago = _values(series, today - timedelta(days=t.median_window_days), today - timedelta(days=t.median_window_days - 6))
+    trend_30d = (current / median(month_ago) - 1) * 100 if month_ago else 0.0
+    metrics["trend_30d_pct"] = round(trend_30d, 1)
+    # o reducere afișată (preț tăiat) la cea mai bună ofertă e o promoție, nu un trend
+    today_points = [p for oh in price_history if (p := point_at(oh.points, today)) and p.in_stock]
+    best_today = min(today_points, key=lambda p: p.final_price) if today_points else None
+    on_sale = best_today is not None and best_today.old_price is not None
+    still_falling = history_days < t.lookback_days and trend_30d <= -t.falling_trend_pct and not on_sale
+
+    if current <= p10 and still_falling:
+        verdict = "NEUTRAL"
+        reasons = [
+            f"Prețul e la minimul observat ({lei(current)}), dar produsul e nou și se ieftinește constant: "
+            f"{trend_30d:.1f}% în ultimele {t.median_window_days} de zile. Poate scădea în continuare.",
+            context,
+        ]
+        reasons.extend(event_reason(e) for e in soon)
+    elif current <= p10:
         verdict = "BUY_NOW"
         reasons = [
             f"Preț excelent: {lei(current)} e sub percentila 10 din ultimele {span} de zile ({lei(p10)}).",

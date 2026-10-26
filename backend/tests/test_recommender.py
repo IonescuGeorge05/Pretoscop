@@ -157,3 +157,26 @@ def test_missing_days_reduce_confidence():
     assert b.confidence < a.confidence
     assert b.metrics["missing_days_90d"] == 29
     assert any("Lipsesc date pentru 29" in r for r in b.reasons)
+
+
+def test_new_product_still_falling_is_not_buy_now():
+    # lansat acum 40 de zile, se ieftinește cu ~1% pe săptămână -> minimul de azi nu e „preț excelent”
+    pts = [HistoryPoint(TODAY - timedelta(days=d), 8000 * (1 + d / 700), 8000 * (1 + d / 700)) for d in range(40, -1, -5)]
+    rec = recommend([OfferHistory(1, "eMAG", sorted(pts, key=lambda p: p.ts))], TODAY, NO_EVENTS)
+    assert rec.verdict == "NEUTRAL"
+    assert rec.metrics["trend_30d_pct"] <= -3
+    assert "se ieftinește constant" in rec.reasons[0]
+
+
+def test_old_product_at_minimum_is_still_buy_now():
+    # istoric lung: aceeași regulă de trend nu se aplică (nu mai e produs nou)
+    pts = [HistoryPoint(TODAY - timedelta(days=200), 2500, 2500), HistoryPoint(TODAY - timedelta(days=20), 2400, 2400),
+           HistoryPoint(TODAY - timedelta(days=2), 2200, 2200)]
+    assert recommend([OfferHistory(1, "eMAG", pts)], TODAY, NO_EVENTS).verdict == "BUY_NOW"
+
+
+def test_new_product_with_shown_discount_is_buy_now_not_trend():
+    # produs nou, preț stabil, apoi promoție de 7% cu preț tăiat -> e reducere, nu trend
+    pts = [HistoryPoint(TODAY - timedelta(days=40), 8000, 8000), HistoryPoint(TODAY - timedelta(days=3), 7440, 7440, 8000)]
+    rec = recommend([OfferHistory(1, "Altex", pts)], TODAY, NO_EVENTS)
+    assert rec.verdict == "BUY_NOW"

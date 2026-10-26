@@ -11,12 +11,14 @@ from sqlalchemy.orm import Session, selectinload
 
 from app import schemas
 from app.config import settings
+from app.families import families, family_slug
 from app.db import get_session
 from app.models import Click, ManualMatch, Offer, Product, Shop, UnmatchedListing
 from app.services.ingest import record_offer
 from scrapers.base import ScrapedOffer
 from app.services import catalog
 from app.services.pricing import compare as compare_breakdowns
+from app.services.feed_import import import_feed
 from app.services.scrape_runner import ingest_offers, run_shop
 from recommender.calendar import events_between
 from recommender.rules import FakeDiscount, Recommendation, point_at
@@ -41,6 +43,7 @@ def offer_out(view: catalog.OfferView, fake: FakeDiscount | None = None) -> sche
         shop=shop_out(o),
         title=o.title,
         out_url=f"/api/out/{o.id}",
+        shop_url=o.affiliate_url or o.url,
         in_stock=p.in_stock,
         old_price=float(p.old_price) if p.old_price is not None else None,
         breakdown=schemas.PriceBreakdownOut(**{k: float(v) for k, v in asdict(view.breakdown).items()}),
@@ -74,7 +77,7 @@ def recommendation_out(rec: Recommendation) -> schemas.RecommendationOut:
 
 
 def product_base(p: Product) -> dict:
-    return schemas.ProductBase.model_validate(p, from_attributes=True).model_dump()
+    return schemas.ProductBase.model_validate(p, from_attributes=True).model_dump() | {"family_slug": family_slug(p.family)}
 
 
 @router.get("/health")
@@ -93,7 +96,7 @@ def _cheapest(views: list[catalog.OfferView], condition: str) -> float | None:
 
 @router.get("/products", response_model=schemas.ProductList)
 def list_products(source: str | None = SourceParam, session: Session = Depends(get_session)):
-    """Modelele PS5 cu cel mai bun preț final curent (doar oferte noi, fără pachete, în stoc)."""
+    """Toate produsele, grupabile pe familii, cu cel mai bun preț final curent (oferte noi, fără pachete, în stoc)."""
     src = catalog.resolve_source(source)
     out = []
     for p in session.scalars(select(Product).order_by(Product.id)):
@@ -118,7 +121,13 @@ def list_products(source: str | None = SourceParam, session: Session = Depends(g
                 ),
             )
         )
-    return schemas.ProductList(source=src, is_demo=src == "mock", products=out)
+    present = {p.family for p in out}
+    return schemas.ProductList(
+        source=src,
+        is_demo=src == "mock",
+        families=[schemas.FamilyOut(**f) for f in families() if f["family"] in present],
+        products=out,
+    )
 
 
 @router.get("/products/{slug}", response_model=schemas.ProductDetail)
@@ -412,3 +421,20 @@ async def admin_import_olx(request: Request, session: Session = Depends(get_sess
         unmatched=stats["unmatched"],
         ignored=stats["accessory"] + stats["excluded"] + stats["ignored_manual"],
     )
+
+
+@router.post("/admin/import/feed", response_model=dict, dependencies=[Depends(require_admin)])
+async def admin_import_feed(request: Request, shop: str, vat_included: bool = True):
+    """Import al unui feed de produse (XML/CSV) primit de la un magazin; corpul cererii = conținutul fișierului."""
+    try:
+        return import_feed(shop, await request.body(), vat_included=vat_included)
+    except ValueError as exc:
+        raise HTTPException(404, str(exc)) from exc
+
+
+@router.get("/admin/shops", response_model=list[dict], dependencies=[Depends(require_admin)])
+def admin_shops(session: Session = Depends(get_session)):
+    return [
+        {"slug": s.slug, "name": s.name, "kind": s.kind, "status": s.status, "has_feed": bool(s.feed and s.feed.get("url"))}
+        for s in session.scalars(select(Shop).order_by(Shop.id))
+    ]

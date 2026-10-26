@@ -1,6 +1,9 @@
 import Link from "next/link";
 
-export default function DemoBanner({
+import { getSnapshotMeta } from "@/lib/api";
+import { IS_STATIC } from "@/lib/static";
+
+export default async function DemoBanner({
   isDemo,
   path,
   availableSources,
@@ -9,6 +12,16 @@ export default function DemoBanner({
   path: string;
   availableSources?: string[];
 }) {
+  if (IS_STATIC) {
+    const meta = await getSnapshotMeta();
+    const when = meta ? new Date(meta.generated_at).toLocaleString("ro-RO", { dateStyle: "long", timeStyle: "short" }) : null;
+    return (
+      <div className="mb-5 rounded-lg border border-line bg-card px-4 py-3 text-sm text-muted">
+        {meta?.source === "mock" ? <strong className="text-ink">Date demo. </strong> : "Date reale colectate din magazine. "}
+        Prototip — prețurile se actualizează periodic{when ? `; ultima actualizare: ${when}` : ""}.
+      </div>
+    );
+  }
   const hasReal = !availableSources || availableSources.includes("real");
   if (isDemo) {
     return (

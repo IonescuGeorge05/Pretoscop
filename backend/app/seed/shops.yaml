@@ -2,6 +2,10 @@
 # ATENȚIE: shipping_rules și default_warranty_months sunt PLACEHOLDERE.
 # Cât timp shipping_verified: false, UI-ul afișează "transport estimat".
 # kind: retail (produse noi) | refurbished | secondhand — doar `retail` intră în comparația principală.
+# feed (opțional): feed de produse primit de la magazin / rețeaua de afiliere; are prioritate față de scraping.
+#   feed: {url: https://magazin.ro/feed/compari.xml, vat_included: true, explicit_permission: true}
+#   vat_included: false dacă prețurile din feed sunt fără TVA (unele feed-uri de afiliere)
+#   explicit_permission: true = magazinul ne-a dat link-ul -> robots.txt nu se aplică acelui URL
 - slug: emag
   name: eMAG
   base_url: https://www.emag.ro

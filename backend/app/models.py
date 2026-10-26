@@ -57,6 +57,7 @@ class Shop(Base):
     affiliate_url_template: Mapped[str | None] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(20), default="active")  # active | blocked
     kind: Mapped[str] = mapped_column(String(20), default="retail")  # retail | secondhand | refurbished
+    feed: Mapped[dict | None] = mapped_column(JSONType)  # {"url", "vat_included", "explicit_permission"}
     status_reason: Mapped[str | None] = mapped_column(Text)
     last_scraped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

@@ -109,8 +109,8 @@ class PoliteClient:
             self._robots[origin] = robots
         return self._robots[origin]
 
-    def get(self, url: str) -> httpx.Response:
-        if not self._robots_for(url).allowed(agent_token(), url):
+    def get(self, url: str, respect_robots: bool = True) -> httpx.Response:
+        if respect_robots and not self._robots_for(url).allowed(agent_token(), url):
             raise RobotsDisallowed(url)
         domain = urlparse(url).netloc
         for attempt in range(self.retries + 1):
@@ -156,7 +156,7 @@ class BaseScraper(ABC):
     1) JSON-LD Product (sau microdata Product)  2) OpenGraph  3) selectori CSS ai magazinului."""
 
     shop_slug: str
-    max_products: int = 40
+    max_products: int = 120  # plafon de pagini de produs per rulare (toate familiile)
     # selectori CSS de rezervă (pasul 3), specifici magazinului
     css_title: str | None = None
     css_price: str | None = None

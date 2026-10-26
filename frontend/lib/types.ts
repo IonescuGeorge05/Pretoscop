@@ -30,6 +30,7 @@ export interface Offer {
   shop: Shop;
   title: string | null;
   out_url: string;
+  shop_url: string;
   in_stock: boolean;
   old_price: number | null;
   breakdown: Breakdown;
@@ -74,7 +75,15 @@ export interface ProductBase {
   msrp_note: string | null;
 }
 
+export interface Family {
+  slug: string;
+  family: string;
+  title: string;
+  description: string;
+}
+
 export interface ProductSummary extends ProductBase {
+  family_slug: string;
   best_offer: Offer | null;
   offers_count: number;
   refurbished_from: number | null;
@@ -85,10 +94,12 @@ export interface ProductSummary extends ProductBase {
 export interface ProductList {
   source: string;
   is_demo: boolean;
+  families: Family[];
   products: ProductSummary[];
 }
 
 export interface ProductDetail extends ProductBase {
+  family_slug: string;
   source: string;
   is_demo: boolean;
   available_sources: string[];

@@ -14,6 +14,7 @@ import {
 } from "recharts";
 
 import { formatLei, formatShortDate } from "@/lib/format";
+import { IS_STATIC, dataUrl } from "@/lib/static";
 import type { CalendarEvent, History } from "@/lib/types";
 
 // slot categorial fix per magazin: culoarea urmează magazinul, nu rangul lui
@@ -232,7 +233,8 @@ export default function PriceChart({
     const ctrl = new AbortController();
     const qs = new URLSearchParams({ range, granularity, ...(source ? { source } : {}) });
     setLoading(true);
-    fetch(`/api/products/${slug}/history?${qs}`, { signal: ctrl.signal })
+    const url = IS_STATIC ? dataUrl(`history/${slug}/${range}-${granularity}.json`) : `/api/products/${slug}/history?${qs}`;
+    fetch(url, { signal: ctrl.signal })
       .then((r) => r.json())
       .then(setData)
       .catch(() => {})

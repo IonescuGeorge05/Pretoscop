@@ -15,14 +15,22 @@ from app.db import SessionLocal
 from app.models import ManualMatch, Product, Shop
 from app.services.ingest import record_offer, record_unmatched
 from scrapers.base import BlockedError, PoliteClient, RobotsDisallowed, ScrapedOffer
+from scrapers.feed_scraper import FeedScraper
 from scrapers.matcher import ProductRef, match
 from scrapers.registry import REGISTRY
 
 log = logging.getLogger("scrape")
 
 
+def scraper_for(shop: Shop, client: PoliteClient):
+    """Feed-ul configurat are prioritate față de scraperul de pagini (date oferite chiar de magazin)."""
+    if shop.feed and shop.feed.get("url"):
+        return FeedScraper(client, shop.slug, shop.feed)
+    return REGISTRY[shop.slug](client)
+
+
 def scrape_shop(session: Session, shop: Shop, client: PoliteClient) -> Counter:
-    return ingest_offers(session, shop, REGISTRY[shop.slug](client).scrape())
+    return ingest_offers(session, shop, scraper_for(shop, client).scrape())
 
 
 def ingest_offers(session: Session, shop: Shop, scraped_offers: Iterable[ScrapedOffer]) -> Counter:
@@ -63,12 +71,12 @@ def run_shop(slug: str, skip_blocked: bool = False) -> dict:
     summary: dict = {"event": "scrape_done", "shop": slug}
     with SessionLocal() as session:
         shop = session.scalar(select(Shop).where(Shop.slug == slug))
-        if shop is None or slug not in REGISTRY:
+        if shop is None or (slug not in REGISTRY and not (shop.feed and shop.feed.get("url"))):
             summary["status"] = "no_scraper"
         elif skip_blocked and shop.status == "blocked":
             summary["status"] = "skipped_blocked"
         else:
-            client = PoliteClient()
+            client = PoliteClient(timeout=180) if shop.feed else PoliteClient()  # feed-urile pot fi mari
             try:
                 summary.update(scrape_shop(session, shop, client))
                 shop.status, shop.status_reason = "active", None

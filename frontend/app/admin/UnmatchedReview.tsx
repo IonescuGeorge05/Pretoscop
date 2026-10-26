@@ -93,6 +93,71 @@ function Row({
   );
 }
 
+function FeedImport({ token }: { token: string }) {
+  const [shops, setShops] = useState<{ slug: string; name: string; kind: string }[]>([]);
+  const [shop, setShop] = useState("");
+  const [vat, setVat] = useState(true);
+  const [status, setStatus] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/admin/shops", { headers: { "x-admin-token": token } })
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setShops)
+      .catch(() => {});
+  }, [token]);
+
+  const upload = async (file: File) => {
+    setBusy(true);
+    setStatus(null);
+    const res = await fetch(`/api/admin/import/feed?shop=${shop}&vat_included=${vat}`, {
+      method: "POST",
+      headers: { "x-admin-token": token, "content-type": "application/octet-stream" },
+      body: await file.arrayBuffer(),
+    });
+    setBusy(false);
+    const r = await res.json().catch(() => null);
+    if (!res.ok) return setStatus(r?.detail ?? `Eroare ${res.status}`);
+    setStatus(
+      `${r.relevant_rows} produse relevante în feed: ${(r.matched ?? 0) + (r.matched_manual ?? 0)} asociate, ${r.bundles ?? 0} pachete, ${r.unmatched ?? 0} de verificat mai jos, ${(r.accessory ?? 0) + (r.excluded ?? 0)} ignorate.`,
+    );
+  };
+
+  return (
+    <section className="mb-8 rounded-xl border border-line bg-card p-4">
+      <h2 className="font-semibold">Import feed de la magazin</h2>
+      <p className="mt-1 text-sm text-muted">
+        Fișier XML/CSV primit de la un magazin sau din 2Performant/Profitshare (formatele compari.ro, Google Merchant și
+        CSV-urile de afiliere sunt recunoscute automat). Feed-urile cu link permanent se pun în <code>shops.yaml</code> și
+        se actualizează singure.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+        <select value={shop} onChange={(e) => setShop(e.target.value)} className="rounded-lg border border-line bg-surface px-2 py-1.5" aria-label="Magazin">
+          <option value="">— magazinul —</option>
+          {shops.map((s) => (
+            <option key={s.slug} value={s.slug}>
+              {s.name}
+            </option>
+          ))}
+        </select>
+        <label className="flex items-center gap-1.5">
+          <input type="checkbox" checked={!vat} onChange={(e) => setVat(!e.target.checked)} />
+          Prețuri fără TVA
+        </label>
+        <input
+          type="file"
+          accept=".xml,.csv,.txt,text/xml,text/csv"
+          disabled={!shop || busy}
+          onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])}
+          className="text-sm"
+        />
+      </div>
+      {busy && <p className="mt-2 text-sm text-muted">Se importă…</p>}
+      {status && <p className="mt-2 text-sm">{status}</p>}
+    </section>
+  );
+}
+
 function OlxImport({ token, onImported }: { token: string; onImported: () => void }) {
   const [status, setStatus] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -196,6 +261,7 @@ export default function UnmatchedReview({ products }: { products: { slug: string
 
   return (
     <div className="mt-6">
+      <FeedImport token={token} />
       <OlxImport token={token} onImported={() => load(token)} />
       {error && <p className="text-sm text-red-700 dark:text-red-400">{error}</p>}
       {items === null && !error && <p className="text-sm text-muted">Se încarcă…</p>}

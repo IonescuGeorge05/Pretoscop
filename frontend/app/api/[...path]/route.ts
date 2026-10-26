@@ -3,6 +3,7 @@ import type { NextRequest } from "next/server";
 
 const API = process.env.API_INTERNAL_URL ?? "http://localhost:8000";
 
+// lipsește din build-ul static (scripts/publish-pages.sh îl scoate temporar): GitHub Pages nu are server
 export const dynamic = "force-dynamic";
 
 async function proxy(req: NextRequest, { params }: { params: { path: string[] } }) {

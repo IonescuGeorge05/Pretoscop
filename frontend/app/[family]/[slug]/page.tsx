@@ -7,12 +7,20 @@ import FakeDiscountAlert from "@/components/FakeDiscountAlert";
 import OffersSection from "@/components/OffersSection";
 import PriceChart from "@/components/PriceChart";
 import RecommendationCard from "@/components/RecommendationCard";
-import { NotFound, getHistory, getProduct } from "@/lib/api";
-import { formatLei, vsMsrp, withSource } from "@/lib/format";
+import { NotFound, getHistory, getProduct, getProducts } from "@/lib/api";
+import { IS_STATIC } from "@/lib/static";
+import { formatLei, productHref, variantLabel, vsMsrp, withSource } from "@/lib/format";
 
-type Props = { params: { slug: string }; searchParams: { source?: string; range?: string; granularity?: string } };
+type Props = { params: { family: string; slug: string }; searchParams: { source?: string; range?: string; granularity?: string } };
 
 const RANGES = ["30d", "90d", "1y"];
+
+// mod static: toate paginile de produs se generează la build din snapshot; mod server: la cerere
+export async function generateStaticParams() {
+  if (!IS_STATIC) return [];
+  const { products } = await getProducts();
+  return products.map((p) => ({ family: p.family_slug, slug: p.slug }));
+}
 
 async function load(slug: string, source?: string, range?: string, granularity?: string) {
   try {
@@ -32,7 +40,7 @@ async function load(slug: string, source?: string, range?: string, granularity?:
 }
 
 export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
-  const [p] = await load(params.slug, searchParams.source);
+  const [p] = await load(params.slug, IS_STATIC ? undefined : searchParams.source);
   const best = p.offers.find((o) => o.in_stock);
   const price = best ? ` de la ${formatLei(best.breakdown.final_price)}` : "";
   return {
@@ -42,24 +50,26 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 }
 
 export default async function ProductPage({ params, searchParams }: Props) {
-  const source = searchParams.source;
-  const [product, history] = await load(params.slug, source, searchParams.range, searchParams.granularity);
+  // site static: fără parametri în URL (intervalul se schimbă din grafic)
+  const sp = IS_STATIC ? {} : searchParams;
+  const source = sp.source;
+  const [product, history] = await load(params.slug, source, sp.range, sp.granularity);
+  if (product.family_slug !== params.family) notFound();
   const rec = product.recommendation;
   const best = product.offers.find((o) => o.in_stock);
 
   return (
     <>
-      <DemoBanner isDemo={product.is_demo} path={`/ps5/${product.slug}`} availableSources={product.available_sources} />
+      <DemoBanner isDemo={product.is_demo} path={productHref(product)} availableSources={product.available_sources} />
       <nav className="mb-2 text-xs text-muted">
-        <Link href={withSource("/", source)} className="hover:text-ink">
+        <Link href={`${withSource("/", source)}#${product.family_slug}`} className="hover:text-ink">
           {product.family}
         </Link>{" "}
         / {product.name}
       </nav>
       <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{product.name}</h1>
       <p className="mt-1 text-sm text-muted">
-        {product.edition === "disc" ? "Cu unitate disc" : "Digital (fără unitate disc)"} ·{" "}
-        {product.storage_gb >= 1000 ? `${product.storage_gb / 1000} TB` : `${product.storage_gb} GB`}
+        {variantLabel(product, true)}
         {product.model_code && ` · cod model ${product.model_code}`}
         {product.ean && ` · EAN ${product.ean}`}
       </p>
@@ -93,7 +103,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
       <section className="mt-10 space-y-3">
         <h2 className="text-xl font-bold tracking-tight">Refurbished și second hand</h2>
         <p className="max-w-3xl text-sm text-muted">
-          Nu intră în comparația principală și nici în recomandare. <strong className="text-ink">Refurbished</strong> = console
+          Nu intră în comparația principală și nici în recomandare. <strong className="text-ink">Refurbished</strong> = produse
           verificate și revândute de o firmă, cu garanție (Flip, pe grade estetice). <strong className="text-ink">Second hand</strong>{" "}
           = anunțuri de la persoane fizice (Publi24; OLX prin import manual), fără garanție: penalizarea de garanție (0,5%/lună lipsă) se vede în prețul
           final, iar transportul depinde de vânzător.

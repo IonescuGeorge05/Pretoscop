@@ -17,7 +17,10 @@ from scrapers.base import BaseScraper, ScrapedOffer
 from scrapers.jsonld import parse_price
 
 CATEGORY_URL = "https://www.olx.ro/electronice-si-electrocasnice/laptop-calculator-gaming/playstation/"
-QUERIES = ["ps5", "playstation-5", "playstation5"]  # forma din URL a căutărilor „ps5”, „playstation 5”, „playstation5”
+# (categorie, căutare în forma din URL) per familie
+SEARCHES = [(CATEGORY_URL, q) for q in ("ps5", "playstation-5", "playstation5")] + [
+    ("https://www.olx.ro/electronice-si-electrocasnice/telefoane-mobile/", q) for q in ("iphone-18-pro", "iphone-18-pro-max")
+]
 PRICE_RE = re.compile(r"([\d][\d .]*(?:,\d{1,2})?)\s*lei", re.I)
 
 
@@ -32,8 +35,8 @@ def parse_olx_listing(page_url: str, html: str) -> list[ScrapedOffer]:
             continue
         # nodul de preț conține și CSS inline; luăm doar primul „<număr> lei”
         m = PRICE_RE.search(price_node.text(separator=" "))
-        if not m:
-            continue  # „Schimb”, „Gratuit” etc.
+        if not m or not parse_price(m.group(1)):
+            continue  # „Schimb”, „Gratuit”, preț 0 etc.
         location, posted = split_location(card.css_first('[data-testid="location-date"]'))
         offers.append(
             ScrapedOffer(
@@ -71,8 +74,8 @@ class OlxScraper(BaseScraper):
     pages = 2  # pagini per căutare
 
     def discover_product_urls(self) -> Iterable[str]:
-        for q in QUERIES:
-            url = f"{CATEGORY_URL}q-{q}/"
+        for category, q in SEARCHES:
+            url = f"{category}q-{q}/"
             yield url
             for n in range(2, self.pages + 1):
                 yield f"{url}?page={n}"

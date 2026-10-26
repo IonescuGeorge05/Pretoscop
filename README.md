@@ -1,4 +1,4 @@
-# Pretoscop — prototip comparator de prețuri (PlayStation 5)
+# Pretoscop — prototip comparator de prețuri (PlayStation 5, iPhone 18 Pro)
 
 > Numele e de lucru și se schimbă dintr-un singur loc: `APP_NAME` / `APP_SLUG` în `.env`
 > (UI, title/meta, User-Agent-ul scraperului, numele containerelor).
@@ -51,6 +51,45 @@ Scenarii incluse intenționat:
 
 Bifează două oferte în tabel ca să vezi comparatorul side-by-side (ex.: eMAG vs evoMAG).
 
+## Site public (GitHub Pages)
+
+O copie **statică** a site-ului, cu datele reale din baza locală, se publică pe GitHub Pages:
+
+```bash
+bash scripts/publish-pages.sh        # din Git Bash, cu stack-ul pornit
+```
+
+Scriptul:
+1. exportă datele din API în JSON (`app.services.snapshot`);
+2. construiește frontend-ul în mod static (`STATIC_EXPORT=1`), cu `basePath` = numele repo-ului;
+3. publică rezultatul pe branch-ul `gh-pages`.
+
+Prima dată, în GitHub: **Settings → Pages → Build and deployment → Deploy from a branch → `gh-pages` / `(root)`**.
+
+Diferențe față de aplicația locală:
+- datele sunt cele de la ultima publicare;
+- comparatorul calculează în browser;
+- „Mergi la magazin” duce direct la magazin, fără logarea click-ului;
+- `/admin` nu există.
+
+Site-ul are `noindex` (nu apare în Google) până la lansare. Îl scoți cu `NOINDEX=0 bash scripts/publish-pages.sh`. Datele se actualizează doar când rulezi scriptul, de exemplu zilnic, cu o sarcină programată în Windows.
+
+## Feed-uri de produse (magazine / afiliere)
+
+Magazinele pot fi citite dintr-un **feed XML/CSV** în loc de scraping. Formatele compari.ro, Google Merchant și 2Performant/Profitshare sunt recunoscute automat (`backend/scrapers/feeds.py`).
+
+- **Link permanent:** în `shops.yaml`, la magazin: `feed: {url: ..., vat_included: true, explicit_permission: true}`. Worker-ul îl citește la fiecare rulare și are prioritate față de scraping.
+- **Fișier primit pe email:** `/admin` → „Import feed de la magazin”, sau `python -m app.services.feed_import --shop pcgarage --file feed.xml`.
+- **Link-uri de afiliere** din feed (`aff_link`) se folosesc automat la „Mergi la magazin”.
+- Email-șablon pentru magazine: [`docs/email-magazine.md`](docs/email-magazine.md).
+
+Ce știm (10.2026) despre programele de afiliere relevante:
+- **eMAG** (Profitshare) interzice comparatoarele, deci rămâne prin scraping, fără link de afiliere.
+- **evoMAG** (2Performant) are peste 15 feed-uri.
+- **PC Garage** e inactiv pe Profitshare.
+- **Flanco** și **Altex** și-au închis programele.
+- **QuickMobile**, **EuroGSM**, **cel.ro** și **Vexio** au programe; de verificat regulile fiecăruia.
+
 ## Teste
 
 ```bash
@@ -100,6 +139,8 @@ Starea magazinelor, testată pe 25.10.2026 cu clientul `httpx` al aplicației:
 
 **Anunțuri suspecte.** Un anunț second hand / refurbished sub 40% din MSRP e marcat „preț suspect de mic” (posibil țeapă, defect sau greșeală) și nu intră în prețul „de la”. Anunțurile „Cumpăr…”, „Colectez…” și serviciile (curățare, reparații) sunt ignorate.
 
+**Alerte OLX pe email (automat).** Pe olx.ro salvezi căutările (de ex. „ps5”, „iphone 18 pro”) cu notificări pe email, apoi completezi `IMAP_USER` și `IMAP_PASSWORD` în `.env`. La Gmail, parola e o „parolă pentru aplicații”, creată din contul Google după activarea verificării în 2 pași. Worker-ul citește la 30 de minute emailurile necitite de la OLX, extrage anunțurile și le marchează citite. Nu se face nicio cerere către OLX. Formatul emailurilor nu e documentat: parserul caută generic linkurile spre anunțuri și prețul de lângă ele, deci poate avea nevoie de ajustări după primul email real.
+
 **Import manual OLX.** În `/admin` încarci o pagină de rezultate OLX salvată din browser (Ctrl+S → „Pagină web, doar HTML”). Aplicația nu face nicio cerere către OLX; anunțurile trec prin același matcher ca la scraping (`ingest_offers`). Anunțurile neimportate din nou dispar după 3 zile, ca să nu rămână în listă unele deja vândute.
 
 **Asocieri manuale.** Pagina http://localhost:3000/admin listează anunțurile ajunse la `unmatched`. Te autentifici cu `ADMIN_TOKEN` din `.env`. Alegi modelul și apeși „Asociază”: oferta apare imediat, iar asocierea e salvată în `manual_matches` și are prioritate la scrape-urile următoare. „Ignoră” scoate anunțul definitiv.
@@ -133,12 +174,23 @@ Toate endpointurile de citire acceptă `?source=mock|real`.
 3. Înregistreaz-o în `backend/scrapers/registry.py`.
 4. `docker compose restart api worker` (seed-ul face upsert după slug). Pentru date demo, adaugă slug-ul și în `SHOP_FACTOR` din `mock_history.py`.
 
+## Familii de produse
+
+| Familie | Produse | URL |
+|---|---|---|
+| PlayStation 5 | 5 modele (Standard, Digital, Slim Disc, Slim Digital, Pro) | `/ps5/<slug>` |
+| iPhone 18 Pro | Pro și Pro Max × 256 GB / 512 GB / 1 TB / 2 TB (8 produse; culorile nu sunt produse separate) | `/iphone-18-pro/<slug>` |
+
+MSRP-ul iPhone vine din prețurile Apple din zona euro (Franța: Pro de la 1 479 €, Pro Max de la 1 629 €) × 5,09 lei/€. Apple nu are magazin oficial în România, deci valorile rămân „estimat”.
+
+**Produse noi pe piață.** Un produs lansat recent se ieftinește de obicei constant, deci prețul de azi e mereu „minimul istoric”. Dacă produsul are sub 90 de zile de istoric și prețul a scăzut cu peste 3% în 30 de zile, fără o reducere afișată, verdictul e „Preț obișnuit”, nu „Cumpără acum”, cu explicația cifrată.
+
 ## Cum adaugi un produs nou
 
-1. Adaugă variantele în `backend/app/seed/models.yaml`, cu un `family` nou.
-2. Matcher-ul de titluri e acum specific PS5 (`match_title`). Pentru o familie nouă: o funcție de reguli per familie, aleasă după `family`. EAN/MPN funcționează deja generic.
-3. Scraperii au URL-urile de listare per magazin: adaugă categoria nouă în `listing_urls`.
-4. Pagina din frontend e `/ps5/[slug]`. Pentru alte familii, o rută generică `/[family]/[slug]` (aceleași componente).
+1. Adaugă variantele în `backend/app/seed/models.yaml` și familia în `backend/app/seed/families.yaml` (slug pentru URL, titlu, descriere).
+2. Matcher (`backend/scrapers/matcher.py`): o funcție `_<familie>(t, allow_used)` care întoarce slug-ul produsului din titlu, plus o ramură în `match_title`. EAN/MPN funcționează deja generic.
+3. Scraperi: adaugă pagina de listare a familiei în `listings` / `SEARCHES` la fiecare magazin.
+4. Frontend: nimic. Ruta `/[family]/[slug]` și prima pagină se adaptează singure; doar eticheta variantei (`variantLabel` din `lib/format.ts`) poate avea nevoie de un nume nou.
 
 Restul (prețul final, istoricul, recomandările, API-ul) nu depinde de familia de produse.
 

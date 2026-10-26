@@ -11,8 +11,14 @@ from selectolax.parser import HTMLParser
 from scrapers.base import BaseScraper, ScrapedOffer
 from scrapers.jsonld import parse_price
 
-LISTING_URL = "https://www.publi24.ro/anunturi/electronice/console-jocuri/console/"
-QUERIES = ["ps5", "playstation+5", "playstation5"]
+# (categorie, căutare) per familie; căutările acoperă formele uzuale ale numelui
+SEARCHES = [
+    ("https://www.publi24.ro/anunturi/electronice/console-jocuri/console/", q)
+    for q in ("ps5", "playstation+5", "playstation5")
+] + [
+    ("https://www.publi24.ro/anunturi/electronice/telefoane-mobile/", q)
+    for q in ("iphone+18+pro", "iphone18+pro", "iphone+18+pro+max")
+]
 
 
 def parse_publi24_listing(html: str) -> list[ScrapedOffer]:
@@ -24,8 +30,8 @@ def parse_publi24_listing(html: str) -> list[ScrapedOffer]:
         if not (link and price_node and link.attributes.get("href")):
             continue
         m = re.search(r"([\d][\d .]*(?:,\d{1,2})?)\s*(?:RON|lei)", price_node.text(strip=True), re.I)
-        if not m:
-            continue  # „Schimb”, preț negociabil fără sumă etc.
+        if not m or not parse_price(m.group(1)):
+            continue  # „Schimb”, preț 0 / negociabil fără sumă etc.
         location = card.css_first(".article-location span")
         date = card.css_first(".article-date span")
         offers.append(
@@ -54,20 +60,20 @@ class Publi24Scraper(BaseScraper):
     pages = 3  # pagini per căutare (se oprește mai devreme dacă o pagină e goală)
 
     def discover_product_urls(self) -> Iterable[str]:
-        for q in QUERIES:
+        for category, q in SEARCHES:
             for n in range(1, self.pages + 1):
-                yield f"{LISTING_URL}?q={q}" + (f"&pag={n}" if n > 1 else "")
+                yield f"{category}?q={q}" + (f"&pag={n}" if n > 1 else "")
 
     def scrape(self) -> Iterator[ScrapedOffer]:
         seen: set[str] = set()
-        empty_query: str | None = None
+        empty_search: str | None = None
         for page in self.discover_product_urls():
-            query = page.split("?q=")[1].split("&")[0]
-            if query == empty_query:
+            search = page.split("&pag=")[0]
+            if search == empty_search:
                 continue  # căutarea asta nu mai are pagini
             offers = parse_publi24_listing(self.client.get(page).text)
             if not offers:
-                empty_query = query
+                empty_search = search
             for offer in offers:
                 if offer.url not in seen:
                     seen.add(offer.url)

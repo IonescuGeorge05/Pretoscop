@@ -1,4 +1,7 @@
-"""Potrivire listare -> produs. Ordine: EAN, MPN, reguli pe titlu; altfel `unmatched` (nu ghicim)."""
+"""Potrivire listare -> produs. Ordine: EAN, MPN, reguli pe titlu; altfel `unmatched` (nu ghicim).
+
+Regulile pe titlu sunt pe familii de produse (PS5, iPhone 18 Pro). Familie nouă: o funcție `_<familie>(t, allow_used)`
+și o ramură în `match_title`."""
 
 import re
 import unicodedata
@@ -21,35 +24,20 @@ class ProductRef:
     model_code: str | None  # poate conține "x" ca wildcard: CFI-2xxx
 
 
-SLUGS = {
-    ("original", "disc"): "ps5-disc-825gb",
-    ("original", "digital"): "ps5-digital-825gb",
-    ("slim", "disc"): "ps5-slim-disc-1tb",
-    ("slim", "digital"): "ps5-slim-digital-1tb",
-    ("pro", None): "ps5-pro-2tb",
-}
+# ---------- comun
 
 CONDITION_RE = re.compile(
     r"\b(refurbished|resigilat\w*|reconditionat\w*|second[ -]?hand|folosit\w*|utilizat\w*|renewed|open[ -]?box|ca nou)\b"
 )
 # anunțuri care nu sunt oferte de vânzare: cereri de cumpărare, servicii
 NOT_FOR_SALE_RE = re.compile(r"^\W*(cumpar|caut|colectez)\b|\b(curatare|igienizare|reparatii|reparatie|service)\b")
-CONSOLE_RE = re.compile(r"\b(consola|console)\b")
-ACCESSORY_RE = re.compile(
-    r"\b(controller|dualsense|joystick|gamepad|joc|game|husa|skin|stand|suport|incarcator|incarcare|charging|"
-    r"casti|headset|cablu|cover|capac|carcasa|faceplate|ssd (?:intern|nvme|m\.?2)|camera|telecomanda|remote|"
-    r"volan|vr2?|geanta|ventilator|cooling|sticker|abonament|card|portal)\b|\b(pentru|for|compatibil\w*)\s+ps5\b"
-)
-BUNDLE_RE = re.compile(
-    r"\+|\bbundle\b|\bpachet\b|\bcu (joc|jocul)\b|\bincluding\b|\blimited\b|\beditie limitata\b|"
-    r"\b\d+ control+ere?\b|\bextra controller\b|\bcontroller suplimentar\b|\banniversary\b|\b30th\b|\bchroma\b|\bcamo\b|\bfortnite\b|\bcall of duty\b|\bfc ?2\d\b|\bfifa\b|"
-    r"\bgran turismo\b|\bgod of war\b|\bspider-?man\b|\bastro bot\b|\bhorizon\b|\bvoucher\b"
-)
 
 
 def normalize(title: str) -> str:
     t = unicodedata.normalize("NFKD", title).encode("ascii", "ignore").decode().lower()
     t = re.sub(r"play\s*station\s*5|\bps\s*5\b", "ps5", t)
+    t = re.sub(r"\biphone\s*(\d+)\s*", r"iphone \1 ", t)  # iphone18pro -> iphone 18 pro
+    t = re.sub(r"\bpro\s*max\b|\bpromax\b", "pro max", t)
     t = re.sub(r"(\d+)\s*(gb|tb)\b", r"\1\2", t)
     return re.sub(r"\s+", " ", t).strip()
 
@@ -62,27 +50,55 @@ def _code_matches(pattern: str, mpn: str) -> bool:
 def match_title(title: str, allow_used: bool = False) -> MatchResult:
     """`allow_used=True` pentru surse second hand / refurbished, unde „ca nou”, „folosit” sunt normale."""
     t = normalize(title)
-
-    if "ps5" not in t:
-        return MatchResult("accessory", reason="nu este PS5")
     if NOT_FOR_SALE_RE.search(t):
         return MatchResult("excluded", reason="nu e o ofertă de vânzare (cerere de cumpărare / serviciu)")
+    if re.search(r"\biphone\b", t):
+        return _iphone(t, allow_used)
+    if "ps5" in t:
+        return _ps5(t, allow_used)
+    return MatchResult("accessory", reason="produs neurmărit")
+
+
+# ---------- PlayStation 5
+
+PS5_SLUGS = {
+    ("original", "disc"): "ps5-disc-825gb",
+    ("original", "digital"): "ps5-digital-825gb",
+    ("slim", "disc"): "ps5-slim-disc-1tb",
+    ("slim", "digital"): "ps5-slim-digital-1tb",
+    ("pro", None): "ps5-pro-2tb",
+}
+CONSOLE_RE = re.compile(r"\b(consola|console)\b")
+PS5_ACCESSORY_RE = re.compile(
+    r"\b(controller|dualsense|joystick|gamepad|joc|game|husa|skin|stand|suport|incarcator|incarcare|charging|"
+    r"casti|headset|cablu|cover|capac|carcasa|faceplate|ssd (?:intern|nvme|m\.?2)|camera|telecomanda|remote|"
+    r"volan|vr2?|geanta|ventilator|cooling|sticker|abonament|card|portal)\b|\b(pentru|for|compatibil\w*)\s+ps5\b"
+)
+PS5_BUNDLE_RE = re.compile(
+    r"\+|\bbundle\b|\bpachet\b|\bcu (joc|jocul)\b|\bincluding\b|\blimited\b|\beditie limitata\b|"
+    r"\b\d+ control+ere?\b|\bextra controller\b|\bcontroller suplimentar\b|\banniversary\b|\b30th\b|\bchroma\b|"
+    r"\bcamo\b|\bfortnite\b|\bcall of duty\b|\bfc ?2\d\b|\bfifa\b|"
+    r"\bgran turismo\b|\bgod of war\b|\bspider-?man\b|\bastro bot\b|\bhorizon\b|\bvoucher\b"
+)
+
+
+def _ps5(t: str, allow_used: bool) -> MatchResult:
     if not allow_used and CONDITION_RE.search(t):
         return MatchResult("excluded", reason="nu este nou (resigilat/refurbished/second hand)")
     console = CONSOLE_RE.search(t)
-    accessory = ACCESSORY_RE.search(t)
+    accessory = PS5_ACCESSORY_RE.search(t)
     # "Husă pentru consola PS5" = accesoriu; "Consola PS5 + controller" = consolă (eventual pachet)
     if accessory and (not console or accessory.start() < console.start() or accessory.group(0) == "portal"):
         return MatchResult("accessory", reason=f"accesoriu ({accessory.group(0).strip()})")
 
-    is_bundle = bool(BUNDLE_RE.search(t))
+    is_bundle = bool(PS5_BUNDLE_RE.search(t))
     code = re.search(r"cfi-?\s?(\d)\d{3}", t)
     gen_code = code.group(1) if code else None
 
     if re.search(r"\bps5 pro\b|\bpro\b", t) or gen_code == "7":
         if re.search(r"\b(1tb|825gb)\b", t):
             return MatchResult("unmatched", reason="Pro cu stocare neobișnuită")
-        return MatchResult("product", SLUGS[("pro", None)], is_bundle)
+        return MatchResult("product", PS5_SLUGS[("pro", None)], is_bundle)
 
     if "slim" in t or gen_code == "2" or "1tb" in t:
         gen = "slim"
@@ -101,7 +117,45 @@ def match_title(title: str, allow_used: bool = False) -> MatchResult:
         edition = "disc"
     else:
         return MatchResult("unmatched", is_bundle=is_bundle, reason="ediție neclară (Disc sau Digital?)")
-    return MatchResult("product", SLUGS[(gen, edition)], is_bundle)
+    return MatchResult("product", PS5_SLUGS[(gen, edition)], is_bundle)
+
+
+# ---------- iPhone 18 Pro / Pro Max
+
+PHONE_RE = re.compile(r"\b(telefon|smartphone)\b")
+IPHONE_ACCESSORY_RE = re.compile(
+    r"\b(husa|carcasa|folie|sticla|protectie|cablu|incarcator|adaptor|magsafe|case|cover|lentil\w*|suport|curea|"
+    r"baterie externa|powerbank|stylus|skin|dummy|macheta)\b|\b(pentru|for|compatibil\w*)\s+(apple )?iphone\b"
+)
+IPHONE_BUNDLE_RE = re.compile(r"\+|\bbundle\b|\bpachet\b|\bcu (husa|airpods|apple watch|ceas)\b")
+IPHONE_MODEL_RE = re.compile(r"\biphone (\d+)\s*(pro max|pro|plus|air|mini|e)?\b")
+
+
+def _iphone(t: str, allow_used: bool) -> MatchResult:
+    m = IPHONE_MODEL_RE.search(t)
+    if not m or m.group(1) != "18":
+        return MatchResult("accessory", reason="alt model de iPhone (urmărim doar iPhone 18 Pro / Pro Max)")
+    variant = m.group(2)
+    if variant not in ("pro", "pro max"):
+        return MatchResult("accessory", reason=f"iPhone 18 {variant or ''} (urmărim doar Pro / Pro Max)".replace("  ", " "))
+    if not allow_used and CONDITION_RE.search(t):
+        return MatchResult("excluded", reason="nu este nou (resigilat/refurbished/second hand)")
+    phone = PHONE_RE.search(t)
+    accessory = IPHONE_ACCESSORY_RE.search(t)
+    # "Husă pentru iPhone 18 Pro" = accesoriu; "Telefon mobil Apple iPhone 18 Pro ... + husă" = telefon (pachet)
+    if accessory and (not phone or accessory.start() < phone.start()):
+        return MatchResult("accessory", reason=f"accesoriu ({accessory.group(0).strip()})")
+    # „Camera Tripla 48 + 48 + 48 MP” nu e pachet
+    is_bundle = bool(IPHONE_BUNDLE_RE.search(re.sub(r"\d+\s*\+\s*(?=\d)", " ", t)))
+    storages = set(re.findall(r"\b(256gb|512gb|1tb|2tb)\b", t))
+    if len(storages) != 1:
+        reason = "stocare neclară (lipsește 256GB/512GB/1TB/2TB)" if not storages else "mai multe stocări în titlu"
+        return MatchResult("unmatched", is_bundle=is_bundle, reason=reason)
+    model = "pro-max" if variant == "pro max" else "pro"
+    return MatchResult("product", f"iphone-18-{model}-{storages.pop()}", is_bundle)
+
+
+# ---------- potrivire completă
 
 
 def match(

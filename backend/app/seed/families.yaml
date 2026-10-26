@@ -1,0 +1,9 @@
+# Familiile de produse: `family` din models.yaml -> slug folosit în URL-uri (/<slug>/<produs>) și titlu afișat.
+- slug: ps5
+  family: PlayStation 5
+  title: PlayStation 5 — toate modelele
+  description: Console PS5 noi, cu preț final real, istoric și recomandare.
+- slug: iphone-18-pro
+  family: iPhone 18 Pro
+  title: iPhone 18 Pro și Pro Max
+  description: Telefoane noi (toate culorile), comparate pe model și stocare.

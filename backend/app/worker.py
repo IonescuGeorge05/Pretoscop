@@ -8,6 +8,7 @@ from apscheduler.schedulers.blocking import BlockingScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 
 from app.config import settings
+from app.services import olx_email
 from app.services.scrape_runner import run_shop
 from scrapers.registry import REGISTRY
 
@@ -38,6 +39,17 @@ def main() -> None:
             misfire_grace_time=3600,
         )
         log.info("programat scrape-%s, primul run la %s", slug, first.strftime("%H:%M:%S"))
+    if settings.imap_user:
+        scheduler.add_job(
+            olx_email.run,
+            IntervalTrigger(minutes=settings.email_poll_minutes),
+            id="olx-email",
+            next_run_time=datetime.now(UTC) + timedelta(minutes=2),
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=3600,
+        )
+        log.info("alerte OLX pe email: verificare la fiecare %d minute", settings.email_poll_minutes)
     scheduler.start()
 
 

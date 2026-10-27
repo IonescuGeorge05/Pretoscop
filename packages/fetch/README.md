@@ -204,6 +204,10 @@ else if (res.blocked) markSourceBlocked(res.blockReason, res.blockDetail);
 | `now`, `sleep`, `random`, `dispatcher`, `userAgent` | test hooks (fake clock, undici `MockAgent`/`H2CClient`) |
 | `botInfoUrl`, `defaultTimeoutMs`, `defaultMaxBytes`, `connectTimeoutMs`, `retry` | defaults: env `BOT_INFO_URL`, 30 000, 15 MiB, 10 000, `{ maxRetries: 2, baseDelayMs: 10 000 }` |
 
+`createGuardedDispatcher({ allowPrivate, connectTimeoutMs, timeoutMs })` (M20) returns an undici `Agent` whose connector
+refuses non-public addresses after DNS resolution (private, loopback, link-local, CGNAT, documentation, multicast, IPv4-mapped
+variants): pass it as `dispatcher` wherever the URL comes from outside (merchant feeds). `isNonPublicAddress(ip)` is exported.
+
 ### `Fetcher`
 
 - `fetchPolite(url, { purpose, shopSlug?, accept?, etag?, lastModified?, timeoutMs?, maxBytes?, signal?, runId?, sourceId? })` → `FetchResult`.

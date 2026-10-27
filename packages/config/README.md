@@ -10,6 +10,8 @@ Contract:
 - `BOT_EGRESS_IPS` (M17): comma-separated IPv4/IPv6 addresses or CIDR prefixes of the crawler's
   fixed egress, parsed to `string[]`; an invalid entry fails `getEnv()` with the offending value
   (`isIpOrCidr()` is exported). Published on `/bot` and `/bot/ips.json`.
+- `FETCH_ALLOW_PRIVATE_HOSTS` (M20): lets the worker's fetcher connect to private, loopback and link-local addresses
+  (local fixture servers, e2e). Default off; `getEnv()` refuses it in staging and production.
 
 ## Legal and consent texts (M17)
 

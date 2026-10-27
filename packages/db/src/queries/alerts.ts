@@ -342,6 +342,15 @@ export async function unsubscribeAllEmail(
   });
 }
 
+/** "Stop all" from the account page: every alert of the user goes, the account stays. */
+export async function deleteAllAlerts(db: Db, userId: string, opts: { method: string }): Promise<number> {
+  return db.transaction(async (tx) => {
+    await withdrawConsents(tx, sql`alert_id IN (SELECT id FROM alerts WHERE user_id = ${userId})`, opts.method);
+    const r = await tx.execute<{ id: string }>(sql`DELETE FROM alerts WHERE user_id = ${userId} RETURNING id::text`);
+    return r.rows.length;
+  });
+}
+
 /** Deletes a user and everything attached (self-service or a data-subject request). */
 export async function deleteUserData(db: Db, userId: string, opts: { method: string; emailHash: string | null }): Promise<boolean> {
   return db.transaction(async (tx) => {

@@ -28,6 +28,7 @@
     "@pretoscop/core": "workspace:*",
     "@pretoscop/db": "workspace:*",
     "@pretoscop/mailer": "workspace:*",
+    "@pretoscop/notify": "workspace:*",
     "@pretoscop/storage": "workspace:*",
     "better-auth": "1.7.14",
     "class-variance-authority": "^0.7.1",

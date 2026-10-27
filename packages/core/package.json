@@ -10,7 +10,8 @@
     "./anomaly": "./src/anomaly.ts",
     "./taxonomy": "./src/taxonomy.ts",
     "./matching": "./src/matching.ts",
-    "./hash": "./src/hash.ts"
+    "./hash": "./src/hash.ts",
+    "./alerts": "./src/alerts.ts"
   },
   "scripts": {
     "lint": "eslint src",

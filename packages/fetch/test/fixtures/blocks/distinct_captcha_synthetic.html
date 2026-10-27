@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Distinct Captcha</title>
+<style>body{font-family:Arial,Helvetica,sans-serif;background:#f4f4f4;color:#222}.box{max-width:540px;margin:60px auto;background:#fff;padding:32px;border-radius:6px}</style>
+</head>
+<body>
+<div class="box">
+  <h1>Verificare de securitate</h1>
+  <p>Am detectat trafic anormal din rețeaua dumneavoastră. Pentru a continua, vă rugăm să confirmați că nu sunteți un robot.</p>
+  <p>We have detected abnormal traffic from your network. Please confirm that you are not a robot.</p>
+  <form method="post" action="/verify">
+    <input type="hidden" name="original_url" value="https://www.shop.example.ro/robots.txt">
+    <div class="captcha-widget" data-sitekey="SYNTHETIC-SITE-KEY"></div>
+    <button type="submit">Continuă</button>
+  </form>
+  <p class="small">Distinct Traffic Filter &middot; Dacă problema persistă, scrieți-ne la captcha@distinct.ro</p>
+</div>
+</body>
+</html>

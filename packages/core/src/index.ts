@@ -96,6 +96,7 @@ export {
   normalizeMpn,
   extractMpnCandidates,
   isSpecToken,
+  mpnHintOf,
 } from './mpn';
 export {
   type Brand,
@@ -146,6 +147,7 @@ export { type Availability, mapAvailability } from './availability';
 
 // Offer normalization
 export {
+  type MpnOrigin,
   type RejectReason,
   type NormalizeShopContext,
   type NormalizeContext,

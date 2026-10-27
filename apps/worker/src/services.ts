@@ -5,6 +5,7 @@ import { normalizeOffer } from '@pretoscop/core';
 import { contentHash } from '@pretoscop/core/hash';
 import { type Db, latestFxRate } from '@pretoscop/db';
 import { createFetcher } from '@pretoscop/fetch';
+import { createMailer, type Mailer } from '@pretoscop/mailer';
 import { createBlobStore } from '@pretoscop/storage';
 import { createPolicyResolver } from './fetch/policy';
 import { PgDomainStateStore } from './fetch/pg-state';
@@ -83,6 +84,17 @@ export function createNormalize(eurRonRate: () => number | null): NormalizeFn {
   };
 }
 
+/** Mailer for ops alerts by email (OPS_ALERT_EMAIL); none when unset or misconfigured. */
+function opsMailer(env: Env, log: Logger): Mailer | undefined {
+  if (!env.OPS_ALERT_EMAIL) return undefined;
+  try {
+    return createMailer(env, log);
+  } catch (err) {
+    log.error({ err }, 'ops alert email disabled: mailer misconfigured');
+    return undefined;
+  }
+}
+
 /** Long-lived collaborators of the worker: blob store, the polite fetcher, normalizer, ops alerts. */
 export function createServices(env: Env, db: Db, log: Logger): Services & { close: () => Promise<void> } {
   const requestLog = new PgRequestLogSink(db, log);
@@ -114,8 +126,9 @@ export function createServices(env: Env, db: Db, log: Logger): Services & { clos
       refreshEur();
       return eur.rate;
     }),
-    alert: createOpsAlert(env, log),
+    alert: createOpsAlert(env, log, opsMailer(env, log)),
     revalidate: createRevalidator(env, log),
+    startedAt: new Date(),
     async close() {
       await requestLog.flush();
       await fetcher.close?.();

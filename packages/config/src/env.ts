@@ -89,10 +89,13 @@ export const EnvSchema = z
     REVALIDATE_TOKEN: z.string().min(16).default(DEV_SECRET),
     HASH_SALT_SECRET: z.string().min(16).default(DEV_SECRET),
 
-    // Operations alerts (two consecutive source failures, backups, caps)
+    // Operations alerts (two consecutive source failures, backups, caps, SLO breaches)
     OPS_ALERT_TELEGRAM_BOT_TOKEN: optionalString,
     OPS_ALERT_TELEGRAM_CHAT_ID: optionalString,
     OPS_ALERT_EMAIL: optionalString,
+    // Dead-man's-switch heartbeats (M18): worker alive every 5 min; nightly logical dump.
+    OPS_HEARTBEAT_URL: optionalString,
+    DUMP_HEARTBEAT_URL: optionalString,
 
     // LLM (M22, ADR-011)
     ANTHROPIC_API_KEY: optionalString,

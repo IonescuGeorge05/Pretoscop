@@ -1,6 +1,7 @@
 import { runSource } from '../recorder/run-source';
 import { SOURCE_RUN, schedulerTick } from '../recorder/scheduler';
 import { backupDatabase, pruneBackups, restoreTest } from '../ops/backup';
+import { pingHeartbeat } from '../ops/heartbeat';
 import { defineJob } from './types';
 
 /** Every minute: queue the sources whose cron is due (M05). */
@@ -28,7 +29,11 @@ export const sourceRunJob = defineJob<{ sourceId: number; trigger?: 'schedule' |
   },
 });
 
-/** Nightly logical backup to the blob store (R2 in production), 14 days kept. */
+/**
+ * Nightly logical backup to the blob store (R2 in production), 14 days kept. Complements the
+ * physical backups and WAL archive of the pgbackrest sidecar (ADR-016): a dump restores into any
+ * PostgreSQL version and table by table. Success and failure ping DUMP_HEARTBEAT_URL.
+ */
 export const backupJob = defineJob({
   name: 'backup.nightly',
   queue: { retryLimit: 2, retryDelay: 900, expireInSeconds: 3 * 3600 },
@@ -38,8 +43,10 @@ export const backupJob = defineJob({
       await backupDatabase(env, services.blob, log);
       const pruned = await pruneBackups(services.blob, 14);
       log.info({ pruned }, 'old backups pruned');
+      await pingHeartbeat(env.DUMP_HEARTBEAT_URL, log);
     } catch (err) {
       await services.alert('Nightly backup failed', { error: (err as Error).message });
+      await pingHeartbeat(env.DUMP_HEARTBEAT_URL, log, 'fail');
       throw err;
     }
   },

@@ -19,7 +19,7 @@ import {
   summarizeGtins,
 } from './gtin';
 import type { Bani } from './money';
-import { extractMpnCandidates, normalizeMpn } from './mpn';
+import { extractMpnCandidates, isSpecToken, normalizeMpn } from './mpn';
 import {
   BELOW_MIN_MINOR,
   convertToRonBani,
@@ -326,6 +326,11 @@ export function normalizeOffer(raw: RawOffer, ctx: NormalizeContext): Normalized
   let fieldMpn = normalizeMpn(mpnRaw);
   if (fieldMpn && /^\d{8,14}$/.test(fieldMpn) && isValidGtinCheckDigit(fieldMpn)) {
     warnings.push('mpn_looks_like_gtin');
+    fieldMpn = null;
+  }
+  // A spec or chip read as an MPN by a URL-slug heuristic ("67INCH", "CORTEXA35", "RK3326").
+  if (fieldMpn && isSpecToken(mpnRaw)) {
+    warnings.push('mpn_looks_like_spec');
     fieldMpn = null;
   }
   const candidates = extractMpnCandidates(titleClean, {

@@ -256,6 +256,23 @@ describe('normalizeOffer: identifiers', () => {
     expect(gtinAsMpn.warnings).toContain('mpn_looks_like_gtin');
   });
 
+  it('ignores an MPN field that is a spec or a chip (URL-slug leftovers)', () => {
+    const oukitel = accepted(
+      raw({
+        title: 'Telefon mobil Oukitel WP200 Pro, Dual SIM, 5G, 6.7-inch AMOLED 120Hz',
+        mpn: '67INCH',
+      }),
+    );
+    expect(oukitel).toMatchObject({ mpnNorm: 'WP200', mpnSource: 'title', mpnRaw: '67INCH' });
+    expect(oukitel.warnings).toContain('mpn_looks_like_spec');
+    const r36s = accepted(
+      raw({ title: 'Consola retro portabila R36S 64GB, CPU RK3326', mpn: 'CORTEXA53' }),
+    );
+    expect(r36s).toMatchObject({ mpnNorm: null, mpnSource: null });
+    const real = accepted(raw({ title: 'Televizor SAMSUNG LED 43U8072H', mpn: 'UE43U8072HUXXH' }));
+    expect(real).toMatchObject({ mpnNorm: 'UE43U8072HUXXH', mpnSource: 'field' });
+  });
+
   it('reports unknown and conflicting brand fields', () => {
     const unknown = accepted(raw({ title: 'Husa silicon pentru iPhone 17', brand: 'Lemonttix' }));
     expect(unknown).toMatchObject({ brandName: 'Lemonttix', brandKnown: false });

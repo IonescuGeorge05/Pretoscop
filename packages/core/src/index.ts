@@ -95,6 +95,7 @@ export {
   type ExtractMpnOptions,
   normalizeMpn,
   extractMpnCandidates,
+  isSpecToken,
 } from './mpn';
 export {
   type Brand,

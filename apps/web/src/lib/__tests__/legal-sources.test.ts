@@ -9,9 +9,16 @@ import { describe, expect, it } from 'vitest';
  * rendered text. Other modules' code (e.g. a normalizer that maps ş → ș) is deliberately not scanned.
  */
 const SRC = fileURLToPath(new URL('../..', import.meta.url));
-const PAGES = ['despre', 'cum-functioneaza', 'cum-castigam-bani', 'metodologie', 'pentru-magazine', 'bot', 'contact', 'termeni', 'confidentialitate', 'cookies', 'accesibilitate'];
+// /contact lives in the (forms) group: no loading boundary, so it renders without JavaScript.
+const PAGES = [
+  ...['despre', 'cum-functioneaza', 'cum-castigam-bani', 'metodologie', 'pentru-magazine', 'bot', 'termeni', 'confidentialitate', 'cookies', 'accesibilitate'].map((p) =>
+    join('app', '(site)', p),
+  ),
+  join('app', '(forms)', 'contact'),
+];
 const PATHS = [
-  ...PAGES.map((p) => join('app', '(site)', p)),
+  ...PAGES,
+  'app/(forms)/layout.tsx',
   'app/api/contact',
   'app/bot',
   'components/legal',
@@ -33,7 +40,7 @@ function files(path: string): string[] {
 
 describe('legal and trust sources', () => {
   it('exist for every page linked from the footer', () => {
-    for (const page of PAGES) expect(existsSync(join(SRC, 'app', '(site)', page, 'page.tsx')), page).toBe(true);
+    for (const page of PAGES) expect(existsSync(join(SRC, page, 'page.tsx')), page).toBe(true);
   });
 
   it('contain no cedilla diacritics (ş ţ)', () => {

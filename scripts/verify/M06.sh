@@ -26,12 +26,12 @@ impure="$(grep -l "from 'node:" packages/core/src/*.ts | grep -v -e '\.test\.ts$
 grep -q "from './hash'" packages/core/src/index.ts && fail "index.ts must not export hash.ts"
 ok "root export is browser-safe; hash lives at @pretoscop/core/hash"
 
-step "title corpus accuracy (synthetic corpus, >= 95% per field)"
+step "title corpus accuracy (synthetic, holdout and real eMAG titles; >= 95% per field)"
 pnpm --filter @pretoscop/core exec vitest run src/corpus.test.ts --silent=false --reporter=verbose >"$tmp/corpus.log" 2>&1 || {
   cat "$tmp/corpus.log"
   fail "corpus accuracy below threshold"
 }
-grep -E '^(Main|Holdout) corpus|^[a-zA-Z]+ +[0-9.]+%$|^overall' "$tmp/corpus.log" | sed 's/^/   /'
+grep -E '^(Main|Holdout|Real eMAG) corpus|^[a-zA-Z]+ +[0-9.]+%$|^overall' "$tmp/corpus.log" | sed 's/^/   /'
 ok "corpus accuracy at or above 95% on every field"
 
 step "demo: PS5 bundle title"

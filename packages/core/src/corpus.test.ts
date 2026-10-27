@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { HOLDOUT_CORPUS, TITLE_CORPUS, type CorpusEntry } from './__corpus__/titles';
+import { HOLDOUT_CORPUS, REAL_CORPUS, TITLE_CORPUS, type CorpusEntry } from './__corpus__/titles';
 import { detectAccessory } from './accessory';
 import { extractAttributes } from './attributes';
 import { detectBrand } from './brands';
@@ -93,13 +93,21 @@ function evaluate(name: string, corpus: readonly CorpusEntry[]): Record<Field, n
   return Object.fromEntries(FIELDS.map((f) => [f, correct[f] / n])) as Record<Field, number>;
 }
 
-describe('labelled title corpus (synthetic, see __corpus__/titles.ts)', () => {
-  it('has at least 150 titles', () => {
-    expect(TITLE_CORPUS.length + HOLDOUT_CORPUS.length).toBeGreaterThanOrEqual(150);
+describe('labelled title corpus (see __corpus__/titles.ts)', () => {
+  it('has at least 150 titles, 66 of them real', () => {
+    expect(TITLE_CORPUS.length + HOLDOUT_CORPUS.length + REAL_CORPUS.length).toBeGreaterThanOrEqual(
+      150,
+    );
+    expect(REAL_CORPUS.length).toBe(66);
   });
 
   it('reaches at least 95% accuracy on every labelled field', () => {
     const accuracy = evaluate('Main corpus', TITLE_CORPUS);
+    for (const f of FIELDS) expect(accuracy[f], f).toBeGreaterThanOrEqual(0.95);
+  });
+
+  it('keeps the real eMAG titles at 95% or more (first run before fixes: see the M06 report)', () => {
+    const accuracy = evaluate('Real eMAG corpus', REAL_CORPUS);
     for (const f of FIELDS) expect(accuracy[f], f).toBeGreaterThanOrEqual(0.95);
   });
 

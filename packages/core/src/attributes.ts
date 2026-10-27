@@ -188,6 +188,12 @@ function extractMemory(
   let s = text;
   // RAM kits "2x16GB" restate the total: mask them.
   s = s.replace(/\b\d{1,2}\s*x\s*\d{1,3}\s*gb\b/g, (m) => ' '.repeat(m.length));
+  // "4G RAM" is a common typo for 4 GB of RAM (not 4G connectivity).
+  const gRam = /\b(\d{1,2})\s?g\s+ram\b/.exec(s);
+  if (gRam && kind !== 'gpu') {
+    out.ramGb = Number(gRam[1]);
+    s = s.slice(0, gRam.index) + ' '.repeat(gRam[0].length) + s.slice(gRam.index + gRam[0].length);
+  }
   // Pairs "8/256GB", "8GB/256GB", "12+512GB": RAM then storage.
   const pair = /\b(\d{1,2})\s*(?:gb)?\s*[/+]\s*(\d{2,4})\s*(gb|tb)\b/.exec(s);
   if (pair && kind !== 'ram' && kind !== 'gpu') {
@@ -393,6 +399,9 @@ const COLOR_WORDS: ReadonlyArray<readonly [string, ColorKey]> = [
   ['mint', 'green'],
   ['menta', 'green'],
   ['olive', 'green'],
+  ['jade', 'green'],
+  ['emerald', 'green'],
+  ['smarald', 'green'],
   ['teal', 'green'],
   ['sage', 'green'],
   ['lime', 'green'],
@@ -481,6 +490,46 @@ const COLOR_EXCLUSIONS: readonly RegExp[] = [
 const BAND_SEGMENT = /\b(?:curea|curele|bratara|bratari|strap|band|loop)\b/;
 const MATERIAL_KEYS: ReadonlySet<ColorKey> = new Set(['titanium']);
 
+/** One-word compounds ending in a base colour ("LightGray", "Graygreen"): the last word decides. */
+const COMPOUND_COLOR_RE =
+  /\b(?:light|dark|deep|pale|sky|jet|icy|ice|navy|mint|rose|jade|gray|grey|silver|white|pink|blue|green|black|gold|purple|soft|matte|space|cool|warm|pure|night|graphite)(gray|grey|green|blue|black|white|silver|gold|pink|red|purple|yellow|orange|beige|brown)\b/g;
+
+interface ColorMatch {
+  key: ColorKey;
+  start: number;
+  end: number;
+}
+
+function colorMatches(seg: string): ColorMatch[] {
+  const found: ColorMatch[] = [];
+  COLOR_RE.lastIndex = 0;
+  for (let m = COLOR_RE.exec(seg); m !== null; m = COLOR_RE.exec(seg)) {
+    const key = COLOR_KEY.get((m[1] ?? '').replace(/\s+/g, ' '));
+    if (key) found.push({ key, start: m.index, end: m.index + m[0].length });
+  }
+  COMPOUND_COLOR_RE.lastIndex = 0;
+  for (let m = COMPOUND_COLOR_RE.exec(seg); m !== null; m = COMPOUND_COLOR_RE.exec(seg)) {
+    const start = m.index;
+    const end = start + m[0].length;
+    if (found.some((f) => f.start < end && start < f.end)) continue;
+    const key = COLOR_KEY.get(m[1] ?? '');
+    if (key) found.push({ key, start, end });
+  }
+  found.sort((a, b) => a.start - b.start);
+  // "Blue Black", "Titanium Silver": adjacent colour words name one colour, the last decides
+  // (unless the last is a material: "Desert Titanium" is beige).
+  const merged: ColorMatch[] = [];
+  for (const m of found) {
+    const prev = merged[merged.length - 1];
+    if (prev && seg.slice(prev.end, m.start).trim() === '') {
+      if (!MATERIAL_KEYS.has(m.key)) merged[merged.length - 1] = m;
+      continue;
+    }
+    merged.push(m);
+  }
+  return merged;
+}
+
 function extractColor(text: string): ColorKey | undefined {
   let s = text;
   for (const re of COLOR_EXCLUSIONS) s = s.replace(re, (m) => ' '.repeat(m.length));
@@ -488,12 +537,7 @@ function extractColor(text: string): ColorKey | undefined {
   let fallback: ColorKey | undefined;
   for (let i = segments.length - 1; i >= 0; i--) {
     const seg = segments[i] as string;
-    const found: ColorKey[] = [];
-    COLOR_RE.lastIndex = 0;
-    for (let m = COLOR_RE.exec(seg); m !== null; m = COLOR_RE.exec(seg)) {
-      const key = COLOR_KEY.get((m[1] ?? '').replace(/\s+/g, ' '));
-      if (key) found.push(key);
-    }
+    const found = colorMatches(seg).map((m) => m.key);
     if (found.length === 0) continue;
     const specific = found.find((k) => !MATERIAL_KEYS.has(k));
     const pick = specific ?? (found[0] as ColorKey);
@@ -543,8 +587,8 @@ function extractGeneration(text: string, brand: string | null | undefined): stri
 
 function extractConnectivity(text: string): Connectivity[] | undefined {
   const out = new Set<Connectivity>();
-  if (/\b5g\b/.test(text)) out.add('5g');
-  if (/\b4g\b|\blte\b/.test(text)) out.add('4g');
+  if (/\b5g\b(?!\s*ram\b)/.test(text)) out.add('5g');
+  if (/\b4g\b(?!\s*ram\b)|\blte\b/.test(text)) out.add('4g');
   if (/\bwi[\s-]?fi\b|\bwifi\s*\d*e?\b/.test(text)) out.add('wifi');
   if (/\bbluetooth\b|\bbt\s?\d(?:\.\d)?\b|\bbt\b/.test(text)) out.add('bluetooth');
   if (/\bdual[\s-]?sim\b/.test(text)) out.add('dual_sim');

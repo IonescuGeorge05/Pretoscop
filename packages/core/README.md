@@ -369,7 +369,8 @@ Espressor/Cafetieră → coffee, and so on; else the shop category; else `other`
   sticks → storage; on devices, with RAM known the larger value is storage, two values are
   RAM (smaller, ≤ 64 GB) and storage (larger), one value of 32 GB or more is storage (also on
   e-readers and consoles), one small value on a laptop/PC is RAM; a single small value on a
-  phone is left out (ambiguous). MB values (cache) are ignored.
+  phone is left out (ambiguous). MB values (cache) are ignored. "4G RAM" (a frequent typo) is
+  4 GB of RAM, not 4G connectivity.
 - **Screen**: `55"`, `55''`, `55 inch`, `55 inchi`, `toli`; ranges ("32-65"") are ignored; drives
   and PC parts never have a screen ("2.5 inch" HDD); centimetres only on TVs, monitors and
   laptops (see the conversion rule above); "2 in 1" is not a size.
@@ -378,14 +379,17 @@ Espressor/Cafetieră → coffee, and so on; else the shop category; else `other`
 - **Colour**: Romanian and English words map to a key and a Romanian label: negru/black/midnight/
   obsidian/onyx → black; alb/white/starlight → white; gri/gray/grey/graphite/grafit/charcoal/
   antracit/space gray → gray; argintiu/silver/platinum/inox/crom/nichel → silver; albastru/blue/
-  navy/bleumarin/turcoaz/silverblue → blue; verde/green/mint/teal/sage → green; roșu/red/bordo →
+  navy/bleumarin/turcoaz/silverblue → blue; verde/green/mint/teal/sage/jade → green; roșu/red/bordo →
   red; roz/pink → pink; auriu/gold/champagne → gold; mov/violet/purple/lavender → purple; galben/
   yellow → yellow; portocaliu/orange/coral → orange; bej/beige/crem/desert → beige; maro/brown/
   bronz/cupru → brown; titan/titanium alone → titanium; titan natural/natural titanium →
   natural_titanium; rose gold/roz auriu → rose_gold; transparent/clear → transparent;
   multicolor. The colour is taken from the **last comma-separated part that names one** (shops
-  put it at the end), the first colour in that part ("Negru/Roșu" → black), a specific colour
-  over the material ("Titanium Black" → black), and watch-band parts ("Curea … Albastru") only
+  put it at the end), the first colour in that part ("Negru/Roșu" → black); adjacent colour words
+  and one-word compounds name one colour and the last word decides ("Blue Black" → black,
+  "LightGray" → gray, "Graygreen" → green), a specific colour wins over the material
+  ("Titanium Black" → black, "Desert Titanium" → beige); marketing names that do not say a colour
+  ("Glacier", "Night Sky", "Arabesque") give no colour; and watch-band parts ("Curea … Albastru") only
   when nothing else names a colour. Not colours: "80+ Gold", "WD Black", "Black Friday", "Titan
   OS", "Hue White and Color", "Red/Blue/Brown Switch", "Gold Edition", "Black Shark".
 - **Energy class**: "Clasa G", "clasa energetică D", "Clasa D/E" (→ D), "energy class E", and a
@@ -475,13 +479,20 @@ true/false, booleans and stock counts (5 → in stock, 0 → out of stock). Anyt
 
 ## Title corpus and accuracy
 
-`src/__corpus__/titles.ts` holds labelled titles in the styles of eMAG, Altex, Media Galaxy,
-Flanco, PC Garage, evoMAG, Dedeman, cel.ro and Vexio: 255 in the main corpus and 72 in a holdout
-batch written after the rules. **They are synthetic** (the Phase-0 recorder has no real titles
-yet); real, anonymized titles from the recorder's snapshots are to be appended. `corpus.test.ts`
-requires at least 95% accuracy per field (brand, MPN, storage, RAM, screen, colour, energy class,
-litres, kilograms, condition, bundle, accessory) on both sets and prints the table and every
-miss: `pnpm --filter @pretoscop/core exec vitest run src/corpus.test.ts --silent=false`.
+`src/__corpus__/titles.ts` holds three labelled sets:
+
+- `TITLE_CORPUS`: 255 **synthetic** titles written in the styles of eMAG, Altex, Media Galaxy,
+  Flanco, PC Garage, evoMAG, Dedeman, cel.ro and Vexio across phones, tablets, laptops, PC parts,
+  monitors, TVs, audio, consoles and games, smartwatches, large and small appliances, accessories;
+- `HOLDOUT_CORPUS`: 72 more synthetic titles written after the rules, to estimate accuracy on
+  unseen titles;
+- `REAL_CORPUS`: the 66 distinct **real** titles of eMAG's phone listing recorded by PretoscopBot
+  on 2026-10-27 (M03 fixtures).
+
+The Phase-0 recorder's snapshots will provide more real titles across categories; append them to
+`REAL_CORPUS` (or a new set) with honest labels. `corpus.test.ts` requires at least 95% accuracy
+per field (brand, MPN, storage, RAM, screen, colour, energy class, litres, kilograms, condition,
+bundle, accessory) on every set and prints the table and every miss: `pnpm --filter @pretoscop/core exec vitest run src/corpus.test.ts --silent=false`.
 Label what a careful person reads in the title, never what the code outputs.
 
 ## Known limitations

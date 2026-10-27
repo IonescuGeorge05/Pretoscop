@@ -1,11 +1,12 @@
 /**
  * Labelled title corpus for the attribute, brand, MPN, condition, bundle and accessory rules.
  *
- * SYNTHETIC: these titles were written by hand in the styles of eMAG, Altex, Media Galaxy,
- * Flanco, PC Garage, evoMAG, Dedeman, cel.ro and Vexio (2026-10-27), because the Phase-0
- * recorder has not produced real titles yet. The lead appends real, anonymized titles from the
- * recorder's snapshots later (the plan asks for ≥150 real titles); keep the labels honest:
- * label what a careful human reads in the title, never what the code happens to output.
+ * `TITLE_CORPUS` and `HOLDOUT_CORPUS` are SYNTHETIC: written by hand in the styles of eMAG,
+ * Altex, Media Galaxy, Flanco, PC Garage, evoMAG, Dedeman, cel.ro and Vexio (2026-10-27), because
+ * the Phase-0 recorder has not produced real titles yet. `REAL_CORPUS` holds the first real
+ * titles (eMAG phones, recorded for M03). The lead appends more real, anonymized titles from the
+ * recorder's snapshots (the plan asks for ≥150 real titles); keep the labels honest: label what a
+ * careful human reads in the title, never what the code happens to output.
  *
  * Label conventions:
  * - `brand`: canonical brand name, or null when the title names none (accessories "pentru iPhone").
@@ -2012,4 +2013,349 @@ export const HOLDOUT_CORPUS: readonly CorpusEntry[] = [
     expect: { brand: 'Tefal', color: 'black' },
   },
   { shop: 'emag', title: 'Comoda TV Bonami 160 cm, Stejar', expect: { brand: null } },
+];
+
+/**
+ * REAL titles: the 66 distinct product titles of eMAG's phone listing as recorded by PretoscopBot
+ * on 2026-10-27 for M03 (`packages/extractors/fixtures/emag/listing_2026-10-27.html` and
+ * `listing-vendor-emag_2026-10-27.html`). Labelled by reading, before the rules were tuned on
+ * them; their first-run accuracy is recorded in the M06 module report. Marketing colour names
+ * that do not say a colour (Glacier, Night Sky, Arabesque) are labelled as no colour. Phones with
+ * a free accessory ("+ Woven Strap Ring Stand") are bundles under the bundle rules.
+ */
+export const REAL_CORPUS: readonly CorpusEntry[] = [
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy S26 FE, Dual SIM, 8GB RAM, 128GB, 5G, Blueberry',
+    expect: { brand: 'Samsung', ramGb: 8, storageGb: 128, color: 'blue' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Huawei Nova 10, Dual SIM, 8GB RAM, 128GB, 4G, Starry Silver',
+    expect: { brand: 'Huawei', ramGb: 8, storageGb: 128, color: 'silver' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 17 Pro Max, 256GB, 5G, Silver',
+    expect: { brand: 'Apple', storageGb: 256, color: 'silver' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Google Pixel 10 Pro, 128GB, 16GB RAM, 5G, Obsidian',
+    expect: { brand: 'Google', ramGb: 16, storageGb: 128, color: 'black' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy A57, 12GB RAM, 256GB, 5G, Awesome Gray',
+    expect: { brand: 'Samsung', ramGb: 12, storageGb: 256, color: 'gray' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy A17, Dual SIM, 4GB RAM, 128GB, 5G, Gray',
+    expect: { brand: 'Samsung', ramGb: 4, storageGb: 128, color: 'gray' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 18 Pro Max, 256GB, 5G, Burgundy',
+    expect: { brand: 'Apple', storageGb: 256, color: 'red' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy A15, Dual SIM, 4GB RAM, 128GB, 5G, Blue Black',
+    expect: { brand: 'Samsung', ramGb: 4, storageGb: 128, color: 'black' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Motorola G06 Dual SIM, 64GB, 4GB RAM, Arabesque',
+    expect: { brand: 'Motorola', ramGb: 4, storageGb: 64 },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy A05s, Dual SIM, 4GB RAM, 128GB, 4G, Black',
+    expect: { brand: 'Samsung', ramGb: 4, storageGb: 128, color: 'black' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy A36, Dual SIM, 8GB RAM, 256GB, 5G, Awesome Lavender',
+    expect: { brand: 'Samsung', ramGb: 8, storageGb: 256, color: 'purple' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Xiaomi Redmi A5, 3GB RAM, 64GB, 4G, Gold',
+    expect: { brand: 'Xiaomi', ramGb: 3, storageGb: 64, color: 'gold' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 17 Pro, 256GB, 5G, Cosmic Orange',
+    expect: { brand: 'Apple', storageGb: 256, color: 'orange' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 17 Pro Max, 256GB, 5G, Cosmic Orange',
+    expect: { brand: 'Apple', storageGb: 256, color: 'orange' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 17 Pro Max, 256GB, 5G, Deep Blue',
+    expect: { brand: 'Apple', storageGb: 256, color: 'blue' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 17 Pro, 256GB, 5G, Silver',
+    expect: { brand: 'Apple', storageGb: 256, color: 'silver' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 18 Pro, 256GB, 5G, Burgundy',
+    expect: { brand: 'Apple', storageGb: 256, color: 'red' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 18 Pro, 256GB, 5G, Glacier',
+    expect: { brand: 'Apple', storageGb: 256 },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 18 Pro, 256GB, 5G, Black',
+    expect: { brand: 'Apple', storageGb: 256, color: 'black' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy A17, Dual SIM, 4GB RAM, 128GB, 5G, Blue',
+    expect: { brand: 'Samsung', ramGb: 4, storageGb: 128, color: 'blue' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy S25 FE, Dual SIM, 8GB RAM, 256GB, 5G, White',
+    expect: { brand: 'Samsung', ramGb: 8, storageGb: 256, color: 'white' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon Mobil Xiaomi REDMI A7 Pro, 4G RAM, 64GB ROM, Black + Woven Strap Ring Stand',
+    expect: { brand: 'Xiaomi', ramGb: 4, storageGb: 64, color: 'black', isBundle: true },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 17 Pro, 256GB, 5G, Deep Blue',
+    expect: { brand: 'Apple', storageGb: 256, color: 'blue' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 18 Pro Max, 512GB, 5G, Burgundy',
+    expect: { brand: 'Apple', storageGb: 512, color: 'red' },
+  },
+  {
+    shop: 'emag',
+    title:
+      'Telefon mobil Xiaomi Redmi 15, 8GB RAM, 256GB, 5G, Midnight Black + Woven Strap Ring Stand',
+    expect: { brand: 'Xiaomi', ramGb: 8, storageGb: 256, color: 'black', isBundle: true },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Nokia 105 (2024), Dual SIM, Black',
+    expect: { brand: 'Nokia', color: 'black' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 18 Pro Max, 512GB, 5G, Black',
+    expect: { brand: 'Apple', storageGb: 512, color: 'black' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy S26 Ultra, Dual SIM, 12GB RAM, 512GB, 5G, Black',
+    expect: { brand: 'Samsung', ramGb: 12, storageGb: 512, color: 'black' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy A37, Dual SIM, 8GB RAM, 256GB, 5G, Awesome Graygreen',
+    expect: { brand: 'Samsung', ramGb: 8, storageGb: 256, color: 'green' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 18 Pro Max, 256GB, 5G, Black',
+    expect: { brand: 'Apple', storageGb: 256, color: 'black' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy A56, Dual SIM, 8GB RAM, 256GB, 5G, Awesome LightGray',
+    expect: { brand: 'Samsung', ramGb: 8, storageGb: 256, color: 'gray' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy S26, Dual SIM, 12GB RAM, 256GB, 5G, Black',
+    expect: { brand: 'Samsung', ramGb: 12, storageGb: 256, color: 'black' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy A17, Dual SIM, 8GB RAM, 256GB, 5G, Gray',
+    expect: { brand: 'Samsung', ramGb: 8, storageGb: 256, color: 'gray' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 17, 256GB, 5G, Lavender',
+    expect: { brand: 'Apple', storageGb: 256, color: 'purple' },
+  },
+  {
+    shop: 'emag',
+    title:
+      'Telefon Mobil Seniori VERITY, Functie SOS pentru Siguranta, Telefon Mobil cu Taste Mari, Meniu Limba Romana Maghiara Bulgara, Radio, Difuzor Puternic, Lanterna, Baterie 1800mAh, Ecran 4.6cm, Telefon cu Butoane Rezistent Varstnici, Carcasa Solida',
+    expect: { brand: 'Verity' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 18 Pro Max, 256GB, 5G, Glacier',
+    expect: { brand: 'Apple', storageGb: 256 },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy A57, Dual SIM, 8GB RAM, 256GB, 5G, Awesome Icyblue',
+    expect: { brand: 'Samsung', ramGb: 8, storageGb: 256, color: 'blue' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 18 Pro Max, 1TB, 5G, Black',
+    expect: { brand: 'Apple', storageGb: 1024, color: 'black' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Xiaomi Redmi A5, 3GB RAM, 64GB, 4G, Black',
+    expect: { brand: 'Xiaomi', ramGb: 3, storageGb: 64, color: 'black' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone Duo, 256GB, 5G, Night Sky',
+    expect: { brand: 'Apple', storageGb: 256 },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy A57, Dual SIM, 8GB RAM, 128GB, 5G, Awesome Lilac',
+    expect: { brand: 'Samsung', ramGb: 8, storageGb: 128, color: 'purple' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone Duo, 256GB, 5G, Star White',
+    expect: { brand: 'Apple', storageGb: 256, color: 'white' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 18 Pro Max, 512GB, 5G, Glacier',
+    expect: { brand: 'Apple', storageGb: 512 },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy S26 Ultra, Dual SIM, 12GB RAM, 256GB, 5G, Black',
+    expect: { brand: 'Samsung', ramGb: 12, storageGb: 256, color: 'black' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Google Pixel 10 Pro XL, 256GB, 16GB RAM, 5G, Jade',
+    expect: { brand: 'Google', ramGb: 16, storageGb: 256, color: 'green' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Poco X8 Pro, 12GB RAM, 512GB, 5G, White',
+    expect: { brand: 'Xiaomi', ramGb: 12, storageGb: 512, color: 'white' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Xiaomi Redmi 15, 6GB RAM, 128GB ROM, Black + Woven Strap Ring Stand',
+    expect: { brand: 'Xiaomi', ramGb: 6, storageGb: 128, color: 'black', isBundle: true },
+  },
+  {
+    shop: 'emag',
+    title:
+      'Telefon mobil Motorola edge 70 fusion, 256GB, 12GB RAM, 5G, 7000 mAh Pantone Silhouette (black)',
+    expect: { brand: 'Motorola', ramGb: 12, storageGb: 256, color: 'black' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy S26 Ultra, Dual SIM, 12GB RAM, 256GB, 5G, Sky Blue',
+    expect: { brand: 'Samsung', ramGb: 12, storageGb: 256, color: 'blue' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 15, 128GB, 5G, Blue',
+    expect: { brand: 'Apple', storageGb: 128, color: 'blue' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy A57, Dual SIM, 8GB RAM, 128GB, 5G, Awesome Navy',
+    expect: { brand: 'Samsung', ramGb: 8, storageGb: 128, color: 'blue' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy A27, Dual SIM, 6GB RAM, 128GB, 5G, Black',
+    expect: { brand: 'Samsung', ramGb: 6, storageGb: 128, color: 'black' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Xiaomi Redmi Note 14, 8GB RAM, 256GB, Midnight Black',
+    expect: { brand: 'Xiaomi', ramGb: 8, storageGb: 256, color: 'black' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy S26, Dual SIM, 12GB RAM, 256GB, 5G, Sky Blue',
+    expect: { brand: 'Samsung', ramGb: 12, storageGb: 256, color: 'blue' },
+  },
+  {
+    shop: 'emag',
+    title:
+      'Telefon Mobil Xiaomi REDMI Note 15 Pro, 8GB RAM, 256GB, Titanium + Woven Strap Ring Stand',
+    expect: { brand: 'Xiaomi', ramGb: 8, storageGb: 256, color: 'titanium', isBundle: true },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy A27, Dual SIM, 8GB RAM, 256GB, 5G, Black',
+    expect: { brand: 'Samsung', ramGb: 8, storageGb: 256, color: 'black' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy A37, Dual SIM, 8GB RAM, 256GB, 5G, Awesome Lavender',
+    expect: { brand: 'Samsung', ramGb: 8, storageGb: 256, color: 'purple' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy A17, Dual SIM, 4GB RAM, 128GB, 5G, Black',
+    expect: { brand: 'Samsung', ramGb: 4, storageGb: 128, color: 'black' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 18 Pro, 256GB, 5G, Silver',
+    expect: { brand: 'Apple', storageGb: 256, color: 'silver' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy A37, Dual SIM, 6GB RAM, 128GB, 5G, Awesome White',
+    expect: { brand: 'Samsung', ramGb: 6, storageGb: 128, color: 'white' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Xiaomi Redmi 15C, 4GB RAM, 128GB ROM, Black + Woven Strap Ring Stand',
+    expect: { brand: 'Xiaomi', ramGb: 4, storageGb: 128, color: 'black', isBundle: true },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 16, 128GB, 5G, Pink',
+    expect: { brand: 'Apple', storageGb: 128, color: 'pink' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone Duo, 512GB, 5G, Night Sky',
+    expect: { brand: 'Apple', storageGb: 512 },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 17, 256GB, 5G, Mist Blue',
+    expect: { brand: 'Apple', storageGb: 256, color: 'blue' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Apple iPhone 18 Pro Max, 256GB, 5G, Silver',
+    expect: { brand: 'Apple', storageGb: 256, color: 'silver' },
+  },
+  {
+    shop: 'emag',
+    title: 'Telefon mobil Samsung Galaxy A57, Dual SIM, 8GB RAM, 256GB, 5G, Awesome Gray',
+    expect: { brand: 'Samsung', ramGb: 8, storageGb: 256, color: 'gray' },
+  },
 ];

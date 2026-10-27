@@ -51,6 +51,13 @@ describe('storage, RAM and VRAM', () => {
     expect(a).toMatchObject({ ramGb: 16, storageGb: 512, vramGb: 6 });
   });
 
+  it('reads the "4G RAM" typo as 4 GB of RAM, not 4G connectivity', () => {
+    const a = attrs('Telefon Mobil Xiaomi REDMI A7 Pro, 4G RAM, 64GB ROM, Black');
+    expect(a).toMatchObject({ ramGb: 4, storageGb: 64 });
+    expect(a.connectivity).toBeUndefined();
+    expect(attrs('Telefon Samsung Galaxy A16, 4G, 128GB').connectivity).toEqual(['4g']);
+  });
+
   it('leaves an ambiguous single small capacity on a phone unset and ignores MB', () => {
     expect(attrs('Telefon mobil XYZ 8GB').storageGb).toBeUndefined();
     expect(attrs('Telefon mobil XYZ 8GB').ramGb).toBeUndefined();
@@ -127,6 +134,19 @@ describe('colour', () => {
     ['Husa transparenta', 'transparent', 'transparent'],
   ])('%s → %s (%s)', (title, color, ro) => {
     expect(attrs(title)).toMatchObject({ color, colorRo: ro });
+  });
+
+  it('reads compound colours by their last word (real eMAG titles)', () => {
+    expect(attrs('Telefon Samsung Galaxy A15, 128GB, 5G, Blue Black').color).toBe('black');
+    expect(attrs('Telefon Samsung Galaxy A37, 256GB, 5G, Awesome Graygreen').color).toBe('green');
+    expect(attrs('Telefon Samsung Galaxy A56, 256GB, 5G, Awesome LightGray').color).toBe('gray');
+    expect(attrs('Telefon Google Pixel 10 Pro XL, 256GB, Jade').color).toBe('green');
+    expect(attrs('Telefon Apple iPhone 16 Pro Max, Desert Titanium').color).toBe('beige');
+    expect(attrs('Smartwatch Samsung Galaxy Watch Ultra, Titanium Silver').color).toBe('silver');
+    expect(
+      attrs('Telefon Motorola edge 70 fusion, 7000 mAh Pantone Silhouette (black)').color,
+    ).toBe('black');
+    expect(attrs('Telefon Apple iPhone 18 Pro, 256GB, 5G, Glacier').color).toBeUndefined();
   });
 
   it('ignores colour words that are not colours', () => {

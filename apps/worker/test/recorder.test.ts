@@ -150,6 +150,9 @@ describe('sitemap source → discovery + product pages', () => {
   it('discovers URLs from the index (include filter) and fetches product pages', async () => {
     requested.length = 0;
     const id = await sourceId('itgalaxy:sitemap:produse');
+    // M10 switched IT Galaxy to category listings and disabled this sweep in the registry; the
+    // sitemap path itself is still what this test covers.
+    await t.db.execute(sql`UPDATE shop_sources SET enabled = true WHERE id = ${id}`);
     // Make the recorded product page the first pick.
     const r1 = await runSource(deps(), id, { trigger: 'manual', budget: 0.0001 });
     expect(r1.stats.discovered).toBeGreaterThan(5000);

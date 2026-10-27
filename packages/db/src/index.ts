@@ -10,6 +10,7 @@ export * from './queries/crawl';
 export * from './queries/rollup';
 export * from './queries/quarantine';
 export * from './queries/outliers';
+export * from './queries/merchants';
 // Query helpers re-exported so apps use the same drizzle-orm instance as the schema.
 export { and, asc, count, desc, eq, gt, gte, ilike, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from 'drizzle-orm';
 export * from './queries/matching';

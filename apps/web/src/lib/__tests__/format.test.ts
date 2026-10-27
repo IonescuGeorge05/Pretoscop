@@ -27,6 +27,8 @@ describe('Romanian formatting', () => {
     const now = new Date('2026-10-27T12:00:00Z');
     expect(formatRelative('2026-10-27T11:59:30Z', now)).toBe('chiar acum');
     expect(formatRelative('2026-10-27T09:00:00Z', now)).toBe('acum 3 ore');
+    // 59.9 minutes rounds to an hour, never "acum 60 de minute".
+    expect(formatRelative('2026-10-27T11:00:06Z', now)).toBe(formatRelative('2026-10-27T11:00:00Z', now));
     expect(formatRelative('2026-10-26T12:00:00Z', now)).toBe('ieri');
     expect(formatRelative('2026-10-24T12:00:00Z', now)).toBe('acum 3 zile');
   });

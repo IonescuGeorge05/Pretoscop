@@ -3,7 +3,8 @@ node_modules/
 .pnpm-store/
 dist/
 .next/
-out/
+# Next.js static export output only (the click-out route lives in apps/web/src/app/out/)
+apps/web/out/
 .turbo/
 coverage/
 *.tsbuildinfo

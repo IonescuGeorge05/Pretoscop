@@ -13,12 +13,13 @@ export const rollupDailyJob = defineJob({
   name: 'rollup.daily',
   queue: { retryLimit: 2, retryDelay: 600, expireInSeconds: 2 * 3600 },
   schedule: { cron: '30 4 * * *' },
-  handler: async (_job, { db, log }) => {
+  handler: async (_job, { db, log, services }) => {
     const today = bucharestToday();
     const started = Date.now();
     const rows = await rollupProducts(db, { productIds: null, from: addDaysIso(today, -2), to: today });
     const stats = await computeProductStats(db, null, today);
     const outliers = await sendPriceOutliersToMatcher(db);
+    await services.revalidate(['products']);
     log.info({ rows, stats, outliers: outliers.length, duration_ms: Date.now() - started }, 'daily rollup done');
   },
 });
@@ -28,13 +29,14 @@ export const rollupTouchJob = defineJob<{ productIds: number[] }>({
   name: 'rollup.touch',
   queue: { retryLimit: 2, retryDelay: 60, expireInSeconds: 1800 },
   work: { batchSize: 1, localConcurrency: 1 },
-  handler: async (job, { db, log }) => {
+  handler: async (job, { db, log, services }) => {
     const ids = [...new Set(job.data.productIds)].filter((n) => Number.isInteger(n));
     if (ids.length === 0) return;
     const today = bucharestToday();
     await rollupProducts(db, { productIds: ids, from: addDaysIso(today, -1), to: today });
     await computeProductStats(db, ids, today);
-    log.debug({ products: ids.length }, 'rollup touch done');
+    const revalidated = await services.revalidate(ids.map((id) => `product:${id}`));
+    log.debug({ products: ids.length, revalidated }, 'rollup touch done');
   },
 });
 

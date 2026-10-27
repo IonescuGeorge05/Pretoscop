@@ -4,6 +4,8 @@ const PORT = Number(process.env.E2E_PORT ?? 3200);
 
 export default defineConfig({
   testDir: './e2e',
+  // Creates (and afterwards removes) the throwaway product used by product.spec.ts.
+  globalSetup: './e2e/global-setup.ts',
   timeout: 30_000,
   fullyParallel: false,
   retries: 0,

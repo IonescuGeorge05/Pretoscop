@@ -11,6 +11,8 @@ export interface Services {
   fetcher: FetchLike;
   normalize: NormalizeFn;
   alert: OpsAlert;
+  /** Marks cached web pages stale by tag (best effort; returns how many tags were accepted). */
+  revalidate: (tags: string[]) => Promise<number>;
 }
 
 export interface JobContext {

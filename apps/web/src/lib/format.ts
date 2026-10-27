@@ -70,12 +70,15 @@ const rtf = new Intl.RelativeTimeFormat('ro', { numeric: 'auto' });
 
 /** "acum 3 ore", "ieri", "acum 2 zile" — for "verificat acum N ore". */
 export function formatRelative(d: Date | string | number, now: Date = new Date()): string {
-  const diffSec = Math.round((new Date(d).getTime() - now.getTime()) / 1000);
-  const abs = Math.abs(diffSec);
-  if (abs < 60) return 'chiar acum';
-  if (abs < 3600) return rtf.format(Math.round(diffSec / 60), 'minute');
-  if (abs < 86400) return rtf.format(Math.round(diffSec / 3600), 'hour');
-  if (abs < 30 * 86400) return rtf.format(Math.round(diffSec / 86400), 'day');
+  const diffSec = (new Date(d).getTime() - now.getTime()) / 1000;
+  const sign = diffSec < 0 ? -1 : 1;
+  if (Math.abs(diffSec) < 60) return 'chiar acum';
+  const minutes = Math.round(Math.abs(diffSec) / 60);
+  if (minutes < 60) return rtf.format(sign * minutes, 'minute');
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return rtf.format(sign * hours, 'hour');
+  const days = Math.round(hours / 24);
+  if (days < 30) return rtf.format(sign * days, 'day');
   return formatDate(d);
 }
 

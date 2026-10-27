@@ -1,16 +1,16 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
-import { dropVersus30dMin, verdictText } from '@pretoscop/core';
+import { dropVersus30dMin } from '@pretoscop/core';
 import { OffersTable } from '@/components/product/offers-table';
 import { PriceChart } from '@/components/product/price-chart';
 import { ProductImage } from '@/components/product/product-image';
 import { keySpecs } from '@/components/product/specs';
-import { Badge } from '@/components/ui/badge';
+import { SummaryCard } from '@/components/product/summary-card';
 import { Container } from '@/components/ui/container';
 import { serverEnv } from '@/lib/db';
-import { formatDate, formatLeiNumeric, formatPercent, plural, toBani } from '@/lib/format';
-import { getProductPageData, idFromSlug, type ProductPageData } from '@/lib/product';
+import { formatDate, formatLeiNumeric, plural, toBani } from '@/lib/format';
+import { bestOffer, getProductPageData, idFromSlug, type ProductPageData } from '@/lib/product';
 
 export const revalidate = 3600;
 export const dynamicParams = true;
@@ -52,9 +52,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-const VERDICT_TONE = { good_price: 'good', usual: 'neutral', above_usual: 'high', insufficient_data: 'neutral' } as const;
-const VERDICT_LABEL = { good_price: 'Preț bun', usual: 'Preț obișnuit', above_usual: 'Peste obișnuit', insufficient_data: 'Istoric insuficient' } as const;
-
 function jsonLd(p: ProductPageData) {
   const live = p.offers.filter((o) => o.availability === 'in_stock' && !o.stale);
   const prices = live.map((o) => Number(o.total));
@@ -85,8 +82,11 @@ export default async function ProductPage({ params }: Props) {
   const p = await resolve(slug);
   const specs = keySpecs(p.attributes);
   const stats = p.stats;
-  const best = p.offers.find((o) => o.availability === 'in_stock' && !o.stale && o.sellerType === 'shop') ?? p.offers.find((o) => o.availability === 'in_stock' && !o.stale);
-  const current = toBani(best?.total ?? stats?.currentMinTotal ?? null);
+  // Best = what a buyer pays now (marketplace sellers included); the drop badge compares like with
+  // like: the best shop-sold offer against the shop-sold 30-day minimum of the history series.
+  const best = bestOffer(p.offers);
+  const bestShop = bestOffer(p.offers, { shopSoldOnly: true });
+  const current = toBani(bestShop?.total ?? null);
   const drop = current !== null && stats ? dropVersus30dMin(current, toBani(stats.min30d), stats.observationsDays) : null;
   const shops = new Set(p.offers.map((o) => o.shopSlug)).size;
   const affiliate = p.offers.some((o) => o.hasAffiliate);
@@ -115,7 +115,7 @@ export default async function ProductPage({ params }: Props) {
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="min-w-0 space-y-6">
           <header className="flex gap-4">
-            <ProductImage storageKey={p.imageKey} alt={p.title} size={120} className="w-24 shrink-0 sm:w-28" priority />
+            <ProductImage storageKey={p.imageKey} alt={p.title} size={120} className="w-24 shrink-0 self-start sm:w-28" priority />
             <div className="min-w-0">
               <h1 className="text-xl font-bold leading-snug text-ink sm:text-2xl">{p.title}</h1>
               <p className="mt-1 text-sm text-muted">
@@ -140,6 +140,10 @@ export default async function ProductPage({ params }: Props) {
             </div>
           </header>
 
+          <div className="lg:hidden">
+            <SummaryCard best={best} stats={stats} drop={drop} placement="summary_mobile" />
+          </div>
+
           {p.variants.length > 1 && (
             <section aria-labelledby="variante">
               <h2 id="variante" className="mb-2 text-sm font-semibold text-ink-soft">Alte variante</h2>
@@ -163,7 +167,7 @@ export default async function ProductPage({ params }: Props) {
             <h2 id="oferte" className="mb-3 text-lg font-semibold">
               {p.offers.length ? `${plural(p.offers.length, 'ofertă', 'oferte')} la ${plural(shops, 'magazin', 'magazine')}` : 'Nicio ofertă activă acum'}
             </h2>
-            <OffersTable offers={p.offers} productId={p.id} />
+            <OffersTable offers={p.offers} productId={p.id} bestId={best?.id ?? null} />
           </section>
 
           <section aria-labelledby="istoric">
@@ -216,27 +220,8 @@ export default async function ProductPage({ params }: Props) {
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
-          <div className="rounded-[var(--radius-card)] bg-white p-5 shadow-[var(--shadow-card)] ring-1 ring-line">
-            <p className="text-sm text-muted">Cel mai mic preț total acum</p>
-            <p className="mt-1 text-3xl font-bold tabular text-ink">{best ? formatLeiNumeric(best.total) : '—'}</p>
-            {best && (
-              <p className="text-sm text-ink-soft">
-                la <strong>{best.shopName}</strong>
-                {best.shippingCost === null ? ' · livrare de verificat' : ''}
-              </p>
-            )}
-            {stats && (
-              <div className="mt-3 space-y-1.5">
-                <Badge tone={VERDICT_TONE[stats.verdict]}>{VERDICT_LABEL[stats.verdict]}</Badge>
-                {drop !== null && <Badge tone="good" className="ml-1">−{formatPercent(drop)} față de minimul ultimelor 30 de zile</Badge>}
-                <p className="text-sm text-ink-soft">{verdictText(stats.verdict, stats.observationsDays)}</p>
-              </div>
-            )}
-            {best && (
-              <a href={`/out/${best.id}?p=summary`} rel={best.hasAffiliate ? 'sponsored nofollow noopener' : 'nofollow noopener'} target="_blank" className="mt-4 flex h-11 items-center justify-center rounded-lg bg-brand-600 font-semibold text-white hover:bg-brand-700">
-                Mergi la {best.shopName}
-              </a>
-            )}
+          <div className="hidden lg:block">
+            <SummaryCard best={best} stats={stats} drop={drop} placement="summary" />
           </div>
           <div className="rounded-[var(--radius-card)] bg-surface p-4 text-sm text-ink-soft ring-1 ring-line">
             <p className="font-semibold text-ink">Alertă de preț</p>

@@ -3,8 +3,9 @@
 import { ExternalLink, Info } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Badge } from '@/components/ui/badge';
+import { RelativeTime } from '@/components/ui/relative-time';
 import { cn } from '@/lib/cn';
-import { formatDateTime, formatLeiNumeric, formatRelative } from '@/lib/format';
+import { formatLeiNumeric } from '@/lib/format';
 import { track } from '@/lib/track';
 import type { ProductOffer } from '@/lib/product';
 
@@ -21,14 +22,34 @@ const AVAIL: Record<ProductOffer['availability'], [string, 'good' | 'usual' | 'n
   unknown: ['Stoc necunoscut', 'neutral'],
 };
 
-export function OffersTable({ offers, productId }: { offers: ProductOffer[]; productId: number }) {
+type Sort = 'total' | 'price' | 'checked';
+const SORTS: Array<[Sort, string]> = [
+  ['total', 'Preț total (implicit)'],
+  ['price', 'Preț fără livrare'],
+  ['checked', 'Verificate recent'],
+];
+const group = (o: ProductOffer) => (o.availability === 'in_stock' ? (o.stale ? 1 : 0) : 2);
+
+/**
+ * Offers ranked as published on /cum-functioneaza (fresh in-stock first, then by total). Used and
+ * refurbished offers are hidden by default when new ones exist, so the top of the list compares the
+ * same thing; the filter says how many are hidden.
+ */
+export function OffersTable({ offers, productId, bestId }: { offers: ProductOffer[]; productId: number; bestId: number | null }) {
+  const hasNew = offers.some((o) => o.condition === 'new');
+  const nonNew = offers.filter((o) => o.condition !== 'new').length;
   const [inStockOnly, setInStockOnly] = useState(false);
   const [noMarketplace, setNoMarketplace] = useState(false);
-  const shown = useMemo(
-    () => offers.filter((o) => (!inStockOnly || o.availability === 'in_stock') && (!noMarketplace || o.sellerType !== 'marketplace')),
-    [offers, inStockOnly, noMarketplace],
-  );
-  const bestId = offers.find((o) => o.availability === 'in_stock' && !o.stale && o.sellerType === 'shop')?.id;
+  const [withUsed, setWithUsed] = useState(!hasNew);
+  const [sort, setSort] = useState<Sort>('total');
+  const shown = useMemo(() => {
+    const list = offers.filter(
+      (o) => (!inStockOnly || o.availability === 'in_stock') && (!noMarketplace || o.sellerType !== 'marketplace') && (withUsed || o.condition === 'new'),
+    );
+    if (sort === 'price') return [...list].sort((a, b) => group(a) - group(b) || Number(a.price) - Number(b.price));
+    if (sort === 'checked') return [...list].sort((a, b) => b.lastCheckedAt.localeCompare(a.lastCheckedAt));
+    return list;
+  }, [offers, inStockOnly, noMarketplace, withUsed, sort]);
   return (
     <div>
       <div className="mb-3 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
@@ -40,8 +61,24 @@ export function OffersTable({ offers, productId }: { offers: ProductOffer[]; pro
           <input type="checkbox" aria-label="Fără vânzători din marketplace" checked={noMarketplace} onChange={(e) => setNoMarketplace(e.target.checked)} className="size-4 accent-brand-600" />
           Fără vânzători din marketplace
         </label>
-        <a href="/cum-functioneaza" className="ml-auto flex items-center gap-1 text-brand-700 hover:underline">
-          <Info className="size-4" aria-hidden /> Ordonate după prețul total. Cum funcționează?
+        {hasNew && nonNew > 0 && (
+          <label className="flex items-center gap-2">
+            <input type="checkbox" aria-label="Include resigilate și folosite" checked={withUsed} onChange={(e) => setWithUsed(e.target.checked)} className="size-4 accent-brand-600" />
+            Include resigilate și folosite ({nonNew})
+          </label>
+        )}
+        <label className="flex items-center gap-2">
+          <span className="text-muted">Ordonează:</span>
+          <select aria-label="Ordonează ofertele" value={sort} onChange={(e) => setSort(e.target.value as Sort)} className="rounded-md bg-white px-2 py-1 ring-1 ring-line" data-testid="offers-sort">
+            {SORTS.map(([v, label]) => (
+              <option key={v} value={v}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <a href="/cum-functioneaza" className="flex items-center gap-1 text-brand-700 hover:underline sm:ml-auto">
+          <Info className="size-4" aria-hidden /> Cum ordonăm ofertele?
         </a>
       </div>
       <ul className="divide-y divide-line overflow-hidden rounded-[var(--radius-card)] ring-1 ring-line">
@@ -49,7 +86,7 @@ export function OffersTable({ offers, productId }: { offers: ProductOffer[]; pro
           const [availLabel, tone] = AVAIL[o.availability];
           const shipping = o.shippingCost === null ? null : Number(o.shippingCost);
           return (
-            <li key={o.id} className={cn('grid gap-3 bg-white px-4 py-3 sm:grid-cols-[1fr_auto] sm:items-center', o.stale && 'bg-surface text-muted')}>
+            <li key={o.id} data-testid="offer" data-total={o.total} className={cn('grid gap-3 bg-white px-4 py-3 sm:grid-cols-[1fr_auto] sm:items-center', o.stale && 'bg-surface text-muted')}>
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold text-ink">{o.shopName}</span>
@@ -64,8 +101,8 @@ export function OffersTable({ offers, productId }: { offers: ProductOffer[]; pro
                   )}
                 </div>
                 <p className="mt-0.5 text-xs text-ink-soft">{seller(o)}</p>
-                <p className={cn('mt-0.5 text-xs', o.stale ? 'text-high' : 'text-muted')} title={formatDateTime(o.lastCheckedAt)}>
-                  Verificat {formatRelative(o.lastCheckedAt)}
+                <p className={cn('mt-0.5 text-xs', o.stale ? 'text-high' : 'text-muted')}>
+                  Verificat <RelativeTime iso={o.lastCheckedAt} />
                   {o.stale ? ' — preț neconfirmat recent' : ''}
                 </p>
                 {o.facts.map((f) => (

@@ -11,6 +11,7 @@ import { PgDomainStateStore } from './fetch/pg-state';
 import { PgRequestLogSink } from './fetch/request-log';
 import type { Services } from './jobs/types';
 import { createOpsAlert } from './ops/alert';
+import { createRevalidator } from './ops/revalidate';
 import type { NormalizeFn } from './recorder/types';
 
 /**
@@ -114,6 +115,7 @@ export function createServices(env: Env, db: Db, log: Logger): Services & { clos
       return eur.rate;
     }),
     alert: createOpsAlert(env, log),
+    revalidate: createRevalidator(env, log),
     async close() {
       await requestLog.flush();
       await fetcher.close?.();

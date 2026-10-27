@@ -175,7 +175,12 @@ async function load(id: number): Promise<ProductPageData | null> {
   };
 }
 
-/** Product page data, cached per product and invalidated by tag `product:{id}` (worker → /api/revalidate). */
+/** Lowest total among new, in-stock, recently checked offers (`offers` is already ranked by total). */
+export function bestOffer(offers: ProductOffer[], opts: { shopSoldOnly?: boolean } = {}): ProductOffer | null {
+  return offers.find((o) => o.availability === 'in_stock' && !o.stale && o.condition === 'new' && (!opts.shopSoldOnly || o.sellerType === 'shop')) ?? null;
+}
+
+/** Product page data, cached per product and invalidated by tags `product:{id}` / `products` (worker → /api/revalidate). */
 export function getProductPageData(id: number): Promise<ProductPageData | null> {
-  return unstable_cache(() => load(id), ['product-page', String(id)], { tags: [`product:${id}`], revalidate: 3600 })();
+  return unstable_cache(() => load(id), ['product-page', String(id)], { tags: [`product:${id}`, 'products'], revalidate: 3600 })();
 }

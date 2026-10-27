@@ -17,7 +17,8 @@
     "seed": "tsx src/cli/seed.ts",
     "generate": "drizzle-kit generate",
     "studio": "drizzle-kit studio",
-    "perf:rollup": "tsx src/cli/perf-rollup.ts"
+    "perf:rollup": "tsx src/cli/perf-rollup.ts",
+    "e2e:fixture": "tsx src/cli/e2e-fixture.ts"
   },
   "devDependencies": {
     "@types/pg": "^8.23.1",

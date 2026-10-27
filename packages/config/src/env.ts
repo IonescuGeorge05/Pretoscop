@@ -35,6 +35,8 @@ export const EnvSchema = z
 
     // Public site
     PUBLIC_BASE_URL: z.string().min(1).default('http://localhost:3000'),
+    // Where the worker reaches the web app for cache revalidation (defaults to PUBLIC_BASE_URL).
+    WEB_INTERNAL_URL: optionalString,
     SITE_INDEXABLE: bool.default(false),
 
     // Search

@@ -1,6 +1,7 @@
 import { heartbeatJob } from './heartbeat';
 import { partitionsJob, requestLogPruneJob } from './maintenance';
 import { backupJob, restoreTestJob, schedulerTickJob, sourceRunJob } from './recorder';
+import { icecatSyncJob } from './icecat';
 import { matchPendingJob } from './matching';
 import { fxRatesJob, rollupDailyJob, rollupTouchJob } from './rollup';
 import type { JobDefinition } from './types';
@@ -19,4 +20,5 @@ export const jobs: JobDefinition<any>[] = [
   rollupTouchJob,
   fxRatesJob,
   matchPendingJob,
+  icecatSyncJob,
 ];

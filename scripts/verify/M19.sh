@@ -14,7 +14,7 @@ step "migration 0014 (alerts, alert_sends, consent_records, email_suppressions) 
 ok "tables present"
 
 step "lint, typecheck, unit + integration tests (core rules, notify templates, db queries, worker delivery, web)"
-pnpm turbo run lint typecheck test --filter=@pretoscop/core --filter=@pretoscop/notify --filter=@pretoscop/db --filter=@pretoscop/worker --filter=@pretoscop/web --filter=@pretoscop/config --concurrency=3 --output-logs=errors-only
+pnpm turbo run lint typecheck test --filter=@pretoscop/core --filter=@pretoscop/notify --filter=@pretoscop/db --filter=@pretoscop/worker --filter=@pretoscop/web --filter=@pretoscop/config --concurrency=1 --output-logs=errors-only
 ok "green"
 
 step "simulation CLI refuses bad input (it never writes price history)"

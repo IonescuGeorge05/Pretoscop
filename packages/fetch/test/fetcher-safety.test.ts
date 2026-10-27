@@ -6,8 +6,10 @@ import { join } from 'node:path';
 import { defaultDomainPolicy, type DomainPolicy } from '@pretoscop/config/policy';
 import type { MockAgent } from 'undici';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
-import { FAILURE_PAUSE_THRESHOLD, SLOT_SAFETY_MARGIN_MS as M } from '../src/fetcher';
+import { FAILURE_PAUSE_THRESHOLD, ROBOTS_TTL_MS, SLOT_SAFETY_MARGIN_MS as M, createFetcher } from '../src/fetcher';
 import { FileDomainStateStore } from '../src/state/file';
+import { MemoryDomainStateStore } from '../src/state/memory';
+import type { DomainStateStore } from '../src/state/types';
 import type { AssistedChannel, AssistedFetchRequest } from '../src/types';
 import { ROBOTS_ALLOW_ALL, mockAgent, readFixture, startServer, testFetcher, type TestServer } from './helpers';
 
@@ -67,7 +69,7 @@ describe('every request re-checks pause, kill switch and window', () => {
       },
     });
     const res = await fetcher.fetchPolite(`${A}/p/1`, { purpose: 'product' });
-    expect(res).toMatchObject({ skipped: 'paused', blocked: true, blockReason: 'paused' });
+    expect(res).toMatchObject({ skipped: 'paused', blocked: true, blockReason: 'paused', attempts: 0 });
     expect(log.network().filter((e) => e.purpose === 'product')).toHaveLength(0);
   });
 
@@ -87,7 +89,8 @@ describe('every request re-checks pause, kill switch and window', () => {
       },
     });
     const res = await fetcher.fetchPolite(`${A}/p/1`, { purpose: 'product' });
-    expect(res).toMatchObject({ skipped: 'paused', attempts: 2 });
+    // Only the first attempt sent a request; the second was cancelled before sending.
+    expect(res).toMatchObject({ skipped: 'paused', attempts: 1 });
     expect(log.network().filter((e) => e.purpose === 'product').map((e) => e.status)).toEqual([500]);
   });
 
@@ -343,5 +346,222 @@ describe('FileDomainStateStore lock', () => {
     writeFileSync(`${file}.lock`, JSON.stringify({ pid: process.ppid, at: Date.now() }));
     const store = new FileDomainStateStore(file, { lockTimeoutMs: 200 });
     await expect(store.reserveSlot('shop.ro', 5000)).rejects.toThrow(/could not lock/);
+  });
+});
+
+// ---------------------------------------------------------------- second review (re-review of 12be4a7)
+
+const W = 'https://www.shop-a.test';
+
+/** A store whose pause writes take a real round trip, like PostgreSQL. */
+function slowPauseStore(inner: DomainStateStore, ms = 30): DomainStateStore {
+  return {
+    reserveSlot: (h, i) => inner.reserveSlot(h, i),
+    getPause: (h) => inner.getPause(h),
+    setPause: async (h, p, mode) => {
+      await new Promise((r) => setTimeout(r, ms));
+      return inner.setPause(h, p, mode);
+    },
+    clearPause: (h) => inner.clearPause(h),
+    recordFailure: (h) => inner.recordFailure(h),
+    resetFailures: (h) => inner.resetFailures(h),
+    getFailures: (h) => inner.getFailures(h),
+    consumeDailyRequest: (h, d, l) => inner.consumeDailyRequest(h, d, l),
+    getDailyCount: (h, d) => inner.getDailyCount(h, d),
+    getRobots: (o) => inner.getRobots(o),
+    setRobots: (o, e) => inner.setRobots(o, e),
+  };
+}
+
+describe('re-review: robots.txt through the assisted channel', () => {
+  it.each([
+    ['a partial vendor answer (2xx with an error)', { status: 200, body: 'User-agent: *\nDisallow: /\n', error: 'partial response' }],
+    ['a redirect the vendor followed to another site', { status: 200, body: 'User-agent: *\nAllow: /\n', finalUrl: 'https://cdn.elsewhere.test/robots.txt' }],
+  ])('never caches %s as "nothing disallowed"', async (_name, reply) => {
+    const assisted: AssistedChannel = { fetch: async () => ({ contentType: 'text/plain', ...reply }) };
+    const { fetcher, log } = testFetcher({ dispatcher: newAgent(), assisted, policy: { accessMode: 'assisted' } });
+    const res = await fetcher.fetchPolite(`${A}/p/1`, { purpose: 'product' });
+    expect(res).toMatchObject({ skipped: 'robots_disallowed', errorCode: 'robots_unavailable' });
+    expect(await fetcher.robotsFor(HOST)).toMatchObject({ outcome: 'unreachable', disallowAll: true, allowAll: false });
+    expect(log.network().filter((e) => e.purpose === 'product')).toHaveLength(0);
+  });
+});
+
+describe('re-review: the host lock is held until a refusal is recorded', () => {
+  it('a request queued behind a slow 403 never goes out, even with a slow store and no slot wait', async () => {
+    const agent = newAgent();
+    const base = testFetcher({ dispatcher: agent });
+    const pool = agent.get(A);
+    pool.intercept({ path: '/robots.txt' }).reply(200, ROBOTS_ALLOW_ALL, { headers: TEXT });
+    pool
+      .intercept({ path: /^\/p\// })
+      .reply(() => {
+        base.clock.advance(10_000); // the refusal takes longer than the interval: the next slot is already free
+        return {
+          statusCode: 403,
+          data: readFixture('blocks', 'akamai_access_denied_403_synthetic.html'),
+          responseOptions: { headers: { ...HTML, server: 'AkamaiGHost' } },
+        };
+      })
+      .persist();
+    const { fetcher, log } = testFetcher({
+      dispatcher: agent,
+      stateStore: slowPauseStore(base.store),
+      now: base.clock.now,
+      sleep: base.clock.sleep,
+    });
+    await fetcher.robotsFor(HOST);
+    base.clock.advance(60_000);
+    const results = await Promise.all([1, 2].map((i) => fetcher.fetchPolite(`${A}/p/${i}`, { purpose: 'product' })));
+    expect(log.network().filter((e) => e.purpose === 'product')).toHaveLength(1);
+    expect(results.map((r) => r.blockReason).sort()).toEqual(['http_403', 'paused']);
+  });
+});
+
+describe("re-review: CAPTCHA on the shop's own subdomain", () => {
+  it('flags a redirect to captcha.<shop> as a block, never follows it, and pauses the shop host', async () => {
+    const agent = newAgent();
+    const pool = agent.get(W);
+    pool.intercept({ path: '/robots.txt' }).reply(200, ROBOTS_ALLOW_ALL, { headers: TEXT });
+    pool.intercept({ path: '/p/1' }).reply(302, '', { headers: { location: 'https://captcha.shop-a.test/?r=%2Fp%2F1' } });
+    const { fetcher, store, log } = testFetcher({ dispatcher: agent });
+    const res = await fetcher.fetchPolite(`${W}/p/1`, { purpose: 'product' });
+    expect(res).toMatchObject({ blocked: true, blockReason: 'captcha_redirect', status: 302 });
+    expect(log.network().map((e) => e.host)).toEqual(['www.shop-a.test', 'www.shop-a.test']);
+    expect(await store.getPause('www.shop-a.test')).not.toBeNull();
+  });
+
+  it('pauses every host of the chain when a redirect target serves a challenge', async () => {
+    const agent = newAgent();
+    agent.get(W).intercept({ path: '/robots.txt' }).reply(200, ROBOTS_ALLOW_ALL, { headers: TEXT });
+    agent.get(W).intercept({ path: '/p/2' }).reply(301, '', { headers: { location: 'https://m.shop-a.test/p/2' } });
+    agent.get('https://m.shop-a.test').intercept({ path: '/robots.txt' }).reply(200, ROBOTS_ALLOW_ALL, { headers: TEXT });
+    agent
+      .get('https://m.shop-a.test')
+      .intercept({ path: '/p/2' })
+      .reply(200, readFixture('blocks', 'fastly_client_challenge_200_synthetic.html'), { headers: HTML });
+    const { fetcher, store } = testFetcher({ dispatcher: agent });
+    expect(await fetcher.fetchPolite(`${W}/p/2`, { purpose: 'product' })).toMatchObject({ blocked: true, blockReason: 'challenge' });
+    expect(await store.getPause('m.shop-a.test')).not.toBeNull();
+    expect(await store.getPause('www.shop-a.test')).not.toBeNull();
+  });
+});
+
+describe('re-review: a chain never switches channel', () => {
+  it("an assisted shop's redirect to a host without its own policy stays on the vendor", async () => {
+    const seen: string[] = [];
+    const assisted: AssistedChannel = {
+      async fetch(url) {
+        seen.push(url);
+        if (url.endsWith('/robots.txt')) return { status: 404, body: '' };
+        if (url === `${W}/old`) return { status: 301, body: '', headers: { Location: 'https://shop-a.test/new' } };
+        return { status: 200, body: page, contentType: 'text/html' };
+      },
+    };
+    const { fetcher, log } = testFetcher({
+      dispatcher: newAgent(), // no direct intercepts: any direct request would fail the test
+      assisted,
+      policyFor: (host) => defaultDomainPolicy(host, { accessMode: host === 'www.shop-a.test' ? 'assisted' : 'direct' }),
+    });
+    const res = await fetcher.fetchPolite(`${W}/old`, { purpose: 'product' });
+    expect(res).toMatchObject({ ok: true, channel: 'assisted', finalUrl: 'https://shop-a.test/new' });
+    expect(seen).toEqual([`${W}/robots.txt`, `${W}/old`, 'https://shop-a.test/robots.txt', 'https://shop-a.test/new']);
+    expect(log.network().every((e) => e.channel === 'assisted')).toBe(true);
+  });
+
+  it('a direct chain does not follow a redirect onto an assisted-only host', async () => {
+    const agent = newAgent();
+    agent.get(W).intercept({ path: '/robots.txt' }).reply(200, ROBOTS_ALLOW_ALL, { headers: TEXT });
+    agent.get(W).intercept({ path: '/old' }).reply(301, '', { headers: { location: 'https://shop-a.test/new' } });
+    const assisted: AssistedChannel = { fetch: async () => ({ status: 500, body: null, error: 'must not be called' }) };
+    const { fetcher, log } = testFetcher({
+      dispatcher: agent,
+      assisted,
+      policyFor: (host) => defaultDomainPolicy(host, { accessMode: host === 'shop-a.test' ? 'assisted' : 'direct' }),
+    });
+    const res = await fetcher.fetchPolite(`${W}/old`, { purpose: 'product' });
+    expect(res).toMatchObject({ ok: false, status: 301, errorCode: 'channel_change', finalUrl: `${W}/old` });
+    expect(log.network().map((e) => e.host)).toEqual(['www.shop-a.test', 'www.shop-a.test']);
+  });
+});
+
+describe('re-review: the global switch fails closed', () => {
+  it('treats an unset CRAWL_ENABLED as off', async () => {
+    const saved = process.env.CRAWL_ENABLED;
+    try {
+      delete process.env.CRAWL_ENABLED;
+      const agent = newAgent();
+      const off = createFetcher({ stateStore: new MemoryDomainStateStore(), dispatcher: agent });
+      expect(await off.fetchPolite(`${A}/robots.txt`, { purpose: 'robots' })).toMatchObject({
+        skipped: 'access_off',
+        errorCode: 'crawl_disabled',
+      });
+      process.env.CRAWL_ENABLED = 'true';
+      shop(agent);
+      const on = createFetcher({ stateStore: new MemoryDomainStateStore(), dispatcher: agent });
+      expect(await on.fetchPolite(`${A}/robots.txt`, { purpose: 'robots' })).toMatchObject({ ok: true, status: 200 });
+    } finally {
+      if (saved === undefined) delete process.env.CRAWL_ENABLED;
+      else process.env.CRAWL_ENABLED = saved;
+    }
+  });
+});
+
+describe('re-review: attempts and waits', () => {
+  it('keeps the attempts and waits already spent when the caller aborts during a back-off', async () => {
+    const agent = newAgent();
+    shop(agent).intercept({ path: '/p/1' }).reply(500, 'down').persist();
+    const base = testFetcher({ dispatcher: agent });
+    const controller = new AbortController();
+    const { fetcher, log } = testFetcher({
+      dispatcher: agent,
+      stateStore: base.store,
+      now: base.clock.now,
+      sleep: async (ms, signal) => {
+        if (ms === 10_000) {
+          controller.abort();
+          throw Object.assign(new Error('aborted'), { name: 'AbortError' });
+        }
+        return base.clock.sleep(ms, signal);
+      },
+    });
+    const res = await fetcher.fetchPolite(`${A}/p/1`, { purpose: 'product', signal: controller.signal });
+    expect(res).toMatchObject({ errorCode: 'aborted', attempts: 1, waitedMs: 5000 + M });
+    expect(log.entries.filter((e) => e.url === `${A}/p/1`).map((e) => [e.attempt, e.status, e.errorCode ?? null])).toEqual([
+      [1, 500, null],
+      [0, 0, 'aborted'],
+    ]);
+  });
+
+  it("a caller that joins another caller's robots.txt fetch can still abort its own wait", async () => {
+    const agent = newAgent();
+    const pool = agent.get(A);
+    pool.intercept({ path: '/robots.txt' }).reply(200, ROBOTS_ALLOW_ALL, { headers: TEXT }).delay(300);
+    pool.intercept({ path: /^\/p\// }).reply(200, page, { headers: HTML }).persist();
+    const { fetcher } = testFetcher({ dispatcher: agent });
+    const first = fetcher.fetchPolite(`${A}/p/1`, { purpose: 'product' });
+    await new Promise((r) => setTimeout(r, 20));
+    const controller = new AbortController();
+    const second = fetcher.fetchPolite(`${A}/p/2`, { purpose: 'product', signal: controller.signal });
+    setTimeout(() => controller.abort(), 30);
+    const t0 = Date.now();
+    expect(await second).toMatchObject({ errorCode: 'aborted' });
+    expect(Date.now() - t0).toBeLessThan(250);
+    expect(await first).toMatchObject({ ok: true });
+  });
+
+  it('does not count a Crawl-delay twice when robots.txt is refreshed', async () => {
+    const agent = newAgent();
+    shop(agent, 'User-agent: *\nCrawl-delay: 12\nDisallow: /cart\n').intercept({ path: /^\/p\// }).reply(200, page, { headers: HTML }).persist();
+    const { fetcher, clock, log } = testFetcher({ dispatcher: agent });
+    await fetcher.fetchPolite(`${A}/p/1`, { purpose: 'product' });
+    clock.advance(ROBOTS_TTL_MS + 1); // robots.txt expires; the next page refreshes it first
+    await fetcher.fetchPolite(`${A}/p/2`, { purpose: 'product' });
+    expect(log.network().map((e) => [e.purpose, e.waitMs])).toEqual([
+      ['robots', 0],
+      ['product', 12_000 + M],
+      ['robots', 0],
+      ['product', 12_000 + M],
+    ]);
   });
 });

@@ -93,6 +93,14 @@ interface CallContext {
   maxBytes: number;
   /** The bulk-crawl window (`allowedHours`) applies: everything except robots.txt. */
   checkHours: boolean;
+  /**
+   * Channel of the request chain, fixed when it starts and never switched mid-chain: an assisted
+   * chain stays on the vendor for every hop (and the robots.txt it needs); a direct chain never
+   * follows onto a host that may only be read through the assisted channel.
+   */
+  chainChannel?: Channel;
+  /** `assistedRender` of the policy that started an assisted chain. */
+  chainRender?: boolean;
 }
 
 interface ChainFlags {
@@ -155,11 +163,17 @@ interface HopSkip extends Denial {
 
 type HopOutcome = HopResponse | HopError | HopSkip;
 
+/** A hop returned with its host lock still held, so the outcome is classified (and any pause or
+ * failure written) before the next queued request for that host can start. */
+type LockedHop = HopOutcome & { release: () => void };
+
 interface ExecOutcome {
   result: FetchResult;
   truncated: boolean;
   retryable: boolean;
   waitedMs: number;
+  /** At least one request of this attempt reached the network. */
+  sent: boolean;
 }
 
 interface RobotsState {
@@ -232,11 +246,15 @@ function minIntervalOf(policy: DomainPolicy): number {
   return Number.isFinite(policy.minIntervalMs) && policy.minIntervalMs >= 0 ? policy.minIntervalMs : DEFAULT_MIN_INTERVAL_MS;
 }
 
-/** Rejects as soon as `signal` aborts, even if `promise` never settles (a hung vendor call). */
-function raceWithSignal<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
-  if (signal.aborted) return Promise.reject(signal.reason);
+/**
+ * Rejects as soon as `signal` aborts, even if `promise` never settles (a hung vendor call, a shared
+ * robots.txt fetch). `reason` replaces the signal's own reason when given.
+ */
+function raceWithSignal<T>(promise: Promise<T>, signal: AbortSignal, reason?: () => unknown): Promise<T> {
+  const why = () => (reason ? reason() : signal.reason);
+  if (signal.aborted) return Promise.reject(why());
   return new Promise<T>((resolve, reject) => {
-    const onAbort = () => reject(signal.reason);
+    const onAbort = () => reject(why());
     signal.addEventListener('abort', onAbort, { once: true });
     promise.then(
       (value) => {
@@ -279,7 +297,8 @@ class PoliteFetcher implements Fetcher {
     this.random = deps.random ?? Math.random;
     this.store = deps.stateStore;
     this.policyFor = deps.policyFor ?? ((host) => defaultDomainPolicy(host));
-    this.crawlEnabled = deps.crawlEnabled ?? envFlag(process.env.CRAWL_ENABLED, true);
+    // Fail closed, like @pretoscop/config: crawling happens only when explicitly switched on.
+    this.crawlEnabled = deps.crawlEnabled ?? envFlag(process.env.CRAWL_ENABLED, false);
     this.logger = deps.logger ?? NOOP_LOGGER;
     this.requestLog = deps.requestLog;
     this.assisted = deps.assisted;
@@ -614,99 +633,133 @@ class PoliteFetcher implements Fetcher {
     return memo ? selectRobotsGroups(memo.parsed, robotsTokensFor(purpose)).crawlDelaySec : null;
   }
 
-  private intervalFor(url: URL, policy: DomainPolicy, ctx: CallContext): number {
-    let interval = minIntervalOf(policy);
-    const delaySec = this.crawlDelayFor(url, policy, ctx.purpose);
-    if (delaySec !== null && delaySec * 1000 > interval) {
-      if (delaySec > MAX_CRAWL_DELAY_SEC) {
-        ctx.log.warn({ host: hostKey(url), crawlDelaySec: delaySec }, 'robots.txt Crawl-delay capped at 3600 s');
-      }
-      interval = Math.min(delaySec, MAX_CRAWL_DELAY_SEC) * 1000;
+  /** The policy interval, or the robots.txt Crawl-delay when longer (no jitter, no margin). */
+  private baseIntervalFor(url: URL, policy: DomainPolicy, purpose: FetchPurpose, log?: FetchLogger): number {
+    const interval = minIntervalOf(policy);
+    const delaySec = this.crawlDelayFor(url, policy, purpose);
+    if (delaySec === null || delaySec * 1000 <= interval) return interval;
+    if (delaySec > MAX_CRAWL_DELAY_SEC) {
+      log?.warn({ host: hostKey(url), crawlDelaySec: delaySec }, 'robots.txt Crawl-delay capped at 3600 s');
     }
+    return Math.min(delaySec, MAX_CRAWL_DELAY_SEC) * 1000;
+  }
+
+  private intervalFor(url: URL, policy: DomainPolicy, ctx: CallContext): number {
+    const interval = this.baseIntervalFor(url, policy, ctx.purpose, ctx.log);
     const r = Math.min(Math.max(this.random(), 0), 0.999_999);
     return interval + Math.floor(interval * JITTER_RATIO * r) + SLOT_SAFETY_MARGIN_MS;
   }
 
+  /** The channel this request uses: the chain's when it started assisted, else the host's own. */
+  private hopChannel(ctx: CallContext, policy: DomainPolicy): Channel {
+    return ctx.chainChannel === 'assisted' ? 'assisted' : channelOf(policy);
+  }
+
+  /** A direct chain never reaches a host that may only be read through the assisted channel. */
+  private channelDenial(ctx: CallContext, policy: DomainPolicy): Denial | null {
+    if (ctx.chainChannel === 'direct' && channelOf(policy) === 'assisted') {
+      return {
+        skipped: 'access_off',
+        error: 'this host is read only through the assisted channel; the request chain started on the direct one',
+        errorCode: 'channel_change',
+      };
+    }
+    return null;
+  }
+
   /**
-   * One network request. Under the host lock: re-check the live policy and pause, reserve a slot,
-   * wait for it, re-check (another process may have paused the host or flipped a kill switch
-   * meanwhile), count it against the daily budget, then send it.
+   * One network request, returned with its host lock STILL HELD: the caller classifies the outcome
+   * and writes any pause or failure before releasing it, so a request queued behind a refusal can
+   * never start before the pause is in the store.
    */
-  private async performHop(url: URL, ctx: CallContext, truncate: boolean): Promise<HopOutcome> {
-    const host = hostKey(url);
-    const release = await processHostLocks.acquire(host, ctx.opts.signal);
+  private async performHop(url: URL, ctx: CallContext, truncate: boolean): Promise<LockedHop> {
+    const release = await processHostLocks.acquire(hostKey(url), ctx.opts.signal);
     try {
-      let policy = await this.policy(host);
-      let denial = await this.denial(ctx, host, policy, true);
-      if (denial) return { kind: 'skip', url, channel: channelOf(policy), waitMs: 0, ...denial };
-
-      const slot = await this.store.reserveSlot(host, this.intervalFor(url, policy, ctx));
-      if (slot.waitMs > 0) {
-        await this.sleep(slot.waitMs, ctx.opts.signal);
-        policy = await this.policy(host);
-        denial = await this.denial(ctx, host, policy, false);
-        if (denial) return { kind: 'skip', url, channel: channelOf(policy), waitMs: slot.waitMs, ...denial };
-      }
-      const budget = await this.store.consumeDailyRequest(host, bucharestDay(this.now()), policy.maxPagesPerDay ?? null);
-      if (!budget.allowed) return { kind: 'skip', url, channel: channelOf(policy), waitMs: slot.waitMs, skipped: 'budget_exhausted' };
-
-      const startedAt = this.now();
-      const channel = channelOf(policy);
-      if (channel === 'assisted') return await this.assistedHop(url, policy, ctx, startedAt, slot.waitMs);
-      try {
-        const res = await httpGet(url.href, {
-          headers: buildRequestHeaders({
-            userAgent: ctx.purpose === 'feed' ? this.feedUserAgent : this.pageUserAgent,
-            purpose: ctx.purpose,
-            accept: ctx.opts.accept,
-            etag: ctx.opts.etag,
-            lastModified: ctx.opts.lastModified,
-          }),
-          dispatcher: this.dispatcher,
-          timeoutMs: ctx.timeoutMs,
-          maxBytes: ctx.maxBytes,
-          truncate,
-          signal: ctx.opts.signal,
-        });
-        const contentType = res.headers['content-type'] ?? null;
-        let bytes = res.bytes;
-        let text: string | null;
-        if ((ctx.purpose === 'sitemap' || ctx.purpose === 'feed') && isGzipMagic(bytes)) {
-          // A gzip *file* (sitemap.xml.gz, feed.xml.gz): decoded here, under the same cap.
-          bytes = (await gunzipFile(bytes, ctx.maxBytes)).data;
-          text = looksLikeText(bytes) ? decodeText(bytes, null) : null;
-        } else {
-          text = this.textOf(bytes, contentType, ctx.purpose);
-        }
-        return {
-          kind: 'response',
-          url,
-          channel,
-          status: res.status,
-          headers: res.headers,
-          bytes,
-          text,
-          contentType,
-          wireBytes: res.wireBytes,
-          truncated: res.truncated,
-          durationMs: this.now() - startedAt,
-          waitMs: slot.waitMs,
-          startedAt,
-        };
-      } catch (error) {
-        return {
-          kind: 'error',
-          url,
-          channel,
-          error,
-          aborted: isAbort(error) && Boolean(ctx.opts.signal?.aborted),
-          durationMs: this.now() - startedAt,
-          waitMs: slot.waitMs,
-          startedAt,
-        };
-      }
-    } finally {
+      return Object.assign(await this.sendUnderLock(url, ctx, truncate), { release });
+    } catch (error) {
       release();
+      throw error;
+    }
+  }
+
+  /**
+   * Under the host lock: re-check the live policy and pause, reserve a slot, wait for it, re-check
+   * (another process may have paused the host or flipped a kill switch meanwhile), count it against
+   * the daily budget, then send it.
+   */
+  private async sendUnderLock(url: URL, ctx: CallContext, truncate: boolean): Promise<HopOutcome> {
+    const host = hostKey(url);
+    let policy = await this.policy(host);
+    let denial = (await this.denial(ctx, host, policy, true)) ?? this.channelDenial(ctx, policy);
+    if (denial) return { kind: 'skip', url, channel: this.hopChannel(ctx, policy), waitMs: 0, ...denial };
+
+    const slot = await this.store.reserveSlot(host, this.intervalFor(url, policy, ctx));
+    if (slot.waitMs > 0) {
+      await this.sleep(slot.waitMs, ctx.opts.signal);
+      policy = await this.policy(host);
+      denial = (await this.denial(ctx, host, policy, false)) ?? this.channelDenial(ctx, policy);
+      if (denial) return { kind: 'skip', url, channel: this.hopChannel(ctx, policy), waitMs: slot.waitMs, ...denial };
+    }
+    const channel = this.hopChannel(ctx, policy);
+    const budget = await this.store.consumeDailyRequest(host, bucharestDay(this.now()), policy.maxPagesPerDay ?? null);
+    if (!budget.allowed) return { kind: 'skip', url, channel, waitMs: slot.waitMs, skipped: 'budget_exhausted' };
+
+    const startedAt = this.now();
+    if (channel === 'assisted') {
+      const render = policy.accessMode === 'assisted' ? (policy.assistedRender ?? false) : (ctx.chainRender ?? false);
+      return this.assistedHop(url, render, ctx, startedAt, slot.waitMs);
+    }
+    try {
+      const res = await httpGet(url.href, {
+        headers: buildRequestHeaders({
+          userAgent: ctx.purpose === 'feed' ? this.feedUserAgent : this.pageUserAgent,
+          purpose: ctx.purpose,
+          accept: ctx.opts.accept,
+          etag: ctx.opts.etag,
+          lastModified: ctx.opts.lastModified,
+        }),
+        dispatcher: this.dispatcher,
+        timeoutMs: ctx.timeoutMs,
+        maxBytes: ctx.maxBytes,
+        truncate,
+        signal: ctx.opts.signal,
+      });
+      const contentType = res.headers['content-type'] ?? null;
+      let bytes = res.bytes;
+      let text: string | null;
+      if ((ctx.purpose === 'sitemap' || ctx.purpose === 'feed') && isGzipMagic(bytes)) {
+        // A gzip *file* (sitemap.xml.gz, feed.xml.gz): decoded here, under the same cap.
+        bytes = (await gunzipFile(bytes, ctx.maxBytes)).data;
+        text = looksLikeText(bytes) ? decodeText(bytes, null) : null;
+      } else {
+        text = this.textOf(bytes, contentType, ctx.purpose);
+      }
+      return {
+        kind: 'response',
+        url,
+        channel,
+        status: res.status,
+        headers: res.headers,
+        bytes,
+        text,
+        contentType,
+        wireBytes: res.wireBytes,
+        truncated: res.truncated,
+        durationMs: this.now() - startedAt,
+        waitMs: slot.waitMs,
+        startedAt,
+      };
+    } catch (error) {
+      return {
+        kind: 'error',
+        url,
+        channel,
+        error,
+        aborted: isAbort(error) && Boolean(ctx.opts.signal?.aborted),
+        durationMs: this.now() - startedAt,
+        waitMs: slot.waitMs,
+        startedAt,
+      };
     }
   }
 
@@ -719,7 +772,7 @@ class PoliteFetcher implements Fetcher {
 
   private async assistedHop(
     url: URL,
-    policy: DomainPolicy,
+    render: boolean,
     ctx: CallContext,
     startedAt: number,
     waitMs: number,
@@ -736,7 +789,7 @@ class PoliteFetcher implements Fetcher {
     try {
       const r: AssistedFetchResponse = await raceWithSignal(
         (this.assisted as AssistedChannel).fetch(url.href, {
-          render: policy.assistedRender ?? false,
+          render,
           followRedirects: false,
           timeoutMs: ctx.timeoutMs,
           purpose: ctx.purpose,
@@ -797,24 +850,59 @@ class PoliteFetcher implements Fetcher {
 
   /** Attempts with retry and back-off. */
   private async execute(start: URL, policy: DomainPolicy, ctx: CallContext, flags: ChainFlags): Promise<ExecOutcome> {
-    const maxAttempts = channelOf(policy) === 'assisted' ? 1 : 1 + this.maxRetries;
+    // The channel is fixed when the chain starts (a nested robots.txt fetch inherits it).
+    ctx.chainChannel ??= channelOf(policy);
+    ctx.chainRender ??= policy.assistedRender ?? false;
+    const maxAttempts = ctx.chainChannel === 'assisted' ? 1 : 1 + this.maxRetries;
     let waited = 0;
     let attempt = 0;
+    let sent = 0;
     let last: ExecOutcome | undefined;
-    while (attempt < maxAttempts) {
-      attempt += 1;
-      last = await this.runChain(start, policy, ctx, flags, attempt, attempt >= maxAttempts);
-      waited += last.waitedMs;
-      if (!last.retryable || attempt >= maxAttempts) break;
-      // Don't sleep a back-off for nothing; the next attempt re-checks the pause under the lock.
-      if (await this.store.getPause(hostKey(new URL(last.result.finalUrl)))) break;
-      const backoff = this.retryBaseMs * 2 ** (attempt - 1) + Math.floor(this.retryBaseMs * 0.1 * this.random());
-      ctx.log.info({ url: start.href, attempt, backoffMs: backoff, error: last.result.error, status: last.result.status }, 'transient failure; retrying');
-      await this.sleep(backoff, ctx.opts.signal);
-      waited += backoff;
+    try {
+      while (attempt < maxAttempts) {
+        attempt += 1;
+        last = await this.runChain(start, policy, ctx, flags, attempt, attempt >= maxAttempts);
+        waited += last.waitedMs;
+        if (last.sent) sent += 1;
+        if (!last.retryable || attempt >= maxAttempts) break;
+        // Don't sleep a back-off for nothing; the next attempt re-checks the pause under the lock.
+        if (await this.store.getPause(hostKey(new URL(last.result.finalUrl)))) break;
+        const backoff = this.retryBaseMs * 2 ** (attempt - 1) + Math.floor(this.retryBaseMs * 0.1 * this.random());
+        ctx.log.info({ url: start.href, attempt, backoffMs: backoff, error: last.result.error, status: last.result.status }, 'transient failure; retrying');
+        await this.sleep(backoff, ctx.opts.signal);
+        waited += backoff;
+      }
+    } catch (error) {
+      if (!isAbort(error)) throw error;
+      // Aborted while waiting (host lock, slot, back-off): nothing more is sent. Requests already
+      // sent by this call are logged and still counted.
+      await this.writeLog(ctx, {
+        ts: new Date(this.now()),
+        host: hostKey(start),
+        url: start.href,
+        status: 0,
+        durationMs: 0,
+        bytes: 0,
+        waitMs: 0,
+        channel: ctx.chainChannel,
+        attempt: 0,
+        hop: 0,
+        blocked: false,
+        error: 'request aborted by caller',
+        errorCode: 'aborted',
+      });
+      const result: FetchResult = {
+        ...emptyResult(start.href, ctx.chainChannel),
+        finalUrl: last?.result.finalUrl ?? start.href,
+        error: 'request aborted by caller',
+        errorCode: 'aborted',
+        attempts: sent,
+        waitedMs: waited,
+      };
+      return { result, truncated: false, retryable: false, waitedMs: waited, sent: sent > 0 };
     }
     const outcome = last as ExecOutcome;
-    return { ...outcome, result: { ...outcome.result, attempts: attempt, waitedMs: waited } };
+    return { ...outcome, result: { ...outcome.result, attempts: sent, waitedMs: waited } };
   }
 
   /** One attempt: the request and its redirect hops. */
@@ -830,23 +918,29 @@ class PoliteFetcher implements Fetcher {
     let policy = startPolicy;
     let waited = 0;
     let duration = 0;
+    let sent = false;
     let robotsGroup = flags.robotsGroup;
     let robotsIgnored = flags.robotsIgnored;
+    // Every host this chain went through: a refusal anywhere in the chain pauses all of them, so a
+    // shop whose page redirects to a challenge on its own subdomain is paused itself.
+    const chainHosts: string[] = [];
 
     const done = (result: FetchResult, retryable = false, truncated = false): ExecOutcome => ({
       result: { ...result, url: start.href, durationMs: duration },
       truncated,
       retryable,
       waitedMs: waited,
+      sent,
     });
 
     for (let hop = 0; ; hop++) {
       const host = hostKey(current);
+      if (!chainHosts.includes(host)) chainHosts.push(host);
       if (hop > 0) {
         // A redirect target: no request at all when its host is paused or off, or robots.txt says no.
-        const denial = await this.denial(ctx, host, policy, true);
+        const denial = (await this.denial(ctx, host, policy, true)) ?? this.channelDenial(ctx, policy);
         if (denial) {
-          return done(await this.skipResult(ctx, current, host, channelOf(policy), denial, { robotsGroup, hop }));
+          return done(await this.skipResult(ctx, current, host, this.hopChannel(ctx, policy), denial, { robotsGroup, hop }));
         }
         if (flags.checkRobots) {
           const verdict = await this.robotsVerdict(current, policy, ctx);
@@ -854,7 +948,7 @@ class PoliteFetcher implements Fetcher {
           robotsIgnored = verdict.ignored;
           if (!verdict.allowed) {
             return done(
-              await this.skipResult(ctx, current, host, channelOf(policy), { skipped: 'robots_disallowed', ...verdict }, {
+              await this.skipResult(ctx, current, host, this.hopChannel(ctx, policy), { skipped: 'robots_disallowed', ...verdict }, {
                 robotsGroup: verdict.group,
                 robotsIgnored: verdict.ignored,
                 hop,
@@ -865,216 +959,240 @@ class PoliteFetcher implements Fetcher {
       }
 
       const out = await this.performHop(current, ctx, flags.truncate);
-      waited += out.waitMs;
-      if (out.kind === 'skip') {
-        return done(
-          await this.skipResult(ctx, current, host, out.channel, out, { robotsGroup, hop, waitMs: out.waitMs }),
-        );
-      }
-      duration += out.durationMs;
-      const logBase = {
-        ts: new Date(out.startedAt),
-        host,
-        url: current.href,
-        durationMs: out.durationMs,
-        waitMs: out.waitMs,
-        channel: out.channel,
-        attempt,
-        hop,
-        robotsGroup,
-        robotsIgnoredGroups: robotsIgnored,
-      };
-
-      if (out.kind === 'error') {
-        if (out.aborted) {
-          await this.writeLog(ctx, { ...logBase, status: 0, bytes: 0, blocked: false, error: 'request aborted by caller', errorCode: 'aborted' });
-          return done({ ...emptyResult(start.href, out.channel), finalUrl: current.href, error: 'request aborted by caller', errorCode: 'aborted' });
+      // The host lock is held until this hop is classified and any pause or failure is written.
+      try {
+        waited += out.waitMs;
+        if (out.kind === 'skip') {
+          return done(
+            await this.skipResult(ctx, current, host, out.channel, out, { robotsGroup, hop, waitMs: out.waitMs }),
+          );
         }
-        const det = detectBlock({ error: out.error });
-        const cls = det.transportError;
-        const message = cls?.message ?? String(out.error);
-        const code = cls?.code ?? 'network';
-        if (det.blocked && out.channel === 'direct') {
-          const pause = await this.pauseForBlock(host, 'transport', det, 0, ctx);
-          await this.writeLog(ctx, { ...logBase, status: 0, bytes: 0, blocked: true, blockReason: 'transport', blockDetail: det.detail, error: message, errorCode: code });
-          return done({
-            ...emptyResult(start.href, out.channel),
-            finalUrl: current.href,
-            blocked: true,
-            blockReason: 'transport',
-            blockDetail: `${det.detail} (paused until ${new Date(pause.until).toISOString()})`,
-            error: message,
-            errorCode: code,
-          });
-        }
-        if (cls?.countsAsFailure || out.channel === 'assisted') await this.registerFailure(host, `${code}: ${message}`, ctx);
-        await this.writeLog(ctx, { ...logBase, status: 0, bytes: 0, blocked: false, error: message, errorCode: code });
-        return done(
-          { ...emptyResult(start.href, out.channel), finalUrl: current.href, error: message, errorCode: code },
-          cls?.transient ?? false,
-        );
-      }
+        sent = true;
+        duration += out.durationMs;
+        const logBase = {
+          ts: new Date(out.startedAt),
+          host,
+          url: current.href,
+          durationMs: out.durationMs,
+          waitMs: out.waitMs,
+          channel: out.channel,
+          attempt,
+          hop,
+          robotsGroup,
+          robotsIgnoredGroups: robotsIgnored,
+        };
 
-      // ---- a response
-      const status = out.status;
-      const response = (extra: Partial<FetchResult>): FetchResult => ({
-        ...emptyResult(start.href, out.channel),
-        finalUrl: out.url.href,
-        status,
-        headers: out.headers,
-        contentType: out.contentType,
-        ...extra,
-      });
-      const vendorFailure = async (detail: string, error?: string, errorCode?: FetchErrorCode): Promise<ExecOutcome> => {
-        // The vendor handles challenges: a block here is the vendor's, not a reason to pause the shop
-        // at once. It counts as a failure, so three in a row pause the shop (1 h, doubling).
-        await this.registerFailure(host, detail, ctx);
-        await this.writeLog(ctx, {
-          ...logBase,
-          status,
-          bytes: out.wireBytes,
-          blocked: !error,
-          blockReason: error ? undefined : 'vendor_blocked',
-          blockDetail: error ? undefined : detail,
-          error,
-          errorCode,
-        });
-        return done(
-          response(error ? { error, errorCode } : { blocked: true, blockReason: 'vendor_blocked', blockDetail: detail }),
-        );
-      };
-
-      if (isRedirect(status) && out.headers.location) {
-        let target: URL | null = null;
-        try {
-          target = canonicalUrl(new URL(out.headers.location, current));
-        } catch {
-          target = null;
+        if (out.kind === 'error') {
+          if (out.aborted) {
+            await this.writeLog(ctx, { ...logBase, status: 0, bytes: 0, blocked: false, error: 'request aborted by caller', errorCode: 'aborted' });
+            return done({ ...emptyResult(start.href, out.channel), finalUrl: current.href, error: 'request aborted by caller', errorCode: 'aborted' });
+          }
+          const det = detectBlock({ error: out.error });
+          const cls = det.transportError;
+          const message = cls?.message ?? String(out.error);
+          const code = cls?.code ?? 'network';
+          if (det.blocked && out.channel === 'direct') {
+            const pause = await this.pauseChain(chainHosts, 'transport', det, 0, ctx);
+            await this.writeLog(ctx, { ...logBase, status: 0, bytes: 0, blocked: true, blockReason: 'transport', blockDetail: det.detail, error: message, errorCode: code });
+            return done({
+              ...emptyResult(start.href, out.channel),
+              finalUrl: current.href,
+              blocked: true,
+              blockReason: 'transport',
+              blockDetail: `${det.detail} (paused until ${new Date(pause.until).toISOString()})`,
+              error: message,
+              errorCode: code,
+            });
+          }
+          if (cls?.countsAsFailure || out.channel === 'assisted') await this.registerFailure(host, `${code}: ${message}`, ctx);
+          await this.writeLog(ctx, { ...logBase, status: 0, bytes: 0, blocked: false, error: message, errorCode: code });
+          return done(
+            { ...emptyResult(start.href, out.channel), finalUrl: current.href, error: message, errorCode: code },
+            cls?.transient ?? false,
+          );
         }
-        const redirectResult = (extra: Partial<FetchResult>): FetchResult => ({
+
+        // ---- a response
+        const status = out.status;
+        const response = (extra: Partial<FetchResult>): FetchResult => ({
           ...emptyResult(start.href, out.channel),
-          finalUrl: current.href,
+          finalUrl: out.url.href,
           status,
           headers: out.headers,
           contentType: out.contentType,
           ...extra,
         });
-        if (!target || (target.protocol !== 'http:' && target.protocol !== 'https:')) {
-          const error = `redirect to an unusable location: ${out.headers.location}`;
-          await this.writeLog(ctx, { ...logBase, status, bytes: out.wireBytes, blocked: false, error, errorCode: 'invalid_redirect' });
-          return done(redirectResult({ error, errorCode: 'invalid_redirect' }));
-        }
-        const challenge = detectChallengeRedirect(current, target);
-        if (challenge) {
-          if (out.channel === 'assisted') return vendorFailure(`${challenge.detail} (not followed)`);
-          const det: BlockDetection = { blocked: true, reason: 'captcha_redirect', vendor: challenge.vendor, detail: challenge.detail };
-          const pause = await this.pauseForBlock(host, 'captcha_redirect', det, status, ctx);
-          await this.writeLog(ctx, { ...logBase, status, bytes: out.wireBytes, blocked: true, blockReason: 'captcha_redirect', blockDetail: challenge.detail });
+        const vendorFailure = async (detail: string, error?: string, errorCode?: FetchErrorCode): Promise<ExecOutcome> => {
+          // The vendor handles challenges: a block here is the vendor's, not a reason to pause the
+          // shop at once. It counts as a failure, so three in a row pause the shop (1 h, doubling).
+          await this.registerFailure(host, detail, ctx);
+          await this.writeLog(ctx, {
+            ...logBase,
+            status,
+            bytes: out.wireBytes,
+            blocked: !error,
+            blockReason: error ? undefined : 'vendor_blocked',
+            blockDetail: error ? undefined : detail,
+            error,
+            errorCode,
+          });
           return done(
-            redirectResult({
+            response(error ? { error, errorCode } : { blocked: true, blockReason: 'vendor_blocked', blockDetail: detail }),
+          );
+        };
+
+        if (isRedirect(status) && out.headers.location) {
+          let target: URL | null = null;
+          try {
+            target = canonicalUrl(new URL(out.headers.location, current));
+          } catch {
+            target = null;
+          }
+          const redirectResult = (extra: Partial<FetchResult>): FetchResult => ({
+            ...emptyResult(start.href, out.channel),
+            finalUrl: current.href,
+            status,
+            headers: out.headers,
+            contentType: out.contentType,
+            ...extra,
+          });
+          const notFollowed = async (error: string, errorCode: FetchErrorCode): Promise<ExecOutcome> => {
+            await this.writeLog(ctx, { ...logBase, status, bytes: out.wireBytes, blocked: false, error, errorCode });
+            return done(redirectResult({ error, errorCode }));
+          };
+          if (!target || (target.protocol !== 'http:' && target.protocol !== 'https:')) {
+            return notFollowed(`redirect to an unusable location: ${out.headers.location}`, 'invalid_redirect');
+          }
+          const challenge = detectChallengeRedirect(current, target);
+          if (challenge) {
+            if (out.channel === 'assisted') return vendorFailure(`${challenge.detail} (not followed)`);
+            const det: BlockDetection = { blocked: true, reason: 'captcha_redirect', vendor: challenge.vendor, detail: challenge.detail };
+            const pause = await this.pauseChain(chainHosts, 'captcha_redirect', det, status, ctx);
+            await this.writeLog(ctx, { ...logBase, status, bytes: out.wireBytes, blocked: true, blockReason: 'captcha_redirect', blockDetail: challenge.detail });
+            return done(
+              redirectResult({
+                blocked: true,
+                blockReason: 'captcha_redirect',
+                blockDetail: `${challenge.detail} (not followed; paused until ${new Date(pause.until).toISOString()})`,
+              }),
+            );
+          }
+          if (hop >= MAX_REDIRECTS) return notFollowed(`more than ${MAX_REDIRECTS} redirects`, 'too_many_redirects');
+          if (!flags.followAnyHost && !sameSite(current, target)) {
+            return notFollowed(`cross-site redirect to ${target.href} not followed`, 'cross_site_redirect');
+          }
+          const nextHost = hostKey(target);
+          const nextPolicy = nextHost === host ? policy : await this.policy(nextHost);
+          if (ctx.chainChannel === 'direct' && channelOf(nextPolicy) === 'assisted') {
+            return notFollowed(
+              `redirect to ${target.href}, a host read only through the assisted channel; not followed on the direct one`,
+              'channel_change',
+            );
+          }
+          // A redirect does not end a failure streak: an edge that redirects in front of a dead
+          // origin must still trip the breaker.
+          await this.writeLog(ctx, { ...logBase, status, bytes: out.wireBytes, blocked: false });
+          policy = nextPolicy;
+          current = target;
+          continue; // the finally block releases this hop's lock before the next hop
+        }
+
+        if (out.channel === 'assisted' && out.url.href !== current.href) {
+          // The vendor followed a redirect although asked not to: apply our redirect rules after the
+          // fact and drop the body when the target is not one we may read.
+          const challenge = detectChallengeRedirect(current, out.url);
+          if (challenge) return vendorFailure(`vendor followed ${challenge.detail}`);
+          if (!sameSite(current, out.url)) {
+            return vendorFailure(`vendor followed a cross-site redirect to ${out.url.href}`, `cross-site redirect to ${out.url.href} (followed by the vendor; body dropped)`, 'cross_site_redirect');
+          }
+          if (flags.checkRobots) {
+            // robots.txt of the target may need a request to this very host: release the lock first.
+            out.release();
+            const targetPolicy = hostKey(out.url) === host ? policy : await this.policy(hostKey(out.url));
+            const verdict = await this.robotsVerdict(out.url, targetPolicy, ctx);
+            if (!verdict.allowed) {
+              return vendorFailure(
+                `vendor followed a redirect to ${out.url.href}, which robots.txt disallows`,
+                `redirect target ${out.url.href} is not allowed by robots.txt (followed by the vendor; body dropped)`,
+                'redirect_disallowed',
+              );
+            }
+          }
+        }
+
+        const det = detectBlock({
+          status,
+          headers: out.headers,
+          contentType: out.contentType,
+          body: out.text,
+          url: current.href,
+          purpose: ctx.purpose,
+          nowMs: this.now(),
+        });
+
+        if (out.channel === 'assisted' && (out.vendorBlock || det.blocked || out.vendorError)) {
+          if (out.vendorError && !out.vendorBlock && !det.blocked) return vendorFailure(out.vendorError, out.vendorError, 'assisted_error');
+          const detail = out.vendorBlock
+            ? `${out.vendorBlock.reason === 'vendor_blocked' ? '' : `${out.vendorBlock.reason}: `}${out.vendorBlock.detail}`
+            : `${det.reason}: ${det.detail ?? ''}`.trim();
+          return vendorFailure(detail);
+        }
+
+        if (det.blocked && det.reason) {
+          const pause = await this.pauseChain(chainHosts, det.reason, det, status, ctx);
+          await this.writeLog(ctx, { ...logBase, status, bytes: out.wireBytes, blocked: true, blockReason: det.reason, blockDetail: det.detail, contentType: out.contentType });
+          return done(
+            response({
               blocked: true,
-              blockReason: 'captcha_redirect',
-              blockDetail: `${challenge.detail} (not followed; paused until ${new Date(pause.until).toISOString()})`,
+              blockReason: det.reason,
+              blockDetail: `${det.detail} (paused until ${new Date(pause.until).toISOString()})`,
             }),
           );
         }
-        if (hop >= MAX_REDIRECTS) {
-          const error = `more than ${MAX_REDIRECTS} redirects`;
-          await this.writeLog(ctx, { ...logBase, status, bytes: out.wireBytes, blocked: false, error, errorCode: 'too_many_redirects' });
-          return done(redirectResult({ error, errorCode: 'too_many_redirects' }));
-        }
-        if (!flags.followAnyHost && !sameSite(current, target)) {
-          const error = `cross-site redirect to ${target.href} not followed`;
-          await this.writeLog(ctx, { ...logBase, status, bytes: out.wireBytes, blocked: false, error, errorCode: 'cross_site_redirect' });
-          return done(redirectResult({ error, errorCode: 'cross_site_redirect' }));
-        }
-        // A redirect does not end a failure streak: an edge that redirects in front of a dead
-        // origin must still trip the breaker.
-        await this.writeLog(ctx, { ...logBase, status, bytes: out.wireBytes, blocked: false });
-        const nextHost = hostKey(target);
-        if (nextHost !== host) policy = await this.policy(nextHost);
-        current = target;
-        continue;
-      }
 
-      if (out.channel === 'assisted' && out.url.href !== current.href) {
-        // The vendor followed a redirect although asked not to: apply our redirect rules after the
-        // fact and drop the body when the target is not one we may read.
-        const challenge = detectChallengeRedirect(current, out.url);
-        if (challenge) return vendorFailure(`vendor followed ${challenge.detail}`);
-        if (!sameSite(current, out.url)) {
-          return vendorFailure(`vendor followed a cross-site redirect to ${out.url.href}`, `cross-site redirect to ${out.url.href} (followed by the vendor; body dropped)`, 'cross_site_redirect');
-        }
-        if (flags.checkRobots) {
-          const targetPolicy = hostKey(out.url) === host ? policy : await this.policy(hostKey(out.url));
-          const verdict = await this.robotsVerdict(out.url, targetPolicy, ctx);
-          if (!verdict.allowed) {
-            return vendorFailure(
-              `vendor followed a redirect to ${out.url.href}, which robots.txt disallows`,
-              `redirect target ${out.url.href} is not allowed by robots.txt (followed by the vendor; body dropped)`,
-              'redirect_disallowed',
-            );
+        const body = { body: out.text, bodyBytes: out.bytes as Uint8Array };
+        if (status >= 500) {
+          await this.registerFailure(host, `HTTP ${status}`, ctx);
+          let retryable = !lastAttempt;
+          let error = `HTTP ${status}`;
+          if (status === 503 && (det.retryAfterMs !== undefined || lastAttempt)) {
+            const pause = await this.pauseFor503(host, det.retryAfterMs, ctx);
+            retryable = false;
+            error = `HTTP 503 (host paused until ${new Date(pause.until).toISOString()})`;
           }
+          await this.writeLog(ctx, { ...logBase, status, bytes: out.wireBytes, blocked: false, error, contentType: out.contentType });
+          return done(response({ ...body, error }), retryable, out.truncated);
         }
-      }
 
-      const det = detectBlock({
-        status,
-        headers: out.headers,
-        contentType: out.contentType,
-        body: out.text,
-        url: current.href,
-        purpose: ctx.purpose,
-        nowMs: this.now(),
-      });
-
-      if (out.channel === 'assisted' && (out.vendorBlock || det.blocked || out.vendorError)) {
-        if (out.vendorError && !out.vendorBlock && !det.blocked) return vendorFailure(out.vendorError, out.vendorError, 'assisted_error');
-        const detail = out.vendorBlock
-          ? `${out.vendorBlock.reason === 'vendor_blocked' ? '' : `${out.vendorBlock.reason}: `}${out.vendorBlock.detail}`
-          : `${det.reason}: ${det.detail ?? ''}`.trim();
-        return vendorFailure(detail);
-      }
-
-      if (det.blocked && det.reason) {
-        const pause = await this.pauseForBlock(host, det.reason, det, status, ctx);
-        await this.writeLog(ctx, { ...logBase, status, bytes: out.wireBytes, blocked: true, blockReason: det.reason, blockDetail: det.detail, contentType: out.contentType });
-        return done(
-          response({
-            blocked: true,
-            blockReason: det.reason,
-            blockDetail: `${det.detail} (paused until ${new Date(pause.until).toISOString()})`,
-          }),
-        );
-      }
-
-      const body = { body: out.text, bodyBytes: out.bytes as Uint8Array };
-      if (status >= 500) {
-        await this.registerFailure(host, `HTTP ${status}`, ctx);
-        let retryable = !lastAttempt;
-        let error = `HTTP ${status}`;
-        if (status === 503 && (det.retryAfterMs !== undefined || lastAttempt)) {
-          const pause = await this.pauseFor503(host, det.retryAfterMs, ctx);
-          retryable = false;
-          error = `HTTP 503 (host paused until ${new Date(pause.until).toISOString()})`;
+        // A healthy response ends a failure streak. robots.txt does not count: a static file served
+        // by a CDN says nothing about the shop's pages, and would keep resetting the back-off.
+        if (ctx.purpose !== 'robots') await this.store.resetFailures(host);
+        if (status === 304) {
+          await this.writeLog(ctx, { ...logBase, status, bytes: out.wireBytes, blocked: false, notModified: true });
+          return done(response({ ok: true, notModified: true }));
         }
-        await this.writeLog(ctx, { ...logBase, status, bytes: out.wireBytes, blocked: false, error, contentType: out.contentType });
-        return done(response({ ...body, error }), retryable, out.truncated);
+        await this.writeLog(ctx, { ...logBase, status, bytes: out.wireBytes, blocked: false, contentType: out.contentType });
+        return done(response({ ...body, ok: status >= 200 && status < 300 }), false, out.truncated);
+      } finally {
+        out.release();
       }
-
-      // A healthy response ends a failure streak. robots.txt does not count: a static file served
-      // by a CDN says nothing about the shop's pages, and would keep resetting the back-off.
-      if (ctx.purpose !== 'robots') await this.store.resetFailures(host);
-      if (status === 304) {
-        await this.writeLog(ctx, { ...logBase, status, bytes: out.wireBytes, blocked: false, notModified: true });
-        return done(response({ ok: true, notModified: true }));
-      }
-      await this.writeLog(ctx, { ...logBase, status, bytes: out.wireBytes, blocked: false, contentType: out.contentType });
-      return done(response({ ...body, ok: status >= 200 && status < 300 }), false, out.truncated);
     }
   }
 
   // ---------------------------------------------------------------- pauses and failures
+
+  /** Pauses every host of the request chain (the last one is the host that refused us). */
+  private async pauseChain(
+    hosts: readonly string[],
+    reason: BlockReason,
+    det: BlockDetection,
+    status: number,
+    ctx: CallContext,
+  ): Promise<DomainPause> {
+    let pause: DomainPause | undefined;
+    for (const host of hosts) pause = await this.pauseForBlock(host, reason, det, status, ctx);
+    return pause as DomainPause;
+  }
 
   private async pauseForBlock(
     host: string,
@@ -1160,7 +1278,11 @@ class PoliteFetcher implements Fetcher {
     const inflight = this.robotsInflight.get(origin);
     if (inflight) {
       try {
-        return await inflight;
+        // Joining someone else's fetch: our own abort still ends our wait (theirs carries on).
+        const signal = ctx.opts.signal;
+        return signal
+          ? await raceWithSignal(inflight, signal, () => new FetchError('aborted', 'aborted while waiting for robots.txt'))
+          : await inflight;
       } catch (error) {
         // The caller that started the shared fetch aborted; a caller that did not abort tries again.
         if (isAbort(error) && !ctx.opts.signal?.aborted) return this.loadRobots(origin, ctx, policyHint, force);
@@ -1193,6 +1315,9 @@ class PoliteFetcher implements Fetcher {
       timeoutMs: this.defaultTimeoutMs,
       maxBytes: ROBOTS_MAX_BYTES,
       checkHours: false,
+      // Needed by a page chain that is already running: same channel, never a switch.
+      chainChannel: parent.chainChannel,
+      chainRender: parent.chainRender,
     };
 
     const gate = await this.gate(ctx, robotsUrl, host, policy);
@@ -1212,6 +1337,8 @@ class PoliteFetcher implements Fetcher {
       };
     }
 
+    // The interval the robots.txt request reserves already includes the Crawl-delay we knew of.
+    const reservedBase = this.baseIntervalFor(robotsUrl, policy, 'robots');
     const exec = await this.execute(robotsUrl, policy, ctx, { followAnyHost: true, checkRobots: false, truncate: true });
     const result = exec.result;
     // A caller's abort says nothing about the shop: nothing is cached.
@@ -1236,13 +1363,11 @@ class PoliteFetcher implements Fetcher {
     const state = this.stateFromEntry(entry, 'network');
     state.fetchResult = result;
 
-    // The robots.txt request took its slot with the policy interval; when the file asks for a
-    // longer Crawl-delay, push the host's next slot so the very next page respects it too.
-    const delaySec = this.crawlDelayFor(robotsUrl, policy, parent.purpose);
-    if (delaySec !== null) {
-      const extra = Math.min(delaySec, MAX_CRAWL_DELAY_SEC) * 1000 - minIntervalOf(policy);
-      if (extra > 0) await this.store.reserveSlot(host, extra);
-    }
+    // When the (new) file asks for a longer Crawl-delay than the interval the robots.txt request
+    // reserved, push the host's next slot by the difference so the very next page respects it too
+    // (and never count a delay twice on a refresh).
+    const extra = this.baseIntervalFor(robotsUrl, policy, parent.purpose) - reservedBase;
+    if (exec.result.attempts > 0 && extra > 0) await this.store.reserveSlot(host, extra);
 
     const selection = state.parsed ? selectRobotsGroups(state.parsed, [BOT_PRODUCT_TOKEN]) : null;
     const ignored = state.parsed && selection ? findIgnoredGroups(state.parsed, selection, this.pageUserAgent) : [];
@@ -1315,7 +1440,13 @@ class PoliteFetcher implements Fetcher {
     const status = result.status;
     if (status === 0) return failed('unreachable', result.error ?? 'no response');
     if (status >= 200 && status < 300) {
-      const text = result.body ?? (result.bodyBytes ? new TextDecoder().decode(result.bodyBytes) : '');
+      // Only a clean, successful response with a body is a robots.txt. A 2xx that carries an error
+      // (an assisted vendor's partial answer, a redirect the vendor followed to another site) or no
+      // body at all must never become "nothing disallowed" for 24 h: complete disallow instead.
+      if (!result.ok || result.errorCode || result.error || (result.body === null && result.bodyBytes === null)) {
+        return failed('unreachable', `unusable robots.txt response (HTTP ${status}${result.error ? `: ${result.error}` : ', no body'})`);
+      }
+      const text = result.body ?? new TextDecoder().decode(result.bodyBytes as Uint8Array);
       return {
         ...base,
         outcome: 'parsed',

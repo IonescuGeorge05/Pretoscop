@@ -114,3 +114,45 @@
   shipping_verified: false
   default_warranty_months: 24
   affiliate_url_template: null
+
+# adăugate 27.10.2026 după verificarea din admin (robots.txt permite, preț în date structurate pe pagina de produs).
+# Transport: n-am găsit termenii oficiali -> estimat (shipping_verified: false) până la verificarea în coșul magazinului.
+- slug: carrefour
+  name: Carrefour
+  base_url: https://carrefour.ro
+  search_url_template: null
+  crawl: {type: sitemap, max_products: 40}
+  shipping_rules: {free_over: null, flat: 25}  # estimat
+  shipping_verified: false
+  default_warranty_months: 24
+  affiliate_url_template: null
+
+- slug: f64
+  name: F64
+  base_url: https://www.f64.ro
+  search_url_template: null
+  crawl: {type: sitemap, max_products: 40}
+  shipping_rules: {free_over: 299, flat: 25}  # estimat: pragul de 299 lei apare pe un agregator de cupoane (07.2026)
+  shipping_verified: false
+  default_warranty_months: 24
+  affiliate_url_template: null
+
+- slug: forit
+  name: ForIT
+  base_url: https://www.forit.ro
+  search_url_template: null
+  crawl: {type: sitemap, max_products: 40}
+  shipping_rules: {free_over: null, flat: 25}  # estimat
+  shipping_verified: false
+  default_warranty_months: 24
+  affiliate_url_template: null
+
+- slug: itgalaxy
+  name: IT Galaxy
+  base_url: https://www.itgalaxy.ro
+  search_url_template: null
+  crawl: {type: sitemap, max_products: 40}
+  shipping_rules: {free_over: null, flat: 25}  # estimat
+  shipping_verified: false
+  default_warranty_months: 24
+  affiliate_url_template: null

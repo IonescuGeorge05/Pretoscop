@@ -64,7 +64,8 @@ def brave_search(query: str, client: httpx.Client | None = None, count: int = 20
     try:
         resp = client.get(
             BRAVE_URL,
-            params={"q": query, "country": "RO", "search_lang": "ro", "count": count, "extra_snippets": "true"},
+            params={"q": query, "country": "ALL", "search_lang": "ro",  # Brave nu are „RO” în lista de țări (422)
+                    "count": count, "extra_snippets": "true"},
             headers={"Accept": "application/json", "X-Subscription-Token": settings.brave_api_key},
         )
         resp.raise_for_status()

@@ -68,7 +68,7 @@ def test_brave_request_uses_key_and_romania(monkeypatch):
         results = brave_search("iPhone 18 Pro 256GB pret", client)
     assert results == [{"title": "x", "url": "https://shop.ro/p"}]
     assert seen["token"] == "test-key"
-    assert seen["params"]["country"] == "RO" and seen["params"]["q"] == "iPhone 18 Pro 256GB pret"
+    assert seen["params"]["country"] == "ALL" and seen["params"]["search_lang"] == "ro" and seen["params"]["q"] == "iPhone 18 Pro 256GB pret"
 
 
 def test_domain_normalization():

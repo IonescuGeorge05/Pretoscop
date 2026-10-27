@@ -27,7 +27,7 @@ IPHONE_URL_RE = re.compile(r"(?i)iphone-?18-?pro")
 LOC_RE = re.compile(r"<loc>\s*(?:<!\[CDATA\[)?\s*([^<\]]+?)\s*(?:\]\]>)?\s*</loc>")  # Gomag pune adresele în CDATA
 # accesorii / jocuri evidente după URL (economisim cereri; ce trece, filtrează oricum matcher-ul)
 ACCESSORY_URL_RE = re.compile(
-    r"(?i)(\bjoc-|jocuri|-joc-|game-|controller|dualsense|maneta|husa|husă|huse|folie|folii|carcasa|stand-|suport|incarcator|"
+    r"(?i)(\bjoc-|jocuri|-joc-|game-|accesori|trigger|controller|dualsense|maneta|husa|husă|huse|folie|folii|carcasa|stand-|suport|incarcator|"
     r"cablu|casti|headset|volan|skin|sticla|protectie|portal|camera|telecomanda|cover|case-|magsafe|capac|"
     r"adaptor|adapter|hub-|dock|cooler|ventilator|optical-drive|unitate-optica|filter|filtru|for-ps5|for-iphone|"
     r"pentru-ps5|pentru-playstation|pentru-iphone|compatibil)"

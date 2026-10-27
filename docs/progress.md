@@ -222,6 +222,7 @@ Founder checklist: `scripts/verify/M06.checklist.md` (not yet run by a founder).
 Human tasks needed: none.
 Risks / open questions: synthetic sets were written by the same agent as the rules (expect lower accuracy on messy real titles outside phones); model codes written with spaces are not extracted; phones with a free gift ("+ cadou") count as bundles and leave the price series (founder decision: exempt cheap gifts?); feeds must declare `priceFormat` ("12.500" without it reads as 12,500 lei).
 Next module: M07 (uses brand, MPN and attributes).
+Real-data follow-up (merged 27 Oct, `c9fa591`): on 168 labelled titles from the first live run, brand 77.4 % → 99.4 %, MPN 90.5 % → 98.8 %, accessory 91.7 % → 100 %, bundle 95.2 % → 100 % (corpus `real-live-2026-10-27.ts`, gated at ≥ 95 % per field). Over all 960 eMAG offers: accessories 51 → 7 (all real controllers), bundles 64 → 32 (new `bundleKind`: gift, game, accessory, subscription, other), offers without a brand 216 → 79; chip/size/spec words are no longer taken for MPNs (`isSpecToken`); unknown seller brands come back as `brandGuess` (confidence 0.8 with ®/™, 0.6 by position; the worker keeps ≥ 0.7). Left open: eMAG URL-slug codes are sometimes seller SKUs and win over the title's real part number (to fix in M03 + normalization); codes written with spaces; lower-case seller brands; game publishers.
 
 ### M05 — Phase-0 price recorder (eMAG listings + first feeds) — 2026-10-27
 (Implemented by the lead; wiring finished on the chain after M02 and M06 merged.)

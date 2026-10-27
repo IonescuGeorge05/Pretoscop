@@ -3,10 +3,11 @@
  *
  * `TITLE_CORPUS` and `HOLDOUT_CORPUS` are SYNTHETIC: written by hand in the styles of eMAG,
  * Altex, Media Galaxy, Flanco, PC Garage, evoMAG, Dedeman, cel.ro and Vexio (2026-10-27), because
- * the Phase-0 recorder has not produced real titles yet. `REAL_CORPUS` holds the first real
- * titles (eMAG phones, recorded for M03). The lead appends more real, anonymized titles from the
- * recorder's snapshots (the plan asks for ≥150 real titles); keep the labels honest: label what a
- * careful human reads in the title, never what the code happens to output.
+ * the Phase-0 recorder had not produced real titles yet. `REAL_CORPUS` holds the first real
+ * titles (eMAG phones, recorded for M03); `real-live-2026-10-27.ts` holds 168 more from the first
+ * live run (phones, laptops, TVs, consoles, with breadcrumbs). Append more real titles from the
+ * recorder's snapshots as new sets; keep the labels honest: label what a careful human reads in
+ * the title, never what the code happens to output.
  *
  * Label conventions:
  * - `brand`: canonical brand name, or null when the title names none (accessories "pentru iPhone").
@@ -38,6 +39,8 @@ export interface CorpusExpectation {
 export interface CorpusEntry {
   title: string;
   shop: CorpusShop;
+  /** The shop's breadcrumb, when recorded (real titles); evaluated like `raw.category`. */
+  category?: string;
   expect: CorpusExpectation;
 }
 

@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main, daniel]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: pgvector/pgvector:0.8.7-pg18-trixie
+        env:
+          POSTGRES_USER: pretoscop
+          POSTGRES_PASSWORD: pretoscop
+          POSTGRES_DB: pretoscop
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U pretoscop -d pretoscop"
+          --health-interval 2s --health-timeout 3s --health-retries 30
+      meilisearch:
+        image: getmeili/meilisearch:v1.56.0
+        env:
+          MEILI_MASTER_KEY: dev-master-key-change-me-0123456789
+          MEILI_NO_ANALYTICS: 'true'
+        ports: ['7700:7700']
+    env:
+      APP_ENV: test
+      DATABASE_URL: postgres://pretoscop:pretoscop@localhost:5432/pretoscop
+      TEST_DATABASE_ADMIN_URL: postgres://pretoscop:pretoscop@localhost:5432/postgres
+      MEILI_URL: http://localhost:7700
+      MEILI_MASTER_KEY: dev-master-key-change-me-0123456789
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build

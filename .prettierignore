@@ -1,0 +1,13 @@
+node_modules
+pnpm-lock.yaml
+.next
+dist
+coverage
+.turbo
+data
+docs
+**/fixtures/**
+**/migrations/**
+playwright-report
+test-results
+*.md

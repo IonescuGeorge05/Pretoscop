@@ -36,6 +36,7 @@ test('no third-party request before consent; reject keeps it that way', async ({
 });
 
 test('accept loads Plausible only after the click', async ({ page }) => {
+  test.skip(process.env.E2E_PLAUSIBLE !== '1', 'build without the test Plausible URL');
   const plausible: string[] = [];
   await page.route('https://plausible.test/**', (route) => {
     plausible.push(route.request().url());

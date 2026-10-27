@@ -18,5 +18,6 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
+    env: { PUBLIC_BASE_URL: `http://localhost:${PORT}` },
   },
 });

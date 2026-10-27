@@ -1,0 +1,88 @@
+import 'server-only';
+import { accounts, sessions, users, verifications } from '@pretoscop/db';
+import { createMailer } from '@pretoscop/mailer';
+import { betterAuth } from 'better-auth';
+import { drizzleAdapter } from 'better-auth/adapters/drizzle';
+import { nextCookies } from 'better-auth/next-js';
+import { magicLink } from 'better-auth/plugins/magic-link';
+import { headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { db, serverEnv } from './db';
+
+function buildAuth() {
+  const env = serverEnv();
+  const mailer = createMailer(env);
+  const admins = new Set(env.ADMIN_EMAILS);
+  return betterAuth({
+    appName: 'Pretoscop',
+    baseURL: env.PUBLIC_BASE_URL,
+    secret: env.BETTER_AUTH_SECRET,
+    database: drizzleAdapter(db(), {
+      provider: 'pg',
+      schema: { users, sessions, accounts, verifications },
+    }),
+    user: {
+      modelName: 'users',
+      additionalFields: { role: { type: 'string', defaultValue: 'user', input: false } },
+    },
+    session: { modelName: 'sessions', expiresIn: 60 * 60 * 24 * 30 },
+    account: { modelName: 'accounts' },
+    verification: { modelName: 'verifications' },
+    emailAndPassword: { enabled: false },
+    // Personal data minimization (CLAUDE.md): no IP tracking, no User-Agent on sessions.
+    advanced: { ipAddress: { disableIpTracking: true } },
+    databaseHooks: {
+      user: {
+        create: {
+          before: async (user) => ({
+            data: { ...user, role: admins.has(String(user.email).toLowerCase()) ? 'admin' : 'user' },
+          }),
+        },
+      },
+      session: {
+        create: {
+          before: async (session) => ({ data: { ...session, ipAddress: null, userAgent: null } }),
+        },
+      },
+    },
+    plugins: [
+      magicLink({
+        expiresIn: 600,
+        storeToken: 'hashed',
+        sendMagicLink: async ({ email, url }) => {
+          await mailer.send({
+            to: email,
+            subject: 'Linkul tău de autentificare Pretoscop',
+            text: `Bună,\n\nApasă pe linkul de mai jos pentru a te autentifica în Pretoscop. Linkul este valabil 10 minute și poate fi folosit o singură dată.\n\n${url}\n\nDacă nu ai cerut acest email, îl poți ignora.\n\n— ${env.COMPANY_LEGAL_NAME}, ${env.COMPANY_POSTAL_ADDRESS}`,
+          });
+        },
+      }),
+      nextCookies(),
+    ],
+  });
+}
+
+type Auth = ReturnType<typeof buildAuth>;
+const g = globalThis as unknown as { __pretoscopAuth?: Auth };
+
+export function auth(): Auth {
+  g.__pretoscopAuth ??= buildAuth();
+  return g.__pretoscopAuth;
+}
+
+export async function getSession() {
+  return auth().api.getSession({ headers: await headers() });
+}
+
+/**
+ * Admin gate for /admin pages and actions: a session, role `admin`, and the email still in
+ * ADMIN_EMAILS (removing an email from the allowlist revokes access immediately).
+ */
+export async function requireAdmin(): Promise<{ id: string; email: string; actor: string }> {
+  const s = await getSession();
+  const env = serverEnv();
+  const email = s?.user.email?.toLowerCase();
+  const role = (s?.user as { role?: string } | undefined)?.role;
+  if (!s || !email || role !== 'admin' || !env.ADMIN_EMAILS.includes(email)) redirect('/admin/autentificare');
+  return { id: s.user.id, email, actor: `human:${s.user.id}` };
+}

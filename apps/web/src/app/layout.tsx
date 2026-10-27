@@ -1,8 +1,5 @@
 import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
-import { ConsentBanner } from '@/components/consent/consent';
-import { Footer } from '@/components/layout/footer';
-import { Header } from '@/components/layout/header';
 import { serverEnv } from '@/lib/db';
 import { t } from '@/lib/i18n';
 import './globals.css';
@@ -25,17 +22,7 @@ export const viewport: Viewport = { themeColor: '#1d7a73', width: 'device-width'
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="ro">
-      <body className="flex min-h-screen flex-col antialiased">
-        <a href="#continut" className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-white focus:px-3 focus:py-2">
-          Sari la conținut
-        </a>
-        <Header />
-        <main id="continut" className="flex-1">
-          {children}
-        </main>
-        <Footer />
-        <ConsentBanner />
-      </body>
+      <body className="flex min-h-screen flex-col antialiased">{children}</body>
     </html>
   );
 }

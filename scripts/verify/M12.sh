@@ -16,7 +16,7 @@ step "production build (test Plausible URL so the consent e2e can observe it)"
 ok "next build"
 
 step "Playwright e2e (mobile + desktop): shell, consent network assertions, 404, event API limits"
-(cd apps/web && pnpm exec playwright test --reporter=line)
+(cd apps/web && E2E_PLAUSIBLE=1 pnpm exec playwright test --reporter=line)
 ok "e2e green"
 
 echo

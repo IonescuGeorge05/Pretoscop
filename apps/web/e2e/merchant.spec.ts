@@ -10,6 +10,9 @@ import { expect, test, type Browser, type Page } from '@playwright/test';
  * FETCH_ALLOW_PRIVATE_HOSTS=true and every registry source killed (scripts/verify/M20.sh does it).
  */
 
+/** UI assertions wait longer than the 5 s default: magic-link mails and server actions run on a shared, busy machine. */
+const ui = expect.configure({ timeout: 20_000 });
+
 const MAILPIT = 'http://localhost:8025/api/v1';
 const DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://pretoscop:pretoscop@localhost:5432/pretoscop';
 const FEED_PORT = Number(process.env.M20_FEED_PORT ?? 3399);
@@ -88,9 +91,9 @@ async function adminPage(browser: Browser): Promise<Page> {
   await page.getByLabel('Email').fill(ADMIN);
   const since = Date.now();
   await page.getByRole('button', { name: 'Trimite linkul' }).click();
-  await expect(page.getByText('Verifică emailul')).toBeVisible();
+  await ui(page.getByText('Verifică emailul')).toBeVisible();
   await page.goto(await magicLink(ADMIN, since));
-  await expect(page).toHaveURL(/\/admin$/);
+  await ui(page).toHaveURL(/\/admin$/);
   return page;
 }
 
@@ -124,13 +127,13 @@ test.describe('merchant portal', () => {
     // 1. Magic-link registration lands in the portal.
     await page.goto('/pentru-magazine');
     await page.getByRole('link', { name: 'Înregistrează magazinul' }).click();
-    await expect(page).toHaveURL(/\/pentru-magazine\/autentificare/);
+    await ui(page).toHaveURL(/\/pentru-magazine\/autentificare/);
     await page.getByLabel('Adresa de email').fill(OWNER);
     const since = Date.now();
     await page.getByRole('button', { name: 'Trimite linkul de autentificare' }).click();
-    await expect(page.getByTestId('merchant-link-sent')).toBeVisible();
+    await ui(page.getByTestId('merchant-link-sent')).toBeVisible();
     await page.goto(await magicLink(OWNER, since));
-    await expect(page).toHaveURL(/\/pentru-magazine\/cont/);
+    await ui(page).toHaveURL(/\/pentru-magazine\/cont/);
 
     // 2. Company data; an address on the shop's domain verifies the domain.
     await page.getByLabel('Numele magazinului').fill('Testoscop Shop');
@@ -138,31 +141,31 @@ test.describe('merchant portal', () => {
     await page.getByLabel('Denumirea firmei').fill('SC Testoscop Shop SRL');
     await page.getByLabel('CUI').fill('RO1234565');
     await page.getByRole('button', { name: 'Salvează datele' }).click();
-    await expect(page.getByText('Datele au fost salvate.')).toBeVisible();
-    await expect(page.getByTestId('domain-verified')).toContainText(`${DOMAIN} este verificat prin adresa de email`);
+    await ui(page.getByText('Datele au fost salvate.')).toBeVisible();
+    await ui(page.getByTestId('domain-verified')).toContainText(`${DOMAIN} este verificat prin adresa de email`);
     const [m] = await query<{ cui: string; role: string }>(`SELECT m.cui, u.role FROM merchants m JOIN users u ON u.id = m.user_id WHERE u.email = $1`, [OWNER]);
     expect(m).toEqual({ cui: '1234565', role: 'merchant' });
 
     // 3. The feed is checked by the worker: report and preview appear without a manual reload.
     await page.getByLabel('Adresa feed-ului').fill(`http://127.0.0.1:${FEED_PORT}/feed.xml`);
     await page.getByRole('button', { name: 'Salvează și verifică' }).click();
-    await expect(page.getByTestId('feed-summary')).toContainText('3 pot fi afișate', { timeout: 60_000 });
+    await ui(page.getByTestId('feed-summary')).toContainText('3 pot fi afișate', { timeout: 60_000 });
     const preview = page.getByTestId('feed-preview');
-    await expect(preview.locator('tbody tr')).toHaveCount(3);
-    await expect(preview).toContainText('249,90 lei');
-    await expect(preview).toContainText('269,89 lei');
+    await ui(preview.locator('tbody tr')).toHaveCount(3);
+    await ui(preview).toContainText('249,90 lei');
+    await ui(preview).toContainText('269,89 lei');
 
     // 4–5. Accept the terms and submit.
     await page.getByTestId('accept-terms').check();
     await page.getByRole('button', { name: 'Trimite spre aprobare' }).click();
-    await expect(page.getByTestId('merchant-status')).toHaveText('În așteptarea aprobării');
+    await ui(page.getByTestId('merchant-status')).toHaveText('În așteptarea aprobării');
 
     // Admin approves; the feed source is created and run.
     const admin = await adminPage(browser);
     await admin.goto('/admin/comercianti');
     await admin.getByRole('link', { name: 'Testoscop Shop' }).click();
     await admin.getByTestId('approve').click();
-    await expect(admin.getByRole('status')).toContainText('Magazinul a fost aprobat');
+    await ui(admin.getByRole('status')).toContainText('Magazinul a fost aprobat');
     const [src] = await query<{ key: string; schedule: string; parser_key: string; source_tier: number }>(
       `SELECT s.key, s.schedule, s.parser_key, s.source_tier FROM shop_sources s JOIN shops p ON p.id = s.shop_id WHERE p.domain = $1`,
       [DOMAIN],
@@ -178,9 +181,9 @@ test.describe('merchant portal', () => {
       })
       .toBe(3);
     await page.goto('/pentru-magazine/cont');
-    await expect(page.getByTestId('merchant-status')).toHaveText('Aprobat');
-    await expect(page.getByTestId('stat-Oferte afișate')).toHaveText('3');
-    await expect(page.getByTestId('stat-Clicuri (30 de zile)')).toHaveText('0');
+    await ui(page.getByTestId('merchant-status')).toHaveText('Aprobat');
+    await ui(page.getByTestId('stat-Oferte afișate')).toHaveText('3');
+    await ui(page.getByTestId('stat-Clicuri (30 de zile)')).toHaveText('0');
     const totals = await query<{ total: string }>(`SELECT total_price::text AS total FROM offers o JOIN shops p ON p.id = o.shop_id WHERE p.domain = $1 ORDER BY o.external_id`, [DOMAIN]);
     expect(totals.map((t) => t.total)).toEqual(['269.89', '418.99', '149.98']);
   });

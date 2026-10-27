@@ -58,7 +58,7 @@ WORKER_LOG="$LOG_DIR/worker.log"
   cd apps/worker
   export CRAWL_ENABLED=true FETCH_ALLOW_PRIVATE_HOSTS=true METRICS_PORT="${M20_METRICS_PORT:-9465}" \
     WEB_INTERNAL_URL="http://localhost:${E2E_PORT}" LOG_LEVEL=info
-  exec ./node_modules/.bin/tsx src/index.ts
+  exec ../../node_modules/.bin/tsx src/index.ts
 ) >"$WORKER_LOG" 2>&1 &
 WORKER_PID=$!
 trap 'kill "$WORKER_PID" 2>/dev/null || true; wait "$WORKER_PID" 2>/dev/null || true' EXIT

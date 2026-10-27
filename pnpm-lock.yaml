@@ -244,6 +244,15 @@ importers:
         specifier: ^8.0.2
         version: 8.0.2
 
+  packages/notify:
+    dependencies:
+      '@pretoscop/core':
+        specifier: workspace:*
+        version: link:../core
+      '@pretoscop/mailer':
+        specifier: workspace:*
+        version: link:../mailer
+
   packages/storage:
     dependencies:
       '@aws-sdk/client-s3':

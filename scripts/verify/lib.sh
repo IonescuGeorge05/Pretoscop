@@ -12,7 +12,7 @@ fail() {
 
 ensure_services() {
   step "services (postgres, meilisearch, mailpit)"
-  $COMPOSE up -d --wait >/dev/null 2>&1 || fail "docker compose up failed (is Docker running?)"
+  $COMPOSE up -d --wait --no-recreate postgres meilisearch mailpit >/dev/null 2>&1 || fail "docker compose up failed (is Docker running?)"
   ok "services healthy"
 }
 

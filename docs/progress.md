@@ -14,7 +14,7 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 |---|---|---|---|---|---|
 | M00 | Repo scaffold and dev environment | review | `mod/M00-scaffold` (merged locally into `daniel`) | | CI workflow written but not run (nothing pushed) |
 | M01 | Database schema v1 and migrations | review | `mod/M01-schema` (merged locally into `daniel`) | | 25 tables, monthly partitions, PG18 old/new upserts |
-| M02 | Polite fetch layer and robots.txt | todo | | | |
+| M02 | Polite fetch layer and robots.txt | review | `mod/M02-fetch` (merged locally into `daniel`) | | 182 tests; independent review, 2 critical findings fixed |
 | M03 | Extractors: structured data and feed mappers | review | `mod/M03-extractors` (merged locally into `daniel`) | | eMAG listing/product, JSON-LD/microdata/OG, 5 feed mappers, sitemaps |
 | M04 | Shop registry and configuration | review | `mod/M04-registry` (merged locally into `daniel`) | | 28 shops, 49 sources (eMAG 43 listings + Tier A), idempotent sync |
 | M05 | Phase-0 price recorder (eMAG listings + first feeds) | todo | | | eMAG decided 2026-10-27: option A (see decisions log) |
@@ -172,3 +172,19 @@ Founder checklist: `scripts/verify/M04.checklist.md` (not yet run by a founder).
 Human tasks needed: A8 recorded; **shipping rules per shop** (free-delivery threshold, courier fee, locker fee) — new task, needed before totals are meaningful; A6 (2Performant feed URLs for evoMAG and others).
 Risks / open questions: eMAG category slugs come from eMAG's categories sitemap of 2026-10-27; a renamed category shows up as a failing source in the dashboard.
 Next module: M05.
+
+### M02 — Polite fetch layer and robots.txt — 2026-10-27
+(Implemented by a delegated Opus agent; integrated and re-verified by the lead.)
+Scope delivered:
+- `@pretoscop/fetch` on undici `request`: fixed identity (`PretoscopBot/1.0`, `PretoscopBot-Feed/1.0` for feeds; no cookies, Referer or browser-only headers); RFC 9309 robots.txt (product-token groups, `*`/`$`, longest match, Allow wins ties, 3xx followed, 4xx allow-all, 403/429/5xx/HTML challenge → disallow, 24 h cache, Crawl-delay honoured, generic `bot/`/`crawl`/`spider` groups reported per shop); per-host FIFO lock + atomic slot reservation (interval + 0–10% jitter + 100 ms margin), allowed hours (Europe/Bucharest), daily budgets, access modes `off`/`feed_only`/`assisted`; every request re-checks pause, policy, window and budget under the host lock.
+- Transport: timeouts, 15 MiB wire/decoded cap (gzip-bomb safe), gzip/deflate/br, charset detection (windows-1250, iso-8859-2), conditional GET, manual redirects (cross-site returned, CAPTCHA never followed), ≤ 2 retries each on a fresh slot.
+- `detectBlock()`: transport blocks, 403 with vendor hints, 429/511, Cloudflare challenges, HTTP-200 interstitials (Fastly, EdgeOne, Distinct, DataDome, PerimeterX, Imperva), CAPTCHA redirects, with false-positive guards (Cloudflare jsd script on normal pages, vendor names in robots.txt).
+- Pauses: 24 h on 403/challenge/CAPTCHA/transport block; Retry-After with a 1 h floor (7 d max) on 429/503; 3 failures → 1 h doubling to 24 h. Request log for every request, hop, attempt and skip. `DomainStateStore` interface with memory and file stores; assisted hook for M05B.
+- Demo CLI, README (contract, plain-English policy, PostgreSQL SQL for the stores), verify script with a local test server.
+Out of scope / deferred: PostgreSQL state store and request-log sink (M05 wiring), Web Bot Auth (M21), vendor client and cost ledger (M05B), real recorded block pages (synthetic fixtures for now).
+Deviations from plan: undici 7.30.1 instead of 8.x (8.x needs Node ≥ 22.19; the local shell has 22.17; same API); `reserveSlot` returns `{startAt, waitMs}` on the store's clock; robots.txt 403/429 are treated as blocks (every probed 403 on robots.txt was an edge refusal); `purpose: 'robots'` only for `/robots.txt`; 511 treated as a rate limit with ≥ 24 h pause; additive API fields (`waitedMs`, `errorCode`, `runId`, `sourceId`, `close()`).
+Verification: `make verify M=02` (re-run on `daniel` after the merge) → lint/typecheck/182 tests, never-list guard, UA strings, two CLI processes 5,251 ms apart on a local server → `OK`. Live: two requests to dedeman.ro/robots.txt 6.6 s apart (200; group `*`; sample verdicts with the deciding rule). An independent Opus review found 2 critical issues (queued requests still sent after a 403 pause; `purpose:'robots'` skipping the robots check) and 13 others, all fixed with regression tests; a second review of the fixes was still running at hand-back.
+Founder checklist: `scripts/verify/M02.checklist.md` (not yet run by a founder).
+Human tasks needed: A1 (pretoscop.ro for the bot info URL; the page itself arrives with M17).
+Risks / open questions: per-host concurrency holds per process (one crawl worker per host); a flaky home network can pause hosts for 24 h (unpause after an outage); feeds obey robots.txt (IT Galaxy and Vexio disallow `/data/feeds*`: a founder-approved exemption would be needed).
+Next module: M05 wiring.

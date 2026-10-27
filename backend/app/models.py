@@ -39,6 +39,8 @@ class Product(Base):
     msrp_ron: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     msrp_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     msrp_note: Mapped[str | None] = mapped_column(Text)
+    lifecycle: Mapped[str] = mapped_column(String(20), default="current")  # current (în fabricație) | retired
+    successor: Mapped[str | None] = mapped_column(String(100))  # slug-ul modelului care îl înlocuiește
 
     offers: Mapped[list["Offer"]] = relationship(back_populates="product")
 

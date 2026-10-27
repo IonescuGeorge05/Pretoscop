@@ -202,7 +202,7 @@ export default function OffersSection({
   if (!allOffers.length) {
     return (
       <section>
-        <h2 className="font-display text-2xl font-extrabold tracking-tight">{title}</h2>
+        {title && <h2 className="font-display text-2xl font-extrabold tracking-tight">{title}</h2>}
         <p className="mt-3 rounded-3xl border border-line bg-card p-4 text-sm text-muted">Nicio ofertă disponibilă.</p>
       </section>
     );
@@ -217,8 +217,8 @@ export default function OffersSection({
   return (
     <section aria-labelledby="offers-title">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="offers-title" className="font-display text-2xl font-extrabold tracking-tight">
-          {title}
+        <h2 id="offers-title" className={title ? "font-display text-2xl font-extrabold tracking-tight" : "sr-only"}>
+          {title || "Oferte"}
         </h2>
         <div className="flex flex-wrap items-center gap-3">
           {locationFilter && cities.length > 1 && (

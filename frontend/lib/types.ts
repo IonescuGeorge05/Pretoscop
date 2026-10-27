@@ -77,6 +77,8 @@ export interface ProductBase {
   msrp_ron: number | null;
   msrp_verified: boolean;
   msrp_note: string | null;
+  lifecycle?: "current" | "retired";
+  successor?: string | null;
 }
 
 export interface Family {
@@ -92,6 +94,10 @@ export interface ProductSummary extends ProductBase {
   offers_count: number;
   refurbished_from: number | null;
   secondhand_from: number | null;
+  refurbished_count?: number;
+  refurbished_last?: number | null;
+  secondhand_count?: number;
+  secondhand_cities?: string[];
   recommendation: { verdict: Verdict; label: string; confidence: number };
 }
 

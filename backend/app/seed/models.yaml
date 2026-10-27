@@ -5,6 +5,8 @@
 #           (https://blog.playstation.com/2026/03/27/new-price-changes-for-ps5-ps5-pro-and-playstation-portal-remote-player/),
 #           convertit cu cursul EUR_RON din app/seed/load.py și rotunjit la x9. Sony nu publică un preț separat în lei -> rămâne „estimat”.
 #           Modelele originale (CFI-1xxx) nu mai sunt produse: folosim MSRP-ul ediției echivalente actuale.
+# lifecycle: current (implicit) | retired = nu se mai fabrică; successor = modelul actual care îl înlocuiește.
+#           Pe site, modelele retrase apar doar la „Second hand și refurbished” (+ stocul nou rămas).
 - slug: ps5-disc-825gb
   name: PlayStation 5 Standard (cu unitate disc), 825 GB
   family: PlayStation 5
@@ -16,6 +18,8 @@
   msrp_eur: 649.99  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
   msrp_note: "preț UE PS5 cu disc din 02.04.2026; modelul original nu mai e produs, se folosește ediția actuală"
+  lifecycle: retired  # nu se mai fabrică
+  successor: ps5-slim-disc-1tb
 
 - slug: ps5-digital-825gb
   name: PlayStation 5 Digital Edition, 825 GB
@@ -28,6 +32,8 @@
   msrp_eur: 599.99  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
   msrp_note: "preț UE PS5 Digital din 02.04.2026; modelul original nu mai e produs, se folosește ediția actuală"
+  lifecycle: retired  # nu se mai fabrică
+  successor: ps5-slim-digital-825gb
 
 - slug: ps5-slim-disc-1tb
   name: PlayStation 5 Slim cu unitate disc, 1 TB
@@ -52,6 +58,8 @@
   msrp_eur: 599.99  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
   msrp_note: "preț UE PS5 Digital din 02.04.2026; în UE varianta 1 TB a fost înlocuită din 09.2025 de cea de 825 GB, la același preț"
+  lifecycle: retired  # nu se mai fabrică
+  successor: ps5-slim-digital-825gb
 
 # Slim Digital cu șasiu E (2025): 825 GB în loc de 1 TB, ca să țină prețul; doar ediția digitală (Slim cu disc rămâne 1 TB).
 # Cod de pe cutie raportat de presă (billbil-kun, mydealz): CFI-2116 — neconfirmat de Sony, de aceea prefixul.

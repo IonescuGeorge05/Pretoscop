@@ -86,6 +86,8 @@ class ProductBase(BaseModel):
     msrp_ron: float | None
     msrp_verified: bool
     msrp_note: str | None
+    lifecycle: str = "current"  # current | retired
+    successor: str | None = None
 
 
 class NextEventOut(BaseModel):
@@ -128,6 +130,10 @@ class ProductSummary(ProductWithFamily):
     offers_count: int
     refurbished_from: float | None  # cel mai mic preț final refurbished în stoc
     secondhand_from: float | None  # cel mai mic preț final second hand
+    refurbished_count: int = 0  # oferte refurbished (inclusiv epuizate)
+    refurbished_last: float | None = None  # cel mai mic preț refurbished, chiar dacă e epuizat acum
+    secondhand_count: int = 0
+    secondhand_cities: list[str] = []  # orașele cu cele mai multe anunțuri
     recommendation: RecommendationBadge
 
 

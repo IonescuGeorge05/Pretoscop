@@ -108,6 +108,19 @@ def _cheapest(views: list[catalog.OfferView], condition: str) -> float | None:
     return min(prices) if prices else None
 
 
+def _top_cities(views: list[catalog.OfferView], n: int = 3) -> list[str]:
+    """Orașele anunțurilor second hand, după număr (sectoarele -> București)."""
+    counts: dict[str, int] = {}
+    for v in views:
+        loc = v.offer.location if v.offer.condition == "used" else None
+        if not loc:
+            continue
+        parts = [x.strip() for x in loc.split(",") if x.strip()]
+        city = "București" if any(x.lower().startswith("sector") for x in parts) or parts[0].lower() == "bucuresti" else parts[0]
+        counts[city] = counts.get(city, 0) + 1
+    return [c for c, _ in sorted(counts.items(), key=lambda kv: -kv[1])[:n]]
+
+
 @router.get("/products", response_model=schemas.ProductList)
 def list_products(source: str | None = SourceParam, session: Session = Depends(get_session)):
     """Toate produsele, grupabile pe familii, cu cel mai bun preț final curent (oferte noi, fără pachete, în stoc)."""
@@ -121,7 +134,8 @@ def list_products(source: str | None = SourceParam, session: Session = Depends(g
         best = next((v for v in views if v.point.in_stock and id(v.offer) in direct), None) or next(
             (v for v in views if v.point.in_stock), None
         )
-        used = [v for v in catalog.current_views(catalog.load_offers(session, p.id, src, used=True)) if v.point.in_stock]
+        all_used = catalog.current_views(catalog.load_offers(session, p.id, src, used=True))
+        used = [v for v in all_used if v.point.in_stock]
         rec = catalog.product_recommendation(p, offers)
         out.append(
             schemas.ProductSummary(
@@ -130,6 +144,10 @@ def list_products(source: str | None = SourceParam, session: Session = Depends(g
                 offers_count=len(views),
                 refurbished_from=_cheapest(used, "refurbished"),
                 secondhand_from=_cheapest(used, "used"),
+                refurbished_count=sum(v.offer.condition == "refurbished" for v in all_used),
+                refurbished_last=_cheapest(all_used, "refurbished"),
+                secondhand_count=sum(v.offer.condition == "used" for v in used),
+                secondhand_cities=_top_cities(used),
                 recommendation=schemas.RecommendationBadge(
                     verdict=rec.verdict, label=catalog.VERDICT_LABELS[rec.verdict], confidence=rec.confidence
                 ),

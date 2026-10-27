@@ -50,6 +50,9 @@ importers:
       '@pretoscop/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@pretoscop/fetch':
+        specifier: workspace:*
+        version: link:../../packages/fetch
       '@pretoscop/mailer':
         specifier: workspace:*
         version: link:../../packages/mailer

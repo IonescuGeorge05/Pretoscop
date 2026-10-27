@@ -27,6 +27,7 @@
     "@pretoscop/config": "workspace:*",
     "@pretoscop/core": "workspace:*",
     "@pretoscop/db": "workspace:*",
+    "@pretoscop/fetch": "workspace:*",
     "@pretoscop/mailer": "workspace:*",
     "@pretoscop/storage": "workspace:*",
     "better-auth": "1.7.14",

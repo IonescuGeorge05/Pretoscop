@@ -1,0 +1,44 @@
+import { eq, sql } from 'drizzle-orm';
+import type { Db } from '../client';
+import { featureFlags } from '../schema/system';
+
+/** Flags known to the code. Anything touching a shop, money or email defaults to off. */
+export const KNOWN_FLAGS: Record<string, string> = {
+  'crawl.enabled': 'Master switch for every request to a shop (in addition to env CRAWL_ENABLED)',
+  'source.emag.enabled': 'eMAG source (ADR-013): founder decision required',
+  'assisted.enabled': 'Assisted-access channel for designated shops (ADR-015)',
+  'llm.matching.enabled': 'LLM gray-zone verification in matching (M22)',
+  'alerts.email.enabled': 'Price alert emails (M19)',
+  'affiliate.links.enabled': 'Use affiliate links in click-outs when the program allows (M24)',
+  'promoted.enabled': 'Promoted placements (M25)',
+};
+
+export async function isFlagEnabled(db: Db, key: string): Promise<boolean> {
+  const [row] = await db
+    .select({ enabled: featureFlags.enabled })
+    .from(featureFlags)
+    .where(eq(featureFlags.key, key));
+  return row?.enabled ?? false;
+}
+
+export async function setFlag(
+  db: Db,
+  key: string,
+  enabled: boolean,
+  config?: Record<string, unknown>,
+): Promise<void> {
+  await db
+    .insert(featureFlags)
+    .values({ key, enabled, config: config ?? {}, description: KNOWN_FLAGS[key] ?? null })
+    .onConflictDoUpdate({
+      target: featureFlags.key,
+      set: { enabled, ...(config ? { config } : {}), updatedAt: sql`now()` },
+    });
+}
+
+/** Inserts missing known flags (off) without touching existing values. */
+export async function ensureKnownFlags(db: Db): Promise<void> {
+  for (const [key, description] of Object.entries(KNOWN_FLAGS)) {
+    await db.insert(featureFlags).values({ key, enabled: false, description }).onConflictDoNothing();
+  }
+}

@@ -13,7 +13,7 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 | Module | Name | Status | Branch / PR | Verified by founder | Notes |
 |---|---|---|---|---|---|
 | M00 | Repo scaffold and dev environment | review | `mod/M00-scaffold` (merged locally into `daniel`) | | CI workflow written but not run (nothing pushed) |
-| M01 | Database schema v1 and migrations | todo | | | |
+| M01 | Database schema v1 and migrations | review | `mod/M01-schema` (merged locally into `daniel`) | | 25 tables, monthly partitions, PG18 old/new upserts |
 | M02 | Polite fetch layer and robots.txt | todo | | | |
 | M03 | Extractors: structured data and feed mappers | todo | | | |
 | M04 | Shop registry and configuration | todo | | | |
@@ -119,3 +119,20 @@ Human tasks needed: A5 (GitHub settings) when the repository is pushed; CI has n
 Risks / open questions: none.
 Next module: M01
 
+### M01 — Database schema v1 and migrations — 2026-10-27
+Scope delivered:
+- Drizzle schema (`packages/db/src/schema/*`) for every table listed in the contract: `shops`, `affiliate_programs`, `shop_sources`, `ingest_runs`, `access_costs`, `brands`, `categories`, `product_families`, `products`, `product_gtins`, `product_images`, `product_specs`, `offers`, `price_events`, `product_daily`, `product_stats`, `match_candidates`, `match_decisions`, `offer_aliases`, `product_merges`, `feature_flags`, `audit_log`, `request_log`, plus `offer_gaps` and `crawl_domain_state`; relations for the query API.
+- Migrations: `0000_extensions` (pg_trgm, unaccent, pg_stat_statements), `0001_schema_v1` (generated; edited once to make `price_events` `PARTITION BY RANGE (observed_at)`), `0002_partitions` (SQL function `ensure_price_event_partitions(months_back, months_ahead)`; partitions from January 2026 to twelve months ahead). BRIN on `price_events.observed_at` and `request_log.ts`; trigram GIN on `products.title_ascii`.
+- Query helpers: `recordObservation` (PG18 `INSERT … ON CONFLICT DO UPDATE … RETURNING old.*, new.*`), `insertPriceEventIfChanged` (`UPDATE … RETURNING old.*, new.*`), `markMissingOffers` (two-missing-runs deactivation), `startRun`/`finishRun`, flags, partition maintenance, request-log pruning; `baniToNumeric`/`numericToBani` (string arithmetic).
+- Seed: two shops (eMAG, Dedeman) and all known flags (off). Worker jobs `maintenance.partitions` (daily and at start) and `maintenance.request_log` (daily, 30-day retention). `createTestDatabase()` for integration tests.
+Out of scope / deferred: users/alerts/clicks/merchants tables (M09/M13/M19/M20), quarantine table (M08), rollup SQL (M08).
+Deviations from plan:
+- Added `offer_gaps`: when two checks of an offer are more than 48 h apart, the gap is recorded so charts and rollups never extend a price step across a crawler outage ("never fabricate history"). Not in architecture §5; recorded here and in the package README.
+- Added `crawl_domain_state` (per-host politeness state shared across worker processes: slot reservation, pauses, failures, daily budget, robots cache) for M02's state store.
+- `products.provisional` flag (M07's provisional products) instead of a fourth status value; `shop_sources.key` as the stable registry key for idempotent `shops:sync`.
+- Identity columns stay `bigint` but are mapped to JS numbers (safe to 2^53).
+Verification: `make verify M=01` → lint/typecheck/tests green (21 integration tests on a throwaway database: clean migration, partitions incl. next month, idempotent maintenance, same observation twice → one event, unchanged re-check advances `last_checked_at` only, change → event, stale replay ignored, 48 h gap recorded, identity change → re-match, deactivation + reactivation event, runs) → migrate + seed on the dev DB → 22 partitions → `OK`.
+Founder checklist: `scripts/verify/M01.checklist.md` (not yet run by a founder).
+Human tasks needed: none.
+Risks / open questions: partition creation depends on the daily maintenance job; a missed year of maintenance would make inserts fail loudly (by design, no default partition).
+Next module: M02/M06 (running in parallel), M03, M04.

@@ -1,1 +1,62 @@
 @import 'tailwindcss';
+
+/*
+ * Pretoscop design tokens (light theme). Brand: deep teal = trust and calm; price verdicts use
+ * their own semantic colours so that green/amber/red never mean anything else on the site.
+ */
+@theme {
+  /* System fonts: zero download, full Romanian diacritics (SF, Roboto, Segoe UI). */
+  --font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+
+  --color-brand-50: #effaf8;
+  --color-brand-100: #d5f2ed;
+  --color-brand-200: #aee4db;
+  --color-brand-300: #7ccfc4;
+  --color-brand-400: #4bb3a8;
+  --color-brand-500: #2a978d;
+  --color-brand-600: #1d7a73;
+  --color-brand-700: #19625d;
+  --color-brand-800: #174f4c;
+  --color-brand-900: #163f3d;
+
+  --color-ink: #0f172a;
+  --color-ink-soft: #334155;
+  --color-muted: #64748b;
+  --color-line: #e2e8f0;
+  --color-surface: #f8fafc;
+  --color-canvas: #ffffff;
+
+  /* Verdicts and price signals */
+  --color-good: #15803d;
+  --color-good-bg: #ecfdf3;
+  --color-usual: #92400e;
+  --color-usual-bg: #fffbeb;
+  --color-high: #b42318;
+  --color-high-bg: #fef3f2;
+  --color-info-bg: #eff6ff;
+
+  --radius-card: 0.875rem;
+  --shadow-card: 0 1px 2px rgb(15 23 42 / 0.04), 0 1px 3px rgb(15 23 42 / 0.06);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+  body {
+    @apply bg-canvas text-ink;
+    font-feature-settings: 'tnum' 0;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  /* Tabular figures for prices in tables and lists */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}

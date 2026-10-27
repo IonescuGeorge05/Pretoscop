@@ -111,8 +111,9 @@ export const EnvSchema = z
     PROFITSHARE_API_KEY: optionalString,
 
     // Analytics and monitoring
-    PLAUSIBLE_DOMAIN: optionalString,
-    PLAUSIBLE_SCRIPT_URL: optionalString,
+    NEXT_PUBLIC_PLAUSIBLE_DOMAIN: optionalString,
+    NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL: optionalString,
+    NEXT_PUBLIC_MEDIA_BASE_URL: optionalString,
     SENTRY_DSN: optionalString,
     METRICS_PORT: int(9464),
   })
@@ -132,18 +133,18 @@ let cached: Env | undefined;
 
 /** Walks up from `start` to the directory holding `pnpm-workspace.yaml`. */
 export function findRepoRoot(start: string = process.cwd()): string {
-  let dir = resolve(start);
+  let dir = resolve(/*turbopackIgnore: true*/ start);
   for (;;) {
-    if (existsSync(join(dir, 'pnpm-workspace.yaml'))) return dir;
+    if (existsSync(join(/*turbopackIgnore: true*/ dir, 'pnpm-workspace.yaml'))) return dir;
     const parent = dirname(dir);
-    if (parent === dir) return resolve(start);
+    if (parent === dir) return resolve(/*turbopackIgnore: true*/ start);
     dir = parent;
   }
 }
 
 /** Loads the repository-root `.env` into `process.env` without overriding variables already set. */
 export function loadRootEnvFile(start?: string): void {
-  const file = join(findRepoRoot(start), '.env');
+  const file = join(/*turbopackIgnore: true*/ findRepoRoot(start), '.env');
   if (!existsSync(file)) return;
   try {
     process.loadEnvFile(file);
@@ -171,5 +172,5 @@ export function resetEnvCache(): void {
 
 /** Resolves a path relative to the repository root (used for BLOB_FS_ROOT and similar). */
 export function repoPath(...parts: string[]): string {
-  return join(findRepoRoot(), ...parts);
+  return join(/*turbopackIgnore: true*/ findRepoRoot(), ...parts);
 }

@@ -9,19 +9,32 @@
     "start": "next start --port 3000",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "e2e": "playwright test",
+    "lhci": "pnpm dlx @lhci/cli@0.15.1 autorun"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint-config-next": "16.4.3",
-    "tailwindcss": "^4.3.3"
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "tailwindcss": "^4.3.3",
+    "vitest": "^5.0.5"
   },
   "dependencies": {
     "@pretoscop/config": "workspace:*",
+    "@pretoscop/core": "workspace:*",
+    "@pretoscop/db": "workspace:*",
+    "@pretoscop/storage": "workspace:*",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.62.0",
     "next": "16.4.3",
     "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "react-dom": "19.3.1",
+    "server-only": "^0.0.1",
+    "tailwind-merge": "^3.7.0"
   }
 }

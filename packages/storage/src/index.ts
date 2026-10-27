@@ -43,7 +43,7 @@ export class FsBlobStore implements BlobStore {
   constructor(private readonly root: string) {}
 
   private path(key: string): string {
-    const p = resolve(this.root, checkKey(key));
+    const p = resolve(/*turbopackIgnore: true*/ this.root, checkKey(key));
     if (!p.startsWith(resolve(this.root) + sep)) throw new Error(`blob key escapes root: ${key}`);
     return p;
   }

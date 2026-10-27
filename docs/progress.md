@@ -39,7 +39,7 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 
 | Module | Name | Status | Branch / PR | Verified by founder | Notes |
 |---|---|---|---|---|---|
-| M12 | Web foundation (Next.js app, design system, layout) | todo | | | |
+| M12 | Web foundation (Next.js app, design system, layout) | review | `mod/M12-web-foundation` (merged locally into `daniel`) | | Lighthouse mobile 98/95, desktop 100/100 |
 | M13 | Product page, history API, click-out | todo | | | |
 | M14 | Search, category, brand and shop pages | todo | | | |
 | M15 | Deals page and discount verdict UI | todo | | | |
@@ -172,3 +172,22 @@ Founder checklist: `scripts/verify/M04.checklist.md` (not yet run by a founder).
 Human tasks needed: A8 recorded; **shipping rules per shop** (free-delivery threshold, courier fee, locker fee) — new task, needed before totals are meaningful; A6 (2Performant feed URLs for evoMAG and others).
 Risks / open questions: eMAG category slugs come from eMAG's categories sitemap of 2026-10-27; a renamed category shows up as a failing source in the dashboard.
 Next module: M05.
+
+### M12 — Web foundation — 2026-10-27
+Scope delivered:
+- App Router layout (skip link, sticky header with a no-JS search form, footer with every trust and legal link, Romanian disclaimer), design tokens in Tailwind 4 `@theme` (teal brand scale, verdict colours reserved for verdicts), UI primitives (Button, Badge, Card, Skeleton, Container), error/404/loading pages.
+- `messages/ro.json` + `t()`; `lib/format.ts` (`formatLei` → `1.234,56 lei`, dates in Europe/Bucharest, `acum 3 ore`, Romanian plurals) with tests.
+- `ProductImage` (licensed copies only, placeholder otherwise) and `/media/[...key]` serving only `images/…` from the blob store (never snapshots/backups).
+- `POST /api/events` → new `events` table (migration 0004): 4 KB cap, name/prop validation, 120/min per session, session = sha256(daily rotating salt, IP, UA), no cookies, no raw IP; client `track()` via sendBeacon.
+- Consent banner with equal Accept/Reject, versioned choice in localStorage, `useConsent()`; Plausible loaded only after Accept.
+- Playwright (mobile + desktop): shell, no cedilla diacritics, no third-party request before consent, reject persists, accept loads Plausible, 404, event API limits. Lighthouse CI config; jsx-a11y recommended rules as errors; security headers.
+Out of scope / deferred: product/search pages (M13/M14), CSP (M16/M17), Plausible container (M17).
+Deviations from plan:
+- **No web font**: Inter via next/font pushed mobile LCP to 2.8 s (preloaded 130 kB); the system font stack gives LCP 2.18 s and native diacritics.
+- Plausible settings are build-time `NEXT_PUBLIC_*` variables because static pages are prerendered (renamed in `.env.example` and the env schema).
+- `@pretoscop/db/migrator` is now a subpath export (bundlers resolve `new URL(…, import.meta.url)` as an asset); M12 branched from the M05 branch so the `events` migration follows `crawl_urls`.
+Verification: `make verify M=12` → lint (incl. a11y) / typecheck / 5 unit tests → production build → 8 Playwright tests (4 per device) → `OK`. Lighthouse (local, simulated throttling): mobile performance 98, accessibility 95, LCP 2.18 s; desktop 100/100; SEO 60 only because the prototype is `noindex` on purpose.
+Founder checklist: `scripts/verify/M12.checklist.md` (not yet run by a founder).
+Human tasks needed: none (Plausible hosting comes with M17/M18).
+Risks / open questions: the shell ships ≈150 kB of framework JS; product pages must keep client components small to stay within the JS budget (M16).
+Next module: M13 (after M07/M08).

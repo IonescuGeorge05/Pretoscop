@@ -72,7 +72,7 @@ function nextStep(kind: ContactKind | null, hadEmail: boolean): string {
 const SERVER_ERRORS: Record<string, string> = {
   validare: 'Unele câmpuri nu au fost completate corect. Verifică-le și trimite din nou.',
   limita: 'Ai trimis deja mai multe mesaje în ultima oră. Încearcă din nou mai târziu sau scrie-ne pe email.',
-  respins: 'Nu am putut trimite mesajul. Scrie-ne pe email, la adresa din dreapta.',
+  respins: 'Nu am putut trimite mesajul. Scrie-ne direct pe email, la adresa de pe această pagină.',
   server: 'Nu am putut salva mesajul din cauza unei erori la noi. Încearcă din nou sau scrie-ne pe email.',
 };
 
@@ -128,6 +128,7 @@ export function ContactForm({
   initialKind,
   sentReference,
   sentKind,
+  sentHadEmail = false,
   serverError,
   fallbackEmail,
 }: {
@@ -135,6 +136,8 @@ export function ContactForm({
   /** Set after a no-JavaScript submission (`?trimis=PS-…`). */
   sentReference?: string | null;
   sentKind?: ContactKind | null;
+  /** Whether that submission included an email address (`&email=1`). */
+  sentHadEmail?: boolean;
   /** `?eroare=` code after a no-JavaScript submission. */
   serverError?: string | null;
   fallbackEmail: string;
@@ -145,7 +148,7 @@ export function ContactForm({
   const [length, setLength] = useState(0);
   const [state, setState] = useState<SendState>(() =>
     sentReference
-      ? { status: 'sent', reference: sentReference, kind: sentKind ?? null, hadEmail: false }
+      ? { status: 'sent', reference: sentReference, kind: sentKind ?? null, hadEmail: sentHadEmail }
       : serverError && SERVER_ERRORS[serverError]
         ? { status: 'error', message: SERVER_ERRORS[serverError] }
         : { status: 'idle' },
@@ -170,11 +173,14 @@ export function ContactForm({
       goodFaith: data.get('goodFaith') === 'on',
       [HONEYPOT_FIELD]: String(data.get(HONEYPOT_FIELD) ?? ''),
     };
+    const showErrors = (found: ContactErrors) => {
+      setErrors(found);
+      const first = FIELD_ORDER.find((f) => found[f]);
+      if (first) document.getElementById(FIELD_ID[first])?.focus();
+    };
     const local = validateContact(payload);
     if (!local.ok && !local.spam) {
-      setErrors(local.errors);
-      const first = FIELD_ORDER.find((f) => local.errors[f]);
-      if (first) document.getElementById(FIELD_ID[first])?.focus();
+      showErrors(local.errors);
       return;
     }
     setErrors({});
@@ -193,8 +199,8 @@ export function ContactForm({
         return;
       }
       if (res.status === 400 && body?.errors && Object.keys(body.errors).length > 0) {
-        setErrors(body.errors);
         setState({ status: 'idle' });
+        showErrors(body.errors);
         return;
       }
       setState({ status: 'error', message: SERVER_ERRORS[res.status === 429 ? 'limita' : res.status >= 500 ? 'server' : 'respins'] ?? '' });

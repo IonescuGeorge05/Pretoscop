@@ -110,7 +110,7 @@ export default function BotPage() {
               </li>
               <li>O singură cerere odată către un site; nu deschidem conexiuni în paralel.</li>
               <li>Un buget zilnic de pagini pentru fiecare magazin, pe care îl putem reduce la cerere.</li>
-              <li>Colectarea în volum mare o facem de preferință noaptea, între {BOT_POLICY.offPeakWindow} (ora României).</li>
+              <li>Colectarea în volum mare o facem de preferință noaptea, în intervalul {BOT_POLICY.offPeakWindow} (ora României).</li>
               <li>Preferăm paginile de categorie, unde o singură cerere arată multe produse, în locul vizitării fiecărei pagini de produs.</li>
               <li>
                 După o eroare temporară a serverului reîncercăm de cel mult {BOT_POLICY.maxRetries} ori, la intervale tot mai mari; după trei eșecuri la rând
@@ -175,8 +175,8 @@ export default function BotPage() {
                 <li>pentru ofertele din marketplace, numele comercial al vânzătorului.</li>
               </ul>
               <p>
-                Nu preluăm imagini, descrieri de produs, texte ale recenziilor sau date personale. Imaginile pe care le afișăm provin doar din surse care permit
-                acest lucru, cum sunt feed-urile magazinelor.
+                Nu preluăm imagini, descrieri de produs, texte ale recenziilor, date de contact sau alte informații despre persoane. Imaginile pe care le afișăm
+                provin doar din surse care permit acest lucru, cum sunt feed-urile magazinelor.
               </p>
             </>
           ),

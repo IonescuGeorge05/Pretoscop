@@ -50,6 +50,7 @@ export default async function ContactPage({ searchParams }: { searchParams: Prom
             initialKind={initialKind}
             sentReference={sent}
             sentKind={readKindParam(params.tip)}
+            sentHadEmail={params.email === '1'}
             serverError={serverError}
             fallbackEmail={operator.email}
           />

@@ -25,7 +25,8 @@ export default function MerchantsPage() {
         <Callout icon={<Rss />}>
           <p>
             <strong>Pe scurt:</strong> ne trimiți adresa feed-ului (Google Merchant, compari.ro sau CSV), noi îl citim regulat și îți afișăm ofertele, cu link
-            direct către pagina produsului de pe site-ul tău. Listarea nu costă nimic.
+            direct către pagina produsului de pe site-ul tău. Listarea nu costă nimic. Pretoscop este acum în faza de prototip; ofertele vor fi vizibile public
+            de la lansare, plănuită la începutul anului 2027.
           </p>
           <p className="mt-3">
             <Link href="/contact?subiect=merchant" className={cn(buttonVariants({ size: 'md' }), 'font-semibold! text-white! no-underline!')}>
@@ -47,7 +48,7 @@ export default function MerchantsPage() {
                   feed-ului de produse.
                 </li>
                 <li>Verificăm feed-ul și potrivim produsele tale cu cele din catalogul nostru, după codul EAN, codul producătorului și titlu.</li>
-                <li>Ofertele tale apar pe paginile de produs, cu prețul total, disponibilitatea și momentul ultimei actualizări.</li>
+                <li>Ofertele tale vor apărea pe paginile de produs, cu prețul total, disponibilitatea și momentul ultimei actualizări.</li>
               </ol>
               <p>
                 Până la lansarea portalului pentru magazine, în care îți vei putea adăuga singur feed-ul și vedea statistici, configurăm noi feed-ul pentru tine.

@@ -45,9 +45,10 @@ export default function MethodologyPage() {
                 <li>Pentru unele magazine, prețurile pot fi colectate printr-un serviciu terț de colectare a datelor, cu aceleași reguli de politețe.</li>
               </ul>
               <p>
-                Indiferent de sursă, citim doar pagini publice de produs, de categorie și sitemap-uri. Nu accesăm pagini de cont, coș sau comandă, nu folosim
-                API-uri interne ale magazinelor și nu preluăm imagini, descrieri de produs sau date personale de pe site-urile magazinelor. Imaginile de produs
-                provin doar din surse care permit folosirea lor: feed-urile magazinelor și catalogul Open Icecat, cu mențiunea sursei.
+                Când citim site-ul unui magazin, indiferent de canal, accesăm doar pagini publice de produs, de categorie și sitemap-uri. Nu accesăm pagini de
+                cont, coș sau comandă, nu folosim API-uri interne ale magazinelor și nu preluăm imagini, descrieri de produs, recenzii sau date de contact. Despre
+                persoane păstrăm cel mult numele comercial al unui vânzător din marketplace, afișat lângă oferta lui. Imaginile de produs provin doar din surse
+                care permit folosirea lor: feed-urile magazinelor și catalogul Open Icecat, cu mențiunea sursei.
               </p>
               <p>
                 Un magazin ne poate cere oricând să oprim colectarea prețurilor de pe site-ul lui; o facem în cel mult o zi lucrătoare (

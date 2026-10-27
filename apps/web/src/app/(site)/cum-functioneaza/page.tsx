@@ -81,13 +81,18 @@ export default async function RankingPage() {
           id: 'pe-scurt',
           title: 'Pe scurt',
           content: (
-            <Callout icon={<ListOrdered />}>
-              <p>
-                Ordinea implicită a ofertelor este dată de <strong>prețul total</strong>: prețul produsului plus livrarea estimată, de la cel mai mic la cel mai
-                mare. Disponibilitatea și momentul ultimei verificări decid doar între ofertele cu același preț total. Nimeni nu poate plăti pentru a urca în
-                această listă.
+            <>
+              <Callout icon={<ListOrdered />}>
+                <p>
+                  Ordinea implicită a ofertelor este dată de <strong>prețul total</strong>: prețul produsului plus livrarea estimată, de la cel mai mic la cel mai
+                  mare. Disponibilitatea și momentul ultimei verificări decid doar între ofertele cu același preț total. Nimeni nu poate plăti pentru a urca în
+                  această listă.
+                </p>
+              </Callout>
+              <p className="text-sm text-muted">
+                Pretoscop este în faza de prototip: acestea sunt regulile după care vor fi ordonate ofertele pe paginile de produs de la lansarea publică.
               </p>
-            </Callout>
+            </>
           ),
         },
         {

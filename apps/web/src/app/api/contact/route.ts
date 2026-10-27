@@ -179,5 +179,5 @@ export async function POST(req: Request): Promise<Response> {
   // The row is the record: a failed email is logged and never loses the request.
   await notify(input, row.id, reference, row.createdAt).catch((err: unknown) => logError('contact.notify_failed', { contact_id: row.id, kind: input.kind }, err));
 
-  return reply(mode, 201, { ok: true, id: row.id, reference, kind: input.kind }, `/contact?trimis=${reference}&tip=${input.kind}`);
+  return reply(mode, 201, { ok: true, id: row.id, reference, kind: input.kind }, `/contact?trimis=${reference}&tip=${input.kind}${input.email ? '&email=1' : ''}`);
 }

@@ -5,7 +5,7 @@ import logging
 import time
 from collections import Counter
 from collections.abc import Iterable
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import httpx
 from sqlalchemy import select
@@ -76,6 +76,18 @@ def ingest_offers(session: Session, shop: Shop, scraped_offers: Iterable[Scraped
     return stats
 
 
+BLOCKED_RETRY_AFTER = timedelta(hours=24)
+
+
+def _recently_tried(shop: Shop) -> bool:
+    """Un magazin blocat e reîncercat o dată pe zi: blocarea poate fi trecătoare (robots.txt indisponibil, 5xx)."""
+    last = shop.last_scraped_at
+    if last is None:
+        return False
+    last = last if last.tzinfo else last.replace(tzinfo=UTC)
+    return datetime.now(UTC) - last < BLOCKED_RETRY_AFTER
+
+
 def run_shop(slug: str, skip_blocked: bool = False) -> dict:
     started = time.monotonic()
     summary: dict = {"event": "scrape_done", "shop": slug}
@@ -83,7 +95,7 @@ def run_shop(slug: str, skip_blocked: bool = False) -> dict:
         shop = session.scalar(select(Shop).where(Shop.slug == slug))
         if shop is None or (slug not in REGISTRY and not (shop.feed and shop.feed.get("url")) and not shop.crawl):
             summary["status"] = "no_scraper"
-        elif skip_blocked and shop.status == "blocked":
+        elif skip_blocked and shop.status == "blocked" and _recently_tried(shop):
             summary["status"] = "skipped_blocked"
         else:
             client = PoliteClient(timeout=180) if shop.feed else PoliteClient()  # feed-urile pot fi mari
@@ -103,8 +115,10 @@ def run_shop(slug: str, skip_blocked: bool = False) -> dict:
             finally:
                 client.close()
                 shop.last_scraped_at = datetime.now(UTC)
+                summary["duration_s"] = round(time.monotonic() - started, 1)
+                shop.last_run = {k: v for k, v in summary.items() if k not in ("event", "shop")}
                 session.commit()
-    summary["duration_s"] = round(time.monotonic() - started, 1)
+    summary.setdefault("duration_s", round(time.monotonic() - started, 1))
     log.info(json.dumps(summary, ensure_ascii=False))
     return summary
 

@@ -35,6 +35,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/#iphone-18-pro" className="hover:text-ink">
                 iPhone 18 Pro
               </Link>
+              <Link href="/reduceri" className="hover:text-ink">
+                Reduceri reale
+              </Link>
               <Link href="/despre" className="hover:text-ink">
                 Metodologie
               </Link>

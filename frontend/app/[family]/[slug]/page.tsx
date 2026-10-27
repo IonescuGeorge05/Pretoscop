@@ -7,6 +7,7 @@ import FakeDiscountAlert from "@/components/FakeDiscountAlert";
 import OffersSection from "@/components/OffersSection";
 import PriceChart from "@/components/PriceChart";
 import RecommendationCard from "@/components/RecommendationCard";
+import SavingsCard from "@/components/SavingsCard";
 import { NotFound, getHistory, getProduct, getProducts } from "@/lib/api";
 import { IS_STATIC } from "@/lib/static";
 import { formatLei, productHref, variantLabel, vsMsrp, withSource } from "@/lib/format";
@@ -100,6 +101,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
           msrpVerified={product.msrp_verified}
         />
         <OffersSection offers={product.offers} />
+        <SavingsCard offers={product.offers} refurbished={product.refurbished} secondhand={product.secondhand} />
       </div>
 
       <section className="mt-10 space-y-3">

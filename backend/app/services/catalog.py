@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from functools import lru_cache
+from statistics import median
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -82,9 +83,32 @@ def suspicious_price(offer: Offer, price) -> bool:
     return offer.condition != "new" and msrp is not None and price < msrp * Decimal(str(SUSPICIOUS_BELOW_MSRP))
 
 
+# o ofertă nouă de la un magazin peste aceste praguri e „neobișnuit de mare” (eroare, stoc de revânzător, speculă)
+OUTLIER_OVER_MSRP = Decimal("1.5")
+OUTLIER_OVER_PEERS = Decimal("1.3")
+
+
+def price_outliers(offers: list[Offer]) -> dict[int, str]:
+    """offer.id -> motiv, pentru ofertele noi, simple, vândute direct de magazin, cu preț aberant."""
+    direct = [o for o in offers if o.condition == "new" and not o.is_bundle and not is_marketplace(o) and o.price_points]
+    prices = {o.id: o.price_points[-1].price for o in direct}
+    peers = median(prices.values()) if len(prices) >= 3 else None
+    out: dict[int, str] = {}
+    for o in direct:
+        price, msrp = prices[o.id], o.product.msrp_ron
+        if msrp and price > msrp * OUTLIER_OVER_MSRP:
+            out[o.id] = f"cu {(price / msrp - 1) * 100:.0f}% peste prețul recomandat de producător"
+        elif peers and price > peers * OUTLIER_OVER_PEERS:
+            out[o.id] = f"cu {(price / peers - 1) * 100:.0f}% peste mediana celorlalte magazine"
+    return out
+
+
 def comparable(offers: list[Offer]) -> list[Offer]:
-    """Ofertele care intră în minimul pieței, grafic și recomandare: produs simplu, vândut de magazin."""
-    return [o for o in offers if not o.is_bundle and not is_marketplace(o)]
+    """Ofertele care intră în minimul pieței, grafic și recomandare: produs simplu, vândut de magazin, preț plauzibil.
+    Dacă toate ofertele directe sunt aberante (ex. piața reală la un moment dat), le păstrăm — altfel nu rămâne nimic."""
+    base = [o for o in offers if not o.is_bundle and not is_marketplace(o)]
+    outliers = price_outliers(offers)
+    return [o for o in base if o.id not in outliers] or base
 
 
 def _aware(dt: datetime) -> datetime:

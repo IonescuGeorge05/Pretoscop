@@ -75,3 +75,33 @@ def test_suspicious_second_hand_price_below_40pct_of_msrp():
     assert suspicious_price(used, Decimal("500"))  # „PS5 Pro 500 lei” real de pe Publi24
     assert not suspicious_price(used, Decimal("3000"))
     assert not suspicious_price(new, Decimal("500"))  # regula e doar pentru second hand / refurbished
+
+
+def _offer(oid, price, msrp="4579", seller=None, kind="retail"):
+    from app.models import Offer, PricePoint
+
+    shop = Shop(slug=f"s{oid}", name=f"S{oid}", base_url="https://x.ro", kind=kind)
+    prod = Product(slug="ps5-pro-2tb", family="PlayStation 5", name="PS5 Pro", edition="pro", storage_gb=2000,
+                   msrp_ron=Decimal(msrp))
+    o = Offer(id=oid, shop=shop, product=prod, condition="new", is_bundle=False, seller=seller)
+    o.price_points = [PricePoint(price=Decimal(price), in_stock=True)]
+    return o
+
+
+def test_price_outliers_by_msrp_and_by_peers():
+    from app.services.catalog import comparable, price_outliers
+
+    offers = [_offer(1, "4400"), _offer(2, "4500"), _offer(3, "4550"), _offer(4, "7999")]
+    out = price_outliers(offers)
+    assert set(out) == {4} and "peste prețul recomandat" in out[4]
+    assert [o.id for o in comparable(offers)] == [1, 2, 3]
+    # peste mediana celorlalte, chiar sub pragul MSRP
+    peers = [_offer(1, "4000"), _offer(2, "4100"), _offer(3, "4050"), _offer(4, "5500", msrp="4579")]
+    assert set(price_outliers(peers)) == {4}
+
+
+def test_all_outliers_are_kept_so_the_page_is_not_empty():
+    from app.services.catalog import comparable
+
+    offers = [_offer(1, "7999"), _offer(2, "8200")]
+    assert [o.id for o in comparable(offers)] == [1, 2]

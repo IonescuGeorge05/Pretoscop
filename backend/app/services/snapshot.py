@@ -2,7 +2,7 @@
 
     python -m app.services.snapshot --out /tmp/snapshot --source real
 
-Structura: products.json, product/<slug>.json, history/<slug>/<range>-<granularity>.json, meta.json.
+Structura: products.json, deals.json, product/<slug>.json, history/<slug>/<range>-<granularity>.json, meta.json.
 Rulează în containerul `api` (citește API-ul local); scriptul scripts/publish-pages.sh face restul.
 """
 
@@ -30,6 +30,7 @@ def export(out: Path, source: str) -> dict:
         return resp.json()
 
     products = save("products.json", "/api/products")
+    save("deals.json", "/api/deals")
     for p in products["products"]:
         save(f"product/{p['slug']}.json", f"/api/products/{p['slug']}")
         for r in RANGES:

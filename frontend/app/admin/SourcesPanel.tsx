@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import ShopsStatus from "./ShopsStatus";
+
 type Sources = { email_configured: boolean; email_user: string | null; search_configured: boolean };
 type Check = {
   verdict?: string;
@@ -71,6 +73,8 @@ export default function SourcesPanel({ token }: { token: string }) {
   return (
     <section className="mb-8 space-y-4">
       <h2 className="text-lg font-semibold">Surse automate</h2>
+
+      <ShopsStatus token={token} />
 
       <div className="rounded-xl border border-line bg-card p-4">
         <h3 className="font-semibold">Alerte OLX pe email</h3>

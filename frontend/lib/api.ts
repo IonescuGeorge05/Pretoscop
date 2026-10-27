@@ -1,5 +1,5 @@
 // Folosit doar din componente server. Mod normal: API-ul FastAPI. Mod static: fișierele din public/data.
-import type { History, ProductDetail, ProductList } from "./types";
+import type { Deals, History, ProductDetail, ProductList } from "./types";
 import { IS_STATIC } from "./static";
 
 const API = process.env.API_INTERNAL_URL ?? "http://localhost:8000";
@@ -36,6 +36,9 @@ export const getHistory = (slug: string, source?: string, range = "90d", granula
   IS_STATIC
     ? readSnapshot<History>(`history/${slug}/${range}-${granularity}.json`)
     : get<History>(`/api/products/${encodeURIComponent(slug)}/history`, { source, range, granularity });
+
+export const getDeals = (source?: string) =>
+  IS_STATIC ? readSnapshot<Deals>("deals.json") : get<Deals>("/api/deals", { source });
 
 export const getSnapshotMeta = () =>
   readSnapshot<{ generated_at: string; source: string }>("meta.json").catch(() => null);

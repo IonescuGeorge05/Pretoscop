@@ -40,6 +40,7 @@ export interface Offer {
   seller: string | null;
   is_marketplace: boolean;
   suspicious_price: boolean;
+  price_outlier?: string | null;
   condition: "new" | "refurbished" | "used";
   grade: string | null;
   location: string | null;
@@ -150,4 +151,22 @@ export interface Unmatched {
   in_stock: boolean | null;
   seller: string | null;
   scraped_at: string;
+}
+
+export interface Deal {
+  product: ProductBase & { family_slug: string };
+  offer: Offer;
+  reference_price: number;
+  real_drop_pct: number;
+  lowest_in_window: boolean;
+  claimed_discount_pct: number | null;
+}
+
+export interface Deals {
+  source: string;
+  is_demo: boolean;
+  window_days: number;
+  next_event: { slug: string; name: string; start: string; end: string; days_until: number } | null;
+  deals: Deal[];
+  fake: { product: ProductBase & { family_slug: string }; fake: FakeDiscount }[];
 }

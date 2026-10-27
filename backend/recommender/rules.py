@@ -190,6 +190,36 @@ def detect_fake_discount(
     )
 
 
+# ---------- reduceri reale ----------
+
+DEAL_WINDOW_DAYS = 30
+DEAL_MIN_DROP_PCT = 3.0
+DEAL_MIN_KNOWN_DAYS = 7  # sub atâtea zile de preț cunoscut, „referința” nu înseamnă nimic
+
+
+@dataclass
+class RealDrop:
+    reference_price: float  # mediana prețului din ultimele 30 de zile (fără azi)
+    drop_pct: float  # cât e prețul de azi sub referință
+    lowest_in_window: bool  # azi e cel mai mic preț din fereastră
+
+
+def real_drop(offer: OfferHistory, today: date, window: int = DEAL_WINDOW_DAYS) -> RealDrop | None:
+    """Reducerea reală a unei oferte: prețul de azi față de ce a cerut magazinul în ultima lună,
+    indiferent de prețul tăiat afișat. None dacă nu avem destul istoric sau prețul nu a scăzut."""
+    cur = point_at(offer.points, today)
+    if cur is None or not cur.in_stock:
+        return None
+    past = [p.price for i in range(1, window + 1) if (p := point_at(offer.points, today - timedelta(days=i)))]
+    if len(past) < DEAL_MIN_KNOWN_DAYS:
+        return None
+    ref = median(past)
+    drop = (1 - cur.price / ref) * 100
+    if drop < DEAL_MIN_DROP_PCT:
+        return None
+    return RealDrop(reference_price=round(ref, 2), drop_pct=round(drop, 1), lowest_in_window=cur.price <= min(past))
+
+
 # ---------- evenimente ----------
 
 

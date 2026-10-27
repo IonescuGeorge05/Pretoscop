@@ -180,3 +180,19 @@ def test_new_product_with_shown_discount_is_buy_now_not_trend():
     pts = [HistoryPoint(TODAY - timedelta(days=40), 8000, 8000), HistoryPoint(TODAY - timedelta(days=3), 7440, 7440, 8000)]
     rec = recommend([OfferHistory(1, "Altex", pts)], TODAY, NO_EVENTS)
     assert rec.verdict == "BUY_NOW"
+
+
+def test_real_drop_against_last_month_median():
+    from recommender.rules import real_drop
+
+    today = date(2026, 11, 20)
+    steady = OfferHistory(1, "A", [HistoryPoint(today - timedelta(days=40), 3000, 3000),
+                                   HistoryPoint(today, 2700, 2700, old_price=3500)])
+    d = real_drop(steady, today)
+    assert d.reference_price == 3000 and d.drop_pct == 10.0 and d.lowest_in_window
+    # prețul tăiat afișat nu contează; fără scădere față de lună -> nimic
+    flat = OfferHistory(2, "B", [HistoryPoint(today - timedelta(days=40), 3000, 3000, old_price=4000)])
+    assert real_drop(flat, today) is None
+    # istoric prea scurt
+    young = OfferHistory(3, "C", [HistoryPoint(today - timedelta(days=3), 3000, 3000), HistoryPoint(today, 2500, 2500)])
+    assert real_drop(young, today) is None

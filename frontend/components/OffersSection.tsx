@@ -89,6 +89,14 @@ function OfferDetails({ o, isBest }: { o: Offer; isBest: boolean }) {
           ⚠ Preț suspect de mic
         </div>
       )}
+      {o.price_outlier && (
+        <div
+          className="mt-0.5 inline-block rounded bg-orange-100 px-1.5 py-0.5 text-[11px] font-medium text-orange-900 dark:bg-orange-950 dark:text-orange-200"
+          title={`Prețul e ${o.price_outlier}. Nu intră în minimul pieței și în recomandare.`}
+        >
+          Preț neobișnuit de mare
+        </div>
+      )}
       {o.grade && <div className="text-xs font-normal text-muted">Stare estetică: <strong className="text-ink">{o.grade}</strong></div>}
       {o.condition === "used" && (
         <div className="text-xs font-normal text-muted">

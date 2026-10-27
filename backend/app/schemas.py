@@ -43,6 +43,7 @@ class OfferOut(BaseModel):
     seller: str | None  # vânzătorul efectiv (marketplace / persoană fizică)
     is_marketplace: bool  # vândut de un terț -> nu intră în minimul pieței și în recomandare
     suspicious_price: bool  # second hand mult sub MSRP: posibil țeapă / defect / greșeală
+    price_outlier: str | None = None  # ofertă nouă cu preț aberant (motivul); exclusă din minimul pieței
     condition: str  # new | refurbished | used
     grade: str | None  # gradul estetic (refurbished)
     location: str | None  # second hand: orașul din anunț
@@ -82,6 +83,37 @@ class ProductBase(BaseModel):
     msrp_ron: float | None
     msrp_verified: bool
     msrp_note: str | None
+
+
+class NextEventOut(BaseModel):
+    slug: str
+    name: str
+    start: date
+    end: date
+    days_until: int  # 0 = în desfășurare
+
+
+class DealOut(BaseModel):
+    product: "ProductWithFamily"
+    offer: "OfferOut"
+    reference_price: float
+    real_drop_pct: float
+    lowest_in_window: bool
+    claimed_discount_pct: float | None  # reducerea afișată de magazin (preț tăiat), dacă există
+
+
+class FakeDealOut(BaseModel):
+    product: "ProductWithFamily"
+    fake: "FakeDiscountOut"
+
+
+class DealsOut(BaseModel):
+    source: str
+    is_demo: bool
+    window_days: int
+    next_event: NextEventOut | None
+    deals: list[DealOut]
+    fake: list[FakeDealOut]
 
 
 class ProductWithFamily(ProductBase):
@@ -205,3 +237,7 @@ class ImportResult(BaseModel):
 class AssignIn(BaseModel):
     product_slug: str
     is_bundle: bool = False
+
+
+for _m in (DealOut, FakeDealOut, DealsOut):
+    _m.model_rebuild()

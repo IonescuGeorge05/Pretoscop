@@ -7,7 +7,7 @@ from typing import Literal
 import httpx
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query, Request
 from fastapi.responses import RedirectResponse
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app import schemas
@@ -24,7 +24,7 @@ from app.services.feed_import import import_feed
 from app.services.shop_check import check_shop
 from app.services.scrape_runner import ingest_offers, run_shop
 from recommender.calendar import events_between
-from recommender.rules import FakeDiscount, Recommendation, point_at
+from recommender.rules import DEAL_WINDOW_DAYS, FakeDiscount, Recommendation, days_until, point_at, real_drop, upcoming_events
 from scrapers.olx import CATEGORY_URL as OLX_CATEGORY_URL
 from scrapers.olx import parse_olx_listing
 from scrapers.registry import REGISTRY
@@ -39,7 +39,7 @@ def shop_out(offer: Offer) -> schemas.ShopOut:
     return schemas.ShopOut(slug=s.slug, name=s.name, status=s.status, shipping_verified=s.shipping_verified)
 
 
-def offer_out(view: catalog.OfferView, fake: FakeDiscount | None = None) -> schemas.OfferOut:
+def offer_out(view: catalog.OfferView, fake: FakeDiscount | None = None, outlier: str | None = None) -> schemas.OfferOut:
     o, p = view.offer, view.point
     return schemas.OfferOut(
         id=o.id,
@@ -65,6 +65,7 @@ def offer_out(view: catalog.OfferView, fake: FakeDiscount | None = None) -> sche
         last_seen_at=o.last_seen_at,
         price_since=p.ts,
         fake_discount=schemas.FakeDiscountOut(**asdict(fake)) if fake else None,
+        price_outlier=outlier,
     )
 
 
@@ -144,6 +145,7 @@ def product_detail(slug: str, source: str | None = SourceParam, session: Session
     offers = catalog.load_offers(session, p.id, src)
     rec = catalog.product_recommendation(p, offers)
     fakes = {f.offer_id: f for f in rec.fake_discounts}
+    outliers = catalog.price_outliers(offers)
     views = catalog.current_views(offers)
     used = catalog.current_views(catalog.load_offers(session, p.id, src, used=True))
     return schemas.ProductDetail(
@@ -151,11 +153,48 @@ def product_detail(slug: str, source: str | None = SourceParam, session: Session
         source=src,
         is_demo=src == "mock",
         available_sources=catalog.available_sources(session, p.id),
-        offers=[offer_out(v, fakes.get(v.offer.id)) for v in views if not v.offer.is_bundle],
+        offers=[offer_out(v, fakes.get(v.offer.id), outliers.get(v.offer.id)) for v in views if not v.offer.is_bundle],
         bundles=[offer_out(v) for v in views if v.offer.is_bundle],
         refurbished=[offer_out(v) for v in used if v.offer.condition == "refurbished"],
         secondhand=[offer_out(v) for v in used if v.offer.condition != "refurbished"],
         recommendation=recommendation_out(rec),
+    )
+
+
+@router.get("/deals", response_model=schemas.DealsOut)
+def deals(source: str | None = SourceParam, session: Session = Depends(get_session)):
+    """Reduceri reale: oferte (noi, de la magazin) al căror preț de azi e sub mediana ultimelor 30 de zile,
+    plus reducerile false (preț tăiat umflat) — separat, ca avertisment."""
+    src = catalog.resolve_source(source)
+    today = date.today()
+    found, fake = [], []
+    for p in session.scalars(select(Product).order_by(Product.id)):
+        base = schemas.ProductWithFamily(**product_base(p))
+        offers = catalog.load_offers(session, p.id, src)
+        views = {v.offer.id: v for v in catalog.current_views(offers)}
+        rec = catalog.product_recommendation(p, offers, today)
+        fakes = {f.offer_id: f for f in rec.fake_discounts}
+        for o in catalog.comparable(offers):
+            view = views.get(o.id)
+            if view is None or o.id in fakes or (drop := real_drop(catalog.to_history(o), today)) is None:
+                continue
+            old = view.point.old_price
+            claimed = round((1 - float(view.point.price) / float(old)) * 100, 1) if old and old > view.point.price else None
+            found.append(schemas.DealOut(
+                product=base, offer=offer_out(view), reference_price=drop.reference_price,
+                real_drop_pct=drop.drop_pct, lowest_in_window=drop.lowest_in_window, claimed_discount_pct=claimed,
+            ))
+        fake += [schemas.FakeDealOut(product=base, fake=schemas.FakeDiscountOut(**asdict(f))) for f in rec.fake_discounts]
+    # evenimentul mare următor (sau cel în desfășurare)
+    nxt = next(iter(upcoming_events(catalog.calendar(), today)), None)
+    return schemas.DealsOut(
+        source=src,
+        is_demo=src == "mock",
+        window_days=DEAL_WINDOW_DAYS,
+        next_event=schemas.NextEventOut(slug=nxt.slug, name=nxt.name, start=nxt.start, end=nxt.end, days_until=days_until(nxt, today))
+        if nxt else None,
+        deals=sorted(found, key=lambda d: -d.real_drop_pct),
+        fake=fake,
     )
 
 
@@ -438,8 +477,41 @@ async def admin_import_feed(request: Request, shop: str, vat_included: bool = Tr
 
 @router.get("/admin/shops", response_model=list[dict], dependencies=[Depends(require_admin)])
 def admin_shops(session: Session = Depends(get_session)):
+    """Starea fiecărei surse: cum o citim, ultima rulare, câte oferte active și câte anunțuri așteaptă asociere."""
+    fresh_after = datetime.now(UTC) - catalog.STALE_AFTER
+    active = dict(
+        session.execute(
+            select(Offer.shop_id, func.count())
+            .where(Offer.source == "real", Offer.last_seen_at >= fresh_after)
+            .group_by(Offer.shop_id)
+        ).all()
+    )
+    pending = dict(session.execute(select(UnmatchedListing.shop_id, func.count()).group_by(UnmatchedListing.shop_id)).all())
+
+    def method(s: Shop) -> str:
+        if s.feed and s.feed.get("url"):
+            return "feed"
+        if s.crawl:
+            return "sitemap"
+        if s.slug == "olx":
+            return "email" if settings.imap_user else "import manual"
+        return "scraper dedicat" if s.slug in REGISTRY else "—"
+
     return [
-        {"slug": s.slug, "name": s.name, "kind": s.kind, "status": s.status, "has_feed": bool(s.feed and s.feed.get("url"))}
+        {
+            "slug": s.slug,
+            "name": s.name,
+            "kind": s.kind,
+            # OLX blochează citirea directă, dar alertele pe email funcționează: sursa e activă
+            "status": "active" if method(s) == "email" else s.status,
+            "status_reason": None if method(s) == "email" else s.status_reason,
+            "method": method(s),
+            "has_feed": bool(s.feed and s.feed.get("url")),
+            "last_scraped_at": s.last_scraped_at,
+            "last_run": s.last_run,
+            "active_offers": active.get(s.id, 0),
+            "unmatched": pending.get(s.id, 0),
+        }
         for s in session.scalars(select(Shop).order_by(Shop.id))
     ]
 

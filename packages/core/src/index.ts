@@ -3,3 +3,5 @@ export type { RawOffer } from './raw-offer';
 export * from './verdict';
 export * from './discount';
 export * from './anomaly';
+export * from './taxonomy';
+export * from './matching';

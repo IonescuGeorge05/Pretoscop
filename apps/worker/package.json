@@ -13,7 +13,8 @@
     "run:source": "tsx src/cli/run-source.ts",
     "replay": "tsx src/cli/replay.ts",
     "backup": "tsx src/cli/backup.ts",
-    "stats:show": "tsx src/cli/stats-show.ts"
+    "stats:show": "tsx src/cli/stats-show.ts",
+    "match:run": "tsx src/cli/match-run.ts"
   },
   "devDependencies": {
     "pino-pretty": "^13.2.0"

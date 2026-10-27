@@ -162,6 +162,10 @@ export async function recordObservation(
           WHEN EXCLUDED.identity_hash IS NOT NULL
            AND offers.identity_hash IS DISTINCT FROM EXCLUDED.identity_hash THEN 'pending'
           ELSE offers.match_status END,
+        matched_at = CASE
+          WHEN EXCLUDED.identity_hash IS NOT NULL
+           AND offers.identity_hash IS DISTINCT FROM EXCLUDED.identity_hash THEN NULL
+          ELSE offers.matched_at END,
         last_seen_at = EXCLUDED.last_seen_at,
         last_checked_at = EXCLUDED.last_checked_at,
         price_changed_at = CASE

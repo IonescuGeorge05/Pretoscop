@@ -64,6 +64,13 @@
       "when": 1793132807124,
       "tag": "0008_contact",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1793133062512,
+      "tag": "0009_offer_category",
+      "breakpoints": true
     }
   ]
 }

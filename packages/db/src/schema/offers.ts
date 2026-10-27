@@ -59,6 +59,8 @@ export const offers = pgTable(
     gtinRaw: text('gtin_raw'),
     gtin14: text('gtin14'),
     categoryRaw: text('category_raw'),
+    /** Launch-taxonomy leaf (core `categorize`), set by matching. */
+    categorySlug: text('category_slug'),
     attributes: jsonb('attributes').$type<Record<string, unknown>>().notNull().default({}),
     price: money('price').notNull(),
     oldPrice: money('old_price'),
@@ -102,6 +104,7 @@ export const offers = pgTable(
     index('offers_gtin14_idx').on(t.gtin14),
     index('offers_mpn_norm_idx').on(t.mpnNorm),
     index('offers_match_status_idx').on(t.matchStatus),
+    index('offers_category_slug_idx').on(t.categorySlug),
     index('offers_last_checked_idx').on(t.lastCheckedAt),
     check('offers_source_tier_ck', sql`${t.sourceTier} between 1 and 4`),
     check(

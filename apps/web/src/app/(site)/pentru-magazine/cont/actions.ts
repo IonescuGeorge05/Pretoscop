@@ -5,7 +5,7 @@ import { normalizeShopDomain, validateCui } from '@pretoscop/core';
 import { auditLog, eq, merchants, MERCHANT_FEED_PARSERS, shopSources, shops, sql, type MerchantFeedFormat } from '@pretoscop/db';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { db } from '@/lib/db';
+import { db, serverEnv } from '@/lib/db';
 import {
   CHECK_COOLDOWN_SECONDS,
   emailVerifies,
@@ -109,7 +109,10 @@ export async function saveFeedUrl(form: FormData): Promise<void> {
   } catch {
     back({ eroare: 'url' }, 'pas-3');
   }
-  if (!['http:', 'https:'].includes(url.protocol) || !normalizeShopDomain(url.hostname) || url.username || url.password || (url.port && !['80', '443'].includes(url.port))) {
+  // Development and e2e only (refused in staging/production): local fixture feed servers on IPs and ports.
+  const local = serverEnv().FETCH_ALLOW_PRIVATE_HOSTS;
+  const publicHost = Boolean(normalizeShopDomain(url.hostname)) && (!url.port || ['80', '443'].includes(url.port));
+  if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || !(publicHost || local)) {
     back({ eroare: 'url' }, 'pas-3');
   }
   const formatRaw = String(form.get('feedFormat') ?? 'auto');

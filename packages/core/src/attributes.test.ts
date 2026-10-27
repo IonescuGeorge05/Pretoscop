@@ -63,6 +63,63 @@ describe('storage, RAM and VRAM', () => {
     expect(attrs('Telefon mobil XYZ 8GB').ramGb).toBeUndefined();
     expect(attrs('Hard disk 2TB, 256MB cache').storageGb).toBe(2048);
   });
+
+  // Live eMAG run, 2026-10-27
+  it('gives a label word between two capacities to the first one', () => {
+    expect(attrs('Mini Laptop 8", Intel N95, 12GB RAM 512GB SSD, Touchscreen HD')).toMatchObject({
+      ramGb: 12,
+      storageGb: 512,
+    });
+    expect(attrs('Smartphone 4G, 6.58 inch, 3GB RAM 16GB ROM, Android 10')).toMatchObject({
+      ramGb: 3,
+      storageGb: 16,
+    });
+    expect(attrs('Laptop XYZ, RAM 16GB SSD 512GB, 15.6"')).toMatchObject({
+      ramGb: 16,
+      storageGb: 512,
+    });
+  });
+
+  it('ignores expandable and optional capacities', () => {
+    expect(
+      attrs('Gaming Notebook 16 GB RAM 512 GB 1 TB SSD expansiune Core i3 Laptop Notebook 16 inch'),
+    ).toMatchObject({ ramGb: 16, storageGb: 512 });
+    expect(attrs('Laptop 14 inch Win 11, 256GB SSD Expansion SSD 1TB, 8GB').storageGb).toBe(256);
+    expect(
+      attrs('Consola de jocuri portabila X9, Bedee, memorie extensibila pana la 128GB, ABS')
+        .storageGb,
+    ).toBeUndefined();
+    expect(attrs('Telefon mobil XYZ, 4GB RAM, 64GB, card microSD pana la 1TB').storageGb).toBe(64);
+  });
+
+  it('reads "128G", "SSD512" and "10,16GB" as written by sellers', () => {
+    expect(attrs('Consola Retro, BYONDSELF®, 128G, 4K, 20000 de Jocuri').storageGb).toBe(128);
+    expect(attrs('Lenovo LOQ 15ARP9, 15.6", 16GB, GeForce RTX 4050, SSD512, 144Hz')).toMatchObject({
+      ramGb: 16,
+      storageGb: 512,
+      screenInches: 15.6,
+    });
+    expect(attrs('Laptop Blackview Acebook 10,16GB DDR4 512GB SSD+2TB TF')).toMatchObject({
+      ramGb: 16,
+      storageGb: 512,
+    });
+    expect(attrs('Telefon mobil Deemi, C25 Ultra, 6.8inch, 8G RAM, 128GB').ramGb).toBe(8);
+  });
+
+  it('reads bare "memorie" as RAM on computers and as storage elsewhere', () => {
+    expect(attrs('Consola Retro Portabila METISTA® X20, Ecran IPS 7 inch, Memorie 32GB')).toEqual(
+      expect.objectContaining({ storageGb: 32 }),
+    );
+    expect(attrs('Consola Retro Portabila METISTA® X20, Memorie 32GB').ramGb).toBeUndefined();
+    expect(attrs('Laptop XYZ 15.6", Memorie 16GB, SSD 512GB')).toMatchObject({
+      ramGb: 16,
+      storageGb: 512,
+    });
+    const r36s = attrs(
+      'Consola retro portabila R36S, Bedee, 1GB DDR3L RAM, Doua carduri 32GB+128G, ecran 3.5" 640x480,128GB memorie,21000+ jocuri',
+    );
+    expect(r36s).toMatchObject({ ramGb: 1, storageGb: 128 });
+  });
 });
 
 describe('screen size', () => {
@@ -89,6 +146,18 @@ describe('screen size', () => {
     expect(attrs('Hard Disk extern WD Elements 2TB, 2.5 inch').screenInches).toBeUndefined();
     expect(attrs('Laptop 2 in 1 HP Envy x360').screenInches).toBeUndefined();
     expect(attrs('Comoda TV 160 cm').screenInches).toBeUndefined();
+  });
+
+  it('reads a single quote and "-inch" as inch marks', () => {
+    expect(
+      attrs("Laptop ASUS ExpertBook B1 B1503CVA, Intel Core 5 120U, 15.6', FHD, 16GB RAM")
+        .screenInches,
+    ).toBe(15.6);
+    expect(attrs('Telefon mobil iHunt Primo 4G, Dual SIM, Ecran 2.4-inch').screenInches).toBe(2.4);
+    expect(attrs('Telefon mobil Oukitel WP200 Pro, 6.7-inch AMOLED 120Hz').screenInches).toBe(6.7);
+    expect(
+      attrs("Consola de jocuri retro din caramizi, anii '80-'90").screenInches,
+    ).toBeUndefined();
   });
 });
 
@@ -162,6 +231,28 @@ describe('colour', () => {
       expect(attrs(title).color, title).toBeUndefined();
     }
     expect(attrs('Tastatura Razer BlackWidow V4, Green Switch, RGB, Negru').color).toBe('black');
+  });
+
+  it('treats "transparent" as a finish next to a colour', () => {
+    expect(attrs('Consola retro portabila R36S 64GB, 3200 mAh, negru transparent').color).toBe(
+      'black',
+    );
+    expect(attrs('Consola jocuri retro portabila, Yulinland®, Transparent negru').color).toBe(
+      'black',
+    );
+    expect(attrs('Miyoo Mini Plus Consola, culoare mov transparent, ecran IPS').color).toBe(
+      'purple',
+    );
+    expect(attrs('Husa silicon iPhone 17, Transparent').color).toBe('transparent');
+  });
+
+  it('takes the first of colours listed in a row', () => {
+    expect(
+      attrs('Set 2 Controllers wireless, PS4, cu vibratii, negru, rosu HAPPY JOKER®').color,
+    ).toBe('black');
+    expect(attrs('Consola de jocuri portabila, 2000 jocuri, 4.3 inch, Albastru/Rosu').color).toBe(
+      'blue',
+    );
   });
 });
 

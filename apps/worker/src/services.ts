@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import type { Env } from '@pretoscop/config/env';
 import type { Logger } from '@pretoscop/config/logger';
 import { normalizeOffer } from '@pretoscop/core';
@@ -12,6 +11,7 @@ import { PgRequestLogSink } from './fetch/request-log';
 import type { Services } from './jobs/types';
 import { createOpsAlert } from './ops/alert';
 import { createRevalidator } from './ops/revalidate';
+import { offerIdentity } from './recorder/identity';
 import type { NormalizeFn } from './recorder/types';
 
 /**
@@ -31,12 +31,7 @@ export function createNormalize(eurRonRate: () => number | null): NormalizeFn {
       hash: contentHash,
     });
     if (!n.ok) return { rejectReason: n.rejects.join(', ') || 'rejected' };
-    const gtin14 = n.gtinQuality === 'valid' ? n.gtin14 : null;
-    // Ambiguous or component brands must not become hard matching constraints (M06 report).
-    const brandName = n.brandName && (n.brandKnown || (n.brandConfidence ?? 0) >= 0.7) ? n.brandName : null;
-    const identityHash = createHash('sha256')
-      .update([n.titleMatch, gtin14 ?? '', n.mpnNorm ?? '', brandName ?? ''].join('|'))
-      .digest('hex');
+    const { gtin14, brandName, identityHash } = offerIdentity(n);
     return {
       observation: {
         shopId: ctx.shop.id,

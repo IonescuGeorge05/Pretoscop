@@ -105,6 +105,15 @@ function OfferDetails({ o, isBest }: { o: Offer; isBest: boolean }) {
           Preț neobișnuit de mare
         </div>
       )}
+      {(o.variants ?? 1) > 1 && (
+        <div className="text-xs font-normal text-muted" title="Magazinul are pagini separate pe culori; arătăm cel mai bun preț.">
+          {o.colors?.length ? `Culori: ${o.colors.join(", ")}` : `${o.variants} variante`}
+          {o.colors && o.colors.length < (o.variants ?? 1) ? ` · ${o.variants} pagini` : ""}
+        </div>
+      )}
+      {(o.variants ?? 1) <= 1 && o.colors?.length === 1 && o.condition !== "used" && (
+        <div className="text-xs font-normal text-muted">Culoare: {o.colors[0]}</div>
+      )}
       {o.grade && <div className="text-xs font-normal text-muted">Stare estetică: <strong className="text-ink">{o.grade}</strong></div>}
       {o.condition === "used" && (
         <div className="text-xs font-normal text-muted">

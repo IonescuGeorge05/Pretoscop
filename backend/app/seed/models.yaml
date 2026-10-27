@@ -3,7 +3,7 @@
 # model_code: prefix verificat la nivel de generație; "x" = cifră necunoscută (de verificat per regiune).
 # msrp_ron: prețul recomandat Sony pentru Europa (EUR), în vigoare din 2 aprilie 2026
 #           (https://blog.playstation.com/2026/03/27/new-price-changes-for-ps5-ps5-pro-and-playstation-portal-remote-player/),
-#           convertit la ~5,09 lei/€ și rotunjit la x9. Sony nu publică un preț separat în lei -> rămâne „estimat”.
+#           convertit cu cursul EUR_RON din app/seed/load.py și rotunjit la x9. Sony nu publică un preț separat în lei -> rămâne „estimat”.
 #           Modelele originale (CFI-1xxx) nu mai sunt produse: folosim MSRP-ul ediției echivalente actuale.
 - slug: ps5-disc-825gb
   name: PlayStation 5 Standard (cu unitate disc), 825 GB
@@ -13,9 +13,9 @@
   model_code: CFI-1xxx
   ean: null
   image_url: null
-  msrp_ron: 3309
+  msrp_eur: 649.99  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
-  msrp_note: "649,99 € x 5,09 lei/€ (preț UE PS5 cu disc din 02.04.2026; modelul original nu mai e produs, se folosește ediția actuală)"
+  msrp_note: "preț UE PS5 cu disc din 02.04.2026; modelul original nu mai e produs, se folosește ediția actuală"
 
 - slug: ps5-digital-825gb
   name: PlayStation 5 Digital Edition, 825 GB
@@ -25,9 +25,9 @@
   model_code: CFI-1xxx
   ean: null
   image_url: null
-  msrp_ron: 3049
+  msrp_eur: 599.99  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
-  msrp_note: "599,99 € x 5,09 lei/€ (preț UE PS5 Digital din 02.04.2026; modelul original nu mai e produs, se folosește ediția actuală)"
+  msrp_note: "preț UE PS5 Digital din 02.04.2026; modelul original nu mai e produs, se folosește ediția actuală"
 
 - slug: ps5-slim-disc-1tb
   name: PlayStation 5 Slim cu unitate disc, 1 TB
@@ -37,9 +37,9 @@
   model_code: CFI-2xxx
   ean: null
   image_url: null
-  msrp_ron: 3309
+  msrp_eur: 649.99  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
-  msrp_note: "649,99 € x 5,09 lei/€ (preț UE PS5 cu disc din 02.04.2026)"
+  msrp_note: "preț UE PS5 cu disc din 02.04.2026"
 
 - slug: ps5-slim-digital-1tb
   name: PlayStation 5 Slim Digital Edition, 1 TB
@@ -49,9 +49,9 @@
   model_code: CFI-2xxx
   ean: null
   image_url: null
-  msrp_ron: 3049
+  msrp_eur: 599.99  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
-  msrp_note: "599,99 € x 5,09 lei/€ (preț UE PS5 Digital din 02.04.2026; în UE varianta 1 TB a fost înlocuită din 09.2025 de cea de 825 GB, la același preț)"
+  msrp_note: "preț UE PS5 Digital din 02.04.2026; în UE varianta 1 TB a fost înlocuită din 09.2025 de cea de 825 GB, la același preț"
 
 # Slim Digital cu șasiu E (2025): 825 GB în loc de 1 TB, ca să țină prețul; doar ediția digitală (Slim cu disc rămâne 1 TB).
 # Cod de pe cutie raportat de presă (billbil-kun, mydealz): CFI-2116 — neconfirmat de Sony, de aceea prefixul.
@@ -63,9 +63,9 @@
   model_code: CFI-21xx
   ean: null
   image_url: null
-  msrp_ron: 3049
+  msrp_eur: 599.99  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
-  msrp_note: "599,99 € x 5,09 lei/€ (preț UE PS5 Digital din 02.04.2026; în UE e varianta Digital vândută acum)"
+  msrp_note: "preț UE PS5 Digital din 02.04.2026; în UE e varianta Digital vândută acum"
 
 - slug: ps5-pro-2tb
   name: PlayStation 5 Pro, 2 TB (fără unitate disc)
@@ -75,12 +75,12 @@
   model_code: CFI-7xxx
   ean: null
   image_url: null
-  msrp_ron: 4579
+  msrp_eur: 899.99  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
-  msrp_note: "899,99 € x 5,09 lei/€ (preț UE PS5 Pro din 02.04.2026)"
+  msrp_note: "preț UE PS5 Pro din 02.04.2026"
 
 # ---------- iPhone 18 Pro / Pro Max (lansat 18.09.2026). Culorile nu sunt produse separate.
-# msrp_ron: prețul Apple din zona euro (Franța/Olanda) x 5,09 lei/€; Apple nu are magazin oficial în România.
+# msrp_ron: prețul Apple din zona euro (Franța/Olanda) x EUR_RON; Apple nu are magazin oficial în România.
 - slug: iphone-18-pro-256gb
   name: Apple iPhone 18 Pro, 256 GB
   family: iPhone 18 Pro
@@ -89,9 +89,9 @@
   model_code: null
   ean: null
   image_url: null
-  msrp_ron: 7529
+  msrp_eur: 1479  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
-  msrp_note: "1479 € x 5,09 lei/€ (preț Apple Franța, lansare 18.09.2026)"
+  msrp_note: "preț Apple Franța, lansare 18.09.2026"
 
 - slug: iphone-18-pro-512gb
   name: Apple iPhone 18 Pro, 512 GB
@@ -101,9 +101,9 @@
   model_code: null
   ean: null
   image_url: null
-  msrp_ron: 8799
+  msrp_eur: 1729  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
-  msrp_note: "1729 € x 5,09 lei/€ (preț Apple Franța, lansare 18.09.2026)"
+  msrp_note: "preț Apple Franța, lansare 18.09.2026"
 
 - slug: iphone-18-pro-1tb
   name: Apple iPhone 18 Pro, 1 TB
@@ -113,9 +113,9 @@
   model_code: null
   ean: null
   image_url: null
-  msrp_ron: 11349
+  msrp_eur: 2229  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
-  msrp_note: "2229 € x 5,09 lei/€ (preț Apple Franța, lansare 18.09.2026)"
+  msrp_note: "preț Apple Franța, lansare 18.09.2026"
 
 - slug: iphone-18-pro-2tb
   name: Apple iPhone 18 Pro, 2 TB
@@ -125,9 +125,9 @@
   model_code: null
   ean: null
   image_url: null
-  msrp_ron: 15159
+  msrp_eur: 2979  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
-  msrp_note: "2979 € x 5,09 lei/€ (preț Apple Franța, lansare 18.09.2026)"
+  msrp_note: "preț Apple Franța, lansare 18.09.2026"
 
 - slug: iphone-18-pro-max-256gb
   name: Apple iPhone 18 Pro Max, 256 GB
@@ -137,9 +137,9 @@
   model_code: null
   ean: null
   image_url: null
-  msrp_ron: 8289
+  msrp_eur: 1629  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
-  msrp_note: "1629 € x 5,09 lei/€ (preț Apple Franța, lansare 18.09.2026)"
+  msrp_note: "preț Apple Franța, lansare 18.09.2026"
 
 - slug: iphone-18-pro-max-512gb
   name: Apple iPhone 18 Pro Max, 512 GB
@@ -149,9 +149,9 @@
   model_code: null
   ean: null
   image_url: null
-  msrp_ron: 9559
+  msrp_eur: 1879  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
-  msrp_note: "1879 € x 5,09 lei/€ (preț Apple Franța, lansare 18.09.2026)"
+  msrp_note: "preț Apple Franța, lansare 18.09.2026"
 
 - slug: iphone-18-pro-max-1tb
   name: Apple iPhone 18 Pro Max, 1 TB
@@ -161,9 +161,9 @@
   model_code: null
   ean: null
   image_url: null
-  msrp_ron: 12109
+  msrp_eur: 2379  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
-  msrp_note: "2379 € x 5,09 lei/€ (preț Apple Franța, lansare 18.09.2026)"
+  msrp_note: "preț Apple Franța, lansare 18.09.2026"
 
 - slug: iphone-18-pro-max-2tb
   name: Apple iPhone 18 Pro Max, 2 TB
@@ -173,6 +173,6 @@
   model_code: null
   ean: null
   image_url: null
-  msrp_ron: 15929
+  msrp_eur: 3129  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
-  msrp_note: "3129 € x 5,09 lei/€ (preț Apple Franța, lansare 18.09.2026)"
+  msrp_note: "preț Apple Franța, lansare 18.09.2026"

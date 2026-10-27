@@ -52,5 +52,7 @@ class EmagScraper(BaseScraper):
         offer = super().parse_product(url, html)
         if offer is not None:
             offer.old_price = old_price_from_page(html, offer.price) or offer.old_price
-            offer.match_hints = edition_hint(offer.raw.get("jsonld"))
+            # „Tip editie: Standard” poate însemna și „nu ediție limitată” (ex. la Digital 825 GB) -> doar dacă titlul tace
+            if not re.search(r"(?i)\b(digital|disc|disk|standard)\b", offer.title):
+                offer.match_hints = edition_hint(offer.raw.get("jsonld"))
         return offer

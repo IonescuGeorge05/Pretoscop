@@ -215,7 +215,7 @@ Scraperul generic (`scrapers/sitemap_scraper.py`):
 | PlayStation 5 | 5 modele (Standard, Digital, Slim Disc, Slim Digital, Pro) | `/ps5/<slug>` |
 | iPhone 18 Pro | Pro și Pro Max × 256 GB / 512 GB / 1 TB / 2 TB (8 produse; culorile nu sunt produse separate) | `/iphone-18-pro/<slug>` |
 
-MSRP-ul iPhone vine din prețurile Apple din zona euro (Franța: Pro de la 1 479 €, Pro Max de la 1 629 €) × 5,09 lei/€. Apple nu are magazin oficial în România, deci valorile rămân „estimat”.
+MSRP-ul iPhone vine din prețurile Apple din zona euro (Franța: Pro de la 1 479 €, Pro Max de la 1 629 €) × cursul `EUR_RON` (5,35 lei/€). Apple nu are magazin oficial în România, deci valorile rămân „estimat”.
 
 **Produse noi pe piață.** Un produs lansat recent se ieftinește de obicei constant, deci prețul de azi e mereu „minimul istoric”. Dacă produsul are sub 90 de zile de istoric și prețul a scăzut cu peste 3% în 30 de zile, fără o reducere afișată, verdictul e „Preț obișnuit”, nu „Cumpără acum”, cu explicația cifrată.
 
@@ -245,13 +245,13 @@ Restul (prețul final, istoricul, recomandările, API-ul) nu depinde de familia 
 
 Fiecare produs are `msrp_ron` (preț recomandat de producător), afișat sub titlu, pe carduri și ca linie punctată pe grafic. Recomandarea îl folosește doar ca **context**: nu schimbă verdictul.
 
-Sursa valorilor: prețurile recomandate Sony pentru Europa în vigoare din **2 aprilie 2026** ([PlayStation Blog](https://blog.playstation.com/2026/03/27/new-price-changes-for-ps5-ps5-pro-and-playstation-portal-remote-player/)), convertite la ~5,09 lei/€:
+Sursa valorilor: prețurile recomandate Sony pentru Europa în vigoare din **2 aprilie 2026** ([PlayStation Blog](https://blog.playstation.com/2026/03/27/new-price-changes-for-ps5-ps5-pro-and-playstation-portal-remote-player/)), convertite cu cursul `EUR_RON` din `backend/app/seed/load.py` (acum 5,35 lei/€, BNR 10.2026) și rotunjite la x9. În `models.yaml` se trece prețul în euro (`msrp_eur`):
 
 | Model | Preț UE | MSRP |
 |---|---|---|
-| PS5 cu disc | 649,99 € | 3 309 lei |
-| PS5 Digital | 599,99 € | 3 049 lei |
-| PS5 Pro | 899,99 € | 4 579 lei |
+| PS5 cu disc | 649,99 € | 3 479 lei |
+| PS5 Digital | 599,99 € | 3 209 lei |
+| PS5 Pro | 899,99 € | 4 819 lei |
 
 Sony nu publică un preț separat în lei, deci valorile rămân marcate „estimat”. Modelele originale (CFI-1xxx) nu se mai produc; pentru ele folosim MSRP-ul ediției actuale echivalente.
 

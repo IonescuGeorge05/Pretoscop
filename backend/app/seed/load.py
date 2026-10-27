@@ -1,6 +1,7 @@
 """Încarcă models.yaml și shops.yaml în DB (upsert după slug). Rulare: python -m app.seed.load"""
 
 import logging
+from decimal import Decimal
 
 import yaml
 from sqlalchemy import select
@@ -12,6 +13,17 @@ from app.models import Product, Shop
 
 log = logging.getLogger(__name__)
 
+# cursul folosit pentru MSRP-urile din euro (Sony și Apple nu publică prețuri în lei).
+# BNR: 5,3527 lei/€ pe 06.10.2026 (media pe 30 de zile ~5,28) — de actualizat când cursul se mișcă mult.
+EUR_RON = Decimal("5.35")
+
+
+def msrp_from_eur(eur) -> tuple[int, str]:
+    """Preț în lei rotunjit la x9 (ca prețurile din magazine) + textul cu calculul, pentru nota din site."""
+    ron = Decimal(str(eur)) * EUR_RON
+    rounded = int((ron - 9) / 10 + Decimal("0.5")) * 10 + 9
+    return rounded, f"{str(eur).replace('.', ',')} € x {str(EUR_RON).replace('.', ',')} lei/€"
+
 
 def load_yaml(name: str) -> list[dict]:
     with open(SEED_DIR / name, encoding="utf-8") as f:
@@ -20,6 +32,9 @@ def load_yaml(name: str) -> list[dict]:
 
 def upsert_seed(session: Session) -> None:
     for row in load_yaml("models.yaml"):
+        if (eur := row.pop("msrp_eur", None)) is not None:
+            row["msrp_ron"], calc = msrp_from_eur(eur)
+            row["msrp_note"] = f"{calc}; {row['msrp_note']}" if row.get("msrp_note") else calc
         product = session.scalar(select(Product).where(Product.slug == row["slug"]))
         if product is None:
             session.add(Product(**row))

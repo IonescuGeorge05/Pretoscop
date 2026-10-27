@@ -39,7 +39,13 @@ def shop_out(offer: Offer) -> schemas.ShopOut:
     return schemas.ShopOut(slug=s.slug, name=s.name, status=s.status, shipping_verified=s.shipping_verified)
 
 
-def offer_out(view: catalog.OfferView, fake: FakeDiscount | None = None, outlier: str | None = None) -> schemas.OfferOut:
+def offer_out(
+    view: catalog.OfferView,
+    fake: FakeDiscount | None = None,
+    outlier: str | None = None,
+    colors: list[str] | None = None,
+    variants: int = 1,
+) -> schemas.OfferOut:
     o, p = view.offer, view.point
     return schemas.OfferOut(
         id=o.id,
@@ -67,6 +73,8 @@ def offer_out(view: catalog.OfferView, fake: FakeDiscount | None = None, outlier
         fake_discount=schemas.FakeDiscountOut(**asdict(fake)) if fake else None,
         price_outlier=outlier,
         preorder=o.preorder,
+        colors=colors or [],
+        variants=variants,
     )
 
 
@@ -154,9 +162,15 @@ def product_detail(slug: str, source: str | None = SourceParam, session: Session
         source=src,
         is_demo=src == "mock",
         available_sources=catalog.available_sources(session, p.id),
-        offers=[offer_out(v, fakes.get(v.offer.id), outliers.get(v.offer.id)) for v in views if not v.offer.is_bundle],
+        offers=[
+            offer_out(v, fakes.get(v.offer.id), outliers.get(v.offer.id), colors, n)
+            for v, colors, n in catalog.group_colors([v for v in views if not v.offer.is_bundle])
+        ],
         bundles=[offer_out(v) for v in views if v.offer.is_bundle],
-        refurbished=[offer_out(v) for v in used if v.offer.condition == "refurbished"],
+        refurbished=[
+            offer_out(v, colors=colors, variants=n)
+            for v, colors, n in catalog.group_colors([v for v in used if v.offer.condition == "refurbished"])
+        ],
         secondhand=[offer_out(v) for v in used if v.offer.condition != "refurbished"],
         recommendation=recommendation_out(rec),
     )

@@ -64,3 +64,12 @@ def test_no_warranty_has_no_penalty_only_shorter_warranty_does():
     assert warranty_penalty(Decimal("2700"), 0) == 0  # anunț second hand: prețul rămâne cel din anunț
     assert final_price(Decimal("2700"), {"free_over": None, "flat": 0}, 0).final_price == Decimal("2700.00")
     assert warranty_penalty(Decimal("2700"), 12) == Decimal("162.00")  # garanție mai scurtă: penalizare
+
+
+def test_color_of_reads_ro_and_en_names():
+    from app.services.catalog import color_of
+
+    assert color_of("Apple iPhone 18 Pro Telefon Mobil 256GB Negru") == "Negru"
+    assert color_of("Telefon mobil Apple iPhone 18 Pro, 2TB, 5G, Silver") == "Argintiu"
+    assert color_of("Apple iPhone 18 Pro Max 512GB - Glacier") == "Glacier"
+    assert color_of("PlayStation 5 Slim 1TB") is None

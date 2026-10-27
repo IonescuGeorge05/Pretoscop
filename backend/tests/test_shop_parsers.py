@@ -211,3 +211,15 @@ def test_sitemap_scraper_can_start_from_listing_pages():
 
     s = SitemapScraper(FakeClient(), "gamers", "https://www.gamers.ro", {"listing_pages": ["https://www.gamers.ro/playstation5/console"]})
     assert s.discover_product_urls() == ["https://www.gamers.ro/playstation5/playstation-5-pro-2tb-2025"]
+
+
+def test_emag_edition_hint_ignored_when_title_names_the_edition():
+    from scrapers.emag import EmagScraper
+
+    page = """<script type="application/ld+json">{"@context":"http://schema.org","@type":"Product",
+    "name":"Consola PlayStation 5 Digital Edition (PS5) Slim, 825GB SSD, E-Chassis",
+    "additionalProperty":[{"@type":"PropertyValue","name":"Tip editie","value":"Standard"}],
+    "offers":{"@type":"Offer","price":"3399.90","priceCurrency":"RON","availability":"http://schema.org/PreOrder",
+    "seller":{"@type":"Organization","name":"eMAG"}}}</script>"""
+    offer = EmagScraper(client=None).parse_product("https://www.emag.ro/x/pd/D4LQQL3BM/", page)
+    assert offer.match_hints == "" and offer.preorder and offer.in_stock

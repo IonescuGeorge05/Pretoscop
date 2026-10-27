@@ -1,5 +1,6 @@
 """Citiri pentru API: oferte curente cu preț final, istoric, recomandare."""
 
+import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
@@ -109,6 +110,37 @@ def comparable(offers: list[Offer]) -> list[Offer]:
     base = [o for o in offers if not o.is_bundle and not is_marketplace(o)]
     outliers = price_outliers(offers)
     return [o for o in base if o.id not in outliers] or base
+
+
+# culoarea din titlu (RO + EN) -> numele afișat; culoarea nu e un produs separat
+COLORS = {
+    "negru": "Negru", "black": "Negru", "argintiu": "Argintiu", "silver": "Argintiu", "alb": "Alb", "white": "Alb",
+    "glacier": "Glacier", "burgundy": "Burgundy", "albastru": "Albastru", "blue": "Albastru", "rosu": "Roșu",
+    "roșu": "Roșu", "red": "Roșu", "portocaliu": "Portocaliu", "orange": "Portocaliu", "gri": "Gri", "gray": "Gri",
+    "grey": "Gri", "auriu": "Auriu", "gold": "Auriu", "verde": "Verde", "green": "Verde", "mov": "Mov", "purple": "Mov",
+}
+COLOR_RE = re.compile(r"(?i)\b(" + "|".join(sorted(COLORS, key=len, reverse=True)) + r")\b")
+
+
+def color_of(title: str | None) -> str | None:
+    m = COLOR_RE.findall(title or "")
+    return COLORS[m[-1].lower()] if m else None  # ultima apariție: culoarea e de obicei la final
+
+
+def group_colors(views: list["OfferView"]) -> list[tuple["OfferView", list[str], int]]:
+    """Un rând per magazin (+ vânzător / stare / grad): variantele de culoare ale aceluiași produs se unesc.
+    Rămâne cea mai bună variantă (lista e sortată: în stoc întâi, apoi preț); se păstrează culorile și numărul lor.
+    Second hand nu se grupează: fiecare anunț e alt vânzător."""
+    groups: dict[tuple, list[OfferView]] = {}
+    for v in views:
+        o = v.offer
+        key = (o.id,) if o.condition == "used" or o.is_bundle else (o.shop_id, o.seller, o.condition, o.grade)
+        groups.setdefault(key, []).append(v)
+    out = []
+    for members in groups.values():
+        colors = list(dict.fromkeys(c for m in members if (c := color_of(m.offer.title))))
+        out.append((members[0], colors, len(members)))
+    return out
 
 
 def _aware(dt: datetime) -> datetime:

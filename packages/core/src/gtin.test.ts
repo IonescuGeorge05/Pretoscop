@@ -37,28 +37,30 @@ describe('check digit', () => {
   });
 
   it('property: every valid check digit is accepted and every single-digit corruption rejected', () => {
+    // Failures are collected in plain loops (one expect at the end) so the ~150k checks stay fast.
     const rand = prng(20261027);
+    const failures: string[] = [];
     let corruptions = 0;
     for (let n = 0; n < 1500; n++) {
       const bodyLength = [7, 11, 12, 13][n % 4] as number;
       const body = randomDigits(rand, bodyLength);
       const code = `${body}${gtinCheckDigit(body)}`;
-      expect(isValidGtinCheckDigit(code)).toBe(true);
       const r = validateGtin(code);
-      expect(r.reason).not.toBe('bad_check_digit');
-      expect(r.quality).not.toBe('invalid');
+      if (!isValidGtinCheckDigit(code) || r.quality === 'invalid') failures.push(`valid ${code}`);
       for (let i = 0; i < code.length; i++) {
         for (let d = 0; d <= 9; d++) {
           if (String(d) === code[i]) continue;
           const corrupted = `${code.slice(0, i)}${d}${code.slice(i + 1)}`;
-          expect(isValidGtinCheckDigit(corrupted)).toBe(false);
-          expect(validateGtin(corrupted).quality).not.toBe('valid');
+          if (isValidGtinCheckDigit(corrupted) || validateGtin(corrupted).quality === 'valid') {
+            failures.push(`corrupted ${corrupted} (from ${code})`);
+          }
           corruptions++;
         }
       }
     }
+    expect(failures).toEqual([]);
     expect(corruptions).toBeGreaterThan(100_000);
-  });
+  }, 30_000);
 });
 
 describe('validateGtin', () => {

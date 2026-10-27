@@ -165,22 +165,22 @@ function isbn10ToIsbn13(isbn10: string): string | null {
   return `${body}${gtinCheckDigit(body)}`;
 }
 
-function fakeSet(options: ValidateGtinOptions): Set<string> {
-  const set = new Set<string>(KNOWN_FAKE_GTINS['*'] ?? []);
+function isKnownFake(g14: string, options: ValidateGtinOptions): boolean {
+  if ((KNOWN_FAKE_GTINS['*'] ?? []).includes(g14)) return true;
   const shop = options.shopSlug ? KNOWN_FAKE_GTINS[options.shopSlug] : undefined;
-  for (const g of shop ?? []) set.add(g);
+  if (shop?.includes(g14)) return true;
   for (const g of options.extraFakes ?? []) {
     const digits = g.replace(/\D/g, '');
-    if (digits.length >= 8 && digits.length <= 14) set.add(digits.padStart(14, '0'));
+    if (digits.length >= 8 && digits.length <= 14 && digits.padStart(14, '0') === g14) return true;
   }
-  return set;
+  return false;
 }
 
 function classify(g14: string, options: ValidateGtinOptions): GtinResult {
   const kind = kindOf(g14);
   const placeholder = placeholderReason(g14, kind);
   if (placeholder) return { gtin14: g14, quality: 'placeholder', reason: placeholder, kind };
-  if (fakeSet(options).has(g14)) {
+  if (isKnownFake(g14, options)) {
     return { gtin14: g14, quality: 'placeholder', reason: 'known_fake', kind };
   }
   if (g14[0] === '9')

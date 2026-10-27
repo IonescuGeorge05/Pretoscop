@@ -76,3 +76,40 @@ authoritative. Additions beyond §5: `shops.shipping_verified`, `shops.vat_inclu
   `maintenance.request_log` (daily 03:40).
 - Tests: `import { createTestDatabase } from '@pretoscop/db/testing'` creates and migrates a
   throwaway database; call `drop()` in `afterAll`.
+
+## Price alerts (M19)
+
+Tables (migration `0014_alerts`): `alerts` (user, product, `kind` below/any_drop, `target_price`,
+`any_variant`, `channel`, `status` pending/active/paused, consent evidence `consent_at`,
+`consent_ip_hash`, `consent_text_version`, double opt-in `confirmed_at`, `confirm_ip_hash`,
+`confirm_method`, and the notification state `baseline_total`, `armed`, `last_notified_*`);
+`alert_sends` (outbox: one row per notification, `status` queued/sending/sent/failed/skipped,
+`prev_state` to undo a failed claim, `simulated`); `consent_records` (evidence ledger kept 3 years
+after withdrawal, keyed by an HMAC of the address, survives the account); `email_suppressions`
+(hashes only, indefinitely). `users` gain `last_active_at` and `retention_notice_at`.
+
+Contract (`src/queries/alerts.ts`):
+- `ELIGIBLE_ALERT_OFFER`: an offer an alert may speak about (active, in stock, new, matched,
+  shop-sold, active shop with trust tier ≤ 2, checked within the shop's freshness SLO, no pending
+  quarantine). `bestAlertOffer(db, productId, anyVariant)` uses it.
+- `createAlert` (pending, or active with `confirm: { method: 'session' | 'telegram' }`),
+  `confirmAlert` (the double opt-in; a newer live alert for the same user, product and channel
+  replaces the older one), `updateAlert`, `deleteAlert`, `deleteAllAlerts`, `unsubscribeAllEmail`
+  (deletes the email alerts, suppresses the hash, deletes an account with nothing left),
+  `deleteUserData`, `exportUserData`, `userAlerts`, `getAlert`, `suppressEmail` (never weakens a
+  reason), `suppressionReason`.
+- Evaluation: `alertCandidates(db, { productIds?, channels })` → state + best offer;
+  `claimAlertNotification` (compare-and-set on the exact state text + outbox insert, one
+  transaction: a second claim of the same state returns null), `rearmAlert`, `setAlertBaseline`,
+  `queueSimulatedSend`.
+- Delivery: `claimQueuedSends` (`FOR UPDATE SKIP LOCKED`), `sendsByIds` (re-checks the offer:
+  `stillValid`), `finishSends(ids, 'sent'|'retry'|'failed'|'skipped')` (failed/skipped restore the
+  alert's previous state), `recoverStuckSends`, `pauseChannelAlerts`.
+- Retention: `deleteExpiredPendingAlerts`, `deleteEmptyAccounts`, `usersDueRetentionNotice`,
+  `markRetentionNotice`, `usersDueRetentionDeletion`, `pruneConsentRecords`, `pruneAlertSends`,
+  `repointMergedAlerts`, `minimizeClicksAndEvents` (clicks/events: identifiers dropped after 90
+  days, rows deleted after 13 months).
+- `recordObservation` also returns `productId` (the matched product), so a source run can queue
+  `rollup.touch` for products whose offers changed price.
+- E2E fixture for alerts: `createAlertsFixture`, `alertsFixturePrice`, `alertsFixtureState`,
+  `alertsFixtureEvidence`, `dropAlertsFixture` (`pnpm --filter @pretoscop/db e2e:fixture alerts-…`).

@@ -43,7 +43,7 @@ describe('detectBundle', () => {
     ],
     [
       'Consola PlayStation 5 (PS5) Slim, 1TB SSD, D-Chassis + Extra controller',
-      'accessory:plus:extra',
+      'accessory:controller',
     ],
     [
       'Consola Nintendo Switch 2 + Joc Sport Resort + 90 zile Abonament Nintendo Switch Online',
@@ -51,6 +51,19 @@ describe('detectBundle', () => {
     ],
     ['Consola Nintendo Switch Lite Yellow + Animal Crossing: New Horizons', 'game:plus:animal'],
     ['Consola Xbox Series S + 3 luni abonament Game Pass Ultimate', 'subscription:plus:3'],
+    ['Consola PlayStation 5, 1TB SSD + Joc Marvel Spider-Man 2 (Disc)', 'game:plus:joc'],
+    ['Consola PlayStation 5 (PS5), 2TB SSD + Extra Controller', 'accessory:controller'],
+    ['Consola PlayStation 5 Slim, 1TB SSD + Husa transport', 'accessory:plus:husa'],
+    ['Consola Sony PlayStation 5 Digital Edition, 825GB SSD, joc NBA 2K26', 'game:joc inclus'],
+    [
+      'Consola PlayStation 5, 1TB SSD, Controller suplimentar, Joc EA Sports FC 26 (disc)',
+      'game:joc inclus',
+    ],
+    [
+      'Consola PlayStation 5 Digital Edition, 825GB SSD, controller suplimentar, 4K, 2.4 Kg',
+      'accessory:controller',
+    ],
+    ['Consola digitala Sony PlayStation 5 si 2 controlere DualSense White', 'accessory:controller'],
   ])('%s → bundle (%s)', (title, reason) => {
     expect(detectBundle(title)).toEqual({
       isBundle: true,

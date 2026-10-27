@@ -116,7 +116,12 @@ const GIFT_RE =
   /(?:\+|\bcu\b|\bsi\b|\bplus\b|\bprimesti\b|\bbonus\b)[^,]{0,40}\bcadou\b|\bcadou\s*[:!]|\+\s*cadou\b/;
 const GIFT_PRODUCT_RE = /\b(?:card|voucher|cutie|punga|set|pachet|ambalaj|hartie)\s+cadou\b/;
 const GAME_RE =
-  /\bcu (?:\d\s+)?(?:jocul|joc|jocurile|jocuri)\b|\bjoc(?:ul|uri|urile)? inclus[ea]?\b|\binclude(?:\s+[^\s,]+){0,3}\s+jocu?r?i?l?\b|\b(?:cod|voucher)\s+(?:de\s+)?(?:descarcare\s+)?joc\b|\b(?:si|plus)\s+(?:\d+\s+)?(?:joc|jocuri|controller|controllere|manete?)\b/;
+  /\bcu (?:\d\s+)?(?:jocul|joc|jocurile|jocuri)\b|\bjoc(?:ul|uri|urile)? inclus[ea]?\b|\binclude(?:\s+[^\s,]+){0,3}\s+jocu?r?i?l?\b|\b(?:cod|voucher)\s+(?:de\s+)?(?:descarcare\s+)?joc\b|\b(?:si|plus)\s+(?:\d+\s+)?(?:joc|jocuri)\b/;
+/** A game in its own title segment of a console offer: "…, 825GB SSD, joc NBA 2K26". */
+const GAME_SEGMENT_RE = /(?:^|,)\s*joc(?:ul)?\s+(?!(?:pentru|compatibil|de)\b)[a-z0-9]/;
+/** A second controller: "si 2 controlere", "Controller suplimentar", "cu 2 controllere". */
+const EXTRA_CONTROLLER_RE =
+  /\b(?:si|plus)\s+(?:\d+\s+|un\s+)?(?:controller\w*|controler\w*|manet\w*|gamepad\w*)|\bcu\s+(?:2|doua)\s+(?:controller\w*|controler\w*|manete)|\b(?:controller|controler|maneta|gamepad)\s+(?:suplimentar[a]?|extra|aditional[a]?)\b|\bextra\s+(?:controller|controler)\b/;
 
 /**
  * What the product ships with, never bundle evidence: built-in games ("cu jocuri", "15000
@@ -142,6 +147,9 @@ const PLATFORM_CUT =
 const SUBSCRIPTION_RE =
   /\b(?:abonament\w*|subscription|game pass|ps plus|playstation plus|switch online|\d+ (?:zile|luni|months?) (?:abonament|online))\b/;
 const GAME_ITEM_RE = /^(?:\d+\s+)?(?:joc|jocul|jocuri|jocurile|game|games)\b/;
+/** An item that a "+" right after a spec word still adds ("1TB SSD + Joc …", "SSD + Extra …"). */
+const ITEM_START_RE =
+  /^(?:\d+\s+)?(?:joc|jocul|jocuri|game|extra|controller\w*|controler\w*|manet\w*|abonament\w*|husa|cadou)\b/;
 const ACCESSORY_ITEM_RE =
   /\b(?:extra|controller\w*|controler\w*|manet\w*|gamepad\w*|joy-?con\w*|casti|headset|buds|earbuds|husa|huse|folie|incarcator|statie|stativ|stand|suport|strap|ring|curea|cablu|card|mouse|tastatura|geanta|rucsac|powerbank|baterie externa)\b/;
 /** Games or in-game content named in a "… Bundle" / "Pachet …" title. */
@@ -173,7 +181,8 @@ function plusItem(
     if (/^\d+(?:\.\d+)?$/.test(w) && SPEC_WORDS.has(w2)) continue;
     const before = s.slice(0, k).trimEnd();
     const prevWord = (/([a-z0-9-]+)$/.exec(before)?.[1] ?? '').replace(/-/g, '');
-    if (SPEC_WORDS.has(prevWord)) continue;
+    // "Wi-Fi + Cellular" is one spec; "1TB SSD + Joc …" adds an item after a spec.
+    if (SPEC_WORDS.has(prevWord) && !ITEM_START_RE.test(after)) continue;
     if (kitLike || COMPONENT_KINDS.has(kind)) continue;
     return { word: w, text: (/^[^+,|(]*/.exec(after)?.[0] ?? '').trim() };
   }
@@ -193,10 +202,12 @@ function itemKind(text: string, host: ProductKind): BundleKind {
 /**
  * Detects bundles: the word `bundle`; a leading `pachet` (not "pachet 4 baterii"); gifts ("+ …
  * cadou", "cu … cadou", "cadou:"; not "card cadou"); included games ("cu jocul", "joc inclus",
- * "include … jocul", "cod joc", "și 2 jocuri"); and a free-standing `+` followed by an item ("+
- * joc", "+ Mario Kart", "+ Husa", "+ Woven Strap Ring Stand") — not specs ("Wi-Fi + Cellular",
- * "8GB + 256GB", "+ adaptor SD"), not model suffixes ("S25+", "A+++"), not component lists of
- * kits, accessories and peripherals ("Kit … 3 becuri + Bridge"). `set` alone is never a bundle.
+ * "include … jocul", "cod joc", "și 2 jocuri", and on a console a segment "…, joc NBA 2K26");
+ * a second controller ("și 2 controlere", "Controller suplimentar"); and a free-standing `+`
+ * followed by an item ("+ joc", "+ Mario Kart", "+ Husa", "+ Woven Strap Ring Stand", "1TB SSD +
+ * Extra Controller") — not specs ("Wi-Fi + Cellular", "8GB + 256GB", "+ adaptor SD"), not model
+ * suffixes ("S25+", "A+++"), not component lists of kits, accessories and peripherals ("Kit … 3
+ * becuri + Bridge"). `set` alone is never a bundle.
  * Built-in content never counts (see `BUILT_IN`), and the package contents of a console that is
  * not a mainstream platform (retro handhelds, TV clones: "+ Controller", "+ Pistol 2x Pady") are
  * not extra items; only the word `bundle` or a gift makes those a bundle.
@@ -217,8 +228,10 @@ export function detectBundle(
   const packaged = kind === 'console' && !MAINSTREAM_CONSOLE.test(cut ? t.slice(0, cut.index) : t);
   const kitLike = /^(?:kit|set|combo|starter kit)\b/.test(t) && !DEVICE_BUNDLE_KINDS.has(kind);
   const item = packaged ? null : plusItem(t, kind, kitLike);
+  const mainstreamConsole = kind === 'console' && !packaged;
 
   let evidence: string | null = null;
+  let bundleKind: BundleKind | null = null;
   if (/\bbundle\b/.test(t)) evidence = 'bundle';
   else if (
     !packaged &&
@@ -227,16 +240,28 @@ export function detectBundle(
     !/^pachet\s+(?:software|office|microsoft)\b/.test(t)
   ) {
     evidence = 'pachet';
-  } else if (GIFT_RE.test(t) && !GIFT_PRODUCT_RE.test(t)) evidence = 'cadou';
-  else if (!packaged && GAME_RE.test(t) && kind !== 'game') evidence = 'joc inclus';
-  else if (item) evidence = `plus:${item.word}`;
+  } else if (GIFT_RE.test(t) && !GIFT_PRODUCT_RE.test(t)) {
+    evidence = 'cadou';
+    bundleKind = 'gift';
+  } else if (
+    !packaged &&
+    kind !== 'game' &&
+    (GAME_RE.test(t) || (mainstreamConsole && GAME_SEGMENT_RE.test(t)))
+  ) {
+    evidence = 'joc inclus';
+    bundleKind = 'game';
+  } else if (!packaged && kind !== 'accessory' && EXTRA_CONTROLLER_RE.test(t)) {
+    evidence = 'controller';
+    bundleKind = 'accessory';
+  } else if (item) evidence = `plus:${item.word}`;
   if (evidence === null) return NOT_A_BUNDLE;
 
-  let bundleKind: BundleKind;
-  if (evidence === 'cadou') bundleKind = 'gift';
-  else if (item) bundleKind = itemKind(item.text, kind);
-  else if (evidence === 'joc inclus' || GAME_HINT_RE.test(t)) bundleKind = 'game';
-  else if (SUBSCRIPTION_RE.test(t)) bundleKind = 'subscription';
-  else bundleKind = 'other';
+  if (bundleKind === null) {
+    if (item) bundleKind = itemKind(item.text, kind);
+    else if (GAME_HINT_RE.test(t)) bundleKind = 'game';
+    else if (SUBSCRIPTION_RE.test(t)) bundleKind = 'subscription';
+    else if (EXTRA_CONTROLLER_RE.test(t)) bundleKind = 'accessory';
+    else bundleKind = 'other';
+  }
   return { isBundle: true, kind: bundleKind, reason: `${bundleKind}:${evidence}` };
 }

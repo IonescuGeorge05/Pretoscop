@@ -140,9 +140,14 @@ export const EnvSchema = z
     // Affiliate networks (M24)
     TWOPERFORMANT_EMAIL: optionalString,
     TWOPERFORMANT_PASSWORD: optionalString,
+    /** Our affiliate code (aff_code in quicklinks). */
     TWOPERFORMANT_UNIQUE_CODE: optionalString,
+    TWOPERFORMANT_API_URL: z.string().min(1).default('https://api.2performant.com'),
     PROFITSHARE_API_USER: optionalString,
     PROFITSHARE_API_KEY: optionalString,
+    AWIN_PUBLISHER_ID: optionalString,
+    CJ_PUBLISHER_ID: optionalString,
+    TRADEDOUBLER_AFFILIATE_ID: optionalString,
 
     // Analytics and monitoring
     NEXT_PUBLIC_PLAUSIBLE_DOMAIN: optionalString,

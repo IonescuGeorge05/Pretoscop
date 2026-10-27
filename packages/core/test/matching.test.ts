@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { familyKey, familyTitle, matchTokens, mpnVariant, route, scorePair, type MatchSide } from '../src/matching';
+import { familyKey, familyTitle, tokenSets, mpnVariant, route, scorePair, type MatchSide } from '../src/matching';
 
 const side = (title: string, extra: Partial<MatchSide> = {}): MatchSide => ({
   title,
@@ -13,7 +13,7 @@ const side = (title: string, extra: Partial<MatchSide> = {}): MatchSide => ({
 
 describe('tokens', () => {
   it('glues units, drops stopwords, separates model and edition tokens', () => {
-    const t = matchTokens('Telefon mobil Samsung Galaxy S26 FE, Dual SIM, 8 GB RAM, 128GB, 5G, Blueberry');
+    const t = tokenSets('Telefon mobil Samsung Galaxy S26 FE, Dual SIM, 8 GB RAM, 128GB, 5G, Blueberry');
     expect(t.model).toEqual(new Set(['s26']));
     expect(t.edition).toEqual(new Set(['fe']));
     expect(t.all.has('128gb')).toBe(true);

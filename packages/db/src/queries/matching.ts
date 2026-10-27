@@ -3,7 +3,7 @@ import {
   FAMILY_CATEGORIES,
   familyKey,
   familyTitle,
-  matchTokens,
+  tokenSets,
   route,
   scorePair,
   TAXONOMY,
@@ -270,7 +270,7 @@ export async function matchOffer(db: Db, o: PendingOffer, opts: { dryRun?: boole
       isBundle: o.isBundle,
       isAccessory: o.isAccessory,
       trustedSource: o.trustTier === 1,
-      hasModelToken: matchTokens(o.title).model.size > 0,
+      hasModelToken: tokenSets(o.title).model.size > 0,
     },
     scored,
   );

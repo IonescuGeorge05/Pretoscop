@@ -9,11 +9,14 @@
     "./discount": "./src/discount.ts",
     "./anomaly": "./src/anomaly.ts",
     "./taxonomy": "./src/taxonomy.ts",
-    "./matching": "./src/matching.ts"
+    "./matching": "./src/matching.ts",
+    "./hash": "./src/hash.ts"
   },
   "scripts": {
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "demo": "tsx src/cli/demo.ts",
+    "gtin": "tsx src/cli/gtin.ts"
   }
 }

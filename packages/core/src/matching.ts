@@ -67,7 +67,7 @@ export interface Tokens {
 }
 
 /** Tokens for matching: ASCII-folded, units glued to numbers ("16 GB" → "16gb"), stopwords dropped. */
-export function matchTokens(title: string): Tokens {
+export function tokenSets(title: string): Tokens {
   const t = fold(title)
     .replace(/(\d)[,.](\d)/g, '$1$2')
     .replace(/(\d+)\s*(gb|tb|mb|mah|w|hz|kg|l|ml|inch|inchi|cm|mm|mp|rpm)\b/g, '$1$2')
@@ -136,8 +136,8 @@ export function scorePair(offer: MatchSide, product: MatchSide): PairScore {
   if (offer.category && product.category && offer.category !== product.category) conflicts.push('category');
   conflicts.push(...attributeConflicts(offer.attributes, product.attributes));
 
-  const to = matchTokens(offer.title);
-  const tp = matchTokens(product.title);
+  const to = tokenSets(offer.title);
+  const tp = tokenSets(product.title);
   const editionEqual = to.edition.size === tp.edition.size && [...to.edition].every((e) => tp.edition.has(e));
   // Model numbers must agree when both titles carry them (S25 ≠ S26, 17 ≠ 16).
   const modelDiff = [...to.model].filter((x) => !tp.model.has(x)).length + [...tp.model].filter((x) => !to.model.has(x)).length;
@@ -247,6 +247,6 @@ export function familyTitle(title: string): string {
 }
 
 export function familyKey(brand: string, title: string): string {
-  const t = matchTokens(familyTitle(title));
+  const t = tokenSets(familyTitle(title));
   return `${brand.toLowerCase()}|${[...t.all].filter((x) => x !== brand.toLowerCase()).sort().join(' ')}`;
 }

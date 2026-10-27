@@ -31,8 +31,10 @@ export function createNormalize(eurRonRate: () => number | null): NormalizeFn {
     });
     if (!n.ok) return { rejectReason: n.rejects.join(', ') || 'rejected' };
     const gtin14 = n.gtinQuality === 'valid' ? n.gtin14 : null;
+    // Ambiguous or component brands must not become hard matching constraints (M06 report).
+    const brandName = n.brandName && (n.brandKnown || (n.brandConfidence ?? 0) >= 0.7) ? n.brandName : null;
     const identityHash = createHash('sha256')
-      .update([n.titleMatch, gtin14 ?? '', n.mpnNorm ?? '', n.brandName ?? ''].join('|'))
+      .update([n.titleMatch, gtin14 ?? '', n.mpnNorm ?? '', brandName ?? ''].join('|'))
       .digest('hex');
     return {
       observation: {
@@ -47,7 +49,7 @@ export function createNormalize(eurRonRate: () => number | null): NormalizeFn {
         titleClean: n.titleClean,
         titleAscii: n.titleAscii,
         brandRaw: n.brandRaw,
-        brandName: n.brandName,
+        brandName,
         mpnRaw: n.mpnRaw,
         mpnNorm: n.mpnNorm,
         gtinRaw: n.gtinRaw,
@@ -59,8 +61,8 @@ export function createNormalize(eurRonRate: () => number | null): NormalizeFn {
         shopLowest30dBani: n.shopLowest30dBani,
         currency: n.currency,
         fxRate: n.fxRate === null ? null : n.fxRate.toFixed(4),
-        // The shipping that went into the total (explicit, or estimated from the shop's rules).
-        shippingBani: n.totalShippingBani,
+        // The stated delivery cost only (hashed, kept in history); rule-based estimates stay in totalBani.
+        shippingBani: n.shippingBani,
         shippingNote: raw.shippingNote ?? null,
         shippingEstimated: n.shippingEstimated,
         totalBani: n.totalBani,
@@ -89,7 +91,7 @@ export function createServices(env: Env, db: Db, log: Logger): Services & { clos
     crawlEnabled: env.CRAWL_ENABLED,
     botInfoUrl: env.BOT_INFO_URL,
     defaultTimeoutMs: env.FETCH_TIMEOUT_MS,
-    defaultMaxBytes: env.FETCH_MAX_BYTES,
+    defaultMaxBytes: env.FETCH_MAX_BODY_BYTES,
     logger: log,
   });
   let eur: { rate: number | null; at: number } = { rate: null, at: 0 };

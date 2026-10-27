@@ -10,7 +10,7 @@ import RecommendationCard from "@/components/RecommendationCard";
 import SavingsCard from "@/components/SavingsCard";
 import { NotFound, getHistory, getProduct, getProducts } from "@/lib/api";
 import { IS_STATIC } from "@/lib/static";
-import { formatLei, productHref, variantLabel, vsMsrp, withSource } from "@/lib/format";
+import { formatLei, formatLeiShort, productHref, variantLabel, vsMsrp, withSource } from "@/lib/format";
 
 type Props = { params: { family: string; slug: string }; searchParams: { source?: string; range?: string; granularity?: string } };
 
@@ -61,38 +61,64 @@ export default async function ProductPage({ params, searchParams }: Props) {
   const rec = product.recommendation;
   const best = product.offers.find((o) => o.in_stock);
 
+  const overMsrp = !!(best && product.msrp_ron && best.breakdown.final_price > product.msrp_ron * 1.1);
+
   return (
     <>
       <DemoBanner isDemo={product.is_demo} path={productHref(product)} availableSources={product.available_sources} />
-      <nav className="mb-2 text-xs text-muted">
+      <nav className="text-sm text-muted">
         <Link href={`${withSource("/", source)}#${product.family_slug}`} className="hover:text-ink">
           {product.family}
         </Link>{" "}
-        / {product.name}
+        › {variantLabel(product)}
       </nav>
-      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{product.name}</h1>
-      <p className="mt-1 text-sm text-muted">
+      <h1 className="mt-2 font-display text-4xl font-extrabold leading-tight tracking-tight sm:text-[46px]">{product.name}</h1>
+      <p className="mt-1 text-muted">
         {variantLabel(product, true)}
         {product.model_code && ` · cod model ${product.model_code}`}
         {product.ean && ` · EAN ${product.ean}`}
       </p>
-      {product.msrp_ron && (
-        <p className="mt-2 text-sm">
-          <span title={product.msrp_note ?? undefined} className="cursor-help">
-            MSRP{product.msrp_verified ? "" : " (estimat)"}: <strong className="tabular-nums">{formatLei(product.msrp_ron)}</strong>
-          </span>
-          {best && (
-            <span className="text-muted">
-              {" "}
-              · cel mai bun preț final: {formatLei(best.breakdown.final_price)} ({vsMsrp(best.breakdown.final_price, product.msrp_ron)})
-            </span>
-          )}
-        </p>
-      )}
 
-      <div className="mt-6 space-y-6">
+      <div className="mt-6 space-y-10">
         <FakeDiscountAlert items={rec.fake_discounts} />
-        <RecommendationCard rec={rec} />
+        <section className="flex flex-wrap gap-5">
+          <div className="min-w-0 flex-[999_1_520px]">
+            <RecommendationCard rec={rec} overMsrp={overMsrp} />
+          </div>
+          <div className="flex flex-[1_1_300px] flex-col justify-center rounded-[28px] border border-line bg-card p-6 sm:p-8">
+            {best ? (
+              <>
+                <span className="text-muted">Cel mai bun preț final</span>
+                <span className="mt-1 font-display text-5xl font-extrabold tracking-tight tabular-nums">
+                  {formatLeiShort(best.breakdown.final_price)}
+                </span>
+                <span className="text-muted">
+                  la <strong className="text-ink">{best.shop.name}</strong> · {formatLei(best.breakdown.price)}
+                  {best.breakdown.shipping > 0 ? ` + ${formatLei(best.breakdown.shipping)} transport` : " · transport gratuit"}
+                </span>
+                <a
+                  href={IS_STATIC ? best.shop_url : best.out_url}
+                  target="_blank"
+                  rel="nofollow noopener sponsored"
+                  className="mt-5 inline-flex min-h-[52px] items-center justify-center rounded-full bg-brand px-6 text-base font-bold text-brand-ink hover:opacity-90"
+                >
+                  Mergi la {best.shop.name}
+                </a>
+              </>
+            ) : (
+              <span className="text-muted">Nicio ofertă nouă în stoc momentan.</span>
+            )}
+            {product.msrp_ron && (
+              <span title={product.msrp_note ?? undefined} className="mt-3 cursor-help text-center text-sm text-muted">
+                Prețul recomandat de producător{product.msrp_verified ? "" : " (estimat)"}: {formatLeiShort(product.msrp_ron)}
+                {best && ` · ${vsMsrp(best.breakdown.final_price, product.msrp_ron)}`}
+              </span>
+            )}
+          </div>
+        </section>
+
+        <SavingsCard offers={product.offers} refurbished={product.refurbished} secondhand={product.secondhand} />
+        <OffersSection offers={product.offers} title="Unde îl găsești" />
         <PriceChart
           initial={history}
           slug={product.slug}
@@ -100,27 +126,23 @@ export default async function ProductPage({ params, searchParams }: Props) {
           msrp={product.msrp_ron}
           msrpVerified={product.msrp_verified}
         />
-        <OffersSection offers={product.offers} />
-        <SavingsCard offers={product.offers} refurbished={product.refurbished} secondhand={product.secondhand} />
-      </div>
 
-      <section className="mt-10 space-y-3">
-        <h2 className="text-xl font-bold tracking-tight">Refurbished și second hand</h2>
-        <p className="max-w-3xl text-sm text-muted">
-          Nu intră în comparația principală și nici în recomandare. <strong className="text-ink">Refurbished</strong> = produse
-          verificate și revândute de o firmă, cu garanție (Flip, pe grade estetice). <strong className="text-ink">Second hand</strong>{" "}
-          = anunțuri de la persoane fizice (Publi24; OLX prin import manual), fără garanție (marcate evident; prețul e cel din anunț),
-          iar transportul depinde de vânzător.
-        </p>
-        <OffersSection offers={product.refurbished} title="Refurbished" />
-        <OffersSection offers={product.secondhand} title="Second hand" locationFilter />
-      </section>
+        <section className="space-y-4">
+          <h2 className="font-display text-[28px] font-extrabold tracking-tight">Refurbished și second hand</h2>
+          <p className="max-w-3xl text-muted">
+            Nu intră în comparația principală și nici în recomandare. <strong className="text-ink">Refurbished</strong> = produse
+            verificate și revândute de o firmă, cu garanție (Flip, pe grade estetice). <strong className="text-ink">Second hand</strong>{" "}
+            = anunțuri de la persoane fizice (Publi24, OLX), fără garanție (marcate evident; prețul e cel din anunț), iar
+            transportul depinde de vânzător.
+          </p>
+          <OffersSection offers={product.refurbished} title="Refurbished" />
+          <OffersSection offers={product.secondhand} title="Second hand" locationFilter />
+        </section>
 
-      {product.bundles.length > 0 && (
-        <div className="mt-8">
+        {product.bundles.length > 0 && (
           <OffersSection offers={product.bundles} title="Pachete (cu jocuri / accesorii) — excluse din comparația principală" />
-        </div>
-      )}
+        )}
+      </div>
     </>
   );
 }

@@ -12,7 +12,7 @@ export const VERDICT_STYLE: Record<Verdict, { cls: string; icon: string }> = {
 export default function VerdictBadge({ verdict, label }: { verdict: Verdict; label: string }) {
   const s = VERDICT_STYLE[verdict];
   return (
-    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${s.cls}`}>
+    <span className={`inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-bold ${s.cls}`}>
       <span aria-hidden>{s.icon}</span>
       {label}
     </span>

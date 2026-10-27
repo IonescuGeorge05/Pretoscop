@@ -310,10 +310,10 @@ export default function PriceChart({
     typeof rows[i]?.[key] === "number" && typeof rows[i - 1]?.[key] !== "number" && typeof rows[i + 1]?.[key] !== "number";
 
   return (
-    <section aria-labelledby="chart-title" className="rounded-xl border border-line bg-card p-4 sm:p-5">
+    <section aria-labelledby="chart-title" className="rounded-3xl border border-line bg-card p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 id="chart-title" className="text-lg font-semibold">Istoric preț final</h2>
+          <h2 id="chart-title" className="font-display text-2xl font-extrabold tracking-tight">Istoric preț final</h2>
           <p className="text-xs text-muted">
             Preț + transport + penalizare garanție, per magazin. Benzile gri = perioade de reduceri.
           </p>

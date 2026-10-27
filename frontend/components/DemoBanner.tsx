@@ -16,7 +16,7 @@ export default async function DemoBanner({
     const meta = await getSnapshotMeta();
     const when = meta ? new Date(meta.generated_at).toLocaleString("ro-RO", { dateStyle: "long", timeStyle: "short" }) : null;
     return (
-      <div className="mb-5 rounded-lg border border-line bg-card px-4 py-3 text-sm text-muted">
+      <div className="mb-5 rounded-2xl border border-line bg-card px-4 py-3 text-sm text-muted">
         {meta?.source === "mock" ? <strong className="text-ink">Date demo. </strong> : "Date reale colectate din magazine. "}
         Prototip — prețurile se actualizează periodic{when ? `; ultima actualizare: ${when}` : ""}.
       </div>
@@ -25,7 +25,7 @@ export default async function DemoBanner({
   const hasReal = !availableSources || availableSources.includes("real");
   if (isDemo) {
     return (
-      <div className="mb-5 rounded-lg border border-amber-400 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-600 dark:bg-amber-950 dark:text-amber-100">
+      <div className="mb-5 rounded-2xl border border-amber-400 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-600 dark:bg-amber-950 dark:text-amber-100">
         <strong>Date demo.</strong> Prețurile și istoricul de pe această pagină sunt sintetice, generate pentru demonstrație.{" "}
         {hasReal && (
           <Link href={`${path}?source=real`} className="underline">
@@ -36,7 +36,7 @@ export default async function DemoBanner({
     );
   }
   return (
-    <div className="mb-5 rounded-lg border border-line bg-card px-4 py-3 text-sm text-muted">
+    <div className="mb-5 rounded-2xl border border-line bg-card px-4 py-3 text-sm text-muted">
       Date reale colectate din magazine.{" "}
       <Link href={`${path}?source=mock`} className="underline">
         Vezi datele demo

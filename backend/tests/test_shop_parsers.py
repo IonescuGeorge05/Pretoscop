@@ -193,3 +193,21 @@ def test_sitemap_url_filter_real_examples():
     assert all(SitemapScraper.relevant(u) for u in keep)
     assert not any(SitemapScraper.relevant(u) for u in drop)
     assert LOC_RE.findall("<url><loc><![CDATA[https://www.anze.ro/x.html]]></loc></url>") == ["https://www.anze.ro/x.html"]
+
+
+def test_sitemap_scraper_can_start_from_listing_pages():
+    from scrapers.sitemap_scraper import SitemapScraper
+
+    class FakeClient:
+        def get(self, url, **kw):
+            class R:
+                text = (
+                    '<a href="/playstation5/playstation-5-pro-2tb-2025">Pro</a>'
+                    '<a href="/playstation5/jocuri">Jocuri</a>'
+                    '<a href="https://alt.hu/playstation-5-pro">HU</a>'
+                    '<a href="/playstation5/playstation-5-pro-2tb-2025#x">dublură</a>'
+                )
+            return R()
+
+    s = SitemapScraper(FakeClient(), "gamers", "https://www.gamers.ro", {"listing_pages": ["https://www.gamers.ro/playstation5/console"]})
+    assert s.discover_product_urls() == ["https://www.gamers.ro/playstation5/playstation-5-pro-2tb-2025"]

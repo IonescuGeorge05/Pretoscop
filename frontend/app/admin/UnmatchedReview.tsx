@@ -82,7 +82,7 @@ function Row({
         <button
           disabled={!slug || busy}
           onClick={() => send("assign")}
-          className="rounded-lg bg-brand px-3 py-1.5 font-semibold text-white disabled:opacity-40"
+          className="rounded-lg bg-brand px-3 py-1.5 font-semibold text-brand-ink disabled:opacity-40"
         >
           Asociază
         </button>
@@ -252,7 +252,7 @@ export default function UnmatchedReview({ products }: { products: { slug: string
             onChange={(e) => setInput(e.target.value)}
             className="min-w-0 flex-1 rounded-lg border border-line bg-surface px-2 py-1.5 text-sm"
           />
-          <button onClick={saveToken} className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-white">
+          <button onClick={saveToken} className="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-brand-ink">
             Intră
           </button>
         </div>

@@ -11,6 +11,7 @@ import gzip
 import json
 import logging
 import re
+from urllib.parse import urljoin
 from collections.abc import Iterable
 
 from scrapers.base import BaseScraper, PoliteClient
@@ -32,6 +33,7 @@ ACCESSORY_URL_RE = re.compile(
     r"adaptor|adapter|hub-|dock|cooler|ventilator|optical-drive|unitate-optica|filter|filtru|for-ps5|for-iphone|"
     r"pentru-ps5|pentru-playstation|pentru-iphone|compatibil)"
 )
+HREF_RE = re.compile(r'href="([^"#]+)"')
 SITEMAP_PRIORITY_RE = re.compile(r"(?i)(product|produs)")
 MAX_SITEMAP_FILES = 30
 
@@ -67,7 +69,25 @@ class SitemapScraper(BaseScraper):
         robots = self.client._robots_for(self.base_url + "/")
         return robots.sitemaps or [self.base_url + "/sitemap.xml"]
 
+    def listing_urls(self) -> list[str]:
+        """Linkuri de produs din pagini de categorie (`crawl.listing_pages`), pentru magazine fără sitemap util
+        (ex. gamers.ro: sitemap-ul conține doar site-ul lor maghiar)."""
+        found: list[str] = []
+        for page in self.crawl.get("listing_pages", []):
+            try:
+                html = self.client.get(page).text
+            except Exception as exc:
+                log.warning(json.dumps({"event": "listing_failed", "shop": self.shop_slug, "url": page, "error": str(exc)}))
+                continue
+            for href in HREF_RE.findall(html):
+                url = urljoin(page, href).split("#")[0].split("?")[0]
+                if self._same_site(url) and self.relevant(url):
+                    found.append(url)
+        return list(dict.fromkeys(found))
+
     def discover_product_urls(self) -> Iterable[str]:
+        if self.crawl.get("listing_pages"):
+            return self.listing_urls()
         queue, visited, products = list(self.sitemap_roots()), set(), []
         while queue and len(visited) < MAX_SITEMAP_FILES:
             sitemap = queue.pop(0).replace("&amp;", "&")

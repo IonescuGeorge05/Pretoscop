@@ -21,14 +21,14 @@ export default async function DealsPage({ searchParams }: { searchParams: { sour
   return (
     <>
       <DemoBanner isDemo={data.is_demo} path="/reduceri" />
-      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Reduceri reale</h1>
+      <h1 className="font-display text-4xl font-extrabold tracking-tight sm:text-[46px]">Reduceri reale</h1>
       <p className="mt-1 max-w-2xl text-sm text-muted">
         Comparăm prețul de azi cu ce a cerut fiecare magazin în ultimele {data.window_days} de zile (mediana), nu cu
         prețul tăiat afișat. Apar doar ofertele noi, vândute direct de magazin, cu o scădere de cel puțin 3%.
       </p>
 
       {ev && (
-        <div className="mt-4 rounded-xl border border-line bg-card p-4 text-sm">
+        <div className="mt-4 rounded-3xl border border-line bg-card p-4 text-sm">
           {ev.days_until === 0 ? (
             <>
               <strong>{ev.name}</strong> e în desfășurare (până pe {formatDate(ev.end)}). Atenție la reducerile
@@ -51,7 +51,7 @@ export default async function DealsPage({ searchParams }: { searchParams: { sour
               <li key={d.offer.id}>
                 <Link
                   href={productHref(d.product, source)}
-                  className="flex h-full flex-col rounded-xl border border-line bg-card p-4 shadow-sm transition hover:border-brand"
+                  className="flex h-full flex-col rounded-3xl border border-line bg-card p-4 shadow-sm transition hover:border-brand"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -77,7 +77,7 @@ export default async function DealsPage({ searchParams }: { searchParams: { sour
             ))}
           </ul>
         ) : (
-          <p className="rounded-xl border border-line bg-card p-4 text-sm text-muted">
+          <p className="rounded-3xl border border-line bg-card p-4 text-sm text-muted">
             Nicio scădere reală de preț în ultima lună la produsele urmărite. Revino mai aproape de{" "}
             {ev?.name ?? "următoarea campanie"}.
           </p>
@@ -86,11 +86,11 @@ export default async function DealsPage({ searchParams }: { searchParams: { sour
 
       {data.fake.length > 0 && (
         <section className="mt-10">
-          <h2 className="text-lg font-semibold">Reduceri false</h2>
+          <h2 className="font-display text-2xl font-extrabold tracking-tight">Reduceri false</h2>
           <p className="mt-1 text-sm text-muted">Preț tăiat afișat, dar prețul nu e de fapt mai mic decât de obicei.</p>
           <ul className="mt-3 space-y-3">
             {data.fake.map(({ product, fake }) => (
-              <li key={fake.offer_id} className="rounded-xl border border-red-200 bg-card p-4 text-sm dark:border-red-900">
+              <li key={fake.offer_id} className="rounded-3xl border border-red-200 bg-card p-4 text-sm dark:border-red-900">
                 <Link href={productHref(product, source)} className="font-semibold hover:text-brand">
                   {product.name} · {fake.shop_name}
                 </Link>

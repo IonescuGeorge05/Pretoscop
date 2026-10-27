@@ -3,12 +3,17 @@
 @tailwind utilities;
 
 :root {
-  --surface: 247 247 245;
+  /* stil „Prietenos”: alb, piatră caldă, portocaliu ars */
+  --surface: 255 255 255;
   --card: 255 255 255;
-  --ink: 17 17 17;
-  --muted: 92 91 87;
-  --line: 226 225 220;
-  --brand: 37 99 235;
+  --ink: 28 25 23;
+  --muted: 87 83 78;
+  --line: 231 229 228;
+  --brand: 194 65 12;
+  --brand-ink: 255 255 255;
+  --accent: 234 88 12;
+  --warm: 255 244 234;
+  --soft: 245 245 244;
 
   /* serii grafic: sloturi categoriale fixe per magazin (paletă validată CVD) */
   --series-1: #2a78d6;
@@ -28,12 +33,16 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --surface: 20 20 19;
-    --card: 30 30 29;
-    --ink: 240 239 236;
-    --muted: 175 174 166;
-    --line: 58 58 55;
-    --brand: 96 140 245;
+    --surface: 24 21 19;
+    --card: 33 30 27;
+    --ink: 245 245 244;
+    --muted: 176 170 165;
+    --line: 64 59 55;
+    --brand: 251 146 60;
+    --brand-ink: 28 25 23;
+    --accent: 251 146 60;
+    --warm: 48 33 22;
+    --soft: 41 37 34;
 
     --series-1: #3987e5;
     --series-2: #d95926;

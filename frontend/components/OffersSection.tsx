@@ -129,7 +129,7 @@ function GoButton({ o }: { o: Offer }) {
       href={IS_STATIC ? o.shop_url : o.out_url}
       target="_blank"
       rel="nofollow noopener sponsored"
-      className="inline-block whitespace-nowrap rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:opacity-90"
+      className="inline-block whitespace-nowrap rounded-full bg-brand px-4 py-2 text-xs font-bold text-brand-ink hover:opacity-90"
     >
       Mergi la magazin
     </a>
@@ -185,8 +185,8 @@ export default function OffersSection({
   if (!allOffers.length) {
     return (
       <section>
-        <h2 className="text-lg font-semibold">{title}</h2>
-        <p className="mt-3 rounded-xl border border-line bg-card p-4 text-sm text-muted">Nicio ofertă disponibilă.</p>
+        <h2 className="font-display text-2xl font-extrabold tracking-tight">{title}</h2>
+        <p className="mt-3 rounded-3xl border border-line bg-card p-4 text-sm text-muted">Nicio ofertă disponibilă.</p>
       </section>
     );
   }
@@ -200,7 +200,7 @@ export default function OffersSection({
   return (
     <section aria-labelledby="offers-title">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="offers-title" className="text-lg font-semibold">
+        <h2 id="offers-title" className="font-display text-2xl font-extrabold tracking-tight">
           {title}
         </h2>
         <div className="flex flex-wrap items-center gap-3">
@@ -228,7 +228,7 @@ export default function OffersSection({
       {/* mobil: carduri */}
       <ul className="mt-3 space-y-3 sm:hidden">
         {offers.map((o) => (
-          <li key={o.id} className={`rounded-xl border bg-card p-4 ${o.id === best ? "border-brand" : "border-line"}`}>
+          <li key={o.id} className={`rounded-3xl border bg-card p-4 ${o.id === best ? "border-brand" : "border-line"}`}>
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 font-semibold">
                 <input type="checkbox" checked={selected.includes(o.id)} onChange={() => toggle(o.id)} aria-label={`Compară ${o.shop.name}`} />
@@ -257,7 +257,7 @@ export default function OffersSection({
       </ul>
 
       {/* desktop: tabel */}
-      <div className="mt-3 hidden overflow-x-auto rounded-xl border border-line bg-card sm:block">
+      <div className="mt-3 hidden overflow-x-auto rounded-3xl border border-line bg-card sm:block">
         <table className="w-full text-sm">
           <thead className="border-b border-line text-left text-xs uppercase tracking-wide text-muted">
             <tr>
@@ -312,7 +312,7 @@ function ComparePanel({ c, onClose }: { c: Compare; onClose: () => void }) {
   const money = (component: string, v: number) => (component === "warranty_months" ? `${v} luni` : formatLei(v));
   const winner = (o: Offer) => c.winner_offer_id === o.id;
   return (
-    <div className="mt-4 rounded-xl border-2 border-brand bg-card p-4" aria-live="polite">
+    <div className="mt-4 rounded-3xl border-2 border-brand bg-card p-4" aria-live="polite">
       <div className="flex items-start justify-between gap-2">
         <h3 className="font-semibold">Comparație</h3>
         <button onClick={onClose} className="text-sm text-muted hover:text-ink">Închide ✕</button>

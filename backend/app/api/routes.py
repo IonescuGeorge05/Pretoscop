@@ -366,8 +366,11 @@ def require_admin(x_admin_token: str | None = Header(None)) -> None:
 @router.post("/admin/scrape", response_model=schemas.ScrapeStarted, status_code=202, dependencies=[Depends(require_admin)])
 def admin_scrape(background: BackgroundTasks, shop: str | None = None):
     """Pornește manual scraperul (un magazin sau toate). Header: X-Admin-Token."""
-    shops = [shop] if shop else list(REGISTRY)
-    unknown = [s for s in shops if s not in REGISTRY]
+    from app.worker import all_scrapable_shops  # include magazinele cu `crawl` / `feed` din shops.yaml
+
+    known = all_scrapable_shops()
+    shops = [shop] if shop else known
+    unknown = [s for s in shops if s not in known]
     if unknown:
         raise HTTPException(404, f"Nu există scraper pentru: {', '.join(unknown)}")
     for s in shops:

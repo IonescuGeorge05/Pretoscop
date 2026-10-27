@@ -6,7 +6,7 @@ export default function FakeDiscountAlert({ items }: { items: FakeDiscount[] }) 
   return (
     <section
       role="alert"
-      className="rounded-xl border-2 border-red-500 bg-red-50 p-4 text-red-950 dark:border-red-600 dark:bg-red-950 dark:text-red-100"
+      className="rounded-3xl border-2 border-red-500 bg-red-50 p-4 text-red-950 dark:border-red-600 dark:bg-red-950 dark:text-red-100"
     >
       {items.map((f) => (
         <div key={f.offer_id}>

@@ -156,3 +156,25 @@
   shipping_verified: false
   default_warranty_months: 24
   affiliate_url_template: null
+
+# gamers.ro: sitemap-ul conține doar site-ul lor maghiar -> pornim din paginile de categorie cu console
+- slug: gamers
+  name: Gamers.ro
+  base_url: https://www.gamers.ro
+  search_url_template: null
+  crawl: {type: sitemap, listing_pages: ["https://www.gamers.ro/playstation5/console", "https://www.gamers.ro/playstation5/console/pagina-2"], max_products: 40}
+  shipping_rules: {free_over: null, flat: 25}  # estimat
+  shipping_verified: false
+  default_warranty_months: 24
+  affiliate_url_template: null
+
+# Buy2Play (Shopify, mixt nou + second hand): a dat 429 după teste repetate -> puține produse pe rulare
+- slug: buy2play
+  name: Buy2Play
+  base_url: https://buy2play.ro
+  search_url_template: null
+  crawl: {type: sitemap, max_products: 15}
+  shipping_rules: {free_over: null, flat: 25}  # estimat
+  shipping_verified: false
+  default_warranty_months: 24
+  affiliate_url_template: null

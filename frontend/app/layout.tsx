@@ -1,9 +1,14 @@
 import type { Metadata, Viewport } from "next";
+import { Bricolage_Grotesque, DM_Sans } from "next/font/google";
 import Link from "next/link";
 
 import { appName } from "@/lib/format";
 
 import "./globals.css";
+
+// fonturile se descarcă la build și se servesc de pe site (fără cereri către Google la vizitare)
+const display = Bricolage_Grotesque({ subsets: ["latin", "latin-ext"], weight: ["600", "800"], variable: "--font-display" });
+const body = DM_Sans({ subsets: ["latin", "latin-ext"], weight: ["400", "500", "700"], variable: "--font-body" });
 
 export async function generateMetadata(): Promise<Metadata> {
   const name = appName();
@@ -18,44 +23,60 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export const viewport: Viewport = { width: "device-width", initialScale: 1 };
 
+/** „pretoscop” cu „scop” în culoarea de accent. */
+function Logo({ name }: { name: string }) {
+  const lower = name.toLowerCase();
+  const cut = lower.endsWith("scop") ? lower.length - 4 : lower.length;
+  return (
+    <span className="font-display text-2xl font-extrabold tracking-tight">
+      {lower.slice(0, cut)}
+      <span className="text-accent">{lower.slice(cut)}</span>
+    </span>
+  );
+}
+
+const NAV = [
+  { href: "/#ps5", label: "PS5" },
+  { href: "/#iphone-18-pro", label: "iPhone 18 Pro" },
+  { href: "/reduceri", label: "Reduceri reale", highlight: true },
+  { href: "/despre", label: "Cum calculăm" },
+];
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const name = appName();
   return (
-    <html lang="ro">
-      <body className="min-h-screen antialiased">
-        <header className="border-b border-line bg-card">
-          <nav className="mx-auto flex max-w-5xl items-center justify-between px-4 py-3">
-            <Link href="/" className="text-lg font-bold tracking-tight">
-              {name}
-            </Link>
-            <div className="flex gap-4 text-sm text-muted">
-              <Link href="/#ps5" className="hover:text-ink">
-                PS5
+    <html lang="ro" className={`${display.variable} ${body.variable}`}>
+      <body className="min-h-screen font-sans antialiased">
+        <header className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
+          <Link href="/" aria-label={`${name} — prima pagină`}>
+            <Logo name={name} />
+          </Link>
+          <nav className="flex flex-wrap gap-1 text-[15px] font-medium">
+            {NAV.map((n) => (
+              <Link
+                key={n.href}
+                href={n.href}
+                className={`rounded-full px-3.5 py-2 hover:bg-soft ${n.highlight ? "bg-warm" : ""}`}
+              >
+                {n.label}
               </Link>
-              <Link href="/#iphone-18-pro" className="hover:text-ink">
-                iPhone 18 Pro
-              </Link>
-              <Link href="/reduceri" className="hover:text-ink">
-                Reduceri reale
-              </Link>
-              <Link href="/despre" className="hover:text-ink">
-                Metodologie
-              </Link>
-            </div>
+            ))}
           </nav>
         </header>
-        <main className="mx-auto max-w-5xl px-4 py-6">{children}</main>
-        <footer className="mx-auto max-w-5xl px-4 pb-8 pt-4 text-xs text-muted">
-          {name} — prototip. Prețurile pot diferi de cele din magazin; verifică întotdeauna pe site-ul magazinului.
-          Recomandările sunt informative, nu sfaturi financiare.
-          <span className="mt-2 flex gap-4">
-            <Link href="/despre" className="underline hover:text-ink">
-              Metodologie
-            </Link>
-            <Link href="/confidentialitate" className="underline hover:text-ink">
-              Confidențialitate
-            </Link>
-          </span>
+        <main className="mx-auto max-w-6xl px-4 pb-10 pt-2 sm:px-6">{children}</main>
+        <footer className="mx-auto max-w-6xl px-4 pb-10 sm:px-6">
+          <div className="rounded-3xl bg-soft px-6 py-5 text-sm text-muted">
+            {name} — prototip. Prețurile pot diferi de cele din magazin; verifică întotdeauna pe site-ul magazinului.
+            Recomandările sunt informative, nu sfaturi financiare.
+            <span className="mt-3 flex gap-5 font-medium">
+              <Link href="/despre" className="underline hover:text-ink">
+                Cum calculăm
+              </Link>
+              <Link href="/confidentialitate" className="underline hover:text-ink">
+                Confidențialitate
+              </Link>
+            </span>
+          </div>
         </footer>
       </body>
     </html>

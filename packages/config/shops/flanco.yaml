@@ -1,0 +1,24 @@
+slug: flanco
+name: "Flanco"
+domain: flanco.ro
+website_url: https://www.flanco.ro
+kind: retail
+status: blocked
+access_mode: off
+trust_tier: 2
+categories: [electronice, electrocasnice]
+legal:
+  basis_ref: null
+  terms_note: "Archived 2025 terms forbid republishing prices."
+shipping:
+  notes: "De verificat la onboarding."
+  verified: false
+crawl_policy:
+  min_interval_ms: 5000
+probes:
+  - date: "2026-10-27"
+    vantage: "London, honest UA (research 2026-10-27)"
+    result: blocked
+    note: "see notes"
+notes: "Cloudflare challenge; Magento 2; MPN in analytics data. Designated for the assisted channel (M05B)."
+sources: []

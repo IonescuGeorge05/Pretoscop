@@ -1,0 +1,23 @@
+slug: sephora
+name: "Sephora"
+domain: sephora.ro
+website_url: https://www.sephora.ro
+kind: retail
+status: blocked
+access_mode: off
+trust_tier: 2
+categories: [beauty]
+legal:
+  basis_ref: null
+shipping:
+  notes: "De verificat la onboarding."
+  verified: false
+crawl_policy:
+  min_interval_ms: 5000
+probes:
+  - date: "2026-10-27"
+    vantage: "London, honest UA (research 2026-10-27)"
+    result: blocked
+    note: "see notes"
+notes: "Akamai 403; no program found. Needs allowlisting."
+sources: []

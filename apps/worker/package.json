@@ -8,14 +8,18 @@
     "start": "tsx src/index.ts",
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "shops:sync": "tsx src/cli/shops-sync.ts"
   },
   "devDependencies": {
     "pino-pretty": "^13.2.0"
   },
   "dependencies": {
     "@pretoscop/config": "workspace:*",
+    "@pretoscop/core": "workspace:*",
     "@pretoscop/db": "workspace:*",
+    "@pretoscop/extractors": "workspace:*",
+    "drizzle-orm": "0.45.4",
     "pg-boss": "12.38.0",
     "pino": "^10.4.0"
   }

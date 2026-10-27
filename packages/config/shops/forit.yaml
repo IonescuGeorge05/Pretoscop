@@ -1,0 +1,42 @@
+slug: forit
+name: "forit"
+domain: forit.ro
+website_url: https://www.forit.ro
+kind: retail
+status: active
+access_mode: direct
+trust_tier: 2
+categories: [it]
+legal:
+  basis_ref: "robots.txt allows product pages; recon 2026-10-27 served the honest bot"
+  robots_note: "Disallows /lib/, /account/, /checkout/, /cauta/, /*_f*/, /*/filtre/."
+shipping:
+  notes: "De verificat la onboarding."
+  verified: false
+crawl_policy:
+  min_interval_ms: 5000
+  max_pages_per_day: 2000
+  freshness_slo_hours: 72
+affiliate:
+  network: "profitshare"
+  commission_text: "2% (Oct 2026)"
+  comparator_policy: "unknown"
+  status: "to_apply"
+probes:
+  - date: "2026-10-27"
+    vantage: "founder home connection (Mac), honest UA"
+    result: served
+    note: "robots and sitemap index 200"
+notes: "JSON-LD Product, no GTIN."
+sources:
+  - key: forit:sitemap:produse
+    kind: sitemap
+    url: https://www.forit.ro/sitemap.xml
+    parser_key: sitemap
+    schedule: "15 2 * * *"
+    enabled: true
+    config:
+      productParser: jsonld-product
+      dailyBudget: 1500
+      exclude: ["sitemap_category"]
+      note: "sitemap_30000/60000/90000 → product pages within the daily budget."

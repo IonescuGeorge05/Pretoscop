@@ -1,0 +1,24 @@
+slug: cel
+name: "CEL.ro"
+domain: cel.ro
+website_url: https://www.cel.ro
+kind: retail
+status: blocked
+access_mode: off
+trust_tier: 2
+categories: [it, electronice]
+legal:
+  basis_ref: null
+  terms_note: "Terms ban republishing without written consent."
+shipping:
+  notes: "De verificat la onboarding."
+  verified: false
+crawl_policy:
+  min_interval_ms: 5000
+probes:
+  - date: "2026-10-27"
+    vantage: "London, honest UA (research 2026-10-27)"
+    result: blocked
+    note: "see notes"
+notes: "TCP timeout from London; serves fake random-hex products behind its captcha (never ingest challenge pages). robots blocks generic tokens bot/, crawl, spider. Designated for the assisted channel (M05B)."
+sources: []

@@ -1,0 +1,32 @@
+slug: vexio
+name: "Vexio"
+domain: vexio.ro
+website_url: https://www.vexio.ro
+kind: retail
+status: blocked
+access_mode: off
+trust_tier: 2
+categories: [it, electronice]
+legal:
+  basis_ref: null
+  terms_note: "Terms ban republishing without written consent (browsewrap)."
+shipping:
+  notes: "De verificat la onboarding."
+  verified: false
+crawl_policy:
+  min_interval_ms: 5000
+affiliate:
+  network: "profitshare"
+  commission_text: "2% (Oct 2026)"
+  cookie_days: 5
+  comparator_policy: "unknown"
+  feed_available: true
+  status: "to_apply"
+  notes: "Profitshare feed available; bans Google Ads."
+probes:
+  - date: "2026-10-27"
+    vantage: "London, honest UA (research 2026-10-27)"
+    result: challenge
+    note: "Cloudflare managed challenge"
+notes: "Cloudflare challenge. Listed on compari.ro (has a feed). Also an eMAG marketplace seller."
+sources: []

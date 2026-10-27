@@ -1,0 +1,43 @@
+slug: evomag
+name: "evoMAG"
+domain: evomag.ro
+website_url: https://www.evomag.ro
+kind: retail
+status: blocked
+access_mode: off
+trust_tier: 2
+categories: [it, electronice]
+legal:
+  basis_ref: null
+  terms_note: "Terms ban copying/republishing without written consent."
+shipping:
+  notes: "De verificat la onboarding."
+  verified: false
+crawl_policy:
+  min_interval_ms: 5000
+affiliate:
+  network: "2performant"
+  commission_text: "1.5% (Oct 2026)"
+  cookie_days: 10
+  comparator_policy: "unknown"
+  feed_available: true
+  status: "to_apply"
+  notes: "15+ feeds; ask in writing about price-history use (ToS §9)."
+probes:
+  - date: "2026-10-27"
+    vantage: "London, honest UA (research 2026-10-27)"
+    result: challenge
+    note: "Distinct CAPTCHA on first request"
+notes: "Distinct Traffic Filter CAPTCHA on the first request from London; feed first (2Performant). Designated for the assisted channel until its feed is live (M05B). Also sells as an eMAG marketplace seller."
+sources:
+  - key: evomag:feed:2performant
+    kind: feed
+    url: https://api.2performant.com/feed/evomag.csv
+    format: csv
+    parser_key: feed-2performant-csv
+    schedule: "0 */6 * * *"
+    enabled: false
+    source_tier: 2
+    config:
+      requiresAccount: true
+      note: "Placeholder URL: replace with the dashboard-generated feed URL once the program is approved (A6)."

@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 
 import httpx
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
@@ -88,39 +88,65 @@ def _recently_tried(shop: Shop) -> bool:
     return datetime.now(UTC) - last < BLOCKED_RETRY_AFTER
 
 
+def _try_lock(session: Session, slug: str) -> bool:
+    """Un singur scraper per magazin la un moment dat (worker programat + „Rulează” din admin): altfel se dublează
+    cererile către magazin și două rulări inserează aceeași ofertă nouă. Lacătul ține de conexiune -> `_unlock` la final."""
+    if session.bind.dialect.name != "postgresql":
+        return True
+    return bool(session.execute(text("select pg_try_advisory_lock(hashtext(:k))"), {"k": f"scrape:{slug}"}).scalar())
+
+
+def _unlock(session: Session, slug: str) -> None:
+    if session.bind.dialect.name == "postgresql":
+        session.execute(text("select pg_advisory_unlock(hashtext(:k))"), {"k": f"scrape:{slug}"})
+        session.commit()
+
+
 def run_shop(slug: str, skip_blocked: bool = False) -> dict:
     started = time.monotonic()
     summary: dict = {"event": "scrape_done", "shop": slug}
     with SessionLocal() as session:
-        shop = session.scalar(select(Shop).where(Shop.slug == slug))
-        if shop is None or (slug not in REGISTRY and not (shop.feed and shop.feed.get("url")) and not shop.crawl):
-            summary["status"] = "no_scraper"
-        elif skip_blocked and shop.status == "blocked" and _recently_tried(shop):
-            summary["status"] = "skipped_blocked"
+        if not _try_lock(session, slug):
+            summary["status"] = "already_running"
         else:
-            client = PoliteClient(timeout=180) if shop.feed else PoliteClient()  # feed-urile pot fi mari
             try:
-                summary.update(scrape_shop(session, shop, client))
-                shop.status, shop.status_reason = "active", None
-                summary["status"] = "ok"
-            except (BlockedError, RobotsDisallowed, httpx.TransportError) as exc:
-                shop.status, shop.status_reason = "blocked", f"{type(exc).__name__}: {exc}"
-                summary["status"] = "blocked"
-                summary["reason"] = shop.status_reason
-            except Exception as exc:  # izolare: nu oprim celelalte magazine
-                log.exception("scraper %s a eșuat", slug)
-                session.rollback()
-                summary["status"] = "error"
-                summary["reason"] = repr(exc)
+                _run_locked(session, slug, skip_blocked, summary, started)
             finally:
-                client.close()
-                shop.last_scraped_at = datetime.now(UTC)
-                summary["duration_s"] = round(time.monotonic() - started, 1)
-                shop.last_run = {k: v for k, v in summary.items() if k not in ("event", "shop")}
-                session.commit()
+                session.rollback()  # după o eroare tranzacția e invalidă; deblocarea are nevoie de una curată
+                _unlock(session, slug)
     summary.setdefault("duration_s", round(time.monotonic() - started, 1))
     log.info(json.dumps(summary, ensure_ascii=False))
     return summary
+
+
+def _run_locked(session: Session, slug: str, skip_blocked: bool, summary: dict, started: float) -> None:
+    shop = session.scalar(select(Shop).where(Shop.slug == slug))
+    if shop is None or (slug not in REGISTRY and not (shop.feed and shop.feed.get("url")) and not shop.crawl):
+        summary["status"] = "no_scraper"
+        return
+    if skip_blocked and shop.status == "blocked" and _recently_tried(shop):
+        summary["status"] = "skipped_blocked"
+        return
+    client = PoliteClient(timeout=180) if shop.feed else PoliteClient()  # feed-urile pot fi mari
+    try:
+        summary.update(scrape_shop(session, shop, client))
+        shop.status, shop.status_reason = "active", None
+        summary["status"] = "ok"
+    except (BlockedError, RobotsDisallowed, httpx.TransportError) as exc:
+        shop.status, shop.status_reason = "blocked", f"{type(exc).__name__}: {exc}"
+        summary["status"] = "blocked"
+        summary["reason"] = shop.status_reason
+    except Exception as exc:  # izolare: nu oprim celelalte magazine
+        log.exception("scraper %s a eșuat", slug)
+        session.rollback()
+        summary["status"] = "error"
+        summary["reason"] = repr(exc)
+    finally:
+        client.close()
+        shop.last_scraped_at = datetime.now(UTC)
+        summary["duration_s"] = round(time.monotonic() - started, 1)
+        shop.last_run = {k: v for k, v in summary.items() if k not in ("event", "shop")}
+        session.commit()
 
 
 def run_all(skip_blocked: bool = False) -> list[dict]:

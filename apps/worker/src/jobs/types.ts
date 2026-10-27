@@ -1,9 +1,11 @@
 import type { Env } from '@pretoscop/config/env';
+import type { Db } from '@pretoscop/db';
 import type { Logger } from '@pretoscop/config/logger';
 import type { Job, PgBoss, Queue, WorkOptions } from 'pg-boss';
 
 export interface JobContext {
   boss: PgBoss;
+  db: Db;
   env: Env;
   log: Logger;
 }

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { formatLei } from "@/lib/format";
 import { compareOffers } from "@/lib/compare";
@@ -113,6 +113,16 @@ function OfferDetails({ o, isBest }: { o: Offer; isBest: boolean }) {
   );
 }
 
+/** Orașul din locația anunțului: „Sector 3, Bucuresti” -> București, „Floresti, Cluj” -> Floresti. */
+const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+function cityOf(location: string | null): string | null {
+  if (!location) return null;
+  const parts = location.split(",").map((p) => p.trim()).filter(Boolean);
+  if (!parts.length) return null;
+  if (parts.some((p) => /^sector\s*\d/i.test(p)) || fold(parts[0]) === "bucuresti") return "București";
+  return parts[0];
+}
+
 function GoButton({ o }: { o: Offer }) {
   return (
     <a
@@ -126,8 +136,29 @@ function GoButton({ o }: { o: Offer }) {
   );
 }
 
-export default function OffersSection({ offers, title = "Oferte" }: { offers: Offer[]; title?: string }) {
+export default function OffersSection({
+  offers: allOffers,
+  title = "Oferte",
+  locationFilter = false,
+}: {
+  offers: Offer[];
+  title?: string;
+  locationFilter?: boolean; // second hand: filtru după oraș
+}) {
   const [selected, setSelected] = useState<number[]>([]);
+  const [city, setCity] = useState("");
+  // orașele, după numărul de anunțuri (cheie fără diacritice: „Iasi” și „Iași” sunt același oraș)
+  const cities = useMemo(() => {
+    const counts = new Map<string, { name: string; n: number }>();
+    for (const o of allOffers) {
+      const c = cityOf(o.location);
+      if (!c) continue;
+      const cur = counts.get(fold(c)) ?? { name: c, n: 0 };
+      counts.set(fold(c), { ...cur, n: cur.n + 1 });
+    }
+    return Array.from(counts, ([key, v]) => ({ key, ...v })).sort((a, b) => b.n - a.n || a.name.localeCompare(b.name));
+  }, [allOffers]);
+  const offers = city ? allOffers.filter((o) => fold(cityOf(o.location) ?? "") === city) : allOffers;
   const [comparison, setComparison] = useState<Compare | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -151,7 +182,7 @@ export default function OffersSection({ offers, title = "Oferte" }: { offers: Of
     return () => ctrl.abort();
   }, [selected, offers]);
 
-  if (!offers.length) {
+  if (!allOffers.length) {
     return (
       <section>
         <h2 className="text-lg font-semibold">{title}</h2>
@@ -172,7 +203,26 @@ export default function OffersSection({ offers, title = "Oferte" }: { offers: Of
         <h2 id="offers-title" className="text-lg font-semibold">
           {title}
         </h2>
-        <p className="text-xs text-muted">Sortate după preț final · bifează 2 oferte pentru comparație</p>
+        <div className="flex flex-wrap items-center gap-3">
+          {locationFilter && cities.length > 1 && (
+            <label className="flex items-center gap-2 text-xs text-muted">
+              Oraș
+              <select
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                className="rounded-lg border border-line bg-card px-2 py-1.5 text-sm text-ink"
+              >
+                <option value="">Toate ({allOffers.length})</option>
+                {cities.map((c) => (
+                  <option key={c.key} value={c.key}>
+                    {c.name} ({c.n})
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <p className="text-xs text-muted">Sortate după preț final · bifează 2 oferte pentru comparație</p>
+        </div>
       </div>
 
       {/* mobil: carduri */}

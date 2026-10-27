@@ -113,7 +113,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
           iar transportul depinde de vânzător.
         </p>
         <OffersSection offers={product.refurbished} title="Refurbished" />
-        <OffersSection offers={product.secondhand} title="Second hand" />
+        <OffersSection offers={product.secondhand} title="Second hand" locationFilter />
       </section>
 
       {product.bundles.length > 0 && (

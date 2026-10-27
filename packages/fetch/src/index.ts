@@ -121,3 +121,25 @@ export type {
 } from './state/types';
 export { MemoryDomainStateStore } from './state/memory';
 export { FileDomainStateStore, type FileDomainStateStoreOptions } from './state/file';
+// Web Bot Auth (M21). Also importable alone as `@pretoscop/fetch/signing` (no undici).
+export {
+  createWebBotAuthSigner,
+  DEFAULT_SIGNATURE_VALIDITY_SECONDS,
+  directoryBody,
+  DIRECTORY_MEDIA_TYPE,
+  DIRECTORY_PATH,
+  DIRECTORY_TAG,
+  generateEd25519Key,
+  jwkThumbprint,
+  loadEd25519Key,
+  parseSignatureHeaders,
+  signDirectoryResponse,
+  signerFromEnv,
+  verifyWebBotAuthRequest,
+  WEB_BOT_AUTH_TAG,
+  WebBotAuthKeyError,
+  type Ed25519Key,
+  type Ed25519PublicJwk,
+  type RequestSigner,
+  type WebBotAuthSignerOptions,
+} from './signing';

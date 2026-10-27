@@ -46,6 +46,29 @@ describe('getEnv', () => {
     expect(() => getEnv({ BOT_EGRESS_IPS: '2001:db8::/129' })).toThrow(/BOT_EGRESS_IPS/);
     expect(() => getEnv({ BOT_EGRESS_IPS: '256.1.1.1' })).toThrow(/BOT_EGRESS_IPS/);
   });
+
+  it('keeps Web Bot Auth off by default and refuses signing without a well-formed key, never echoing it', () => {
+    expect(getEnv({}).WEB_BOT_AUTH).toBe(false);
+    expect(getEnv({}).WEB_BOT_AUTH_PRIVATE_KEY).toBeUndefined();
+    expect(() => getEnv({ WEB_BOT_AUTH: 'true' })).toThrow(/WEB_BOT_AUTH is on but WEB_BOT_AUTH_PRIVATE_KEY is not set/);
+    const secret = 'abc-not-a-key-0123456789';
+    let message = '';
+    try {
+      getEnv({ WEB_BOT_AUTH_PRIVATE_KEY: secret });
+    } catch (err) {
+      message = (err as Error).message;
+    }
+    expect(message).toMatch(/must be a base64url Ed25519 seed/);
+    expect(message).not.toContain(secret);
+    const seed = 'A'.repeat(43);
+    expect(getEnv({ WEB_BOT_AUTH: '1', WEB_BOT_AUTH_PRIVATE_KEY: seed })).toMatchObject({ WEB_BOT_AUTH: true, WEB_BOT_AUTH_PRIVATE_KEY: seed });
+  });
+
+  it('accepts the public RFC 9421 test key in dev only', () => {
+    const testKey = 'n4Ni-HpISpVObnQMW0wOhCKROaIKqKtW_2ZYb2p9KcU';
+    expect(getEnv({ WEB_BOT_AUTH_PRIVATE_KEY: testKey }).WEB_BOT_AUTH_PRIVATE_KEY).toBe(testKey);
+    expect(() => getEnv({ APP_ENV: 'staging', WEB_BOT_AUTH_PRIVATE_KEY: testKey })).toThrow(/public RFC 9421 test key/);
+  });
 });
 
 describe('isIpOrCidr', () => {

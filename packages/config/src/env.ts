@@ -13,6 +13,14 @@ const bool = z
   .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.trim().toLowerCase())));
 
 const int = (def: number) => z.coerce.number().int().default(def);
+
+/** Shape of a base64url Ed25519 seed (`WEB_BOT_AUTH_PRIVATE_KEY`); the key itself is read in @pretoscop/fetch. */
+const WEB_BOT_AUTH_KEY_FORMAT = /^[A-Za-z0-9_-]{43}=?$/;
+/** RFC 9421 Appendix B.1.4 "test-key-ed25519" (seed and PKCS#8 body): fine in tests, refused in staging/prod. */
+const RFC9421_TEST_KEY_MARKERS = ['n4Ni-HpISpVObnQMW0wOhCKROaIKqKtW_2ZYb2p9KcU', 'MC4CAQAwBQYDK2VwBCIEIJ+DYvh6SEqVTm50DFtMDoQikTmiCqirVv9mWG9qfSnF'];
+function isPublishedTestKey(key: string): boolean {
+  return RFC9421_TEST_KEY_MARKERS.some((m) => key.includes(m));
+}
 const optionalString = z
   .string()
   .optional()
@@ -83,6 +91,13 @@ export const EnvSchema = z
     FETCH_MAX_BODY_BYTES: int(15 * 1024 * 1024),
     /** Lets the worker's fetcher reach private/loopback addresses (local fixture servers). Never in production. */
     FETCH_ALLOW_PRIVATE_HOSTS: bool.default(false),
+    /** Web Bot Auth (M21): the fetcher signs requests (RFC 9421, Ed25519). Off by default. */
+    WEB_BOT_AUTH: bool.default(false),
+    /**
+     * Ed25519 private key for Web Bot Auth and the key directory: base64url seed (from
+     * `pnpm --filter @pretoscop/fetch bot-auth:keygen`) or PKCS#8 PEM. Secret: environment only.
+     */
+    WEB_BOT_AUTH_PRIVATE_KEY: optionalString,
 
     // Assisted-access channel (M05B, ADR-015)
     ASSISTED_VENDOR: z.enum(['none', 'zyte', 'oxylabs']).default('none'),
@@ -154,7 +169,18 @@ export const EnvSchema = z
     METRICS_PORT: int(9464),
   })
   .superRefine((env, ctx) => {
+    // Never echo the key itself in an error message.
+    const key = env.WEB_BOT_AUTH_PRIVATE_KEY;
+    if (env.WEB_BOT_AUTH && !key) {
+      ctx.addIssue({ code: 'custom', path: ['WEB_BOT_AUTH_PRIVATE_KEY'], message: 'WEB_BOT_AUTH is on but WEB_BOT_AUTH_PRIVATE_KEY is not set' });
+    }
+    if (key && !WEB_BOT_AUTH_KEY_FORMAT.test(key) && !key.startsWith('-----BEGIN')) {
+      ctx.addIssue({ code: 'custom', path: ['WEB_BOT_AUTH_PRIVATE_KEY'], message: 'WEB_BOT_AUTH_PRIVATE_KEY must be a base64url Ed25519 seed (43 characters) or a PKCS#8 PEM block' });
+    }
     if (env.APP_ENV === 'staging' || env.APP_ENV === 'prod') {
+      if (key && isPublishedTestKey(key)) {
+        ctx.addIssue({ code: 'custom', path: ['WEB_BOT_AUTH_PRIVATE_KEY'], message: 'WEB_BOT_AUTH_PRIVATE_KEY is the public RFC 9421 test key; generate a real one' });
+      }
       for (const key of ['BETTER_AUTH_SECRET', 'REVALIDATE_TOKEN', 'HASH_SALT_SECRET'] as const) {
         if (env[key] === DEV_SECRET) {
           ctx.addIssue({ code: 'custom', path: [key], message: `${key} must be set outside dev` });

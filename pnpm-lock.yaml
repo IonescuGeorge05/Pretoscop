@@ -53,6 +53,9 @@ importers:
       '@pretoscop/mailer':
         specifier: workspace:*
         version: link:../../packages/mailer
+      '@pretoscop/search':
+        specifier: workspace:*
+        version: link:../../packages/search
       '@pretoscop/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -132,6 +135,9 @@ importers:
       '@pretoscop/fetch':
         specifier: workspace:*
         version: link:../../packages/fetch
+      '@pretoscop/search':
+        specifier: workspace:*
+        version: link:../../packages/search
       '@pretoscop/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -243,6 +249,18 @@ importers:
       '@types/nodemailer':
         specifier: ^8.0.2
         version: 8.0.2
+
+  packages/search:
+    dependencies:
+      '@pretoscop/config':
+        specifier: workspace:*
+        version: link:../config
+      '@pretoscop/core':
+        specifier: workspace:*
+        version: link:../core
+      '@pretoscop/db':
+        specifier: workspace:*
+        version: link:../db
 
   packages/storage:
     dependencies:

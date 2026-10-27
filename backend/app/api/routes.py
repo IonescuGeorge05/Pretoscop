@@ -50,7 +50,8 @@ def offer_out(view: catalog.OfferView, fake: FakeDiscount | None = None) -> sche
         in_stock=p.in_stock,
         old_price=float(p.old_price) if p.old_price is not None else None,
         breakdown=schemas.PriceBreakdownOut(**{k: float(v) for k, v in asdict(view.breakdown).items()}),
-        warranty_estimated=o.warranty_months is None,
+        # produse noi de la magazine: 24 de luni sunt garantate prin lege (OUG 140/2021), deci nu e o estimare
+        warranty_estimated=o.warranty_months is None and not (o.shop.kind == "retail" and o.condition == "new"),
         shipping_estimated=not o.shop.shipping_verified,
         is_bundle=o.is_bundle,
         seller=o.seller,

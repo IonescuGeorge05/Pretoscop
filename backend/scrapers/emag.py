@@ -24,6 +24,18 @@ def old_price_from_page(html: str, current: Decimal) -> Decimal | None:
     return None
 
 
+def edition_hint(product_jsonld: dict | None) -> str:
+    """eMAG are în JSON-LD „Tip editie: Standard / Digital”; titlurile Slim adesea nu spun Disc/Digital."""
+    for prop in (product_jsonld or {}).get("additionalProperty") or []:
+        if isinstance(prop, dict) and str(prop.get("name", "")).lower().startswith("tip edi"):
+            value = str(prop.get("value", "")).strip().lower()
+            if value in ("standard", "disc"):
+                return "Standard Edition"
+            if value == "digital":
+                return "Digital Edition"
+    return ""
+
+
 class EmagScraper(BaseScraper):
     shop_slug = "emag"
     # (pagina de căutare, filtrul pe URL-ul produsului) per familie
@@ -40,4 +52,5 @@ class EmagScraper(BaseScraper):
         offer = super().parse_product(url, html)
         if offer is not None:
             offer.old_price = old_price_from_page(html, offer.price) or offer.old_price
+            offer.match_hints = edition_hint(offer.raw.get("jsonld"))
         return offer

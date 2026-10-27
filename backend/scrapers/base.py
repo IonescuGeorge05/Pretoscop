@@ -39,6 +39,7 @@ class ScrapedOffer:
     grade: str | None = None  # gradul estetic la refurbished
     location: str | None = None  # second hand: orașul din anunț
     posted_label: str | None = None  # second hand: data afișată în anunț
+    match_hints: str = ""  # text suplimentar pentru matcher (ex. „Standard Edition” din specificații), neafișat
 
 
 class BlockedError(Exception):

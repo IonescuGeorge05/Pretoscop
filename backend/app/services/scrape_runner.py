@@ -16,7 +16,8 @@ from app.models import ManualMatch, Product, Shop
 from app.services.ingest import record_offer, record_unmatched
 from scrapers.base import BlockedError, PoliteClient, RobotsDisallowed, ScrapedOffer
 from scrapers.feed_scraper import FeedScraper
-from scrapers.matcher import ProductRef, match
+from scrapers.sitemap_scraper import SitemapScraper
+from scrapers.matcher import ProductRef, match, title_condition
 from scrapers.registry import REGISTRY
 
 log = logging.getLogger("scrape")
@@ -26,6 +27,8 @@ def scraper_for(shop: Shop, client: PoliteClient):
     """Feed-ul configurat are prioritate față de scraperul de pagini (date oferite chiar de magazin)."""
     if shop.feed and shop.feed.get("url"):
         return FeedScraper(client, shop.slug, shop.feed)
+    if shop.crawl and shop.crawl.get("type") == "sitemap":
+        return SitemapScraper(client, shop.slug, shop.base_url, shop.crawl)
     return REGISTRY[shop.slug](client)
 
 
@@ -43,6 +46,12 @@ def ingest_offers(session: Session, shop: Shop, scraped_offers: Iterable[Scraped
     stats: Counter = Counter()
     for scraped in scraped_offers:
         stats["listings"] += 1
+        # magazine mixte (ex. Buy2Play): produsele „Second-Hand SH” / „resigilat” merg la secțiunea potrivită,
+        # chiar dacă datele structurate ale paginii le declară „noi”
+        item_allow_used = allow_used
+        if shop.kind == "retail" and scraped.condition == "new" and (cond := title_condition(scraped.title)):
+            scraped.condition = cond
+            item_allow_used = True
         # o asociere făcută de mână în pagina de admin are prioritate față de reguli
         if (m := manual.get(scraped.url)) is not None:
             if m.ignored:
@@ -52,7 +61,8 @@ def ingest_offers(session: Session, shop: Shop, scraped_offers: Iterable[Scraped
                 stats["matched_manual"] += 1
                 stats["price_points_written"] += int(changed)
             continue
-        result = match(scraped.title, refs, scraped.ean, scraped.mpn, scraped.condition, allow_used)
+        title_for_match = f"{scraped.title} {scraped.match_hints}".strip()
+        result = match(title_for_match, refs, scraped.ean, scraped.mpn, scraped.condition, item_allow_used)
         if result.kind == "product":
             _, changed = record_offer(session, shop, products[result.product_slug], scraped, result.is_bundle)
             stats["bundles" if result.is_bundle else "matched"] += 1
@@ -71,7 +81,7 @@ def run_shop(slug: str, skip_blocked: bool = False) -> dict:
     summary: dict = {"event": "scrape_done", "shop": slug}
     with SessionLocal() as session:
         shop = session.scalar(select(Shop).where(Shop.slug == slug))
-        if shop is None or (slug not in REGISTRY and not (shop.feed and shop.feed.get("url"))):
+        if shop is None or (slug not in REGISTRY and not (shop.feed and shop.feed.get("url")) and not shop.crawl):
             summary["status"] = "no_scraper"
         elif skip_blocked and shop.status == "blocked":
             summary["status"] = "skipped_blocked"

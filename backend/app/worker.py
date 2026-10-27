@@ -16,6 +16,18 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname
 log = logging.getLogger("worker")
 
 
+def all_scrapable_shops() -> list[str]:
+    """Magazinele cu scraper dedicat + cele configurate în shops.yaml cu `crawl` sau `feed`."""
+    from sqlalchemy import select
+
+    from app.db import SessionLocal
+    from app.models import Shop
+
+    with SessionLocal() as session:
+        configured = [s.slug for s in session.scalars(select(Shop)) if s.crawl or (s.feed and s.feed.get("url"))]
+    return list(dict.fromkeys([*REGISTRY, *configured]))
+
+
 def main() -> None:
     if not settings.scraping_enabled:
         log.info("SCRAPING_ENABLED=false — worker-ul nu programează nimic")
@@ -24,7 +36,7 @@ def main() -> None:
 
     scheduler = BlockingScheduler(timezone=UTC)
     jitter_s = settings.scrape_jitter_minutes * 60
-    for slug in REGISTRY:
+    for slug in all_scrapable_shops():
         # primul run eșalonat (1-10 min după pornire), apoi la fiecare N ore +/- jitter
         first = datetime.now(UTC) + timedelta(seconds=random.randint(60, 600))
         scheduler.add_job(

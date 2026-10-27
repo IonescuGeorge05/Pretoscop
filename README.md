@@ -5,7 +5,7 @@
 
 Comparator de prețuri IT&C pentru România. Prototipul acoperă un singur produs — PlayStation 5, toate cele 5 modele — și are:
 
-- **preț final real** = preț + transport + penalizare pentru garanție mai scurtă;
+- **preț final real** = preț + transport + penalizare pentru garanție mai scurtă (anunțurile fără garanție nu sunt penalizate, ci marcate vizibil „Fără garanție”);
 - **istoric de preț** pe zile sau săptămâni, cu perioadele de reduceri marcate (Black Friday, 11.11, Crăciun, Paște, back-to-school);
 - **detectarea reducerilor false**;
 - **recomandare** (Cumpără acum / Urmează o reducere / Așteaptă / Preț obișnuit / Date insuficiente) explicată cu cifre;
@@ -126,6 +126,9 @@ Starea magazinelor, testată pe 25.10.2026 cu clientul `httpx` al aplicației:
 | Flanco | ⛔ blocat | Cloudflare 403 |
 | Altex | ⛔ blocat | Akamai 403; listarea e randată client-side |
 | Flip (refurbished) | ✅ funcționează | URL-uri din sitemap; toate gradele estetice dintr-o pagină (`__NEXT_DATA__`) |
+| Anze, PremiumAV, Dwyn Shop | ✅ funcționează | **scraper generic pe sitemap** (Gomag / WooCommerce), fără cod dedicat |
+| Buy2Play, iSTYLE | ⏳ limitează temporar (429) | candidați pentru scraperul generic; de reîncercat |
+| PC One, Vexio, GSMnet, Media Galaxy, AV Store, QuickMobile | ⛔ blocat (403/503) | candidați pentru emailul cu cererea de feed |
 | Publi24 (second hand) | ✅ funcționează | caută „ps5”, „playstation 5”, „playstation5” în categoria Console, câte 3 pagini; titlu, preț, locație, dată din cardurile listei |
 | OLX (second hand) | ⛔ blocat automat | CloudFront 403 pentru clientul aplicației, chiar și la `robots.txt`. Caută „ps5”, „playstation 5”, „playstation5” și reține locația; până la un acord cu OLX se folosește **importul manual** din `/admin` |
 
@@ -177,7 +180,30 @@ Toate endpointurile de citire acceptă `?source=mock|real`.
 
 ## Cum adaugi un magazin
 
-1. Adaugă o intrare în `backend/app/seed/shops.yaml` (slug, URL-uri, `shipping_rules`, garanție, `shipping_verified`).
+**Varianta rapidă (fără cod)**, pentru magazinele pe platforme standard (Shopify, WooCommerce, Gomag, MerchantPro, PrestaShop), care au sitemap și date structurate de produs:
+
+```yaml
+- slug: magazin
+  name: Magazin
+  base_url: https://www.magazin.ro
+  search_url_template: https://www.magazin.ro/cauta?q={query}
+  crawl: {type: sitemap, max_products: 40}
+  shipping_rules: {free_over: 500, flat: 19.99}
+  shipping_verified: false
+  default_warranty_months: 24
+  affiliate_url_template: null
+```
+
+Scraperul generic (`scrapers/sitemap_scraper.py`):
+1. citește sitemap-urile din robots.txt;
+2. păstrează doar paginile de consolă PS5 și iPhone 18 Pro, fără accesorii;
+3. citește fiecare pagină cu extractorii comuni.
+
+În `/admin`, „Magazine descoperite” → „Verifică” arată dacă un magazin se potrivește acestei variante.
+
+**Varianta cu cod**, când magazinul are o structură aparte:
+
+1. Adaugă o intrare în `backend/app/seed/shops.yaml` (fără `crawl`) (slug, URL-uri, `shipping_rules`, garanție, `shipping_verified`).
 2. Creează `backend/scrapers/<slug>.py`: o subclasă `BaseScraper` care implementează doar `discover_product_urls()` (pagini de listare + selector CSS pentru linkuri). Dacă pagina de produs nu are JSON-LD, microdata sau OpenGraph, setează `css_title` / `css_price` / `css_old_price`.
 3. Înregistreaz-o în `backend/scrapers/registry.py`.
 4. `docker compose restart api worker` (seed-ul face upsert după slug). Pentru date demo, adaugă slug-ul și în `SHOP_FACTOR` din `mock_history.py`.

@@ -58,3 +58,9 @@ def test_compare_diffs_are_b_minus_a():
     assert diffs["price"] == Decimal("-50.00")
     assert diffs["shipping"] == Decimal("29.99")
     assert diffs["warranty_months"] == -12
+
+
+def test_no_warranty_has_no_penalty_only_shorter_warranty_does():
+    assert warranty_penalty(Decimal("2700"), 0) == 0  # anunț second hand: prețul rămâne cel din anunț
+    assert final_price(Decimal("2700"), {"free_over": None, "flat": 0}, 0).final_price == Decimal("2700.00")
+    assert warranty_penalty(Decimal("2700"), 12) == Decimal("162.00")  # garanție mai scurtă: penalizare

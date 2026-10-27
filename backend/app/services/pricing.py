@@ -39,6 +39,10 @@ def warranty_penalty(
     rate: Decimal = WARRANTY_PENALTY_RATE,
     reference_months: int = WARRANTY_REFERENCE_MONTHS,
 ) -> Decimal:
+    # fără garanție deloc (second hand de la persoane fizice): nu adăugăm penalizare în preț,
+    # doar afișăm evident „Fără garanție” — decizie de produs, ca prețul să rămână cel real din anunț
+    if warranty_months <= 0:
+        return Decimal("0.00")
     missing = max(0, reference_months - warranty_months)
     return _money(price * rate * missing)
 

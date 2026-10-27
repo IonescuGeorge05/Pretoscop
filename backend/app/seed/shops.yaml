@@ -10,9 +10,11 @@
   name: eMAG
   base_url: https://www.emag.ro
   search_url_template: https://www.emag.ro/search/{query}
-  shipping_rules: {free_over: 200, flat: 19.99}  # TODO verify
-  shipping_verified: false
-  default_warranty_months: 24  # TODO verify
+  # produse vândute de eMAG: gratuit de la 400 lei, sub prag 12,99-16,99 lei (help eMAG / voucher.ro, 10.2026).
+  # Vânzătorii din marketplace au condiții proprii (afișate pe pagina lor) — aici se aplică regula eMAG.
+  shipping_rules: {free_over: 400, flat: 16.99}
+  shipping_verified: true
+  default_warranty_months: 24  # garanția legală de conformitate pentru produse noi (OUG 140/2021)
   affiliate_url_template: null  # pentru viitor (2Performant/Profitshare)
 
 - slug: altex
@@ -46,9 +48,10 @@
   name: evoMAG
   base_url: https://www.evomag.ro
   search_url_template: https://www.evomag.ro/cautare/{query}
-  shipping_rules: {free_over: 500, flat: 24.99}  # TODO verify
-  shipping_verified: false
-  default_warranty_months: 24  # TODO verify
+  # evomag.ro/pagini/livrare-comanda (10.2026): locker 11,99 lei TVA inclus; curierul se calculează în coș (fără prag publicat)
+  shipping_rules: {free_over: null, flat: 11.99}
+  shipping_verified: true
+  default_warranty_months: 24  # „24 de luni de garanție” pe site; garanție legală pentru produse noi
   affiliate_url_template: null
 
 - slug: flip
@@ -79,4 +82,35 @@
   shipping_rules: {free_over: null, flat: 0}  # predare personală sau curier plătit separat (neinclus)
   shipping_verified: false
   default_warranty_months: 0  # persoane fizice: fără garanție
+  affiliate_url_template: null
+
+# ---------- magazine citite generic din sitemap (crawl: sitemap), fără cod dedicat
+- slug: anze
+  name: Anze
+  base_url: https://www.anze.ro
+  search_url_template: https://www.anze.ro/catalogsearch/result/?q={query}
+  crawl: {type: sitemap, max_products: 40}
+  shipping_rules: {free_over: null, flat: 25}  # estimat: singura informație e lockerul la 25 lei (listarea Anze Media pe eMAG)
+  shipping_verified: false
+  default_warranty_months: 24  # garanție legală pentru produse noi
+  affiliate_url_template: null
+
+- slug: premiumbrand
+  name: PremiumAV
+  base_url: https://premiumbrand.ro
+  search_url_template: https://premiumbrand.ro/?s={query}&post_type=product
+  crawl: {type: sitemap, max_products: 40}
+  shipping_rules: {free_over: 999, flat: 25}  # premiumbrand.ro/informatii-despre-livrare-si-plata (10.2026)
+  shipping_verified: true
+  default_warranty_months: 24
+  affiliate_url_template: null
+
+- slug: dwyn
+  name: Dwyn Shop
+  base_url: https://www.dwyn.ro
+  search_url_template: https://www.dwyn.ro/cauta/?q={query}
+  crawl: {type: sitemap, max_products: 40}
+  shipping_rules: {free_over: 500, flat: 29}  # estimat: din listarea Dwyn pe eMAG (06.2026); site-ul are termeni mai vechi
+  shipping_verified: false
+  default_warranty_months: 24
   affiliate_url_template: null

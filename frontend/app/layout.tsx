@@ -45,6 +45,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <footer className="mx-auto max-w-5xl px-4 pb-8 pt-4 text-xs text-muted">
           {name} — prototip. Prețurile pot diferi de cele din magazin; verifică întotdeauna pe site-ul magazinului.
           Recomandările sunt informative, nu sfaturi financiare.
+          <span className="mt-2 flex gap-4">
+            <Link href="/despre" className="underline hover:text-ink">
+              Metodologie
+            </Link>
+            <Link href="/confidentialitate" className="underline hover:text-ink">
+              Confidențialitate
+            </Link>
+          </span>
         </footer>
       </body>
     </html>

@@ -40,7 +40,7 @@ CASES = [
     ("Consola PlayStation 5 Slim Digital 1TB - Resigilat", "excluded", None, False),
     ("Sony PlayStation 5 Slim Disc 1TB Refurbished", "excluded", None, False),
     # capcane: nu e clar -> unmatched (nu ghicim)
-    ("Consola PlayStation 5 (PS5) Slim, 1TB SSD, D-Chassis", "unmatched", None, False),  # disc sau digital?
+    ("Consola PlayStation 5 (PS5) Slim, 1TB SSD, D-Chassis", "product", "ps5-slim-disc-1tb", False),  # convenția magazinelor
     ("Consola Sony PlayStation 5 Digital Edition si 2 controlere DualSense White", "unmatched", None, True),  # generație?
 ]
 
@@ -112,3 +112,54 @@ def test_wanted_ads_and_services_are_not_offers(title):
 def test_for_sale_ad_still_matches():
     r = match_title("Vând PS5 Slim Digital Edițion", allow_used=True)
     assert (r.kind, r.product_slug) == ("product", "ps5-slim-digital-1tb")
+
+
+
+@pytest.mark.parametrize(
+    "title,reason_part",
+    [
+        ("Consola PlayStation 5 (PS5), 3TB SSD + Extra Controller", "SSD mărit"),  # titluri reale eMAG
+        ("Consola PlayStation 5 Digital Edition, 2.8TB SSD, Controller suplimentar", "SSD mărit"),
+        ("PlayStation 5 PS5 Disc Nou Sigilat Firmware 5.50 Pentru Modat Jailbreak", "modificată"),  # Publi24
+    ],
+)
+def test_unofficial_ps5_excluded_with_reason(title, reason_part):
+    r = match_title(title, allow_used=True)
+    assert r.kind == "excluded" and reason_part in r.reason
+
+
+def test_ps5_pro_2tb_is_not_upgraded_ssd():
+    assert match_title("Consola Sony PlayStation 5 Pro 2TB").product_slug == "ps5-pro-2tb"
+
+
+def test_games_and_power_supplies_are_accessories():
+    assert match_title("Jocuri playstation 5 PS5", allow_used=True).kind == "accessory"
+    assert match_title("Surse alimentare PS5 PS4", allow_used=True).kind == "accessory"
+
+
+def test_emag_edition_hint_resolves_slim_1tb():
+    from scrapers.emag import edition_hint
+
+    hint = edition_hint({"additionalProperty": [{"name": "Tip editie", "value": "Standard"}]})
+    r = match_title(f"Consola PlayStation 5 (PS5) Slim, 1TB SSD, D-Chassis {hint}")
+    assert r.product_slug == "ps5-slim-disc-1tb"
+    assert edition_hint({"additionalProperty": [{"name": "Tip editie", "value": "Digital"}]}) == "Digital Edition"
+    assert edition_hint(None) == ""
+
+
+def test_slim_1tb_without_chassis_stays_unmatched():
+    # anunț vag de persoană fizică: nu putem ști dacă e Digital sau cu disc
+    assert match_title("Playstation 5 slim 1Tb", allow_used=True).kind == "unmatched"
+    assert match_title("Consola PlayStation 5 Slim (PS5) 1TB, E-Chassis, White").product_slug == "ps5-slim-disc-1tb"
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "SONY PS5 Standard capacul consolei Nova Pink roz",  # ipon.ro
+        "USB HUB FlashFire Adaptor Consola PS5 Alb",  # itgalaxy.ro
+        "Accesoriu gaming Sony optical drive for PS5 Digital Edition console",  # forit.ro
+    ],
+)
+def test_real_accessories_from_new_shops(title):
+    assert match_title(title).kind == "accessory"

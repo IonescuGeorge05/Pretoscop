@@ -33,6 +33,20 @@ CONDITION_RE = re.compile(
 NOT_FOR_SALE_RE = re.compile(r"^\W*(cumpar|caut|colectez)\b|\b(curatare|igienizare|reparatii|reparatie|service)\b")
 
 
+USED_TITLE_RE = re.compile(r"\b(second[ -]?hand|sh|folosit\w*|utilizat\w*|ca nou[a]?)\b")
+REFURB_TITLE_RE = re.compile(r"\b(resigilat\w*|refurbished|reconditionat\w*|renewed|open[ -]?box)\b")
+
+
+def title_condition(title: str) -> str | None:
+    """Starea dedusă din titlu, pentru magazinele care vând și produse noi, și second hand (ex. „Second-Hand SH”)."""
+    t = normalize(title)
+    if REFURB_TITLE_RE.search(t):
+        return "refurbished"
+    if USED_TITLE_RE.search(t):
+        return "used"
+    return None
+
+
 def normalize(title: str) -> str:
     t = unicodedata.normalize("NFKD", title).encode("ascii", "ignore").decode().lower()
     t = re.sub(r"play\s*station\s*5|\bps\s*5\b", "ps5", t)
@@ -70,7 +84,8 @@ PS5_SLUGS = {
 }
 CONSOLE_RE = re.compile(r"\b(consola|console)\b")
 PS5_ACCESSORY_RE = re.compile(
-    r"\b(controller|dualsense|joystick|gamepad|joc|game|husa|skin|stand|suport|incarcator|incarcare|charging|"
+    r"\b(controller|dualsense|joystick|gamepad|joc|jocuri|game|games|husa|skin|stand|suport|incarcator|incarcare|charging|"
+    r"surse?|sursa|monitor|setup|capac\w*|adaptor|adapter|hub|dock|cooler|optical drive|filtru|filter|"
     r"casti|headset|cablu|cover|capac|carcasa|faceplate|ssd (?:intern|nvme|m\.?2)|camera|telecomanda|remote|"
     r"volan|vr2?|geanta|ventilator|cooling|sticker|abonament|card|portal)\b|\b(pentru|for|compatibil\w*)\s+ps5\b"
 )
@@ -82,9 +97,16 @@ PS5_BUNDLE_RE = re.compile(
 )
 
 
+PS5_MODDED_RE = re.compile(r"\b(modat\w*|jailbreak|firmware|fw ?\d)")
+# SSD mărit de revânzător (1.8 / 2 / 2.8 / 3 TB pe un PS5 care nu e Pro): nu e un model oficial
+PS5_UPGRADED_SSD_RE = re.compile(r"\b(1\.8|2|2\.8|3|4)tb\b")
+
+
 def _ps5(t: str, allow_used: bool) -> MatchResult:
     if not allow_used and CONDITION_RE.search(t):
         return MatchResult("excluded", reason="nu este nou (resigilat/refurbished/second hand)")
+    if PS5_MODDED_RE.search(t):
+        return MatchResult("excluded", reason="consolă modificată (firmware / jailbreak)")
     console = CONSOLE_RE.search(t)
     accessory = PS5_ACCESSORY_RE.search(t)
     # "Husă pentru consola PS5" = accesoriu; "Consola PS5 + controller" = consolă (eventual pachet)
@@ -99,6 +121,8 @@ def _ps5(t: str, allow_used: bool) -> MatchResult:
         if re.search(r"\b(1tb|825gb)\b", t):
             return MatchResult("unmatched", reason="Pro cu stocare neobișnuită")
         return MatchResult("product", PS5_SLUGS[("pro", None)], is_bundle)
+    if PS5_UPGRADED_SSD_RE.search(t):
+        return MatchResult("excluded", reason="SSD mărit de revânzător (nu e un model oficial PS5)")
 
     if "slim" in t or gen_code == "2" or "1tb" in t:
         gen = "slim"
@@ -114,6 +138,10 @@ def _ps5(t: str, allow_used: bool) -> MatchResult:
     if digital:
         edition = "digital"
     elif disc:
+        edition = "disc"
+    elif gen == "slim" and "1tb" in t and re.search(r"\b[de]-?chassis\b", t):
+        # convenția magazinelor (eMAG, anze, premiumbrand…): „PS5 Slim, 1TB, D/E-Chassis” fără „Digital” = ediția cu
+        # disc; varianta digitală e mereu numită explicit. Doar titluri de magazin (cu șasiu), nu anunțuri vagi.
         edition = "disc"
     else:
         return MatchResult("unmatched", is_bundle=is_bundle, reason="ediție neclară (Disc sau Digital?)")

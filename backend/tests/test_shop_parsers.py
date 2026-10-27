@@ -130,3 +130,66 @@ def test_publi24_cards():
     assert len(offers) == 1
     o = offers[0]
     assert (o.price, o.location, o.posted_label, o.condition) == (Decimal("2699.00"), "Campina, Prahova", "20 octombrie", "used")
+
+
+
+def test_sitemap_scraper_follows_index_prefers_products_and_filters_accessories():
+    import gzip as gz
+
+    import httpx
+
+    from scrapers.base import PoliteClient
+    from scrapers.sitemap_scraper import SitemapScraper
+
+    pages = {
+        "/robots.txt": "User-agent: *\nDisallow: /cart\nSitemap: https://shop.ro/sitemap.xml\n",
+        "/sitemap.xml": "<sitemapindex><sitemap><loc>https://shop.ro/sitemap_products_1.xml?from=1&amp;to=2</loc></sitemap>"
+        "<sitemap><loc>https://shop.ro/sitemap_pages_1.xml</loc></sitemap></sitemapindex>",
+        "/sitemap_products_1.xml": "<urlset>"
+        "<url><loc>https://shop.ro/products/consola-playstation-5-ps5-slim-digital-1tb</loc></url>"
+        "<url><loc>https://shop.ro/products/joc-fc-26-pentru-playstation-5</loc></url>"
+        "<url><loc>https://shop.ro/products/controller-dualsense-ps5</loc></url>"
+        "<url><loc>https://shop.ro/products/iphone-18-pro-256gb-black</loc></url>"
+        "<url><loc>https://shop.ro/products/husa-iphone-18-pro</loc></url>"
+        "<url><loc>https://shop.ro/products/laptop-lenovo</loc></url></urlset>",
+    }
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = pages.get(request.url.path)
+        return httpx.Response(200, text=body) if body else httpx.Response(404)
+
+    client = PoliteClient(min_delay=0, max_delay=0, transport=httpx.MockTransport(handler))
+    urls = SitemapScraper(client, "shop", "https://shop.ro", {"type": "sitemap"}).discover_product_urls()
+    assert urls == [
+        "https://shop.ro/products/consola-playstation-5-ps5-slim-digital-1tb",
+        "https://shop.ro/products/iphone-18-pro-256gb-black",
+    ]
+    assert gz  # .xml.gz e suportat prin gzip.decompress
+
+
+def test_title_condition_for_mixed_shops():
+    from scrapers.matcher import title_condition
+
+    assert title_condition("Consola Sony PlayStation 5 PS5 Disk Edition 825 GB Second-Hand SH") == "used"
+    assert title_condition("iPhone 18 Pro 256GB Resigilat") == "refurbished"
+    assert title_condition("Consola PlayStation 5 Slim Digital 1TB") is None
+
+
+
+def test_sitemap_url_filter_real_examples():
+    from scrapers.sitemap_scraper import LOC_RE, SitemapScraper
+
+    keep = [
+        "https://www.anze.ro/console/https-www-anze-ro-consola-playstation-5-digital-edition-ps5-slim-1tb-ssd-d-chassis-html.html",
+        "https://klap.ro/produs/consola-playstation-5-slim-digital-edition1tb-d-chassis-white/",
+        "https://www.dwyn.ro/telefoane-gsm/apple/479674-telefon-mobil-apple-iphone-18-pro-max-12gb-ram-256gb-5g-burgundy/",
+    ]
+    drop = [
+        "https://ipon.ro/shop/produs/sony-spider-man-miles-morales-ps5/1881261",  # joc
+        "https://www.forit.ro/videoproiector-asus-h1-led-full-hd120hz-output-on-ps5-xbox-series-x-s-bp418457",
+        "https://www.itgalaxy.ro/huse-telefon/obal-me/glossy-apple-iphone-18-pro-alb-1006552/",  # husă
+        "https://www.anze.ro/accesorii-console/https-www-anze-ro-suport-de-incarcare-pentru-controller-playstation-5-html.html",
+    ]
+    assert all(SitemapScraper.relevant(u) for u in keep)
+    assert not any(SitemapScraper.relevant(u) for u in drop)
+    assert LOC_RE.findall("<url><loc><![CDATA[https://www.anze.ro/x.html]]></loc></url>") == ["https://www.anze.ro/x.html"]

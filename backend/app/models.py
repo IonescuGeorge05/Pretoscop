@@ -58,6 +58,7 @@ class Shop(Base):
     status: Mapped[str] = mapped_column(String(20), default="active")  # active | blocked
     kind: Mapped[str] = mapped_column(String(20), default="retail")  # retail | secondhand | refurbished
     feed: Mapped[dict | None] = mapped_column(JSONType)  # {"url", "vat_included", "explicit_permission"}
+    crawl: Mapped[dict | None] = mapped_column(JSONType)  # {"type": "sitemap", "sitemap"?, "max_products"?}
     status_reason: Mapped[str | None] = mapped_column(Text)
     last_scraped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

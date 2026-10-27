@@ -36,8 +36,19 @@ function WarrantyCell({ o }: { o: Offer }) {
   const b = o.breakdown;
   return (
     <>
-      {b.warranty_months > 0 ? `${b.warranty_months} luni` : "Fără garanție"}
-      <Estimated show={o.warranty_estimated} title="Garanția standard a magazinului (nu apare pe pagina produsului)" />
+      {b.warranty_months > 0 ? (
+        `${b.warranty_months} luni`
+      ) : (
+        <span
+          className="inline-block whitespace-nowrap rounded bg-amber-100 px-1.5 py-0.5 text-xs font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-200"
+          title="Vânzătorul nu oferă garanție (de obicei persoane fizice). Prețul afișat nu include nicio ajustare."
+        >
+          ⚠ Fără garanție
+        </span>
+      )}
+      {b.warranty_months > 0 && (
+        <Estimated show={o.warranty_estimated} title="Garanția standard a magazinului (nu apare pe pagina produsului)" />
+      )}
       {b.warranty_penalty > 0 && (
         <div className="text-xs text-red-700 dark:text-red-400">+{formatLei(b.warranty_penalty)} penalizare</div>
       )}

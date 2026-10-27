@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./env": "./src/env.ts",
+    "./legal-texts": "./src/legal-texts.ts",
     "./logger": "./src/logger.ts",
     "./policy": "./src/policy.ts",
     "./shops": "./src/shops/index.ts"

@@ -2,11 +2,19 @@
 
 import { useEffect, useSyncExternalStore } from 'react';
 import Link from 'next/link';
+import { currentConsentText, currentVersion } from '@pretoscop/config/legal-texts';
+import { CONSENT_KEY } from '@/lib/consent-storage';
 
-/** Versioned consent choice in localStorage (no cookie). Bump the version when the text changes. */
-export const CONSENT_KEY = 'pretoscop.consent';
-export const CONSENT_VERSION = 'analytics.v1';
+/**
+ * Versioned consent choice in localStorage (no cookie). The version is the key of the banner text
+ * in @pretoscop/config/legal-texts: publishing a new text version asks everyone again.
+ */
+export { CONSENT_KEY };
+export const CONSENT_VERSION: string = currentVersion.analyticsConsent;
 export type ConsentChoice = 'accepted' | 'rejected' | null;
+
+const TEXT = currentConsentText('analyticsConsent');
+const PLAUSIBLE_SELECTOR = 'script[data-pretoscop="plausible"]';
 
 const listeners = new Set<() => void>();
 
@@ -31,6 +39,24 @@ export function setConsent(choice: 'accepted' | 'rejected'): void {
   listeners.forEach((l) => l());
 }
 
+/**
+ * Forgets the stored choice and re-opens the banner ("Schimbă preferințele" on /cookies). If
+ * Plausible is already running in this page, the page reloads so that nothing keeps measuring
+ * while no consent is recorded.
+ */
+export function resetConsent(): void {
+  try {
+    window.localStorage.removeItem(CONSENT_KEY);
+  } catch {
+    // storage blocked: nothing was stored either
+  }
+  if (document.querySelector(PLAUSIBLE_SELECTOR)) {
+    window.location.reload();
+    return;
+  }
+  listeners.forEach((l) => l());
+}
+
 /** Current consent choice; `undefined` during server render. */
 export function useConsent(): ConsentChoice | undefined {
   return useSyncExternalStore(
@@ -48,7 +74,7 @@ function Analytics({ src, domain }: { src?: string; domain?: string }) {
   const consent = useConsent();
   useEffect(() => {
     if (consent !== 'accepted' || !src || !domain) return;
-    if (document.querySelector('script[data-pretoscop="plausible"]')) return;
+    if (document.querySelector(PLAUSIBLE_SELECTOR)) return;
     const s = document.createElement('script');
     s.defer = true;
     s.src = src;
@@ -75,14 +101,15 @@ export function ConsentBanner({ plausibleSrc = PLAUSIBLE_SRC, plausibleDomain = 
         <div
           role="dialog"
           aria-live="polite"
-          aria-label="Statistici anonime"
+          aria-label={TEXT.title}
+          data-consent-version={TEXT.key}
           className="fixed inset-x-0 bottom-0 z-50 border-t border-line bg-white shadow-[0_-4px_16px_rgb(15_23_42/0.08)]"
         >
           <div className="mx-auto flex max-w-6xl flex-col gap-2 px-4 py-3 sm:flex-row sm:items-center sm:gap-4 sm:px-6">
             <p className="flex-1 text-[13px] leading-snug text-ink-soft">
-              Statistici anonime (Plausible) doar cu acordul tău; site-ul funcționează la fel oricum.{' '}
-              <Link href="/cookies" className="text-brand-700 underline">
-                Detalii
+              {TEXT.text}{' '}
+              <Link href={TEXT.link.href} className="text-brand-700 underline">
+                {TEXT.link.label}
               </Link>
             </p>
             <div className="flex gap-2">
@@ -92,7 +119,7 @@ export function ConsentBanner({ plausibleSrc = PLAUSIBLE_SRC, plausibleDomain = 
                 className="h-10 flex-1 rounded-lg bg-surface px-5 text-sm font-semibold text-ink ring-1 ring-line hover:bg-slate-100 sm:flex-none"
                 data-testid="consent-reject"
               >
-                Refuz
+                {TEXT.rejectLabel}
               </button>
               <button
                 type="button"
@@ -100,7 +127,7 @@ export function ConsentBanner({ plausibleSrc = PLAUSIBLE_SRC, plausibleDomain = 
                 className="h-10 flex-1 rounded-lg bg-surface px-5 text-sm font-semibold text-ink ring-1 ring-line hover:bg-slate-100 sm:flex-none"
                 data-testid="consent-accept"
               >
-                Accept
+                {TEXT.acceptLabel}
               </button>
             </div>
           </div>

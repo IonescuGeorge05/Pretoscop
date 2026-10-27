@@ -3,6 +3,7 @@ import { partitionsJob, requestLogPruneJob } from './maintenance';
 import { backupJob, restoreTestJob, schedulerTickJob, sourceRunJob } from './recorder';
 import { matchPendingJob } from './matching';
 import { fxRatesJob, rollupDailyJob, rollupTouchJob } from './rollup';
+import { searchRebuildJob, searchSyncJob } from './search';
 import type { JobDefinition } from './types';
 
 /** Every job the worker runs. Later modules append their definitions here. */
@@ -19,4 +20,6 @@ export const jobs: JobDefinition<any>[] = [
   rollupTouchJob,
   fxRatesJob,
   matchPendingJob,
+  searchSyncJob,
+  searchRebuildJob,
 ];

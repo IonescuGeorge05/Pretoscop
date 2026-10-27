@@ -14,7 +14,10 @@
     "replay": "tsx src/cli/replay.ts",
     "backup": "tsx src/cli/backup.ts",
     "stats:show": "tsx src/cli/stats-show.ts",
-    "match:run": "tsx src/cli/match-run.ts"
+    "match:run": "tsx src/cli/match-run.ts",
+    "search": "tsx src/cli/search.ts",
+    "search:rebuild": "tsx src/cli/search.ts rebuild",
+    "search:sync": "tsx src/cli/search.ts sync"
   },
   "devDependencies": {
     "pino-pretty": "^13.2.0"

@@ -5,16 +5,19 @@
  *                                                    as the nightly job does)
  *   pnpm --filter @pretoscop/worker search:sync      incremental sync since the watermark
  *   pnpm --filter @pretoscop/worker search status    watermark, document count, index sizes
+ *   pnpm --filter @pretoscop/worker search query "televizor samsung 55"   the results page query, top 10
  *   pnpm --filter @pretoscop/worker search drop      deletes the indexes of MEILI_INDEX_PREFIX (refused without a prefix)
  * Index names follow MEILI_INDEX_PREFIX (the e2e suite runs with `e2e_`).
  */
 import { getEnv, loadRootEnvFile } from '@pretoscop/config/env';
 import { createDb, createPool } from '@pretoscop/db';
-import { type EnqueuedTask } from '@pretoscop/search';
+import { formatLei } from '@pretoscop/core';
+import { parseSearchParams, searchProducts, type EnqueuedTask } from '@pretoscop/search';
 import { readMeta, rebuildAll, recomputePopularity, syncChanged } from '@pretoscop/search/sync';
 import { searchDeps } from '../jobs/search';
 
 loadRootEnvFile();
+const products = (n: number) => (n === 1 ? '1 produs' : n % 100 >= 1 && n % 100 <= 19 ? `${n} produse` : n === 0 ? '0 produse' : `${n} de produse`);
 const env = getEnv();
 const cmd = process.argv[2] ?? 'status';
 const pool = createPool(env.DATABASE_URL, 2);
@@ -33,13 +36,21 @@ try {
     const mine = list.results.map((i) => i.uid).filter((uid) => uid.startsWith(env.MEILI_INDEX_PREFIX));
     for (const uid of mine) await deps.meili.waitForTask(await deps.meili.request<EnqueuedTask>('DELETE', `/indexes/${uid}`));
     console.log(JSON.stringify({ dropped: mine }));
+  } else if (cmd === 'query') {
+    const q = process.argv.slice(3).join(' ');
+    const r = await searchProducts(deps.meili, deps.names, parseSearchParams({ q }));
+    console.log(`„${q}”: ${products(r.total)}${r.matching === 'last' && r.total > 0 ? ' (fără toate cuvintele: rezultate apropiate)' : ''}, ${r.processingMs} ms`);
+    for (const h of r.hits.slice(0, 10)) {
+      const price = h.in_stock && h.min_total_bani !== null ? `${h.shop_count > 1 ? 'de la ' : ''}${formatLei(h.min_total_bani)}` : 'indisponibil';
+      console.log(`  ${String(h.id).padStart(6)}  ${h.title.slice(0, 90).padEnd(90)}  ${price}`);
+    }
   } else if (cmd === 'status') {
     const meta = await readMeta(deps.meili, deps.names);
     const stats = await deps.meili.request<{ indexes: Record<string, { numberOfDocuments: number }> }>('GET', '/stats');
     const docs = Object.fromEntries(Object.entries(stats.indexes).filter(([k]) => Object.values(deps.names).includes(k)).map(([k, v]) => [k, v.numberOfDocuments]));
     console.log(JSON.stringify({ names: deps.names, meta, documents: docs }, null, 2));
   } else {
-    console.error('usage: search rebuild|sync|status|drop');
+    console.error('usage: search rebuild|sync|status|drop|query <words>');
     process.exitCode = 2;
   }
 } finally {

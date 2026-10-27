@@ -129,6 +129,9 @@ importers:
       '@pretoscop/extractors':
         specifier: workspace:*
         version: link:../../packages/extractors
+      '@pretoscop/fetch':
+        specifier: workspace:*
+        version: link:../../packages/fetch
       '@pretoscop/storage':
         specifier: workspace:*
         version: link:../../packages/storage

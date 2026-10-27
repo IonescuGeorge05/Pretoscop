@@ -24,6 +24,7 @@
     "@pretoscop/core": "workspace:*",
     "@pretoscop/db": "workspace:*",
     "@pretoscop/extractors": "workspace:*",
+    "@pretoscop/fetch": "workspace:*",
     "@pretoscop/storage": "workspace:*",
     "cron-parser": "^5.10.2",
     "drizzle-orm": "0.45.4",

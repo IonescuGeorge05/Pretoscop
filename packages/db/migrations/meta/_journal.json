@@ -78,6 +78,20 @@
       "when": 1793133275040,
       "tag": "0010_clicks_search",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793133676589,
+      "tag": "0011_fetch_state",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793133677476,
+      "tag": "0012_drop_crawl_domain_state",
+      "breakpoints": true
     }
   ]
 }

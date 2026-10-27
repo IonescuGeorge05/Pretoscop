@@ -1,0 +1,1 @@
+DROP TABLE "crawl_domain_state" CASCADE;

@@ -32,6 +32,12 @@ describe('scorePair', () => {
     expect(scorePair(side('Galaxy S26 FE', { mpnNorm: 'SMS741BZVDEUE' }), side('Galaxy S26 FE', { mpnNorm: 'SMS741BZKDEUE' })).conflicts).toContain('mpn');
   });
 
+  it('two title-guessed MPNs (series codes) also need the titles to agree', () => {
+    const lenovo = (t: string) => side(t, { brand: 'Lenovo', category: 'laptopuri', mpnNorm: '14IPH11', mpnFromTitle: true, attributes: { storageGb: 1024, ramGb: 16 } });
+    expect(scorePair(lenovo('Laptop Lenovo IdeaPad Slim 5 14IPH11 Ultra 7 355 16GB 1TB'), lenovo('Laptop Lenovo Yoga Slim 7 14IPH11 Ultra 7 355 16GB 1TB')).conflicts).toContain('model');
+    expect(scorePair(lenovo('Laptop Lenovo Yoga Slim 7 14IPH11 Ultra 7 355 16GB 1TB'), lenovo('Laptop Lenovo Yoga Slim 7 14IPH11 Ultra 7 355 16GB 1TB')).score).toBe(0.97);
+  });
+
   it('regional MPN suffixes match when the title agrees', () => {
     expect(mpnVariant('UE55U8072HXXH', 'UE55U8072H')).toBe(true);
     expect(mpnVariant('SMS741B', 'SMS741BZVDEUE')).toBe(false);

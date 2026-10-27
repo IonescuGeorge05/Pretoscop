@@ -47,17 +47,26 @@ export function emagPnk(url: string): string | undefined {
 /**
  * eMAG slugs are the slugified title followed by the manufacturer part number, e.g.
  * `telefon-mobil-samsung-galaxy-s26-fe-…-blueberry-sm-s741bzvdeue` → `SM-S741BZVDEUE`.
- * Returns undefined unless the remainder looks like a part number.
+ * eMAG transliterates some symbols (™ → `tm`, ® → `r`), so instead of requiring the exact title
+ * prefix we take the trailing slug tokens that do not occur in the title (at most four), stopping
+ * at the first title word. Returns undefined unless the result looks like a part number.
  */
 export function emagSlugMpn(url: string, title: string): string | undefined {
   const m = /emag\.ro\/([^/]+)\/pd\//.exec(url);
   if (!m?.[1]) return undefined;
-  const slug = m[1].toLowerCase();
-  const titleSlug = slugLike(title);
-  if (!titleSlug || !slug.startsWith(`${titleSlug}-`)) return undefined;
-  const rest = slug.slice(titleSlug.length + 1);
+  const slugTokens = m[1].toLowerCase().split('-').filter(Boolean);
+  const titleTokens = new Set(slugLike(title).split('-').filter(Boolean));
+  const tail: string[] = [];
+  for (let i = slugTokens.length - 1; i >= 0 && tail.length < 4; i--) {
+    const t = slugTokens[i]!;
+    if (titleTokens.has(t)) break;
+    tail.unshift(t);
+  }
+  if (tail.length === 0 || tail.length === slugTokens.length) return undefined;
+  const rest = tail.join('-');
   if (rest.length < 4 || rest.length > 40 || !/\d/.test(rest) || !/[a-z]/.test(rest)) return undefined;
-  if (rest.split('-').length > 4) return undefined;
+  // A lone short token (e.g. "2026", "5g") is not a part number.
+  if (tail.length === 1 && rest.length < 6) return undefined;
   return rest.toUpperCase();
 }
 

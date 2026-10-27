@@ -23,6 +23,11 @@ export async function registerJobs(
   defs: JobDefinition<any>[],
   ctx: Omit<JobContext, 'log'> & { log: Logger },
 ): Promise<void> {
+  // Schedules of jobs removed from the code must not keep firing.
+  const known = new Set(defs.map((d) => d.name));
+  for (const sch of await boss.getSchedules()) {
+    if (!known.has(sch.name)) await boss.unschedule(sch.name, sch.key).catch(() => undefined);
+  }
   for (const def of defs) {
     await boss.createQueue(def.name, def.queue ?? {});
     const log = ctx.log.child({ job: def.name });

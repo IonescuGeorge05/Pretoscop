@@ -106,6 +106,15 @@ describe('eMAG helpers', () => {
   it('emagSlugMpn only returns plausible part numbers', () => {
     expect(emagSlugMpn('https://www.emag.ro/consola-sony-ps5-slim-cfi-2016/pd/DXX1/', 'Consola Sony PS5 Slim')).toBe('CFI-2016');
     expect(emagSlugMpn('https://www.emag.ro/consola-sony-ps5-slim/pd/DXX1/', 'Consola Sony PS5 Slim')).toBeUndefined();
-    expect(emagSlugMpn('https://www.emag.ro/alt-produs-abc123/pd/DXX1/', 'Consola Sony PS5 Slim')).toBeUndefined();
+    // A different product's slug yields its own code, never the queried title's words.
+    expect(emagSlugMpn('https://www.emag.ro/consola-sony-ps5-slim-2026/pd/DXX1/', 'Consola Sony PS5 Slim')).toBeUndefined();
+    // eMAG transliterates ™ → tm and ® → r: the trailing part number is still found.
+    expect(
+      emagSlugMpn(
+        'https://www.emag.ro/laptop-lenovo-yoga-slim-7-14iph11-cu-procesor-intel-coretm-ultra-7-355-pana-la-4-7ghz-14-wuxga-oled-16gb-lpddr5x-ram-1tb-ssd-intelr-graphics-windows-11-home-seashell-3y-on-site-premium-care-83qm0034rm/pd/D2GQL32BM/',
+        'Laptop Lenovo Yoga Slim 7 14IPH11 cu procesor Intel Core™ Ultra 7 355 pana la 4.7GHz, 14" WUXGA, OLED, 16GB LPDDR5x RAM, 1TB SSD, Intel® Graphics, Windows 11 Home, Seashell, 3Y On-site Premium Care',
+      ),
+    ).toBe('83QM0034RM');
+    expect(emagSlugMpn('https://www.emag.ro/telefon-mobil-apple-iphone-17-pro-max-256gb-5g-silver-mfym4zd-a/pd/D1/', 'Telefon mobil Apple iPhone 17 Pro Max, 256GB, 5G, Silver')).toBe('MFYM4ZD-A');
   });
 });

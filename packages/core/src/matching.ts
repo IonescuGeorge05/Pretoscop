@@ -18,6 +18,8 @@ export interface MatchSide {
   gtin14: string | null;
   category: string | null;
   attributes: Record<string, unknown>;
+  /** The MPN was guessed from the title (it may be a series code such as Lenovo's "14IPH11"). */
+  mpnFromTitle?: boolean;
 }
 
 export interface PairScore {
@@ -158,6 +160,13 @@ export function scorePair(offer: MatchSide, product: MatchSide): PairScore {
   }
   if (offer.mpnNorm && product.mpnNorm && features.brandEqual) {
     if (offer.mpnNorm === product.mpnNorm) {
+      // Two title guesses can both be a series code shared by different products (Lenovo
+      // "14IPH11" covers IdeaPad Slim 5, Yoga 7 and Yoga Slim 7): the titles must agree as well.
+      if (offer.mpnFromTitle && product.mpnFromTitle) {
+        if (!editionEqual) conflicts.push('edition');
+        if (to.model.size > 0 && tp.model.size > 0 && modelDiff > 0) conflicts.push('model');
+        return { score: conflicts.length ? 0 : ACCEPT_AT, conflicts, via: 'mpn', features };
+      }
       return { score: conflicts.length ? 0 : 0.98, conflicts, via: 'mpn', features };
     }
     if (mpnVariant(offer.mpnNorm, product.mpnNorm)) {

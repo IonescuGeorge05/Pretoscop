@@ -39,29 +39,33 @@ export const rollupTouchJob = defineJob<{ productIds: number[] }>({
 });
 
 /**
- * BNR reference rates (docs/03 §6.4): one public request a day to curs.bnr.ro (not a shop). Used to
- * convert the rare EUR prices; the rate is stored with each converted event.
+ * Reference exchange rates for the rare non-RON prices (docs/03 §6.4). BNR's curs.bnr.ro
+ * disallows every robot in robots.txt, so we use the ECB's daily reference rates (EUR base, RON
+ * included), read through the polite fetch layer like every other request. RON per unit of each
+ * currency is stored with source 'ecb'.
  */
-export const fxBnrJob = defineJob({
-  name: 'fx.bnr',
+export const fxRatesJob = defineJob({
+  name: 'fx.rates',
   queue: { retryLimit: 3, retryDelay: 1800 },
-  schedule: { cron: '30 14 * * 1-5' },
+  schedule: { cron: '30 17 * * 1-5' },
   runOnStart: true,
   handler: async (_job, { db, log, services }) => {
-    // Through the polite fetch layer like every other request (identified, robots.txt checked).
-    const res = await services.fetcher.fetchPolite('https://curs.bnr.ro/nbrfxrates.xml', { purpose: 'feed' });
-    if (!res.ok || !res.body) throw new Error(`BNR HTTP ${res.status} ${res.skipped ?? ''}`);
+    const res = await services.fetcher.fetchPolite('https://www.ecb.europa.eu/stats/eurofxref/eurofxref-daily.xml', { purpose: 'feed' });
+    if (!res.ok || !res.body) throw new Error(`ECB HTTP ${res.status} ${res.skipped ?? ''}`);
     const xml = res.body;
-    const day = /<Cube date="(\d{4}-\d{2}-\d{2})">/.exec(xml)?.[1];
-    if (!day) throw new Error('BNR: no Cube date');
-    let n = 0;
-    for (const m of xml.matchAll(/<Rate currency="([A-Z]{3})"(?: multiplier="(\d+)")?>([\d.]+)<\/Rate>/g)) {
-      const [, cur, mult, rate] = m;
-      if (!cur || !rate) continue;
-      const perUnit = (Number(rate) / Number(mult ?? 1)).toFixed(4);
-      await upsertFxRate(db, day, cur, perUnit);
+    const day = /time=['"](\d{4}-\d{2}-\d{2})['"]/.exec(xml)?.[1];
+    if (!day) throw new Error('ECB: no reference date');
+    const rates = new Map<string, number>();
+    for (const m of xml.matchAll(/currency=['"]([A-Z]{3})['"]\s+rate=['"]([\d.]+)['"]/g)) rates.set(m[1]!, Number(m[2]));
+    const ronPerEur = rates.get('RON');
+    if (!ronPerEur) throw new Error('ECB: no RON rate');
+    await upsertFxRate(db, day, 'EUR', ronPerEur.toFixed(4), 'ecb');
+    let n = 1;
+    for (const [cur, perEur] of rates) {
+      if (cur === 'RON' || !perEur) continue;
+      await upsertFxRate(db, day, cur, (ronPerEur / perEur).toFixed(4), 'ecb');
       n++;
     }
-    log.info({ day, rates: n }, 'BNR rates stored');
+    log.info({ day, rates: n, ronPerEur }, 'ECB reference rates stored');
   },
 });

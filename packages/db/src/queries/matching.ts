@@ -40,6 +40,7 @@ export interface PendingOffer {
   brand: string | null;
   mpnNorm: string | null;
   mpnRaw: string | null;
+  mpnSource: string | null;
   gtin14: string | null;
   categoryRaw: string | null;
   attributes: Record<string, unknown>;
@@ -60,11 +61,11 @@ export async function pendingOffers(
   opts: { sourceKey?: string; offerIds?: number[]; reviewAgainAfterHours?: number } = {},
 ): Promise<PendingOffer[]> {
   const res = await db.execute<{
-    id: string; shop_id: string; external_id: string; title: string; brand_name: string | null; mpn_norm: string | null; mpn_raw: string | null;
+    id: string; shop_id: string; external_id: string; title: string; brand_name: string | null; mpn_norm: string | null; mpn_raw: string | null; mpn_source: string | null;
     gtin14: string | null; category_raw: string | null; attributes: Record<string, unknown>; condition: 'new' | 'refurbished' | 'used';
     is_bundle: boolean; is_accessory: boolean; trust_tier: number;
   }>(sql`
-    SELECT o.id::text, o.shop_id::text, o.external_id, coalesce(o.title_clean, o.title_raw) AS title, o.brand_name, o.mpn_norm, o.mpn_raw,
+    SELECT o.id::text, o.shop_id::text, o.external_id, coalesce(o.title_clean, o.title_raw) AS title, o.brand_name, o.mpn_norm, o.mpn_raw, o.mpn_source,
       o.gtin14, o.category_raw, o.attributes, o.condition, o.is_bundle, o.is_accessory, s.trust_tier
     FROM offers o JOIN shops s ON s.id = o.shop_id
     ${opts.sourceKey ? sql`JOIN shop_sources src ON src.id = o.source_id AND src.key = ${opts.sourceKey}` : sql``}
@@ -83,6 +84,7 @@ export async function pendingOffers(
     brand: r.brand_name,
     mpnNorm: r.mpn_norm,
     mpnRaw: r.mpn_raw,
+    mpnSource: r.mpn_source,
     gtin14: r.gtin14,
     categoryRaw: r.category_raw,
     attributes: r.attributes ?? {},
@@ -98,6 +100,7 @@ type CandidateRow = {
   title: string;
   brand: string | null;
   mpn_norm: string | null;
+  mpn_source: string | null;
   category: string | null;
   attributes: Record<string, unknown>;
   gtins: string[] | null;
@@ -123,7 +126,7 @@ export async function findCandidates(db: Db, o: PendingOffer, category: string |
        ORDER BY similarity(p.title_ascii, ${titleAscii}) DESC
        LIMIT 10)
     )
-    SELECT p.id::text, p.title, b.name AS brand, p.mpn_norm, cat.slug AS category, p.attributes,
+    SELECT p.id::text, p.title, b.name AS brand, p.mpn_norm, p.mpn_source, cat.slug AS category, p.attributes,
       (SELECT array_agg(gtin14) FROM product_gtins g WHERE g.product_id = p.id) AS gtins,
       string_agg(DISTINCT c.generator, ',') AS generator
     FROM c
@@ -144,6 +147,7 @@ export async function findCandidates(db: Db, o: PendingOffer, category: string |
       gtin14: o.gtin14 && r.gtins?.includes(o.gtin14) ? o.gtin14 : (r.gtins?.[0] ?? null),
       category: r.category,
       attributes: r.attributes ?? {},
+      mpnFromTitle: r.mpn_source === 'title',
     },
   }));
 }
@@ -210,8 +214,8 @@ export async function createProductFromOffer(db: Db, o: PendingOffer, category: 
   const cId = await categoryId(db, category);
   const fId = await familyId(db, o.brand, bId, cId, category, o.title);
   const ins = await db.execute<{ id: string }>(sql`
-    INSERT INTO products (slug, title, title_ascii, brand_id, category_id, family_id, mpn, mpn_norm, attributes, provisional, created_by)
-    VALUES (${`tmp-${o.id}-${Date.now()}`}, ${o.title}, ${asciiTitle(o.title)}, ${bId}, ${cId}, ${fId}, ${o.mpnRaw ?? o.mpnNorm}, ${o.mpnNorm},
+    INSERT INTO products (slug, title, title_ascii, brand_id, category_id, family_id, mpn, mpn_norm, mpn_source, attributes, provisional, created_by)
+    VALUES (${`tmp-${o.id}-${Date.now()}`}, ${o.title}, ${asciiTitle(o.title)}, ${bId}, ${cId}, ${fId}, ${o.mpnRaw ?? o.mpnNorm}, ${o.mpnNorm}, ${o.mpnSource},
       ${JSON.stringify(o.attributes)}::jsonb, ${o.trustTier !== 1}, ${createdBy})
     RETURNING id::text
   `);
@@ -258,7 +262,7 @@ export async function matchOffer(db: Db, o: PendingOffer, opts: { dryRun?: boole
 
   const titleAscii = asciiTitle(o.title);
   const cands = await findCandidates(db, o, category, titleAscii);
-  const me: MatchSide = { title: o.title, brand: o.brand, mpnNorm: o.mpnNorm, gtin14: o.gtin14, category, attributes: o.attributes };
+  const me: MatchSide = { title: o.title, brand: o.brand, mpnNorm: o.mpnNorm, gtin14: o.gtin14, category, attributes: o.attributes, mpnFromTitle: o.mpnSource === 'title' };
   const scored: Array<{ productId: number; score: PairScore; generator: string }> = cands.map((c) => ({ productId: c.productId, generator: c.generator, score: scorePair(me, c.side) }));
   const routed = route(
     {

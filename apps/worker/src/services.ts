@@ -52,6 +52,7 @@ export function createNormalize(eurRonRate: () => number | null): NormalizeFn {
         brandName,
         mpnRaw: n.mpnRaw,
         mpnNorm: n.mpnNorm,
+        mpnSource: n.mpnSource,
         gtinRaw: n.gtinRaw,
         gtin14,
         categoryRaw: n.categoryRaw,

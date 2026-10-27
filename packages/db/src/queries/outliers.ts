@@ -25,11 +25,11 @@ export async function sendPriceOutliersToMatcher(db: Db): Promise<number[]> {
   return res.rows.map((r) => Number(r.id));
 }
 
-/** Records the BNR reference rate of a day (idempotent). */
-export async function upsertFxRate(db: Db, day: string, currency: string, rate: string): Promise<void> {
+/** Records a reference rate (RON per unit of `currency`) for a day (idempotent). */
+export async function upsertFxRate(db: Db, day: string, currency: string, rate: string, source = 'ecb'): Promise<void> {
   await db.execute(sql`
-    INSERT INTO fx_rates (day, currency, rate) VALUES (${day}::date, ${currency}, ${rate})
-    ON CONFLICT (day, currency) DO UPDATE SET rate = EXCLUDED.rate
+    INSERT INTO fx_rates (day, currency, rate, source) VALUES (${day}::date, ${currency}, ${rate}, ${source})
+    ON CONFLICT (day, currency) DO UPDATE SET rate = EXCLUDED.rate, source = EXCLUDED.source
   `);
 }
 

@@ -50,6 +50,7 @@ export type FetchErrorCode =
   | 'cross_site_redirect'
   | 'invalid_redirect'
   | 'redirect_disallowed'
+  | 'channel_change'
   | 'robots_unavailable'
   | 'invalid_policy'
   | 'invalid_request'
@@ -105,7 +106,7 @@ export interface FetchResult {
   /** Time spent waiting for per-domain slots and retry back-off (all attempts and hops). */
   waitedMs: number;
   channel: Channel;
-  /** Number of attempts (1 + retries) made for this URL; 0 when skipped. */
+  /** Attempts (1 + retries) that sent at least one request; 0 when nothing was sent. */
   attempts: number;
   error?: string;
   errorCode?: FetchErrorCode;
@@ -252,8 +253,9 @@ export interface FetcherDeps {
   policyFor?: (host: string) => DomainPolicy | Promise<DomainPolicy>;
   stateStore: DomainStateStore;
   /**
-   * Global switch for any request to a shop. Default: env `CRAWL_ENABLED` when set (`false` turns
-   * every call into `skipped: 'access_off'`, `errorCode: 'crawl_disabled'`), otherwise true.
+   * Global switch for any request to a shop. Default: env `CRAWL_ENABLED` (`1/true/yes/on`);
+   * unset or anything else means off (fail closed, like `@pretoscop/config`'s default), which turns
+   * every call into `skipped: 'access_off'`, `errorCode: 'crawl_disabled'`.
    */
   crawlEnabled?: boolean;
   requestLog?: RequestLogSink;

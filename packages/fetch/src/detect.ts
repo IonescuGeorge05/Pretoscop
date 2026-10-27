@@ -1,5 +1,4 @@
 import { fetchCodeOf } from './errors';
-import { sameSite } from './site';
 import type { BlockReason, FetchErrorCode, FetchPurpose } from './types';
 
 /**
@@ -342,13 +341,15 @@ const CHALLENGE_PATHS: Array<{ re: RegExp; vendor: BlockVendor }> = [
 const CHALLENGE_LABEL = /^(captcha\d*|challenges?|botcheck)$/i;
 
 /**
- * A redirect that leads to a CAPTCHA or challenge (evoMAG's 302 to `captcha.distinct.ro`). Such a
- * redirect is never followed. Known vendor hosts and whole `captcha`/`challenge` labels count only
- * when the target is another site; challenge paths count anywhere.
+ * A redirect that leads to a CAPTCHA or challenge (evoMAG's 302 to `captcha.distinct.ro`, or a
+ * shop's own `captcha.shop.ro`). Such a redirect is never followed. Known vendor hosts and whole
+ * `captcha`/`challenge` host labels count whenever the target is another host (of this site or
+ * another); challenge paths count anywhere. Labels must match whole, so `challenge-sport.ro` is a
+ * shop, not a challenge.
  */
 export function detectChallengeRedirect(from: URL, to: URL): { vendor: BlockVendor; detail: string } | null {
   const host = to.hostname.toLowerCase();
-  if (!sameSite(from, to)) {
+  if (host !== from.hostname.toLowerCase()) {
     for (const { re, vendor } of CHALLENGE_HOSTS) {
       if (re.test(host)) return { vendor, detail: `redirect to challenge host ${host}` };
     }

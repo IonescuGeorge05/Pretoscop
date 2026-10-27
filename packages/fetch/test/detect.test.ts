@@ -248,6 +248,13 @@ describe('redirects to CAPTCHA hosts', () => {
     expect(detectBlock({ status: 301, headers: { location: '/laptopuri/' }, url: from.href }).blocked).toBe(false);
   });
 
+  it("flags a CAPTCHA subdomain of the shop's own site (same site, different host)", () => {
+    const shopPage = new URL('https://www.shop.example.ro/p/1');
+    expect(detectChallengeRedirect(shopPage, new URL('https://captcha.shop.example.ro/?r=%2Fp%2F1'))).not.toBeNull();
+    expect(detectChallengeRedirect(shopPage, new URL('https://challenge.shop.example.ro/'))).not.toBeNull();
+    expect(detectChallengeRedirect(shopPage, new URL('https://m.shop.example.ro/p/1'))).toBeNull();
+  });
+
   it('does not flag a shop whose own name contains "challenge", nor "captcha" in a query string', () => {
     const shop = new URL('https://challenge-sport.example/robots.txt');
     expect(detectChallengeRedirect(shop, new URL('https://www.challenge-sport.example/robots.txt'))).toBeNull();

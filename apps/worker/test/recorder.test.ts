@@ -130,6 +130,18 @@ describe('eMAG listing → offers, events, snapshot, frontier', () => {
     expect(r.stats).toMatchObject({ parsed: 60, upserted: 60, changed: 0 });
     const health = await t.db.execute<{ health: string }>(sql`SELECT health FROM shop_sources WHERE key = 'emag:listing:telefoane-mobile'`);
     expect(health.rows[0]!.health).toBe('ok');
+    expect(r.touchedProducts).toEqual([]);
+  });
+
+  it('a price change on a matched offer reports its product (rollup.touch, then its alerts: M19)', async () => {
+    const p = await t.db.execute<{ id: string }>(sql`INSERT INTO products (slug, title, title_ascii) VALUES ('rec-p', 'rec', 'rec') RETURNING id::text`);
+    const pid = Number(p.rows[0]!.id);
+    const o = await t.db.execute<{ id: string }>(sql`SELECT id::text FROM offers WHERE shop_id = (SELECT id FROM shops WHERE slug = 'emag') ORDER BY id LIMIT 1`);
+    // A stored hash that differs from the page: the next observation is a change.
+    await t.db.execute(sql`UPDATE offers SET product_id = ${pid}, match_status = 'auto', content_hash = 'older-state' WHERE id = ${Number(o.rows[0]!.id)}`);
+    const r = await runSource(deps(), await sourceId('emag:listing:telefoane-mobile'), { trigger: 'manual', maxPages: 1 });
+    expect(r.stats).toMatchObject({ changed: 1 });
+    expect(r.touchedProducts).toEqual([pid]);
   });
 
   it('Tier A product pages add every seller of the most popular products', async () => {

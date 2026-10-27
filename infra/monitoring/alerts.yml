@@ -1,0 +1,118 @@
+# Prometheus alert rules for Grafana Cloud (M18; docs/03 §9). Import with Grafana's
+# "Alerting → Alert rules → Import" (data source: the Grafana Cloud Prometheus) or `mimirtool rules
+# load`. They duplicate the worker's own hourly SLO check on purpose: the worker check needs nothing
+# but Telegram/email; these add graphs, history and the web-side signals (5xx rate, latency).
+# Whole-site and whole-server outages are Better Stack's job (infra/monitoring/README.md).
+groups:
+  - name: pretoscop-data
+    rules:
+      - alert: SourceStale
+        expr: |
+          (pretoscop_source_last_success_age_seconds
+            > on (source) group_left () (pretoscop_source_freshness_slo_seconds + 7200))
+          and on (source) (pretoscop_source_live == 1)
+          and on () (pretoscop_crawl_enabled == 1)
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: 'Source {{ $labels.source }} is past its freshness SLO'
+          runbook: infra/runbooks/source-pause.md
+      - alert: SourceFailing
+        expr: (pretoscop_source_consecutive_failures >= 2) and on (source) (pretoscop_source_live == 1)
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: 'Source {{ $labels.source }} failed {{ $value }} times in a row'
+          runbook: infra/runbooks/source-pause.md
+      - alert: OfferFreshnessLow
+        expr: |
+          sum(pretoscop_offers_checked_26h) / sum(pretoscop_offers_active) < 0.95
+          and on () sum(pretoscop_offers_active) > 100
+        for: 1h
+        labels: { severity: warning }
+        annotations:
+          summary: 'Fewer than 95% of active offers were observed in the last 26 h'
+      - alert: ReviewQueueLarge
+        expr: pretoscop_review_queue_offers > 500
+        for: 6h
+        labels: { severity: info }
+        annotations:
+          summary: 'Match review queue holds {{ $value }} offers (SLO < 500)'
+      - alert: QueueBacklog
+        expr: sum by (queue) (pretoscop_queue_jobs{state=~"created|retry"}) > 1000
+        for: 30m
+        labels: { severity: warning }
+        annotations:
+          summary: 'pg-boss queue {{ $labels.queue }} has {{ $value }} waiting jobs'
+          runbook: infra/runbooks/scale-workers.md
+
+  - name: pretoscop-backups
+    rules:
+      - alert: NightlyDumpMissing
+        expr: time() - pretoscop_job_last_success_timestamp_seconds{job="backup.nightly"} > 26 * 3600
+        for: 10m
+        labels: { severity: critical }
+        annotations:
+          summary: 'No nightly pg_dump for more than 26 hours'
+          runbook: infra/runbooks/restore.md
+      - alert: LogicalRestoreTestMissing
+        expr: time() - pretoscop_job_last_success_timestamp_seconds{job="backup.restore_test"} > 8 * 86400
+        for: 10m
+        labels: { severity: warning }
+        annotations:
+          summary: 'The weekly restore test of the nightly dump has not passed for 8 days'
+          runbook: infra/runbooks/restore.md
+      - alert: WalArchivingFailing
+        expr: |
+          (pretoscop_pg_archive_mode_on == 1)
+          and on () (
+            (pretoscop_pg_last_archive_failure_timestamp_seconds > on () pretoscop_pg_last_archived_timestamp_seconds)
+            or on () (time() - pretoscop_pg_last_archived_timestamp_seconds > 1800)
+          )
+        for: 10m
+        labels: { severity: critical }
+        annotations:
+          summary: 'WAL archiving to the pgBackRest repository is failing or stalled'
+          runbook: infra/runbooks/restore.md
+
+  - name: pretoscop-runtime
+    rules:
+      - alert: WorkerMetricsAbsent
+        expr: absent_over_time(pretoscop_build_info{job="pretoscop-worker"}[10m])
+        for: 5m
+        labels: { severity: critical }
+        annotations:
+          summary: 'No metrics from the worker for 10 minutes (worker down, or Alloy down)'
+          runbook: infra/runbooks/incident.md
+      - alert: DiskSpaceLow
+        expr: pretoscop_disk_free_bytes / pretoscop_disk_size_bytes < 0.15
+        for: 15m
+        labels: { severity: critical }
+        annotations:
+          summary: 'Less than 15% free disk on the server'
+          runbook: infra/runbooks/incident.md
+      - alert: WorkerEventLoopLag
+        expr: nodejs_eventloop_delay_p99_seconds{job="pretoscop-worker"} > 1
+        for: 15m
+        labels: { severity: warning }
+        annotations:
+          summary: 'Worker event loop p99 delay above 1 s for 15 minutes'
+          runbook: infra/runbooks/scale-workers.md
+      - alert: WebErrorRateHigh
+        expr: |
+          sum(rate(caddy_http_requests_total{job="caddy", code=~"5.."}[5m]))
+            / sum(rate(caddy_http_requests_total{job="caddy"}[5m])) > 0.005
+          and on () sum(rate(caddy_http_requests_total{job="caddy"}[5m])) > 0.05
+        for: 10m
+        labels: { severity: critical }
+        annotations:
+          summary: 'More than 0.5% of requests reaching the origin fail with 5xx'
+          runbook: infra/runbooks/incident.md
+      - alert: WebLatencyHigh
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(caddy_http_request_duration_seconds_bucket{job="caddy", host=~"pretoscop.ro"}[10m]))) > 0.4
+        for: 30m
+        labels: { severity: warning }
+        annotations:
+          summary: 'Origin p95 latency above 400 ms for 30 minutes (Cloudflare-cached hits are not counted)'
+          runbook: infra/runbooks/incident.md

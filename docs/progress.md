@@ -57,7 +57,7 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 | M20 | Merchant self-serve feed portal (free listing) | todo | | | |
 | M21 | Bot legitimacy program and source adapters batch 2 | todo | | | |
 | M22 | LLM-assisted matching and attribute extraction | todo | | | |
-| M23 | Black Friday / fake-discount report tooling | todo | | | |
+| M23 | Black Friday / fake-discount report tooling | review | `mod/M23-reports` (merged locally into `daniel`) | | Generator deterministic, reconciled with SQL; BF 2026 page waits for approved data |
 
 **Gate G3** — alerts live with double opt-in; ≥10 merchants onboarded; Verified Bots application submitted. Approved: ☐ date: ____
 
@@ -310,3 +310,19 @@ Founder checklist: `scripts/verify/M17.checklist.md`.
 Human tasks needed: B5 (lawyer review of the pages, `alertConsent.v1` and the legal docs), A4 (crawler IPs → `BOT_EGRESS_IPS`), B2 (Resend; contact@, privacy@, bot@ mailboxes), B4 (SRL: operator identity), sign the DPAs in `docs/legal/dpa-list.md`.
 Risks / open questions: retention jobs promised on the privacy page do not exist yet; no admin action yet to suppress a seller name on objection; in-memory rate limiter (per process); OLX listed as "not yet included" because it is `blocked` in the registry (set `removed` if unwanted).
 Next module: M20 / M21 (assigned to the same agent).
+
+### M23 — Black Friday / fake-discount report tooling — 2026-10-27
+(Implemented by the lead.)
+Scope delivered:
+- `@pretoscop/report` (pure): versioned report data `pretoscop.report/v1` (headline, by shop, seller type and category, biggest real drops, raise-then-cut cases, offer-level rows, notes, approval), the analysis (M08's rules on an event window: an offer's lowest event price against its own lowest price in the 30 days before, with ≥ 70 % coverage; displayed reductions without a real drop; raise-then-cut with 60 days of history; product drops on shop-sold offers), SVG charts following the data-viz rules (validated diverging blue/gray/red, legend + selective direct labels + table twins), Markdown and CSV renderers.
+- `packages/db` `reportOffers()`: per offer and day, the in-stock price and displayed reference in effect at the end of the day (gaps absent). End-of-day states, because with change-only events a daily minimum credited the old price to the morning of a change day (a Black Friday increase read as "no change").
+- CLIs `report` (JSON, Markdown, four CSVs, SVG + PNG charts via sharp, into `data/reports/<id>/`) and `report:approve` (records the founder's approval, publishes the JSON to `apps/web/src/content/reports`).
+- Public pages `/rapoarte` (approved and planned reports), `/rapoarte/[id]` (hero figure, KPIs, charts readable on phones, tables, notes, downloads; a placeholder for planned reports), `/rapoarte/[id]/date/[file]` (CSV with BOM, JSON); the report rules on `/metodologie#rapoarte`.
+- Press kit `docs/press-kit/` (Romanian kit and press-release template, English review checklist with the SQL spot checks).
+Out of scope / deferred: the Black Friday 2026 report itself (needs the data and a founder's approval); adding approved reports to the sitemap (M16).
+Deviations from plan: the generator is `pnpm --filter @pretoscop/worker report --from --to` (not `report:bf`), so it serves every event; reports live as approved JSON in the web app's content rather than in R2.
+Verification: `make verify M=23` → lint/typecheck/tests (9 known-answer tests; db query test; generator test: byte-identical JSON/Markdown/CSV/SVG/PNG across runs and headline/min30 reconciled with direct SQL; web), build, Playwright report pages, a run on the Phase-0 data (821 offers, none with 30 days of history yet — stated as such).
+Founder checklist: `scripts/verify/M23.checklist.md`.
+Human tasks needed: approve each report (`report:approve`); confirm the data licence for reuse (e.g. CC BY 4.0) and the press contact; give shops the right of reply before a release that names them.
+Risks / open questions: Black Friday 2026 comes ~4 weeks after recording started, so the 30-day comparison is barely covered and raise-then-cut (60 days) cannot be evaluated this year; eMAG's history has a gap on 28 Oct (paused after the CAPTCHA).
+Next module: M16 (sitemap entries for approved reports).

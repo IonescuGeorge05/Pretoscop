@@ -171,7 +171,10 @@ async function runListing(ctx: Ctx, source: { url: string; parserKey: string; co
       observedAt: observedAt.toISOString(),
     });
     if (parsed.offers.length === 0) {
-      if (ctx.stats.pages === 1) {
+      // A page whose products are all unavailable (VTEX shows them without a price) still lists
+      // them (`meta.items`): that is the end of the priced listing, not a layout change.
+      const items = typeof parsed.meta?.items === 'number' ? parsed.meta.items : 0;
+      if (ctx.stats.pages === 1 && items === 0) {
         ctx.stats.errors++;
         ctx.errors.push(`no offers parsed on the first page ${res.finalUrl} (layout change?)`);
       } else complete = true;

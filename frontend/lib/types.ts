@@ -125,7 +125,7 @@ export interface History {
   is_demo: boolean;
   granularity: "day" | "week";
   range: "30d" | "90d" | "1y";
-  shops: { key: string; name: string }[];
+  shops: { key: string; name: string; marketplace?: boolean }[];
   points: Array<{ date: string; market_min: number | null } & Record<string, number | string | null>>;
   stats: { min: number | null; median: number | null; max: number | null };
   events: CalendarEvent[];

@@ -214,9 +214,14 @@ def product_history(
     if p is None:
         raise HTTPException(404, "Produs inexistent")
     src = catalog.resolve_source(source)
-    offers = catalog.comparable(catalog.load_offers(session, p.id, src))
+    loaded = catalog.load_offers(session, p.id, src)
+    offers = catalog.comparable(loaded)
     histories = [(o.shop.slug, catalog.to_history(o)) for o in offers]
     shops = {o.shop.slug: o.shop.name for o in offers}
+    # marketplace (ex. eMAG la PS5, doar revânzători): serie separată, doar afișată — nu intră în minimul pieței
+    market = [o for o in loaded if not o.is_bundle and catalog.is_marketplace(o)]
+    mp_shops = {f"{o.shop.slug}_mp": f"{o.shop.name} (marketplace)" for o in market}
+    histories += [(f"{o.shop.slug}_mp", catalog.to_history(o)) for o in market]
 
     today = date.today()
     start = today - timedelta(days=RANGES[range] - 1)
@@ -262,7 +267,8 @@ def product_history(
         is_demo=src == "mock",
         granularity=granularity,
         range=range,
-        shops=[schemas.HistoryShop(key=k, name=n) for k, n in sorted(shops.items())],
+        shops=[schemas.HistoryShop(key=k, name=n) for k, n in sorted(shops.items())]
+        + [schemas.HistoryShop(key=k, name=n, marketplace=True) for k, n in sorted(mp_shops.items())],
         points=rows,
         stats=schemas.HistoryStats(
             min=min(mins) if mins else None,

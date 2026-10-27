@@ -164,6 +164,7 @@ class EventOut(BaseModel):
 class HistoryShop(BaseModel):
     key: str
     name: str
+    marketplace: bool = False  # serie afișată, dar exclusă din minimul pieței
 
 
 class HistoryStats(BaseModel):

@@ -243,7 +243,8 @@ export default function PriceChart({
     return () => ctrl.abort();
   }, [range, granularity, slug, source, data.range, data.granularity]);
 
-  const slotOf = (key: string, i: number) => SHOP_SLOT[key] ?? 6 + (i % 3);
+  // seria de marketplace a unui magazin are culoarea magazinului (și linie punctată)
+  const slotOf = (key: string, i: number) => SHOP_SLOT[key.replace(/_mp$/, "")] ?? 6 + (i % 3);
   const cssNames = useMemo(
     () => [
       "--chart-ink",
@@ -279,6 +280,7 @@ export default function PriceChart({
         let min: number | null = null;
         let minShop: string | null = null;
         for (const s of visible) {
+          if (s.marketplace) continue; // marketplace: doar afișat, nu intră în minim
           const v = p[s.key];
           if (typeof v === "number" && (min === null || v < min)) [min, minShop] = [v, s.key];
         }
@@ -342,6 +344,7 @@ export default function PriceChart({
               key={s.key}
               onClick={() => toggle(s.key)}
               aria-pressed={on}
+              title={s.marketplace ? "Vândut de terți prin marketplace (linie punctată). Nu intră în minimul pieței." : undefined}
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition ${
                 on ? "border-line bg-surface text-ink" : "border-dashed border-line text-muted line-through opacity-60"
               }`}
@@ -509,6 +512,7 @@ export default function PriceChart({
                     type="stepAfter"
                     stroke={color}
                     strokeWidth={2}
+                    strokeDasharray={s.marketplace ? "5 4" : undefined}
                     dot={(props: { cx?: number; cy?: number; payload?: Row; index?: number }) =>
                       props.payload?.[`${s.key}__wb`] || isolated(s.key, props.index ?? -1) ? (
                         <circle key={`${s.key}-${props.index}`} cx={props.cx} cy={props.cy} r={4.5} fill={color} stroke={css["--chart-ink"]} strokeWidth={1} />

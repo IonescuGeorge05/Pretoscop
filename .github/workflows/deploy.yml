@@ -1,0 +1,151 @@
+# Release pipeline (M18; infra/runbooks/deploy.md). A tag v* builds the images and deploys staging;
+# production waits for a founder's approval (GitHub environment "production" with required
+# reviewers). "Run workflow" redeploys an existing tag to one environment (rollback).
+# Secrets (per environment): DEPLOY_SSH_KEY (private key of the server's `deploy` user),
+# DEPLOY_HOST, DEPLOY_KNOWN_HOSTS (output of `ssh-keyscan <host>`, checked, never skipped).
+# Variables: PROD_SITE_INDEXABLE (false until launch), PLAUSIBLE_DOMAIN, PLAUSIBLE_SCRIPT_URL, MEDIA_BASE_URL.
+name: deploy
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment'
+        type: choice
+        options: [staging, prod]
+        required: true
+      tag:
+        description: 'Existing release tag (its images are already in GHCR)'
+        type: string
+        required: true
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io/${{ github.repository_owner }}
+  TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+
+jobs:
+  images:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - image: pretoscop-worker
+            dockerfile: infra/docker/worker.Dockerfile
+            tag_suffix: ''
+            public_base_url: ''
+            indexable: 'false'
+          - image: pretoscop-postgres
+            dockerfile: infra/docker/postgres.Dockerfile
+            tag_suffix: ''
+            public_base_url: ''
+            indexable: 'false'
+          - image: pretoscop-web
+            dockerfile: infra/docker/web.Dockerfile
+            tag_suffix: -staging
+            public_base_url: https://staging.pretoscop.ro
+            indexable: 'false'
+          - image: pretoscop-web
+            dockerfile: infra/docker/web.Dockerfile
+            tag_suffix: -prod
+            public_base_url: https://pretoscop.ro
+            indexable: prod
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tags
+        id: tags
+        run: |
+          if [ "${{ matrix.image }}" = "pretoscop-postgres" ]; then
+            echo "tags=${REGISTRY}/${{ matrix.image }}:18,${REGISTRY}/${{ matrix.image }}:18-${TAG}" >> "$GITHUB_OUTPUT"
+          else
+            echo "tags=${REGISTRY}/${{ matrix.image }}:${TAG}${{ matrix.tag_suffix }}" >> "$GITHUB_OUTPUT"
+          fi
+          if [ "${{ matrix.indexable }}" = "prod" ]; then
+            echo "indexable=${{ vars.PROD_SITE_INDEXABLE || 'false' }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "indexable=${{ matrix.indexable }}" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.dockerfile }}
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.tags.outputs.tags }}
+          build-args: |
+            APP_VERSION=${{ env.TAG }}
+            PUBLIC_BASE_URL=${{ matrix.public_base_url }}
+            SITE_INDEXABLE=${{ steps.tags.outputs.indexable }}
+            NEXT_PUBLIC_PLAUSIBLE_DOMAIN=${{ matrix.tag_suffix == '-prod' && vars.PLAUSIBLE_DOMAIN || '' }}
+            NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL=${{ matrix.tag_suffix == '-prod' && vars.PLAUSIBLE_SCRIPT_URL || '' }}
+            NEXT_PUBLIC_MEDIA_BASE_URL=${{ vars.MEDIA_BASE_URL || '' }}
+          cache-from: type=gha,scope=${{ matrix.image }}${{ matrix.tag_suffix }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.image }}${{ matrix.tag_suffix }}
+
+  deploy-staging:
+    needs: images
+    if: >-
+      always() && (
+        (github.event_name == 'push' && needs.images.result == 'success') ||
+        (github.event_name == 'workflow_dispatch' && inputs.environment == 'staging')
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    steps:
+      - name: Deploy over SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          # The tag is pasted into the remote command: accept release-shaped tags only.
+          [[ "$TAG" =~ ^v[0-9A-Za-z][0-9A-Za-z._-]{0,60}$ ]] || { echo "refusing tag '$TAG'"; exit 1; }
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # shellcheck disable=SC2029  # expanded here on purpose (validated above)
+          ssh "deploy@${HOST}" "cd /srv/pretoscop/staging && git fetch --tags --force --quiet && git checkout --detach --quiet '${TAG}' && infra/scripts/deploy.sh staging '${TAG}'"
+
+  deploy-prod:
+    needs: deploy-staging
+    if: >-
+      always() && (
+        (github.event_name == 'push' && needs.deploy-staging.result == 'success') ||
+        (github.event_name == 'workflow_dispatch' && inputs.environment == 'prod')
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    steps:
+      - name: Deploy over SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          # The tag is pasted into the remote command: accept release-shaped tags only.
+          [[ "$TAG" =~ ^v[0-9A-Za-z][0-9A-Za-z._-]{0,60}$ ]] || { echo "refusing tag '$TAG'"; exit 1; }
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519 && chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # shellcheck disable=SC2029  # expanded here on purpose (validated above)
+          ssh "deploy@${HOST}" "cd /srv/pretoscop/prod && git fetch --tags --force --quiet && git checkout --detach --quiet '${TAG}' && SMOKE_URL=https://pretoscop.ro/api/health infra/scripts/deploy.sh prod '${TAG}'"

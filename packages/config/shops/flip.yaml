@@ -1,0 +1,37 @@
+slug: flip
+name: "Flip"
+domain: flip.ro
+website_url: https://flip.ro
+hosts: [flip.ro]
+kind: retail
+status: active
+access_mode: direct
+trust_tier: 2
+categories: [telefoane, refurbished]
+legal:
+  basis_ref: "robots.txt allows product pages; recon 2026-10-27 served the honest bot"
+  robots_note: "Disallows account, cart and tracking-parameter URLs."
+shipping:
+  notes: "De verificat la onboarding."
+  verified: false
+crawl_policy:
+  min_interval_ms: 5000
+  max_pages_per_day: 1500
+  freshness_slo_hours: 72
+probes:
+  - date: "2026-10-27"
+    vantage: "founder home connection (Mac), honest UA"
+    result: served
+    note: "robots 200"
+notes: "Refurbished phones: condition refurbished, never in the main (new) minimum."
+sources:
+  - key: flip:sitemap:produse
+    kind: sitemap
+    url: https://flip.ro/sitemap.xml
+    parser_key: sitemap
+    schedule: "15 2 * * *"
+    enabled: true
+    config:
+      productParser: jsonld-product
+      dailyBudget: 1000
+      note: "Single sitemap with ≈6,900 product URLs."

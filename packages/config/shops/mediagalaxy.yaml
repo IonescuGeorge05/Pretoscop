@@ -1,0 +1,24 @@
+slug: mediagalaxy
+name: "Media Galaxy"
+domain: mediagalaxy.ro
+website_url: https://www.mediagalaxy.ro
+kind: retail
+status: blocked
+access_mode: off
+trust_tier: 2
+categories: [electronice, electrocasnice]
+legal:
+  basis_ref: null
+  terms_note: "General IP clause only."
+shipping:
+  notes: "De verificat la onboarding."
+  verified: false
+crawl_policy:
+  min_interval_ms: 5000
+probes:
+  - date: "2026-10-27"
+    vantage: "London, honest UA (research 2026-10-27)"
+    result: blocked
+    note: "see notes"
+notes: "Same platform as Altex (Akamai). Designated for the assisted channel (M05B)."
+sources: []

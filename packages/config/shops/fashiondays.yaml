@@ -1,0 +1,24 @@
+slug: fashiondays
+name: "Fashion Days"
+domain: fashiondays.ro
+website_url: https://www.fashiondays.ro
+kind: retail
+status: blocked
+access_mode: off
+trust_tier: 2
+categories: [fashion]
+legal:
+  basis_ref: null
+  terms_note: "eMAG template terms 4.2(j), 6.2."
+shipping:
+  notes: "De verificat la onboarding."
+  verified: false
+crawl_policy:
+  min_interval_ms: 5000
+probes:
+  - date: "2026-10-27"
+    vantage: "London, honest UA (research 2026-10-27)"
+    result: challenge
+    note: "see notes"
+notes: "Tencent EdgeOne challenge; eMAG-group program forbids comparators and price-history sites; terms ban robots and republishing. Excluded."
+sources: []

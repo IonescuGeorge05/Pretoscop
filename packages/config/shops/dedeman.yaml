@@ -1,0 +1,36 @@
+slug: dedeman
+name: "Dedeman"
+domain: dedeman.ro
+website_url: https://www.dedeman.ro
+kind: retail
+status: active
+access_mode: direct
+trust_tier: 1
+categories: [electrocasnice, bricolaj]
+legal:
+  basis_ref: "robots.txt allows product and category pages; recon 2026-10-27 served the honest bot"
+  robots_note: "Disallows /catalog/, /catalogsearch/, /checkout/, /customer/, /*?p=*&, /*SID=."
+shipping:
+  notes: "De verificat la onboarding."
+  verified: false
+crawl_policy:
+  min_interval_ms: 5000
+  max_pages_per_day: 1500
+  freshness_slo_hours: 72
+probes:
+  - date: "2026-10-27"
+    vantage: "founder home connection (Mac), honest UA"
+    result: served
+    note: "robots, listing, product 200"
+notes: "Listing ≈71 offers per page (no JSON-LD on listings); product pages carry microdata. Appliance categories only; a listing parser comes in M10."
+sources:
+  - key: dedeman:sitemap:produse
+    kind: sitemap
+    url: https://www.dedeman.ro/media/sitemap/sitemap.xml
+    parser_key: sitemap
+    schedule: "15 2 * * *"
+    enabled: false
+    config:
+      productParser: jsonld-product
+      dailyBudget: 800
+      note: "Disabled until M10 restricts it to appliance categories (product URLs carry no category)."

@@ -1,0 +1,46 @@
+slug: itgalaxy
+name: "IT Galaxy"
+domain: itgalaxy.ro
+website_url: https://www.itgalaxy.ro
+kind: retail
+status: active
+access_mode: direct
+trust_tier: 2
+categories: [it, electronice]
+legal:
+  basis_ref: "robots.txt allows product pages; recon 2026-10-27 served the honest bot"
+  robots_note: "Disallows /data/feeds/*, /ajax/*, /cos/, /compara/*, /alerta-*; product pages allowed."
+shipping:
+  notes: "De verificat la onboarding."
+  verified: false
+crawl_policy:
+  min_interval_ms: 5000
+  max_pages_per_day: 2000
+  freshness_slo_hours: 72
+affiliate:
+  network: "profitshare"
+  commission_text: "2–10% (Oct 2026)"
+  comparator_policy: "unknown"
+  status: "to_apply"
+probes:
+  - date: "2026-10-27"
+    vantage: "London, honest UA (research 2026-10-27)"
+    result: served
+    note: "robots, sitemap, product 200"
+  - date: "2026-10-27"
+    vantage: "founder home connection (Mac), honest UA"
+    result: served
+    note: "robots, sitemap index, product 200"
+notes: "JSON-LD Product with price; EAN only in Flixmedia attributes; shares a template with Vexio."
+sources:
+  - key: itgalaxy:sitemap:produse
+    kind: sitemap
+    url: https://www.itgalaxy.ro/data/sitemaps/index.xml
+    parser_key: sitemap
+    schedule: "15 2 * * *"
+    enabled: true
+    config:
+      productParser: jsonld-product
+      dailyBudget: 1500
+      include: ["/data/sitemaps/products"]
+      note: "Product sitemaps (products-latest-0, products-0..3) → product pages, oldest first within the daily budget."

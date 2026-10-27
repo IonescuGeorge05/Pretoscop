@@ -1,0 +1,474 @@
+# eMAG — the largest Romanian shop and marketplace host.
+# ADR-013: isolated source behind a kill switch. Founder decision of 2026-10-27 (Daniel): option A,
+# polite identified crawl of category listings + Tier A product pages; no images, no internal APIs
+# (sapi.emag.ro), stop on the first written request. The DB flag `source.emag.enabled` must also be on.
+slug: emag
+name: eMAG
+domain: emag.ro
+website_url: https://www.emag.ro
+hosts: [www.emag.ro]
+kind: marketplace_host
+status: active
+access_mode: direct
+trust_tier: 1
+categories: [electronice, it, electrocasnice]
+legal:
+  basis_ref: "ADR-013; founder decision 2026-10-27 (option A), docs/progress.md"
+  terms_note: "Terms §4.2(j) forbid automated extraction and §6.2 republishing without written consent; accepted civil risk per the founders' decision; lawyer review before public launch (B5)."
+  robots_note: "robots.txt allows category (/…/c) and product (/…/pd/…) pages; disallows /product/, /search-tools/*, /ajax_live_products, cart and account pages. Responses vary by User-Agent: re-read with the production UA."
+shipping:
+  notes: "Livrare gratuită peste un prag pentru produsele vândute de eMAG; curier altfel; easybox. Valori de verificat."
+  verified: false
+warranty_months_default: 24
+crawl_policy:
+  min_interval_ms: 5000
+  max_pages_per_day: 3500
+  freshness_slo_hours: 26
+affiliate:
+  network: profitshare
+  comparator_policy: forbidden
+  status: none
+  notes: "eMAG's own Profitshare program excludes comparators and browser plugins: plain links only."
+notes: "Crossed price = eMAG's lowest price of the last 30 days; PRP is the manufacturer's recommended price (never a reference). Marketplace sellers (evoMAG, VEXIO, Flanco, …) appear as separate offers on product pages."
+sources:
+  - key: emag:listing:telefoane-mobile
+    kind: listing
+    url: https://www.emag.ro/telefoane-mobile/c
+    parser_key: emag-listing
+    schedule: "0 1 * * *"
+    enabled: true
+    config:
+      max_pages: 30
+      label: "Telefoane mobile"
+      tier: B
+  - key: emag:listing:tablete
+    kind: listing
+    url: https://www.emag.ro/tablete/c
+    parser_key: emag-listing
+    schedule: "3 1 * * *"
+    enabled: true
+    config:
+      max_pages: 10
+      label: "Tablete"
+      tier: B
+  - key: emag:listing:laptopuri
+    kind: listing
+    url: https://www.emag.ro/laptopuri/c
+    parser_key: emag-listing
+    schedule: "6 1 * * *"
+    enabled: true
+    config:
+      max_pages: 30
+      label: "Laptopuri"
+      tier: B
+  - key: emag:listing:monitoare-lcd-led
+    kind: listing
+    url: https://www.emag.ro/monitoare-lcd-led/c
+    parser_key: emag-listing
+    schedule: "9 1 * * *"
+    enabled: true
+    config:
+      max_pages: 15
+      label: "Monitoare"
+      tier: B
+  - key: emag:listing:televizoare
+    kind: listing
+    url: https://www.emag.ro/televizoare/c
+    parser_key: emag-listing
+    schedule: "12 1 * * *"
+    enabled: true
+    config:
+      max_pages: 20
+      label: "Televizoare"
+      tier: B
+  - key: emag:listing:placi-video
+    kind: listing
+    url: https://www.emag.ro/placi_video/c
+    parser_key: emag-listing
+    schedule: "15 1 * * *"
+    enabled: true
+    config:
+      max_pages: 10
+      label: "Plăci video"
+      tier: B
+  - key: emag:listing:procesoare
+    kind: listing
+    url: https://www.emag.ro/procesoare/c
+    parser_key: emag-listing
+    schedule: "18 1 * * *"
+    enabled: true
+    config:
+      max_pages: 5
+      label: "Procesoare"
+      tier: B
+  - key: emag:listing:solid-state-drive-ssd
+    kind: listing
+    url: https://www.emag.ro/solid-state_drive_ssd_/c
+    parser_key: emag-listing
+    schedule: "21 1 * * *"
+    enabled: true
+    config:
+      max_pages: 10
+      label: "SSD"
+      tier: B
+  - key: emag:listing:memorii
+    kind: listing
+    url: https://www.emag.ro/memorii/c
+    parser_key: emag-listing
+    schedule: "24 1 * * *"
+    enabled: true
+    config:
+      max_pages: 8
+      label: "Memorii RAM"
+      tier: B
+  - key: emag:listing:placi-baza
+    kind: listing
+    url: https://www.emag.ro/placi_baza/c
+    parser_key: emag-listing
+    schedule: "27 1 * * *"
+    enabled: true
+    config:
+      max_pages: 8
+      label: "Plăci de bază"
+      tier: B
+  - key: emag:listing:surse-pc
+    kind: listing
+    url: https://www.emag.ro/surse-pc/c
+    parser_key: emag-listing
+    schedule: "30 1 * * *"
+    enabled: true
+    config:
+      max_pages: 4
+      label: "Surse PC"
+      tier: B
+  - key: emag:listing:carcase
+    kind: listing
+    url: https://www.emag.ro/carcase/c
+    parser_key: emag-listing
+    schedule: "33 1 * * *"
+    enabled: true
+    config:
+      max_pages: 4
+      label: "Carcase PC"
+      tier: B
+  - key: emag:listing:console-hardware
+    kind: listing
+    url: https://www.emag.ro/console-hardware/c
+    parser_key: emag-listing
+    schedule: "36 1 * * *"
+    enabled: true
+    config:
+      max_pages: 5
+      label: "Console"
+      tier: B
+  - key: emag:listing:jocuri-consola-pc
+    kind: listing
+    url: https://www.emag.ro/jocuri-consola-pc/c
+    parser_key: emag-listing
+    schedule: "39 1 * * *"
+    enabled: true
+    config:
+      max_pages: 15
+      label: "Jocuri"
+      tier: B
+  - key: emag:listing:smartwatch
+    kind: listing
+    url: https://www.emag.ro/smartwatch/c
+    parser_key: emag-listing
+    schedule: "42 1 * * *"
+    enabled: true
+    config:
+      max_pages: 10
+      label: "Smartwatch"
+      tier: B
+  - key: emag:listing:bratari-fitness
+    kind: listing
+    url: https://www.emag.ro/bratari-fitness/c
+    parser_key: emag-listing
+    schedule: "45 1 * * *"
+    enabled: true
+    config:
+      max_pages: 4
+      label: "Brățări fitness"
+      tier: B
+  - key: emag:listing:casti-audio
+    kind: listing
+    url: https://www.emag.ro/casti-audio/c
+    parser_key: emag-listing
+    schedule: "48 1 * * *"
+    enabled: true
+    config:
+      max_pages: 15
+      label: "Căști audio"
+      tier: B
+  - key: emag:listing:boxe-portabile
+    kind: listing
+    url: https://www.emag.ro/boxe-portabile/c
+    parser_key: emag-listing
+    schedule: "51 1 * * *"
+    enabled: true
+    config:
+      max_pages: 10
+      label: "Boxe portabile"
+      tier: B
+  - key: emag:listing:soundbar
+    kind: listing
+    url: https://www.emag.ro/soundbar/c
+    parser_key: emag-listing
+    schedule: "54 1 * * *"
+    enabled: true
+    config:
+      max_pages: 5
+      label: "Soundbar"
+      tier: B
+  - key: emag:listing:routere-wireless
+    kind: listing
+    url: https://www.emag.ro/routere_wireless/c
+    parser_key: emag-listing
+    schedule: "57 1 * * *"
+    enabled: true
+    config:
+      max_pages: 5
+      label: "Routere"
+      tier: B
+  - key: emag:listing:imprimante-multifunctionale
+    kind: listing
+    url: https://www.emag.ro/imprimante-multifunctionale/c
+    parser_key: emag-listing
+    schedule: "0 2 * * *"
+    enabled: true
+    config:
+      max_pages: 5
+      label: "Imprimante"
+      tier: B
+  - key: emag:listing:mouse
+    kind: listing
+    url: https://www.emag.ro/mouse/c
+    parser_key: emag-listing
+    schedule: "3 2 * * *"
+    enabled: true
+    config:
+      max_pages: 5
+      label: "Mouse"
+      tier: B
+  - key: emag:listing:tastaturi
+    kind: listing
+    url: https://www.emag.ro/tastaturi/c
+    parser_key: emag-listing
+    schedule: "6 2 * * *"
+    enabled: true
+    config:
+      max_pages: 5
+      label: "Tastaturi"
+      tier: B
+  - key: emag:listing:masini-spalat-rufe
+    kind: listing
+    url: https://www.emag.ro/masini-spalat-rufe/c
+    parser_key: emag-listing
+    schedule: "9 2 * * *"
+    enabled: true
+    config:
+      max_pages: 10
+      label: "Mașini de spălat rufe"
+      tier: B
+  - key: emag:listing:combine-frigorifice
+    kind: listing
+    url: https://www.emag.ro/combine-frigorifice/c
+    parser_key: emag-listing
+    schedule: "12 2 * * *"
+    enabled: true
+    config:
+      max_pages: 10
+      label: "Combine frigorifice"
+      tier: B
+  - key: emag:listing:frigidere
+    kind: listing
+    url: https://www.emag.ro/frigidere/c
+    parser_key: emag-listing
+    schedule: "15 2 * * *"
+    enabled: true
+    config:
+      max_pages: 5
+      label: "Frigidere"
+      tier: B
+  - key: emag:listing:masini-spalat-vase
+    kind: listing
+    url: https://www.emag.ro/masini-spalat-vase/c
+    parser_key: emag-listing
+    schedule: "18 2 * * *"
+    enabled: true
+    config:
+      max_pages: 5
+      label: "Mașini de spălat vase"
+      tier: B
+  - key: emag:listing:uscatoare-rufe
+    kind: listing
+    url: https://www.emag.ro/uscatoare-rufe/c
+    parser_key: emag-listing
+    schedule: "21 2 * * *"
+    enabled: true
+    config:
+      max_pages: 4
+      label: "Uscătoare de rufe"
+      tier: B
+  - key: emag:listing:congelatoare
+    kind: listing
+    url: https://www.emag.ro/congelatoare/c
+    parser_key: emag-listing
+    schedule: "24 2 * * *"
+    enabled: true
+    config:
+      max_pages: 3
+      label: "Congelatoare"
+      tier: B
+  - key: emag:listing:cuptoare-microunde
+    kind: listing
+    url: https://www.emag.ro/cuptoare-microunde/c
+    parser_key: emag-listing
+    schedule: "27 2 * * *"
+    enabled: true
+    config:
+      max_pages: 4
+      label: "Cuptoare cu microunde"
+      tier: B
+  - key: emag:listing:cuptoare-incorporabile
+    kind: listing
+    url: https://www.emag.ro/cuptoare-incorporabile/c
+    parser_key: emag-listing
+    schedule: "30 2 * * *"
+    enabled: true
+    config:
+      max_pages: 4
+      label: "Cuptoare încorporabile"
+      tier: B
+  - key: emag:listing:plite-electrice
+    kind: listing
+    url: https://www.emag.ro/plite-electrice/c
+    parser_key: emag-listing
+    schedule: "33 2 * * *"
+    enabled: true
+    config:
+      max_pages: 3
+      label: "Plite"
+      tier: B
+  - key: emag:listing:hote
+    kind: listing
+    url: https://www.emag.ro/hote/c
+    parser_key: emag-listing
+    schedule: "36 2 * * *"
+    enabled: true
+    config:
+      max_pages: 3
+      label: "Hote"
+      tier: B
+  - key: emag:listing:aspiratoare
+    kind: listing
+    url: https://www.emag.ro/aspiratoare/c
+    parser_key: emag-listing
+    schedule: "39 2 * * *"
+    enabled: true
+    config:
+      max_pages: 15
+      label: "Aspiratoare"
+      tier: B
+  - key: emag:listing:espressoare
+    kind: listing
+    url: https://www.emag.ro/espressoare/c
+    parser_key: emag-listing
+    schedule: "42 2 * * *"
+    enabled: true
+    config:
+      max_pages: 10
+      label: "Espressoare"
+      tier: B
+  - key: emag:listing:friteuze
+    kind: listing
+    url: https://www.emag.ro/friteuze/c
+    parser_key: emag-listing
+    schedule: "45 2 * * *"
+    enabled: true
+    config:
+      max_pages: 10
+      label: "Friteuze"
+      tier: B
+  - key: emag:listing:fierbatoare
+    kind: listing
+    url: https://www.emag.ro/fierbatoare/c
+    parser_key: emag-listing
+    schedule: "48 2 * * *"
+    enabled: true
+    config:
+      max_pages: 4
+      label: "Fierbătoare"
+      tier: B
+  - key: emag:listing:blendere-tocatoare
+    kind: listing
+    url: https://www.emag.ro/blendere----tocatoare/c
+    parser_key: emag-listing
+    schedule: "51 2 * * *"
+    enabled: true
+    config:
+      max_pages: 3
+      label: "Blendere"
+      tier: B
+  - key: emag:listing:roboti-bucatarie
+    kind: listing
+    url: https://www.emag.ro/roboti-bucatarie/c
+    parser_key: emag-listing
+    schedule: "54 2 * * *"
+    enabled: true
+    config:
+      max_pages: 3
+      label: "Roboți de bucătărie"
+      tier: B
+  - key: emag:listing:multicooker
+    kind: listing
+    url: https://www.emag.ro/multicooker/c
+    parser_key: emag-listing
+    schedule: "57 2 * * *"
+    enabled: true
+    config:
+      max_pages: 3
+      label: "Multicookere"
+      tier: B
+  - key: emag:listing:purificatoare
+    kind: listing
+    url: https://www.emag.ro/purificatoare/c
+    parser_key: emag-listing
+    schedule: "0 3 * * *"
+    enabled: true
+    config:
+      max_pages: 3
+      label: "Purificatoare"
+      tier: B
+  - key: emag:listing:trotinete-electrice
+    kind: listing
+    url: https://www.emag.ro/trotinete-electrice/c
+    parser_key: emag-listing
+    schedule: "3 3 * * *"
+    enabled: true
+    config:
+      max_pages: 5
+      label: "Trotinete electrice"
+      tier: B
+  - key: emag:product:tier-a
+    kind: product_page
+    url: https://www.emag.ro/
+    parser_key: emag-product
+    schedule: "30 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      tier: A
+      select: top_reviews
+      limit: 1500
+      note: "Product pages of the most reviewed listing products: names every seller and eMAG's 30-day lowest price."
+  - key: emag:sitemap:offers-available
+    kind: sitemap
+    url: https://www.emag.ro/sitemaps/offers-available-index.xml
+    parser_key: sitemap
+    schedule: null
+    enabled: false
+    config:
+      purpose: discovery_diff
+      note: "841 files × 5,000 URLs with a constant lastmod: only for diffing URL sets (discovery and delisting). ≈70 min at 1 request/5 s; enable after Phase 0."

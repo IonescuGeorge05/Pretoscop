@@ -1,0 +1,21 @@
+slug: jysk
+name: "JYSK"
+domain: jysk.ro
+website_url: https://www.jysk.ro
+hosts: [jysk.ro, www.jysk.ro]
+kind: retail
+status: active
+access_mode: direct
+trust_tier: 2
+categories: [casa]
+legal:
+  basis_ref: "robots.txt allows product pages; recon 2026-10-27 served the honest bot"
+shipping:
+  notes: "De verificat la onboarding."
+  verified: false
+crawl_policy:
+  min_interval_ms: 5000
+  max_pages_per_day: 1000
+  freshness_slo_hours: 72
+notes: "JSON-LD on product pages; listing prices client-rendered."
+sources: []

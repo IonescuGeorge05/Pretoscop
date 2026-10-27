@@ -16,7 +16,7 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 | M01 | Database schema v1 and migrations | review | `mod/M01-schema` (merged locally into `daniel`) | | 25 tables, monthly partitions, PG18 old/new upserts |
 | M02 | Polite fetch layer and robots.txt | todo | | | |
 | M03 | Extractors: structured data and feed mappers | review | `mod/M03-extractors` (merged locally into `daniel`) | | eMAG listing/product, JSON-LD/microdata/OG, 5 feed mappers, sitemaps |
-| M04 | Shop registry and configuration | todo | | | |
+| M04 | Shop registry and configuration | review | `mod/M04-registry` (merged locally into `daniel`) | | 28 shops, 49 sources (eMAG 43 listings + Tier A), idempotent sync |
 | M05 | Phase-0 price recorder (eMAG listings + first feeds) | todo | | | eMAG decided 2026-10-27: option A (see decisions log) |
 | M05B | Assisted-access channel for blocked shops (prototype) | todo | | | decided 2026-10-27 after legal advice; file the written opinion and open the vendor account (A10) |
 
@@ -156,3 +156,19 @@ Founder checklist: `scripts/verify/M03.checklist.md` (not yet run by a founder).
 Human tasks needed: A6 (an approved 2Performant program, to replace the synthetic feed sample with a real download).
 Risks / open questions: eMAG listing markup can change without notice; the weekly canary (M21) and the parse-reject alarms (M05) will catch it.
 Next module: M04.
+
+### M04 — Shop registry and configuration — 2026-10-27
+Scope delivered:
+- `packages/config/shops/*.yaml` for 28 shops: eMAG (decision recorded; 42 launch-category listing sources staggered from 01:00, Tier A product pages, a disabled sitemap sweep), IT Galaxy, forit and Flip (sitemap → product pages, enabled), Dedeman, Libris, Elefant, Bonami, JYSK, Carrefour, Auchan (active, sources to come in M10), evoMAG and Vexio (blocked; feed placeholders), and blocked placeholders for Altex, Media Galaxy, Flanco, PC Garage, CEL.ro, iStyle, Notino, Douglas, Sephora, Answear, Fashion Days, Leroy Merlin, Hornbach, Decathlon, OLX. Each records legal basis, robots notes, affiliate program and comparator policy, crawl policy and probe results.
+- zod schema with the politeness floor, cron validation, key rules and legal-basis checks; loader with all-at-once readable errors; `getDomainPolicy(host)`; `shops:sync` (idempotent, audit row, kill switches and flags never overwritten); `pnpm shops:table` embedding a generated table in docs/06.
+Out of scope / deferred: the crawl itself (M05); listing parsers for Dedeman/Carrefour/Auchan/Libris/Elefant/Bonami/JYSK (M10).
+Deviations from plan:
+- eMAG sources are `enabled: true` in the YAML because the founders decided option A; the ADR-013 isolation is the DB flag `source.emag.enabled` (off by default, turned on in the local DB for this session's recorder) plus per-source kill switches. The plan's founder check "confirm enabled: false" therefore reads "confirm the flag gate" now.
+- `shops.access_mode` and `legal_basis_ref` are owned by the YAML (changes reviewed in git) rather than edited in the admin; the admin will show them read-only (affects M05B/M09 wording).
+- docs/06 keeps its research tables; the generated table is appended as "Registry snapshot" instead of replacing them.
+- Shipping rules are left unknown (`verified: false`, no amounts) for every shop: inventing thresholds would make "total price" ranking dishonest. Totals equal prices plus known shipping until the founders fill these in.
+Verification: `make verify M=04` → 21 registry tests (valid registry, every parser key exists, blocked shops have no enabled source, politeness floor, eMAG legal basis, domain policies, readable errors for 8 kinds of invalid YAML, assisted needs a legal basis) and 4 sync tests (idempotent, kill switch preserved, removed source disabled, audit row, unknown parser refused) → dev DB sync then a no-op second sync → `OK`.
+Founder checklist: `scripts/verify/M04.checklist.md` (not yet run by a founder).
+Human tasks needed: A8 recorded; **shipping rules per shop** (free-delivery threshold, courier fee, locker fee) — new task, needed before totals are meaningful; A6 (2Performant feed URLs for evoMAG and others).
+Risks / open questions: eMAG category slugs come from eMAG's categories sitemap of 2026-10-27; a renamed category shows up as a failing source in the dashboard.
+Next module: M05.

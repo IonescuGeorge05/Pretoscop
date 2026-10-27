@@ -213,13 +213,14 @@ describe('failure streaks and robots.txt caching', () => {
 });
 
 describe('aborts and caller errors', () => {
-  async function slowServer(): Promise<TestServer> {
+  async function slowServer(onPage?: () => void): Promise<TestServer> {
     const s = await startServer((req, res) => {
       if (req.url === '/robots.txt') {
         res.writeHead(200, TEXT);
         res.end(ROBOTS_ALLOW_ALL);
         return;
       }
+      onPage?.();
       setTimeout(() => {
         res.writeHead(200, HTML);
         res.end(page);
@@ -230,11 +231,11 @@ describe('aborts and caller errors', () => {
   }
 
   it('logs a request that was on the wire when the caller aborted', async () => {
-    const s = await slowServer();
+    // Abort once the page request has reached the server (a fixed delay flakes under CI load).
+    const controller = new AbortController();
+    const s = await slowServer(() => controller.abort());
     const { fetcher, log } = testFetcher();
     cleanups.push(() => fetcher.close());
-    const controller = new AbortController();
-    setTimeout(() => controller.abort(), 100);
     const res = await fetcher.fetchPolite(`${s.origin}/p/1`, { purpose: 'product', signal: controller.signal });
     expect(res.errorCode).toBe('aborted');
     expect(s.hits.map((h) => h.path)).toEqual(['/robots.txt', '/p/1']);

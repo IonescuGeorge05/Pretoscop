@@ -2,6 +2,7 @@ slug: altex
 name: "Altex"
 domain: altex.ro
 website_url: https://www.altex.ro
+search_url: "https://altex.ro/cauta/?q={q}"
 kind: retail
 status: blocked
 access_mode: off

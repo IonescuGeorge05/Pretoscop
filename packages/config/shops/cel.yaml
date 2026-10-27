@@ -2,6 +2,7 @@ slug: cel
 name: "CEL.ro"
 domain: cel.ro
 website_url: https://www.cel.ro
+search_url: "https://www.cel.ro/cauta/{q}/"
 kind: retail
 status: blocked
 access_mode: off

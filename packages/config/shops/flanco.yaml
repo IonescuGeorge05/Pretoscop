@@ -2,6 +2,7 @@ slug: flanco
 name: "Flanco"
 domain: flanco.ro
 website_url: https://www.flanco.ro
+search_url: "https://www.flanco.ro/catalogsearch/result/?q={q}"
 kind: retail
 status: blocked
 access_mode: off

@@ -2,6 +2,7 @@ slug: istyle
 name: "iStyle"
 domain: istyle.ro
 website_url: https://www.istyle.ro
+search_url: "https://istyle.ro/search?q={q}"
 kind: retail
 status: blocked
 access_mode: off

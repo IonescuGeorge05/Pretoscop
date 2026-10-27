@@ -9,3 +9,4 @@ export * from './events';
 export * from './quality';
 export * from './auth';
 export * from './contact';
+export * from './clicks';

@@ -115,59 +115,59 @@ export default async function ProductPage({ params, searchParams }: Props) {
               <RecommendationCard rec={rec} overMsrp={overMsrp} />
             </div>
           )}
-          {/* nou și refurbished unul lângă altul: decizia completă dintr-o privire */}
-          <div className={`grid min-w-0 gap-3 rounded-[28px] border border-line bg-card p-6 sm:grid-cols-2 sm:p-8 ${retired ? "flex-[1_1_100%]" : "flex-[1_1_380px]"}`}>
-            <div className="flex flex-col">
-              <span className="text-muted">{retired ? "Stoc nou rămas" : "Nou"}, cel mai bun preț final</span>
-              {best ? (
-                <>
-                  <span className="mt-1 font-display text-[44px] font-extrabold leading-tight tracking-tight tabular-nums">
-                    {formatLeiShort(best.breakdown.final_price)}
-                  </span>
-                  <span className="text-sm text-muted">
-                    la <strong className="text-ink">{best.shop.name}</strong>
-                    {best.preorder ? " · precomandă" : ""}
-                    {best.breakdown.shipping > 0 ? ` · cu ${formatLei(best.breakdown.shipping)} transport` : " · transport gratuit"}
-                  </span>
-                  <a
-                    href={IS_STATIC ? best.shop_url : best.out_url}
-                    target="_blank"
-                    rel="nofollow noopener sponsored"
-                    className="mt-4 inline-flex min-h-12 items-center justify-center rounded-full bg-brand px-5 font-bold text-brand-ink hover:opacity-90"
-                  >
-                    Mergi la {best.shop.name}
-                  </a>
-                </>
-              ) : (
-                <span className="mt-2 text-muted">Nicio ofertă nouă în stoc momentan.</span>
-              )}
-            </div>
-            <div className="flex flex-col rounded-2xl bg-soft p-4">
-              <span className="text-muted">Refurbished, cu garanție</span>
-              {refurb ? (
-                <>
-                  <span className="mt-1 font-display text-[34px] font-extrabold leading-tight tracking-tight tabular-nums">
-                    {formatLeiShort(refurb.breakdown.final_price)}
-                  </span>
-                  <span className="text-sm text-muted">
+          {/* prețul nou sus (cu butonul), refurbished dedesubt pe un rând: încape și într-o coloană îngustă */}
+          <div className={`flex min-w-0 flex-col rounded-[28px] border border-line bg-card p-6 sm:p-7 ${retired ? "flex-[1_1_100%]" : "flex-[1_1_340px]"}`}>
+            <span className="text-sm text-muted">{retired ? "Stoc nou rămas" : "Nou"} · cel mai bun preț final</span>
+            {best ? (
+              <>
+                <span className="mt-1 whitespace-nowrap font-display text-[44px] font-extrabold leading-tight tracking-tight tabular-nums">
+                  {formatLeiShort(best.breakdown.final_price)}
+                </span>
+                <span className="text-sm text-muted">
+                  la <strong className="text-ink">{best.shop.name}</strong>
+                  {best.preorder ? " · precomandă" : ""}
+                  {best.breakdown.shipping > 0 ? ` · cu ${formatLei(best.breakdown.shipping)} transport` : " · transport gratuit"}
+                </span>
+                <a
+                  href={IS_STATIC ? best.shop_url : best.out_url}
+                  target="_blank"
+                  rel="nofollow noopener sponsored"
+                  className="mt-4 inline-flex min-h-12 items-center justify-center whitespace-nowrap rounded-full bg-brand px-5 font-bold text-brand-ink hover:opacity-90"
+                >
+                  Mergi la {best.shop.name}
+                </a>
+              </>
+            ) : (
+              <span className="mt-2 text-muted">Nicio ofertă nouă în stoc momentan.</span>
+            )}
+
+            {refurb && (
+              <div className="mt-5 flex items-center justify-between gap-3 border-t border-line pt-4">
+                <div className="min-w-0">
+                  <div className="text-sm font-bold">Refurbished, cu garanție</div>
+                  <div className="truncate text-xs text-muted">
                     {refurb.shop.name}
-                    {refurb.grade ? ` · stare „${refurb.grade}”` : ""}
-                    {!refurb.in_stock && " · momentan epuizat"}
-                  </span>
+                    {refurb.grade ? ` · „${refurb.grade}”` : ""}
+                    {!refurb.in_stock && " · epuizat acum"}
+                  </div>
+                </div>
+                <div className="flex-none text-right">
+                  <div className="whitespace-nowrap font-display text-2xl font-extrabold tabular-nums">
+                    {formatLeiShort(refurb.breakdown.final_price)}
+                  </div>
                   {best && refurb.breakdown.final_price < best.breakdown.final_price && (
-                    <span className="mt-2 self-start rounded-full bg-green-100 px-3 py-1 text-[13px] font-bold text-green-900 dark:bg-green-950 dark:text-green-200">
+                    <div className="whitespace-nowrap text-xs font-bold text-green-700 dark:text-green-400">
                       −{formatLeiShort(best.breakdown.final_price - refurb.breakdown.final_price)} față de nou
-                    </span>
+                    </div>
                   )}
-                </>
-              ) : (
-                <span className="mt-2 text-sm text-muted">Nicio ofertă refurbished momentan.</span>
-              )}
-            </div>
+                </div>
+              </div>
+            )}
+
             {product.msrp_ron && (
-              <span title={product.msrp_note ?? undefined} className="cursor-help text-sm text-muted sm:col-span-2">
-                Prețul recomandat de producător{product.msrp_verified ? "" : " (estimat)"}: {formatLeiShort(product.msrp_ron)}
-                {best && ` · nou: ${vsMsrp(best.breakdown.final_price, product.msrp_ron)}`}
+              <span title={product.msrp_note ?? undefined} className="mt-4 cursor-help text-xs text-muted">
+                Preț recomandat de producător{product.msrp_verified ? "" : " (estimat)"}: {formatLeiShort(product.msrp_ron)}
+                {best && ` · nou ${vsMsrp(best.breakdown.final_price, product.msrp_ron)}`}
               </span>
             )}
           </div>

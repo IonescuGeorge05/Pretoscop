@@ -176,4 +176,19 @@ describe('blocks and alerts', () => {
     expect(alert).toHaveBeenCalledWith(expect.stringMatching(/failing twice/), expect.anything());
     blocked = new Set();
   });
+
+  it('a host the fetch layer already paused is gated: no run, no request, no new failure', async () => {
+    const id = await sourceId('emag:listing:tablete');
+    await t.db.execute(sql`
+      INSERT INTO fetch_domain_state (host, paused_until, pause_reason, pause_set_at, pause_source)
+      VALUES ('www.emag.ro', now() + interval '1 day', 'challenge: test', now(), 'auto')
+      ON CONFLICT (host) DO UPDATE SET paused_until = EXCLUDED.paused_until, pause_reason = EXCLUDED.pause_reason`);
+    const runsBefore = await t.db.execute<{ n: string }>(sql`SELECT count(*)::text AS n FROM ingest_runs WHERE source_id = ${id}`);
+    const r = await runSource(deps(), id, { trigger: 'manual', maxPages: 1 });
+    expect(r).toMatchObject({ runId: null, status: 'gated' });
+    expect(r.reason).toMatch(/www\.emag\.ro paused until .*challenge: test/);
+    const runsAfter = await t.db.execute<{ n: string }>(sql`SELECT count(*)::text AS n FROM ingest_runs WHERE source_id = ${id}`);
+    expect(runsAfter.rows[0]!.n).toBe(runsBefore.rows[0]!.n);
+    await t.db.execute(sql`UPDATE fetch_domain_state SET paused_until = NULL WHERE host = 'www.emag.ro'`);
+  });
 });

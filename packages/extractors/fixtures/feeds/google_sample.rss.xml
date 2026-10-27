@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:g="http://base.google.com/ns/1.0">
+  <channel>
+    <title>Magazin Exemplu</title>
+    <link>https://www.magazin-exemplu.ro</link>
+    <item>
+      <g:id>MX-1001</g:id>
+      <g:title>Consola Sony PlayStation 5 Slim Digital Edition, 1TB</g:title>
+      <g:link>https://www.magazin-exemplu.ro/ps5-slim-digital?utm_source=google</g:link>
+      <g:price>2499.99 RON</g:price>
+      <g:sale_price>2199.99 RON</g:sale_price>
+      <g:availability>in_stock</g:availability>
+      <g:condition>new</g:condition>
+      <g:brand>Sony</g:brand>
+      <g:gtin>0711719577034</g:gtin>
+      <g:mpn>CFI-2016</g:mpn>
+      <g:product_type>Gaming &gt; Console</g:product_type>
+      <g:shipping><g:country>RO</g:country><g:price>19.99 RON</g:price></g:shipping>
+    </item>
+    <item>
+      <g:id>MX-1002</g:id>
+      <title>Aspirator robot Roborock Q7 Max</title>
+      <link>https://www.magazin-exemplu.ro/roborock-q7-max</link>
+      <g:price>1299.00 RON</g:price>
+      <g:availability>out_of_stock</g:availability>
+      <g:brand>Roborock</g:brand>
+    </item>
+  </channel>
+</rss>

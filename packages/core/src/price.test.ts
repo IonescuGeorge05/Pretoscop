@@ -101,6 +101,18 @@ describe('parsePriceRon: separator disambiguation', () => {
     expect(bani('1.23499')).toBe('unparseable');
   });
 
+  it('reads the eMAG listing markup of 2026-10-27 and its flattened text', () => {
+    // packages/extractors/fixtures/emag/listing-vendor-emag_2026-10-27.html
+    const html =
+      '<p class="product-new-price">3&#46;170<sup><small class="mf-decimal">&#44;</small>99</sup> <span>Lei</span></p>';
+    expect(bani(html, 'ro')).toBe(317099);
+    expect(bani(html)).toBe(317099);
+    // cheerio .text() of the same element
+    expect(bani('3.170,99 Lei', 'ro')).toBe(317099);
+    expect(bani('4.200,00 Lei', 'ro')).toBe(420000);
+    expect(bani('1&#46;299&#44;99&nbsp;lei')).toBe(129999);
+  });
+
   it('does not mistake a space thousands group for cents', () => {
     expect(bani('1 234')).toBe(123400);
     expect(bani('12 500 lei')).toBe(1250000);

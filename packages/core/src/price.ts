@@ -289,12 +289,28 @@ function parseNumberToken(
   return heuristic(groups, seps);
 }
 
-function decodeBasicEntities(s: string): string {
-  return s
-    .replace(/&nbsp;|&#160;|&#x0*a0;/gi, ' ')
-    .replace(/&#8239;|&#x0*202f;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&euro;/gi, '€');
+const NAMED_ENTITIES: Readonly<Record<string, string>> = {
+  nbsp: ' ',
+  amp: '&',
+  euro: '€',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+};
+
+/** Decodes numeric character references (&#46; &#x2c;) and a few named entities. */
+function decodeEntities(s: string): string {
+  return s.replace(
+    /&(?:#(\d{1,7})|#x([0-9a-f]{1,6})|([a-z]+));/gi,
+    (m, dec?: string, hex?: string, name?: string) => {
+      if (dec !== undefined || hex !== undefined) {
+        const code = dec !== undefined ? Number(dec) : Number.parseInt(hex ?? '', 16);
+        return code > 0 && code <= 0x10ffff ? String.fromCodePoint(code) : m;
+      }
+      return NAMED_ENTITIES[(name ?? '').toLowerCase()] ?? m;
+    },
+  );
 }
 
 function finish(minor: number, currency: string, flags: PriceFlag[]): AmountParseResult {
@@ -329,11 +345,15 @@ export function parsePrice(input: unknown, options: ParsePriceOptions = {}): Amo
   if (input == null || (typeof input !== 'string' && typeof input !== 'bigint')) {
     return { ok: false, reason: 'empty' };
   }
-  let raw = decodeBasicEntities(String(input));
+  let raw = decodeEntities(String(input));
   let splitCents: string | null = null;
-  const sup = /<sup[^>]*>\s*(\d{1,2})\s*<\/sup>/i.exec(raw);
-  if (sup) {
-    splitCents = (sup[1] ?? '').padEnd(2, '0');
+  // eMAG writes cents in a superscript, sometimes after a hidden separator:
+  // 3&#46;170<sup><small class="mf-decimal">&#44;</small>99</sup> → 3170 lei + 99 bani.
+  const sup = /<sup[^>]*>([\s\S]*?)<\/sup>/i.exec(raw);
+  const supText = sup ? (sup[1] ?? '').replace(/<[^>]*>/g, '').trim() : '';
+  const supCents = /^[.,]?\s*(\d{1,2})$/.exec(supText);
+  if (sup && supCents) {
+    splitCents = (supCents[1] ?? '').padEnd(2, '0');
     raw = raw.slice(0, sup.index) + raw.slice(sup.index + sup[0].length);
   }
   raw = raw.replace(/<[^>]*>/g, ' ');

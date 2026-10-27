@@ -217,7 +217,14 @@ importers:
         specifier: ^1.2.7
         version: 1.2.7
 
-  packages/fetch: {}
+  packages/fetch:
+    dependencies:
+      '@pretoscop/config':
+        specifier: workspace:*
+        version: link:../config
+      undici:
+        specifier: ^7.30.1
+        version: 7.30.1
 
   packages/llm: {}
 

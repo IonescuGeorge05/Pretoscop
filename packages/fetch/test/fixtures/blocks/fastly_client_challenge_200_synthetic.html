@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Client Challenge</title>
+<style>
+  html, body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  #loading-error { display: none; font-size: 40px; color: #ffffff; background-color: #c00; padding: 20px; }
+</style>
+</head>
+<body>
+<noscript>
+  <div>JavaScript is disabled in your browser.</div>
+  <p>Please enable JavaScript to proceed.</p>
+</noscript>
+<div id="loading-error" role="alert" aria-live="polite">A required part of this site couldn&rsquo;t load. This may be due to a browser extension, network issues, or browser settings. Please check your connection, disable any ad blockers, or try using a different browser.</div>
+<script>
+  function loadScript(src) {
+    return new Promise((resolve, reject) => {
+      const script = document.createElement('script');
+      script.onload = resolve;
+      script.onerror = (event) => { document.getElementById('loading-error').style.display = 'block'; reject(event); };
+      script.async = true;
+      script.src = src;
+      document.head.appendChild(script);
+    });
+  }
+  loadScript('/_fs-ch-1T1wmsGaOgGaSxcX/errors.js').then(() => loadScript('/_fs-ch-1T1wmsGaOgGaSxcX/script.js?reload=true'));
+</script>
+</body>
+</html>

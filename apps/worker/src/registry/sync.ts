@@ -65,6 +65,7 @@ function shopRow(s: ShopConfig) {
     crawlPolicy: { ...s.crawl_policy },
     vatIncludedDefault: s.vat_included_default,
     legalNotes: legalNotes || null,
+    searchUrlTemplate: s.search_url ?? null,
   };
 }
 

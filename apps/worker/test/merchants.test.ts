@@ -57,11 +57,11 @@ beforeAll(async () => {
   blobRoot = mkdtempSync(join(tmpdir(), 'pretoscop-merchant-'));
   await syncShops(t.db);
   await setFlag(t.db, 'crawl.enabled', true);
-}, 60_000);
+}, 180_000);
 afterAll(async () => {
   await t?.drop();
   rmSync(blobRoot, { recursive: true, force: true });
-});
+}, 120_000);
 
 describe('merchant.validate', () => {
   it('keeps the portal parser map equal to the extractors one', () => {

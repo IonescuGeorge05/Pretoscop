@@ -26,7 +26,7 @@ const XML_ITEM_RE: Record<Exclude<FeedFormat, 'csv'>, RegExp> = {
 
 /** Recognizes a feed from its first bytes; null when it is none of the accepted formats. */
 export function detectFeedFormat(head: string): FeedFormat | null {
-  const s = head.replace(/^﻿/, '').trimStart();
+  const s = head.replace(/^\ufeff/, '').trimStart();
   if (s.startsWith('<')) {
     if (/xmlns:g\s*=|<g:[a-z_]+[\s>]/i.test(s)) return 'google';
     if (/<products?[\s>]/i.test(s) && /<(identifier|producturl|name|price)[\s>]/i.test(s)) return 'compari';

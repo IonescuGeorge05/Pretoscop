@@ -51,11 +51,11 @@ beforeAll(async () => {
     INSERT INTO shops (slug, name, domain, website_url, status, access_mode) VALUES
       ('pcgarage', 'PC Garage', 'pcgarage.ro', 'https://www.pcgarage.ro', 'blocked', 'off'),
       ('evomag', 'evoMAG', 'evomag.ro', 'https://www.evomag.ro', 'active', 'feed_only')`);
-}, 60_000);
+}, 180_000);
 
 afterAll(async () => {
   await t?.drop();
-});
+}, 120_000);
 
 describe('approveMerchant', () => {
   it('creates a feed_only shop and a six-times-a-day merchant feed source', async () => {

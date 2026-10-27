@@ -29,7 +29,7 @@ export function cuiControlDigit(body: string): number {
 
 /** Validates a CUI as typed ("RO 14399840", "ro14399840", "14399840"). */
 export function validateCui(input: string | null | undefined): CuiResult {
-  const raw = (input ?? '').replace(/[\s.\-]/g, '').toUpperCase();
+  const raw = (input ?? '').replace(/[\s.-]/g, '').toUpperCase();
   if (raw === '') return { ok: false, cui: null, vatPrefix: false, reason: 'empty' };
   const vatPrefix = raw.startsWith('RO');
   const digits = vatPrefix ? raw.slice(2) : raw;

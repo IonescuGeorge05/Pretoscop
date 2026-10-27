@@ -9,7 +9,7 @@ describe('detectFeedFormat', () => {
     expect(detectFeedFormat(fixture('feeds/google_sample.atom.xml'))).toBe('google');
     expect(detectFeedFormat(fixture('feeds/compari_sample.xml'))).toBe('compari');
     expect(detectFeedFormat(fixture('feeds/generic_sample.csv'))).toBe('csv');
-    expect(detectFeedFormat('﻿id,title,price,link\n1,a,2,b')).toBe('csv');
+    expect(detectFeedFormat('\ufeffid,title,price,link\n1,a,2,b')).toBe('csv');
   });
 
   it('refuses HTML pages, other XML and plain text', () => {

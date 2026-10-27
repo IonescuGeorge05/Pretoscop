@@ -84,9 +84,9 @@ export default async function RankingPage() {
             <>
               <Callout icon={<ListOrdered />}>
                 <p>
-                  Ordinea implicită a ofertelor este dată de <strong>prețul total</strong>: prețul produsului plus livrarea estimată, de la cel mai mic la cel mai
-                  mare. Disponibilitatea și momentul ultimei verificări decid doar între ofertele cu același preț total. Nimeni nu poate plăti pentru a urca în
-                  această listă.
+                  Ordinea implicită a ofertelor este dată de <strong>disponibilitate</strong> și de <strong>prețul total</strong> (prețul produsului plus livrarea
+                  cunoscută): întâi ofertele în stoc verificate recent, de la cel mai mic preț total la cel mai mare, apoi ofertele în stoc pe care nu le-am mai
+                  putut confirma recent, apoi cele fără stoc. Nimeni nu poate plăti pentru a urca în această listă.
                 </p>
               </Callout>
               <p className="text-sm text-muted">
@@ -105,14 +105,23 @@ export default async function RankingPage() {
                 head={['Ordine', 'Parametru', 'Cum contează']}
                 tableClassName="min-w-[34rem]"
                 rows={[
-                  ['1', 'Prețul total = prețul produsului + livrarea estimată', 'Criteriul principal: ofertele sunt ordonate crescător după prețul total.'],
-                  ['2', 'Disponibilitatea', 'La preț total egal, ofertele în stoc apar înaintea celorlalte.'],
-                  ['3', 'Momentul ultimei verificări', 'La preț total și disponibilitate egale, apare întâi oferta verificată cel mai recent.'],
+                  [
+                    '1',
+                    'Disponibilitatea și prospețimea',
+                    'Întâi ofertele în stoc verificate recent; apoi ofertele în stoc pe care nu le-am mai putut confirma recent (afișate cu gri); la final ofertele fără stoc, la precomandă sau cu stoc necunoscut.',
+                  ],
+                  ['2', 'Prețul total = prețul produsului + livrarea cunoscută', 'În fiecare dintre aceste grupuri, ofertele sunt ordonate crescător după prețul total.'],
+                  ['3', 'Momentul ultimei verificări', 'La disponibilitate și preț total egale, apare întâi oferta verificată cel mai recent.'],
                 ]}
               />
               <p>
                 Acești trei parametri sunt singurii care stabilesc ordinea implicită. Pe pagina produsului poți schimba ordonarea sau poți filtra lista (de
                 exemplu, doar ofertele în stoc); filtrele tale nu schimbă regulile de mai sus.
+              </p>
+              <p>
+                Ofertele pentru produse resigilate, recondiționate sau folosite sunt ascunse implicit atunci când există oferte pentru produsul nou, ca să compari
+                același lucru; le poți afișa cu filtrul „Include resigilate și folosite”. Eticheta „Cel mai mic preț total” merge la oferta nouă, în stoc și
+                verificată recent cu cel mai mic preț total, inclusiv când vânzătorul este din marketplace.
               </p>
               <p className="text-sm text-muted">
                 Publicăm aceste informații conform art. 7 alin. (4¹) din Legea nr. 363/2007 privind combaterea practicilor incorecte ale comercianților în
@@ -154,7 +163,7 @@ export default async function RankingPage() {
               <p>Fiecare ofertă arată când am verificat-o ultima dată, de exemplu „verificat acum 3 ore”.</p>
               <p>
                 Pentru fiecare magazin stabilim un prag de prospețime, în funcție de cât de des îl verificăm (de regulă între o zi și trei zile). O ofertă mai
-                veche decât acest prag rămâne în listă, dar apare cu gri și nu poate primi eticheta „cel mai mic preț”.
+                veche decât acest prag rămâne în listă, dar apare cu gri, după ofertele verificate recent, și nu poate primi eticheta „cel mai mic preț total”.
               </p>
               <p>Prețurile se pot schimba între două verificări. Prețul final este cel afișat de magazin la plasarea comenzii.</p>
             </>
@@ -170,8 +179,8 @@ export default async function RankingPage() {
                 ca să știi de la cine cumperi.
               </p>
               <p>
-                Ofertele din marketplace sunt ordonate după aceleași reguli, dar nu intră în seria implicită „cel mai mic preț” din graficul istoricului, care
-                urmărește prețurile magazinelor înseși.
+                Ofertele din marketplace sunt ordonate după aceleași reguli și pot primi eticheta „cel mai mic preț total”, dar în graficul istoricului au o serie
+                separată: seria principală urmărește prețurile magazinelor înseși.
               </p>
             </>
           ),

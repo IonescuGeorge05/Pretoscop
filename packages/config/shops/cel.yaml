@@ -20,5 +20,9 @@ probes:
     vantage: "London, honest UA (research 2026-10-27)"
     result: blocked
     note: "see notes"
+  - date: "2026-10-27"
+    vantage: "founder home connection (Mac), honest UA"
+    result: timeout
+    note: "robots.txt: TCP connect timeout after 25 s"
 notes: "TCP timeout from London; serves fake random-hex products behind its captcha (never ingest challenge pages). robots blocks generic tokens bot/, crawl, spider. Designated for the assisted channel (M05B)."
 sources: []

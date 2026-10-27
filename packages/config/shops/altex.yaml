@@ -20,5 +20,9 @@ probes:
     vantage: "London, honest UA (research 2026-10-27)"
     result: blocked
     note: "see notes"
+  - date: "2026-10-27"
+    vantage: "founder home connection (Mac), honest UA"
+    result: blocked
+    note: "robots.txt: HTTP/2 stream reset (INTERNAL_ERROR), no response"
 notes: "Akamai resets TLS/HTTP2 for unknown bots; listings embed 48 products with price, stock, seller and EAN server-side. Designated for the assisted channel (M05B); outreach for feed/allowlisting."
 sources: []

@@ -3,4 +3,5 @@ export * from './catalog';
 export * from './offers';
 export * from './matching';
 export * from './system';
+export * from './crawl';
 export * from './relations';

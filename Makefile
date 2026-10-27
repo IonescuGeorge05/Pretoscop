@@ -3,7 +3,7 @@ SHELL := /bin/bash
 
 COMPOSE := docker compose -f infra/docker-compose.dev.yml -p pretoscop
 
-.PHONY: help install services down nuke dev test lint typecheck unit migrate seed verify psql logs
+.PHONY: help install services down nuke dev test lint typecheck unit migrate seed verify psql logs recorder recorder-logs recorder-stop
 
 help: ## list targets
 	@grep -E '^[a-zA-Z0-9_\\:-]+:.*## ' $(MAKEFILE_LIST) | sed -E 's/^([a-zA-Z0-9_\\:-]*[^\\]):.*## (.*)$$/\1|\2/; s/\\:/:/' | awk -F'|' '{printf "  \033[36m%-16s\033[0m %s\n", $$1, $$2}'
@@ -52,3 +52,12 @@ psql: ## open psql on the dev database
 
 logs: ## follow service logs
 	$(COMPOSE) logs -f --tail=100
+
+recorder: ## build and start the long-running recorder container (worker) in the background
+	$(COMPOSE) --profile recorder up -d --build worker
+
+recorder-logs: ## follow the recorder's logs
+	$(COMPOSE) --profile recorder logs -f --tail=200 worker
+
+recorder-stop: ## stop the recorder container
+	$(COMPOSE) --profile recorder stop worker

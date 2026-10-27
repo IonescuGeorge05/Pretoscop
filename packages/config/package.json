@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./env": "./src/env.ts",
-    "./logger": "./src/logger.ts"
+    "./logger": "./src/logger.ts",
+    "./policy": "./src/policy.ts"
   },
   "scripts": {
     "lint": "eslint src",

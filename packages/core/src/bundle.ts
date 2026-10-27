@@ -68,7 +68,18 @@ const SPEC_WORDS = new Set([
   'thunderbolt',
   'gb',
   'tb',
-  'cellularline',
+]);
+
+/** Device kinds: a "Set" or "Kit" of these with a "+" item is a bundle ("Set PS5 + 2 jocuri"). */
+const DEVICE_BUNDLE_KINDS: ReadonlySet<ProductKind> = new Set([
+  'console',
+  'phone',
+  'tablet',
+  'laptop',
+  'desktop',
+  'tv',
+  'monitor',
+  'smartwatch',
 ]);
 
 /** Kinds whose "+" lists components of one product (keyboard + mouse combo, lamp kit). */
@@ -137,14 +148,3 @@ export function detectBundle(
   if (item) return { isBundle: true, reason: `plus:${item}` };
   return { isBundle: false, reason: null };
 }
-
-const DEVICE_BUNDLE_KINDS: ReadonlySet<ProductKind> = new Set([
-  'console',
-  'phone',
-  'tablet',
-  'laptop',
-  'desktop',
-  'tv',
-  'monitor',
-  'smartwatch',
-]);

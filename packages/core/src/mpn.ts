@@ -138,7 +138,6 @@ const SERIES_WORDS = new Set([
   'pura',
   'mix',
   'civi',
-  'magic',
 ]);
 
 /**

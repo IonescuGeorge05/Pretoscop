@@ -19,12 +19,22 @@ const shop = basename(dirname(path));
 const name = basename(path);
 const metaPath = `${path}.meta.json`;
 const meta = existsSync(metaPath)
-  ? (JSON.parse(readFileSync(metaPath, 'utf8')) as { url: string; recorded_at: string })
+  ? (JSON.parse(readFileSync(metaPath, 'utf8')) as { url: string; final_url?: string; recorded_at: string })
   : { url: `https://${shop}.example/`, recorded_at: new Date().toISOString() };
+/** Shop folders with their own listing parser (M10); product pages use the generic parser. */
+const LISTING_PARSERS: Record<string, string> = {
+  itgalaxy: 'itgalaxy-listing',
+  dedeman: 'dedeman-listing',
+  carrefour: 'carrefour-listing',
+  auchan: 'vtex-listing',
+  bonami: 'bonami-listing',
+};
 
 function guess(): string {
   if (parserArg) return parserArg;
   if (shop === 'emag') return name.startsWith('product') ? 'emag-product' : 'emag-listing';
+  if (shop === 'flip' && name.startsWith('product')) return 'flip-product';
+  if (name.startsWith('listing') && LISTING_PARSERS[shop]) return LISTING_PARSERS[shop];
   if (name.startsWith('2performant') && name.endsWith('.csv')) return 'feed-2performant-csv';
   if (name.startsWith('2performant')) return 'feed-2performant-xml';
   if (name.startsWith('google')) return 'feed-google-shopping';
@@ -41,7 +51,7 @@ if (parser.startsWith('feed-')) {
   offers = [];
   for await (const o of parseFeed(parser, body, { shopSlug: shop, observedAt: meta.recorded_at })) offers.push(o);
 } else {
-  const res = parsePageDetailed(parser, body, { url: meta.url, shopSlug: shop, observedAt: meta.recorded_at });
+  const res = parsePageDetailed(parser, body, { url: meta.final_url ?? meta.url, shopSlug: shop, observedAt: meta.recorded_at });
   offers = res.offers;
   extra = `next page: ${res.nextPageUrl ?? '—'}  meta: ${JSON.stringify(res.meta)}`;
 }

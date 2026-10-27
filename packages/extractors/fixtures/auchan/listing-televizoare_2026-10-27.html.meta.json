@@ -1,0 +1,11 @@
+{
+  "url": "https://www.auchan.ro/electro-climatizare-si-aparate-ingrijire/electronice/televizoare",
+  "final_url": "https://www.auchan.ro/electro-climatizare-si-aparate-ingrijire/electronice/televizoare/c?v=bot",
+  "status": 200,
+  "recorded_at": "2026-10-27T21:38:32+00:00",
+  "user_agent": "Mozilla/5.0 (compatible; PretoscopBot/1.0; +https://pretoscop.ro/bot)",
+  "content_type": "text/html; charset=utf-8",
+  "bytes": 4385732,
+  "recorded_with": "@pretoscop/fetch record (robots.txt obeyed, per-host interval, block detection)",
+  "robots_group": "*"
+}

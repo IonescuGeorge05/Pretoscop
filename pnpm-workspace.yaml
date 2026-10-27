@@ -1,0 +1,10 @@
+packages:
+  - apps/*
+  - packages/*
+
+# pnpm 10 runs dependency build scripts only for packages listed here.
+onlyBuiltDependencies:
+  - esbuild
+  - sharp
+  - '@tailwindcss/oxide'
+  - unrs-resolver

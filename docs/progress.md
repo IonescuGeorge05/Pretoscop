@@ -2,18 +2,22 @@
 
 Single page the founders read to supervise the build. The implementing agent updates it at the start and end of every module. Statuses: `todo` → `in_progress` → `review` (founder verifies with the module's checklist) → `done`, or `blocked` (say on what). Phase gates (G0–G4) require explicit founder approval before the next phase starts.
 
-Last updated: 2026-10-27 (plan written, nothing implemented yet).
+Last updated: 2026-10-27 (autonomous build session started; see "Build session mode" below).
+
+## Build session mode (2026-10-27)
+
+Daniel asked the implementing agent to build the whole plan while the founders are away. His instructions for this session: one local branch `mod/MXX-*` per module, merged into `daniel` with `--no-ff` once `make verify M=XX` passes; nothing is pushed to GitHub; phase gates are marked **awaiting founder approval** and the build continues; no external credentials yet, so every integration runs against a local stand-in (filesystem blob store for R2, Mailpit for email, recorded responses for vendors); live, polite crawling from Daniel's Mac is allowed and the recorder is left running. Every module below in status `review` still needs the founders' 5-minute check.
 
 ## Phase 0 — Record prices now (target: running before 6 Nov 2026)
 
 | Module | Name | Status | Branch / PR | Verified by founder | Notes |
 |---|---|---|---|---|---|
-| M00 | Repo scaffold and dev environment | todo | | | |
+| M00 | Repo scaffold and dev environment | review | `mod/M00-scaffold` (merged locally into `daniel`) | | CI workflow written but not run (nothing pushed) |
 | M01 | Database schema v1 and migrations | todo | | | |
 | M02 | Polite fetch layer and robots.txt | todo | | | |
 | M03 | Extractors: structured data and feed mappers | todo | | | |
 | M04 | Shop registry and configuration | todo | | | |
-| M05 | Phase-0 price recorder (eMAG listings + first feeds) | todo | | | founder decision on eMAG required (ADR-013) |
+| M05 | Phase-0 price recorder (eMAG listings + first feeds) | todo | | | eMAG decided 2026-10-27: option A (see decisions log) |
 | M05B | Assisted-access channel for blocked shops (prototype) | todo | | | decided 2026-10-27 after legal advice; file the written opinion and open the vendor account (A10) |
 
 **Gate G0** — recorder runs daily on ≥5,000 products from ≥2 shops; raw snapshots in R2; backups on. Target: assisted channel live for ≥3 of the 5 designated shops at ≥90% success within the cap. Approved: ☐ date: ____
@@ -74,7 +78,7 @@ Last updated: 2026-10-27 (plan written, nothing implemented yet).
 
 | Date | Decision | Options considered | Outcome |
 |---|---|---|---|
-| | eMAG crawling (ADR-013) | crawl politely / seek consent / extension-only / exclude | pending |
+| 2026-10-27 | eMAG crawling (ADR-013) | crawl politely / seek consent / extension-only / exclude | **Decided by Daniel: option A**, polite identified crawl behind a kill switch (category listings + Tier A product pages, ≤1 request/5 s, robots.txt obeyed, no images, no internal APIs, stop on first written request); lawyer review before public launch (B5); asking eMAG for consent in parallel (option B) remains open |
 | | 2Performant ToS §9 clearance for price history on feed data | written clearance / own crawl of merchant pages / merchant direct feeds | pending |
 | | Company: SRL formation date | | pending |
 | 2026-10-27 | Blocked shops policy (`12-blocked-shops-strategy.md` §0) | identity + feeds + partnerships only / assisted-access channel for the prototype / exclude | **Decided: assisted-access channel for the prototype**, after legal advice (verbal); written opinion to be filed (A10); exit per shop to feed or allowlist; eMAG excluded from this decision |
@@ -97,4 +101,21 @@ Next module: MYY
 
 ## Module reports
 
-(none yet)
+### M00 — Repo scaffold and dev environment — 2026-10-27
+Scope delivered:
+- pnpm 10 workspaces + Turborepo 2; TypeScript 5.9 strict (`noUncheckedIndexedAccess`, `verbatimModuleSyntax`); ESLint 9 flat config (an import rule keeps `packages/core` and `packages/extractors` free of I/O); Prettier; Vitest 5.
+- `apps/web` (Next.js 16.4.3 App Router, Tailwind 4, Romanian placeholder page, `noindex`), `apps/worker` (pg-boss 12.38 bootstrap, job registry with `defineJob()`, `system.heartbeat` every minute and at start, graceful shutdown).
+- Packages `@pretoscop/db`, `core`, `extractors`, `fetch`, `config`, `llm` with README contracts; `@pretoscop/config/env` (zod-validated, every variable documented in `.env.example`, dev secrets refused outside dev) and `@pretoscop/config/logger` (pino JSON).
+- `infra/docker-compose.dev.yml`: PostgreSQL 18 (pgvector image 0.8.7-pg18), Meilisearch 1.56.0, Mailpit 1.32.0, all with health checks.
+- `Makefile` (`dev`, `services`, `down`, `test`, `lint`, `typecheck`, `migrate`, `seed`, `verify M=`, `shops:sync`, `psql`), `scripts/verify/run.sh` + `lib.sh`, GitHub Actions CI, PR template, root README.
+Out of scope / deferred: production compose (M18).
+Deviations from plan:
+- Local Node is 22.17 (the shell pins it); Node 24 is installed and `.nvmrc` says 24; production images will use Node 24. Everything requires Node ≥ 22.12 (pg-boss 12).
+- TypeScript stays on 5.9 (typescript-eslint supports < 6.1; TypeScript 7 is the native port), ESLint on 9 (Next's plugin set), per ADR-001's "TS 5.x".
+- The dev compose file lives in `infra/` (architecture §4) rather than the repo root.
+Verification: `make verify M=00` → toolchain, install, 24/24 lint/typecheck/test tasks, worker heartbeat, `next build` + placeholder page on :3999, Mailpit reachable → `OK`.
+Founder checklist: see `scripts/verify/M00.checklist.md` (not yet run by a founder).
+Human tasks needed: A5 (GitHub settings) when the repository is pushed; CI has not run because nothing is pushed in this session.
+Risks / open questions: none.
+Next module: M01
+

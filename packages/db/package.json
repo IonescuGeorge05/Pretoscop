@@ -1,0 +1,23 @@
+{
+  "name": "@pretoscop/db",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "@types/pg": "^8.23.1",
+    "drizzle-kit": "0.31.11"
+  },
+  "dependencies": {
+    "@pretoscop/config": "workspace:*",
+    "drizzle-orm": "0.45.4",
+    "pg": "^8.23.1"
+  }
+}

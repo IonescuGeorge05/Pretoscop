@@ -1,0 +1,69 @@
+# Local development services. Started by `make services` / `make dev`.
+# Data lives in named volumes; `make down` keeps it, `make nuke` deletes it.
+name: pretoscop
+
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.7-pg18-trixie
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: pretoscop
+      POSTGRES_PASSWORD: pretoscop
+      POSTGRES_DB: pretoscop
+      TZ: UTC
+    command: >-
+      postgres
+      -c shared_buffers=256MB
+      -c work_mem=16MB
+      -c maintenance_work_mem=128MB
+      -c max_connections=200
+      -c timezone=UTC
+      -c shared_preload_libraries=pg_stat_statements
+      -c log_min_duration_statement=2000
+    ports:
+      - '${PG_PORT:-5432}:5432'
+    volumes:
+      # PostgreSQL 18 images keep data under /var/lib/postgresql/18/docker; mount the parent.
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U pretoscop -d pretoscop']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.56.0
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-dev-master-key-change-me-0123456789}
+      MEILI_ENV: development
+      MEILI_NO_ANALYTICS: 'true'
+    ports:
+      - '7700:7700'
+    volumes:
+      - meilidata:/meili_data
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -fsS http://localhost:7700/health || exit 1']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  mailpit:
+    image: axllent/mailpit:v1.32.0
+    restart: unless-stopped
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: '1'
+      MP_SMTP_AUTH_ALLOW_INSECURE: '1'
+      MP_MAX_MESSAGES: '5000'
+    ports:
+      - '8025:8025'
+      - '1025:1025'
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  pgdata:
+  meilidata:

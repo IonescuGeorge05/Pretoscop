@@ -1,0 +1,51 @@
+# External setup checklist (tasks only the founders can do)
+
+The implementing agent cannot create accounts, sign contracts, pay, or make legal decisions. Each module report lists which of these it needs. "When" refers to the phase in `docs/05-plan-modular.md`.
+
+## A. Now (before Phase 0)
+
+| # | Task | Details | Why |
+|---|---|---|---|
+| A1 | Register domains | `pretoscop.ro` (RoTLD via a registrar), `pretoscop.com`, `pretoscop.eu`; all free on 2026-10-27. Point DNS to Cloudflare. | Brand, bot page URL in the User-Agent |
+| A2 | Reserve social handles | `@pretoscop` on GitHub, YouTube, TikTok, X looked free; check Instagram and Facebook manually. | Brand |
+| A3 | Cloudflare account | Free plan; add zone; enable proxy, create R2 bucket `pretoscop-prod`, API token for R2, Cloudflare Access for `admin.`/`/admin`. | CDN, storage, admin SSO |
+| A4 | Hetzner account and server | Dedicated AX41-class (64 GB RAM, NVMe) in Germany, Ubuntu LTS; add an extra IPv4 if you want a crawler-only IP; set reverse DNS `bot.pretoscop.ro`. | Hosting and identified crawler IP |
+| A5 | GitHub repository settings | Branch protection on `main`, GHCR enabled, Actions secrets (`SSH_DEPLOY_KEY`, `R2_*`, `SENTRY_DSN` later). | CI/CD |
+| A6 | 2Performant affiliate account | Register (a natural person is accepted; switch to the SRL later), declare the site precisely as "comparator de prețuri cu istoric de preț", apply to programs: evoMAG, Libris, F64, GSMnet, Decathlon (closes 31 Oct 2026), Cărturești, Dr. Max, Noriel, Petmart, Bonami, Answear, Notino and every program whose rules accept "comparatoare". Approvals can take up to 15 days. Also open a Profitshare account for its non-eMAG IT&C programs (ITGalaxy, ForIT, Vexio, Techstar, Dualstore) and ask each one in writing; Profitshare is eMAG's network and lets advertisers restrict media. Ask evoMAG, GSMnet, F64 and bitmi in writing about comparator and price-history use (no program text mentions price history). Vexio's Profitshare program does provide feeds. | Feeds + revenue |
+| A7 | Written clearance from 2Performant | Ask support in writing whether storing feed prices to show price history on a comparator is allowed under ToS §9 ("database / information service"). Keep the answer. | Legal basis for history on feed data |
+| A8 | eMAG decision (ADR-013) | Read `docs/04-plan-normal.md` §3 and decide: crawl politely / seek consent / extension-only / exclude. Record in `docs/progress.md`. Optionally email eMAG partnerships asking for a data partnership. | Phase-0 recorder scope |
+| A9 | Anthropic API key | Create a key with a monthly spend limit (start €50). | LLM matching (Phase 1/3) |
+| A10 | Assisted-access vendor and legal file | Open a Zyte API account (EU vendor; alternatives Oxylabs Web Unblocker, ScrapingBee) with a monthly spend limit (start €150) and put the key in the server `.env`; obtain the lawyer's opinion of 2026-10-27 in writing and file it under `infra/legal/` (outside git), noting its scope (which shops, which methods, which conditions); keep the decision row in `docs/progress.md` current. Vendor facts: Zyte requires business verification for Romanian geolocation and cannot carry our User-Agent; Bright Data requires KYC (48 h) and refuses robots-disallowed URLs without it; Oxylabs and ScraperAPI forbid scraping in breach of a site's terms, so the opinion must name the vendor and the shops whose terms ban republishing (Flanco, cel.ro, evoMAG, Vexio, EuroGSM). | Coverage of Altex, Media Galaxy, Flanco, PC Garage and cel.ro in the prototype (M05B) |
+| A11 | Terms and robots evidence; cookie bill watch | Save browser PDFs of OLX's terms (`ajutor.olx.ro` → condiții de utilizare) and Flanco's terms (`flanco.ro/termene-si-conditii`); open PC Garage's live robots.txt in a browser and save it; after 28 Oct 2026 check the outcome of bill Pl-x 455/2026 (cookie "reject all") at cdep.ro. | Legal file completeness |
+
+## B. Phase 1–2 (before launch)
+
+| # | Task | Details | Why |
+|---|---|---|---|
+| B1 | Open Icecat account | Free "Open Icecat" registration; note the attribution requirement and the 1M downloads/month/locale cap. | Specs and images |
+| B2 | Resend account | Verify `pretoscop.ro` (SPF, DKIM, DMARC), create API key, set up `alerte@`, `noreply@`, `contact@`. | Magic links, alerts |
+| B3 | Sentry, Grafana Cloud, Better Stack accounts | Free tiers; DSN/API keys to server `.env`. | Monitoring |
+| B4 | Form the SRL | ONRC online (free under Law 265/2022 art. 44, decided within one working day; certificate RON 30; optional drafting of the constitutive act RON 136 + VAT): reserve the name; RON 500 minimum capital (Law 239/2025) paid in full before registration (operating before full payment is a criminal offence for the administrator, Law 31/1990 art. 275(1)(c)); consider more than RON 500 because first-year losses push net assets below half of capital and block founder-loan repayment; beneficial-owner declaration (Law 129/2019 art. 56); main CAEN Rev. 3 code 6391; registered office at a founder's address is fine if no activity there. Tax regime: start on profit tax (zero profit, zero tax) and opt into the micro regime (1%) from the next 1 January once a founder can be on a minimum-wage contract (employee required within 90 days, OUG 8/2026); two 50/50 founders cannot each hold another micro company; file D100 quarterly even with zero revenue; a salaried founder still owes CASS on dividends; accountant RON 200–500/month. Then: special VAT code (art. 317) via form 091 before the first intra-EU B2B service; D390 and D301 by the 25th; e-Factura (B2B within 5 working days; B2C mandatory since 2025); SAF-T D406 quarterly (3-month grace for the first report). | Invoices to networks, contracts with merchants, DSA, liability shield |
+| B5 | Lawyer review (Romanian) | 1–2 hours: eMAG crawling decision, terms of use, privacy policy, cookie policy, alert consent text, affiliate/promoted labelling, merchant terms. | Compliance |
+| B6 | Google Search Console and Bing Webmaster | Verify domain; submit sitemaps at launch. | SEO |
+| B7 | Business bank account | For the SRL; needed for network payouts to the company. | Revenue |
+
+## C. Launch and Phase 3
+
+| # | Task | Details | Why |
+|---|---|---|---|
+| C1 | ANCOM DSA notification | Within 45 days of public launch (Law 50/2024; fine 5,000–30,000 lei if missed). As of 2026-10-27 ANCOM has not issued the decision/form for the art. 5 notification: check ancom.ro before launch, notify as soon as the form exists, keep evidence of the attempt. | Legal |
+| C2 | Bot legitimacy applications | Cloudflare Verified Bots (category "Data Collection"; Web Bot Auth or IP validation; any customer can submit; small comparators including the Romanian PretAlertBot are already verified), Akamai Bot Directory form, DataDome good-bot form (each DataDome shop must then allow the "Comparators" category), Fastly community form. Skip the IAB/ABC Spiders & Bots list ($5k–15k/year). | Access to blocked shops |
+| C3 | Retailer outreach | Emails to PC Garage, Vexio, evoMAG, cel.ro, Altex, Flanco, Media Galaxy, Notino, Douglas: offer free listing via their existing compari/Google feed URL, or ask to allowlist `PretoscopBot`. Templates in `docs/08-monetization-playbook.md` §7. | Coverage |
+| C4 | Awin, CJ, Tradedoubler publisher accounts | For Douglas, Samsung, Xiaomi (Awin), About You, Answear, Notino (CJ), Modivo (Tradedoubler). | More feeds/commissions |
+| C5 | Trademark filing | OSIM (national) or EUIPO (EU) in classes 35 and 42 for "Pretoscop"; no conflicts found in TMview on 2026-10-27. | Brand protection |
+
+## D. Phase 4
+
+| # | Task | Details | Why |
+|---|---|---|---|
+| D1 | Chrome Web Store developer account ($5 one-time), Firefox AMO account | Extension publishing; privacy disclosures. | Distribution |
+| D2 | Telegram bot token (BotFather) | For alerts/deals bot. | Channel |
+| D3 | Stripe account for the SRL | Merchant billing for promoted placements and B2B plans; Stripe Tax for VAT. | Revenue |
+| D4 | Google Merchant Center + CSS application | Only when ≥50 merchant domains are listed and the site has price sorting/filtering (already planned). | EEA carousels, Shopping ads for merchants |
+| D5 | AdSense (optional) | Only after traffic; payouts from €70; keep ads out of the offers table. | Minor revenue |

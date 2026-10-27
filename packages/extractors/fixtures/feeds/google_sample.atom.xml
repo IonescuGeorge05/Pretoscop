@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom" xmlns:g="http://base.google.com/ns/1.0">
+  <title>Magazin Exemplu</title>
+  <entry>
+    <g:id>AT-1</g:id>
+    <g:title>Frigider Arctic AK54305M40NFMT, 305 l, Clasa E, Inox</g:title>
+    <g:link>https://www.magazin-exemplu.ro/frigider-arctic</g:link>
+    <g:price>2399.00 RON</g:price>
+    <g:availability>preorder</g:availability>
+    <g:brand>Arctic</g:brand>
+  </entry>
+</feed>

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Products>
+  <Product>
+    <Identifier>PCG-77001</Identifier>
+    <Manufacturer>Kingston</Manufacturer>
+    <Name>SSD Kingston NV3 1TB, PCI Express 4.0 x4, M.2 2280</Name>
+    <Category>Componente PC &gt; SSD</Category>
+    <ProductUrl>https://www.pcgarage.ro/ssd/kingston/nv3-1tb/</ProductUrl>
+    <Price>349,99</Price>
+    <ProductNumber>SNV3S/1000G</ProductNumber>
+    <EanCode>0740617341000</EanCode>
+    <DeliveryCost>FREE</DeliveryCost>
+    <DeliveryTime>2 zile</DeliveryTime>
+    <ImageUrl>https://www.pcgarage.ro/images/nv3.jpg</ImageUrl>
+    <Attributes>
+      <Attribute><Attribute_name>Capacitate</Attribute_name><Attribute_value>1 TB</Attribute_value></Attribute>
+    </Attributes>
+  </Product>
+  <Product>
+    <Identifier>PCG-77002</Identifier>
+    <Manufacturer>AMD</Manufacturer>
+    <Name>Procesor AMD Ryzen 7 9800X3D</Name>
+    <Category>Componente PC &gt; Procesoare</Category>
+    <ProductUrl>https://www.pcgarage.ro/procesoare/amd/ryzen-7-9800x3d/</ProductUrl>
+    <Price>2.599,00</Price>
+    <Delivery_cost>25 RON</Delivery_cost>
+    <Delivery_time>NO</Delivery_time>
+    <EAN>0730143316000</EAN>
+  </Product>
+</Products>

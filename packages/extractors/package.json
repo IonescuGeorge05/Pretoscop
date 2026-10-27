@@ -9,6 +9,17 @@
   "scripts": {
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "demo": "tsx src/cli/demo.ts"
+  },
+  "dependencies": {
+    "@pretoscop/core": "workspace:*",
+    "cheerio": "^1.2.0",
+    "csv-parse": "^7.0.3",
+    "domhandler": "^6.0.1",
+    "sax": "^1.6.1"
+  },
+  "devDependencies": {
+    "@types/sax": "^1.2.7"
   }
 }

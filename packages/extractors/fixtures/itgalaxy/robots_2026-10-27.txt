@@ -1,0 +1,95 @@
+User-agent: *
+Disallow: /fb/
+Disallow: /images/b/*
+Disallow: /*?print_version
+Disallow: /adauga-wishlist/
+Disallow: /produse-favorite/*add_prod*
+Disallow: /adaugaincos*
+Disallow: /ajax/*
+Disallow: /alege-limba/*
+Disallow: /alerta-*
+Disallow: /anunta-un-prieten*
+Disallow: /asistenta-clienti/
+Disallow: /autentificare/
+Disallow: /chestionar/*
+Disallow: /click/*
+Disallow: /comanda-rapida/
+Disallow: /comentarii/*
+Disallow: /data/feeds/*
+Disallow: /compara/*
+Disallow: /confirmare*
+Disallow: /cont/*
+Disallow: /cos/
+Disallow: /newsletter/
+Disallow: /diferenta-pret/*
+Disallow: /feedback-site/
+Disallow: /galerie-imagini/*
+Disallow: /golestecos/
+Disallow: /informatii-tehnice*
+Disallow: /logout/
+Disallow: /opinie-produs/*
+Disallow: /recomandari-cos/*
+Disallow: /stergedincos-*
+Disallow: /trimite-comanda/*
+Disallow: /urmarire-expeditie/*
+Disallow: /vizualizare-mesaje/*
+Disallow: /wishsort/*
+Disallow: /newsletter/*
+Disallow: /incarca-foto/*
+Disallow: /fotografii-clienti/
+Disallow: /notificari*
+Disallow: /feeds*
+Disallow: /*.php
+Disallow: /*.tpl
+Disallow: /*.csv
+Disallow: /*.parser
+Disallow: /*.svn*
+Disallow: /*htaccess*
+Disallow: /admin/*
+Disallow: /ajax/*
+Disallow: /*/remote/*
+Disallow: /runtime/*
+Disallow: /*/include/*
+Disallow: /*/utils/*
+Disallow: /monitor/
+Disallow: /*/parsers/*
+Disallow: /*/spiders/*
+Disallow: /hAuth/*
+Disallow: /*/pret-*-pana-la-*/*
+
+User-agent: Riddler
+Disallow: /
+
+User-agent: MegaIndex.ru/2.0
+Disallow: /
+
+User-agent: MegaIndex.ru
+Disallow: /
+
+User-agent: megaIndex.ru
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: meta-externalagent
+Disallow: /
+
+User-agent: bingbot
+Crawl-delay: 5
+
+User-agent: Slurp
+Crawl-delay: 5
+
+User-agent: Yahoo! Slurp
+Crawl-delay: 5
+
+User-agent: Amazonbot
+Disallow: /
+
+Sitemap: https://www.itgalaxy.ro/sitemap.xml
+Sitemap: https://www.itgalaxy.ro/sitemap-img.xml
+Sitemap: https://www.itgalaxy.ro/data/sitemaps/index.xml

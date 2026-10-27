@@ -1,0 +1,21 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`real product pages (generic parser) > IT Galaxy: JSON-LD Product with sku, brand and breadcrumb names 1`] = `
+[
+  {
+    "availability": "http://schema.org/InStock",
+    "brand": "Samsung",
+    "condition": undefined,
+    "externalId": "987970",
+    "gtin": undefined,
+    "isMarketplaceSeller": undefined,
+    "mpn": undefined,
+    "oldPrice": undefined,
+    "price": "1975.99",
+    "priceFormat": "decimal",
+    "sellerName": undefined,
+    "shopSlug": "itgalaxy",
+    "title": "Televizor LED Smart Samsung Chrystal UE55U8072H 55Inch / 139.7CM 4K Ultra HD Vision AI HDR Wi-Fi Negru",
+  },
+]
+`;

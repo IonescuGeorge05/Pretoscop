@@ -15,7 +15,7 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 | M00 | Repo scaffold and dev environment | review | `mod/M00-scaffold` (merged locally into `daniel`) | | CI workflow written but not run (nothing pushed) |
 | M01 | Database schema v1 and migrations | review | `mod/M01-schema` (merged locally into `daniel`) | | 25 tables, monthly partitions, PG18 old/new upserts |
 | M02 | Polite fetch layer and robots.txt | todo | | | |
-| M03 | Extractors: structured data and feed mappers | todo | | | |
+| M03 | Extractors: structured data and feed mappers | review | `mod/M03-extractors` (merged locally into `daniel`) | | eMAG listing/product, JSON-LD/microdata/OG, 5 feed mappers, sitemaps |
 | M04 | Shop registry and configuration | todo | | | |
 | M05 | Phase-0 price recorder (eMAG listings + first feeds) | todo | | | eMAG decided 2026-10-27: option A (see decisions log) |
 | M05B | Assisted-access channel for blocked shops (prototype) | todo | | | decided 2026-10-27 after legal advice; file the written opinion and open the vendor account (A10) |
@@ -136,3 +136,23 @@ Founder checklist: `scripts/verify/M01.checklist.md` (not yet run by a founder).
 Human tasks needed: none.
 Risks / open questions: partition creation depends on the daily maintenance job; a missed year of maintenance would make inserts fail loudly (by design, no default partition).
 Next module: M02/M06 (running in parallel), M03, M04.
+
+### M03 — Extractors: structured data and feed mappers — 2026-10-27
+Scope delivered:
+- `parsePage` / `parsePageDetailed` / `parseFeed` / `parseSitemap` and a registry keyed by `parser_key` (`jsonld-product`, `emag-listing`, `emag-product`, `feed-2performant-csv`, `feed-2performant-xml`, `feed-google-shopping`, `feed-compari-xml`, `feed-csv-generic`, `sitemap`); `isKnownParserKey()` for M04's validation.
+- Generic structured data: JSON-LD (`@graph`, arrays, `ItemList`, `ProductGroup.hasVariant`, `Offer`, `AggregateOffer` only when it collapses to one price, `priceSpecification` with `StrikethroughPrice` → old price, gtin8–14, brand objects, seller, shipping details, lenient parsing of broken JSON), microdata fallback, OpenGraph `product:*` fallback, BreadcrumbList.
+- eMAG listing parser (60 cards per page, offer id, price, crossed price, PRP, availability code, rating and reviews, next page) and product parser (one offer per seller from `EM.offer`, `EM.multiple_offers`, `EM.used_offers` and the analytics `secondary_offers`).
+- Streaming feed mappers (sax / csv-parse, gzip auto-detected): 2Performant CSV and XML with the exact labels, Google Merchant RSS/Atom, compari.ro XML (incl. older field names), generic CSV with a Romanian/English alias table that fails loudly on ambiguous aliases.
+- Fixtures recorded with the PretoscopBot UA on 2026-10-27 (robots.txt checked; ≥5 s per host; ≤3 pages per shop): eMAG robots, listing, vendor-filtered listing, product; IT Galaxy robots, sitemap index, latest-products sitemap, product; Dedeman robots, listing, product. `scripts/record-fixture.sh` records future fixtures the same way.
+- Demo CLI, README with the parser table and the adapter checklist for M10.
+Out of scope / deferred: normalization (M06); shop parsers beyond eMAG (M10; IT Galaxy and Dedeman already parse with `jsonld-product`).
+Deviations from plan:
+- Fixture dates are 2026-10-27 (recorded today) rather than the 2026-10-29 used as an example in the plan.
+- Feed fixtures are synthetic but follow the published specifications (no affiliate account yet, A6); `fixtures/feeds/README.md` says so and asks for real dated downloads later.
+- eMAG modelling decisions (recorded in the README): offer key = eMAG offer id (seller-level); listing cards do not name the seller (`raw.sellerUnknown`), Tier A product pages do; eMAG's crossed price is eMAG's own "lowest price in the last 30 days", so it is both `oldPrice` and `shopLowest30d`; "PRP" (manufacturer's recommended price) is kept in `raw.rrp` and never used as a reference; MPN recovered from the URL slug (59 of 60 cards).
+- `parsePageDetailed` added next to the contract's `parsePage` to return discovered product URLs and the next listing page.
+Verification: `make verify M=03` → lint/typecheck/31 tests (fixture expectations + snapshots, JSON-LD edge cases, all feed formats, gzip, 100k-row CSV streaming under 200 MB) → demo prints 60 eMAG listing offers and 9 seller offers → `OK`.
+Founder checklist: `scripts/verify/M03.checklist.md` (not yet run by a founder).
+Human tasks needed: A6 (an approved 2Performant program, to replace the synthetic feed sample with a real download).
+Risks / open questions: eMAG listing markup can change without notice; the weekly canary (M21) and the parse-reject alarms (M05) will catch it.
+Next module: M04.

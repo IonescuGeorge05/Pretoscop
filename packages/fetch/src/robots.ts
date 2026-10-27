@@ -2,9 +2,11 @@
  * robots.txt parser and matcher following RFC 9309 (and Google's reference implementation where
  * the RFC leaves room). Pure: no I/O.
  *
- * - Groups: one or more `user-agent` lines followed by rules; a `user-agent` line after a rule
- *   (or after a `Crawl-delay` line) starts a new group. Rules before the first `user-agent` line
- *   are ignored.
+ * - Groups: one or more `user-agent` lines followed by rules; a `user-agent` line after an
+ *   allow/disallow rule starts a new group (as in Google's reference parser, other lines such as
+ *   `Crawl-delay` do not end a group). Rules before the first `user-agent` line are ignored.
+ * - `Crawl-delay` (non-standard) applies only to the user-agent lines written above it in its
+ *   group, so `User-agent: AhrefsBot / Crawl-delay: 10 / User-agent: *` gives `*` no delay.
  * - Group selection: the product token is extracted from each user-agent value (leading
  *   `[A-Za-z_-]` characters, so `PretoscopBot/1.0` -> `PretoscopBot`) and compared
  *   case-insensitively. All matching groups are combined. Without a match, the `*` groups apply;
@@ -29,8 +31,9 @@ export interface RobotsRule {
 
 export interface RobotsGroup {
   userAgents: string[];
+  /** Crawl-delay in seconds per user-agent line (the first `Crawl-delay` below it), or null. */
+  agentCrawlDelays: Array<number | null>;
   rules: RobotsRule[];
-  crawlDelaySec: number | null;
   line: number;
 }
 
@@ -92,6 +95,10 @@ export function parseRobotsTxt(text: string, robotsUrl?: string): ParsedRobots {
   const sitemaps: string[] = [];
   let current: RobotsGroup | null = null;
   let inAgentRun = false;
+  // Crawl-delay bookkeeping for the current group: agents from `delayFrom` on have no delay yet;
+  // `lastDelay` is the agent range the previous Crawl-delay line applied to.
+  let delayFrom = 0;
+  let lastDelay: [number, number] | null = null;
   const body = text.length > ROBOTS_PARSE_LIMIT_BYTES ? text.slice(0, ROBOTS_PARSE_LIMIT_BYTES) : text;
   const lines = body.replace(/^\uFEFF/, '').split(/\r\n|\r|\n/);
 
@@ -106,10 +113,13 @@ export function parseRobotsTxt(text: string, robotsUrl?: string): ParsedRobots {
     switch (directive) {
       case 'user-agent': {
         if (!current || !inAgentRun) {
-          current = { userAgents: [], rules: [], crawlDelaySec: null, line: lineNo };
+          current = { userAgents: [], agentCrawlDelays: [], rules: [], line: lineNo };
           groups.push(current);
+          delayFrom = 0;
+          lastDelay = null;
         }
         current.userAgents.push(kv.value);
+        current.agentCrawlDelays.push(null);
         inAgentRun = true;
         break;
       }
@@ -126,13 +136,19 @@ export function parseRobotsTxt(text: string, robotsUrl?: string): ParsedRobots {
         break;
       }
       case 'crawl-delay': {
-        // Belongs to the group above and, like a rule, ends its user-agent run, so a delay written
-        // for `AhrefsBot` never leaks into a following `User-agent: *` group.
-        inAgentRun = false;
+        // Does not end the user-agent run (rules stay grouped as in Google's parser), but applies
+        // only to the agents written above it, so a delay for `AhrefsBot` never reaches `*`.
         if (!current) break;
         const seconds = Number.parseFloat(kv.value.replace(',', '.'));
-        if (Number.isFinite(seconds) && seconds >= 0) {
-          current.crawlDelaySec = Math.max(current.crawlDelaySec ?? 0, seconds);
+        if (!Number.isFinite(seconds) || seconds < 0) break;
+        const delays = current.agentCrawlDelays;
+        if (delayFrom < delays.length) {
+          for (let i = delayFrom; i < delays.length; i++) delays[i] = seconds;
+          lastDelay = [delayFrom, delays.length];
+          delayFrom = delays.length;
+        } else if (lastDelay) {
+          // A second Crawl-delay for the same agents: keep the longer one.
+          for (let i = lastDelay[0]; i < lastDelay[1]; i++) delays[i] = Math.max(delays[i] ?? 0, seconds);
         }
         break;
       }
@@ -173,20 +189,23 @@ export function isWildcardAgent(userAgentValue: string): boolean {
 export function selectRobotsGroups(parsed: ParsedRobots, tokens: readonly string[]): RobotsGroupSelection {
   for (const token of tokens) {
     const wanted = token.toLowerCase();
-    const groups = parsed.groups.filter((g) =>
-      g.userAgents.some((ua) => !isWildcardAgent(ua) && extractProductToken(ua).toLowerCase() === wanted),
-    );
-    if (groups.length > 0) return { label: token, via: 'product_token', groups, crawlDelaySec: maxDelay(groups) };
+    const isOurs = (ua: string) => !isWildcardAgent(ua) && extractProductToken(ua).toLowerCase() === wanted;
+    const groups = parsed.groups.filter((g) => g.userAgents.some(isOurs));
+    if (groups.length > 0) return { label: token, via: 'product_token', groups, crawlDelaySec: delayOf(groups, isOurs) };
   }
   const star = parsed.groups.filter((g) => g.userAgents.some(isWildcardAgent));
-  if (star.length > 0) return { label: '*', via: 'wildcard', groups: star, crawlDelaySec: maxDelay(star) };
+  if (star.length > 0) return { label: '*', via: 'wildcard', groups: star, crawlDelaySec: delayOf(star, isWildcardAgent) };
   return { label: 'none', via: 'none', groups: [], crawlDelaySec: null };
 }
 
-function maxDelay(groups: RobotsGroup[]): number | null {
+/** Longest Crawl-delay written for the matching user-agent lines of the groups. */
+function delayOf(groups: RobotsGroup[], matches: (userAgent: string) => boolean): number | null {
   let delay: number | null = null;
   for (const g of groups) {
-    if (g.crawlDelaySec !== null) delay = Math.max(delay ?? 0, g.crawlDelaySec);
+    g.userAgents.forEach((ua, i) => {
+      const d = g.agentCrawlDelays[i];
+      if (matches(ua) && d !== null && d !== undefined) delay = Math.max(delay ?? 0, d);
+    });
   }
   return delay;
 }

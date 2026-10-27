@@ -34,14 +34,25 @@ describe('robots.txt parsing', () => {
     expect(parsed.groups.map((g) => g.userAgents)).toEqual([['a'], ['b']]);
   });
 
-  it('ends a user-agent run at Crawl-delay, so a delay for another bot never leaks into *', () => {
-    const parsed = parseRobotsTxt('User-agent: AhrefsBot\nCrawl-delay: 10\nUser-agent: *\nDisallow: /cart\n');
-    expect(parsed.groups.map((g) => g.userAgents)).toEqual([['AhrefsBot'], ['*']]);
-    expect(selectRobotsGroups(parsed, PAGE).crawlDelaySec).toBeNull();
-    const own = parseRobotsTxt('User-agent: *\nCrawl-delay: 5\nDisallow: /x\n');
+  it('groups across Crawl-delay lines (as Google does), but a delay applies only to the agents above it', () => {
+    // A delay written for AhrefsBot never reaches the * agents written after it...
+    const ahrefs = parseRobotsTxt('User-agent: AhrefsBot\nCrawl-delay: 10\nUser-agent: *\nDisallow: /cart\n');
+    expect(ahrefs.groups.map((g) => g.userAgents)).toEqual([['AhrefsBot', '*']]);
+    expect(ahrefs.groups[0]?.agentCrawlDelays).toEqual([10, null]);
+    expect(selectRobotsGroups(ahrefs, PAGE).crawlDelaySec).toBeNull();
+    expect(allowed('User-agent: AhrefsBot\nCrawl-delay: 10\nUser-agent: *\nDisallow: /cart\n', '/cart')).toBe(false);
+    // ...while the rules stay grouped, so PretoscopBot obeys the Disallow below Bingbot (RFC/Google).
+    const merged = 'User-agent: Googlebot\nUser-agent: PretoscopBot\nCrawl-delay: 5\nUser-agent: Bingbot\nDisallow: /private\n';
+    expect(allowed(merged, '/private')).toBe(false);
+    expect(selectRobotsGroups(parseRobotsTxt(merged), PAGE).crawlDelaySec).toBe(5);
+    // Delays after the rules belong to the group's agents; a second delay for them keeps the longer.
+    const own = parseRobotsTxt('User-agent: *\nDisallow: /x\nCrawl-delay: 2\nCrawl-delay: 5\n');
     expect(own.groups).toHaveLength(1);
-    expect(own.groups[0]?.crawlDelaySec).toBe(5);
+    expect(own.groups[0]?.agentCrawlDelays).toEqual([5]);
     expect(own.groups[0]?.rules).toHaveLength(1);
+    // Each agent takes the first delay written below it.
+    const two = parseRobotsTxt('User-agent: a\nCrawl-delay: 5\nUser-agent: b\nCrawl-delay: 10\nDisallow: /\n');
+    expect(two.groups[0]?.agentCrawlDelays).toEqual([5, 10]);
   });
 
   it('treats an empty Disallow as no restriction', () => {

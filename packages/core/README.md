@@ -311,7 +311,11 @@ Order: missing → malformed → placeholder → check digit → restricted rang
   - device lines on accessory titles ("Husă iPhone 17" is not Apple) and platform lines on game
     titles ("Joc … PS5" is not Sony);
   - component and co-branding names (Intel, AMD, NVIDIA, Qualcomm, Leica, Zeiss, Harman Kardon,
-    Bang & Olufsen …) unless nothing else is named;
+    Bang & Olufsen …) unless nothing else is named — and never as the maker of a laptop, PC,
+    phone, tablet, TV, monitor, console, smartwatch or e-reader ("Laptop cu procesor AMD Ryzen 5"
+    has no brand; "Procesor AMD Ryzen 7" is AMD);
+  - platform features named after a company: "Google TV/Assistant/Cast/Home", "Microsoft
+    Windows/Office", "Amazon Alexa", "Apple AirPlay/HomeKit/CarPlay";
   - Redmi/POCO unless no other brand is named;
   - ordinary-word brands (Arctic, Sapphire, Ninja, Trust, Polar, Thomas …) beyond the first 8 words
     or before a colour word ("Arctic Grey" is a colour);

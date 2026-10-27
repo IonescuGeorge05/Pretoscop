@@ -19,7 +19,7 @@
  *    title names a known brand, which is then preferred.
  */
 import { BRAND_SEEDS, type BrandSeed, type LineSeed } from './brands-data';
-import { detectProductKind } from './product-kind';
+import { detectProductKind, type ProductKind } from './product-kind';
 import { foldLower, normalizeText, slugify } from './text';
 
 export interface Brand {
@@ -65,6 +65,7 @@ interface LineRecord {
 interface BrandRecord extends Brand {
   nameInTitle: boolean;
   requiresNext?: RegExp;
+  featureNext?: RegExp;
 }
 
 interface Entry {
@@ -254,6 +255,18 @@ const DEVICE_NOUNS = new Set([
   'dispozitive',
   'dispozitiv',
 ]);
+/** Devices whose maker is never a component brand (Intel, AMD, NVIDIA, Snapdragon …). */
+const WEAK_HOST_KINDS: ReadonlySet<ProductKind> = new Set<ProductKind>([
+  'laptop',
+  'desktop',
+  'phone',
+  'tablet',
+  'tv',
+  'monitor',
+  'console',
+  'smartwatch',
+  'ereader',
+]);
 const COMPAT_MARKERS = new Set([
   'pentru',
   'compatibil',
@@ -278,6 +291,7 @@ function buildRecords(seeds: readonly BrandSeed[]): BrandRecord[] {
       nameInTitle: seed.nameInTitle ?? true,
     };
     if (seed.requiresNext) rec.requiresNext = seed.requiresNext;
+    if (seed.featureNext) rec.featureNext = seed.featureNext;
     return rec;
   });
 }
@@ -429,6 +443,14 @@ function acceptable(entry: Entry, tokens: readonly string[], i: number): boolean
   ) {
     return false;
   }
+  if (
+    entry.kind === 'name' &&
+    brand.featureNext &&
+    next !== undefined &&
+    brand.featureNext.test(next)
+  ) {
+    return false;
+  }
   if (brand.ambiguous && entry.kind !== 'line') {
     if (i > 7) return false;
     if (next !== undefined && COLOUR_FOLLOWERS.has(next)) return false;
@@ -510,7 +532,8 @@ export function detectBrandInTitle(
   const strong = usable.filter((m) => !m.entry.brand.weak && !m.entry.line?.alone);
   const alone = usable.filter((m) => m.entry.line?.alone);
   const weak = usable.filter((m) => m.entry.brand.weak);
-  const pick = strong[0] ?? alone[0] ?? weak[0];
+  // A component brand alone does not name the maker of a laptop, phone or TV.
+  const pick = strong[0] ?? alone[0] ?? (WEAK_HOST_KINDS.has(kind) ? undefined : weak[0]);
   if (!pick) return null;
   const result: BrandMatch = {
     name: pick.entry.brand.name,

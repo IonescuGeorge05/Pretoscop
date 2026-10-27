@@ -41,6 +41,8 @@ export interface BrandSeed {
   requiresNext?: RegExp;
   /** Makes only accessories: kept even after "pentru telefon" (it cannot be the target device). */
   accessoryMaker?: boolean;
+  /** The bare name followed by one of these words is a feature, not the maker ("Google TV"). */
+  featureNext?: RegExp;
 }
 
 const dev = (name: string, extra: Partial<LineSeed> = {}): LineSeed => ({
@@ -59,6 +61,7 @@ const plat = (name: string, extra: Partial<LineSeed> = {}): LineSeed => ({
 const DETAILED: readonly BrandSeed[] = [
   {
     name: 'Apple',
+    featureNext: /^(?:airplay|homekit|carplay|music|arcade|pay|fitness)$/,
     aliases: ['Apple Inc'],
     lines: [
       dev('iPhone'),
@@ -107,6 +110,7 @@ const DETAILED: readonly BrandSeed[] = [
   },
   {
     name: 'Microsoft',
+    featureNext: /^(?:windows|office|365|teams|store)$/,
     lines: [
       plat('Xbox'),
       dev('Surface', {
@@ -120,6 +124,7 @@ const DETAILED: readonly BrandSeed[] = [
   },
   {
     name: 'Google',
+    featureNext: /^(?:tv|assistant|cast|play|home|meet|duo)$/,
     lines: [
       dev('Pixel', { next: /^(?:\d|pro|fold|watch|buds|tablet|a\d?)/ }),
       dev('Chromecast'),
@@ -246,6 +251,7 @@ const DETAILED: readonly BrandSeed[] = [
   { name: 'CAT', aliases: ['Caterpillar', 'Cat Phones'], requiresNext: /^(?:s\d+|b\d+)/ },
   {
     name: 'Amazon',
+    featureNext: /^(?:alexa|prime|music)$/,
     lines: [
       dev('Kindle'),
       dev('Echo', { next: /^(?:dot|show|pop|studio|auto|buds|spot|hub|\d)/ }),

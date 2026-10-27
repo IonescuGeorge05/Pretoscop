@@ -178,6 +178,24 @@ describe('detectBrand: titles', () => {
     expect(brandOf('Telefon', 'Orange')).toBe('Orange');
   });
 
+  it('does not take a component brand alone as the maker of a device', () => {
+    expect(brandOf('Laptop cu procesor AMD Ryzen 5 7530U, 16GB, 512GB SSD')).toBeNull();
+    expect(brandOf('Sistem PC Gaming, Intel Core i5, NVIDIA RTX 4060, 16GB RAM')).toBeNull();
+    expect(brandOf('Telefon mobil cu procesor Snapdragon 8 Gen 3, 12GB RAM')).toBeNull();
+    expect(brandOf('Placa video NVIDIA GeForce RTX 5090 Founders Edition')).toBe('NVIDIA');
+    expect(brandOf('Boxa portabila Harman Kardon Onyx Studio 9')).toBe('Harman Kardon');
+  });
+
+  it('does not read platform features as makers', () => {
+    expect(brandOf('Televizor 55", Smart, Google TV, 4K')).toBeNull();
+    expect(brandOf('Mini PC, Microsoft Windows 11 Pro, 16GB RAM')).toBeNull();
+    expect(brandOf('Boxa inteligenta compatibila Amazon Alexa')).toBeNull();
+    expect(brandOf('Televizor TCL 55C655, Smart Google TV')).toBe('TCL');
+    expect(brandOf('Telefon mobil Google Pixel 10')).toBe('Google');
+    expect(brandOf('Boxa inteligenta Amazon Echo Dot')).toBe('Amazon');
+    expect(brandOf('Laptop Microsoft Surface Laptop 7')).toBe('Microsoft');
+  });
+
   it('returns null for empty input', () => {
     expect(detectBrand(null)).toBeNull();
     expect(detectBrand('')).toBeNull();

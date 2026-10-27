@@ -80,6 +80,7 @@ PS5_SLUGS = {
     ("original", "digital"): "ps5-digital-825gb",
     ("slim", "disc"): "ps5-slim-disc-1tb",
     ("slim", "digital"): "ps5-slim-digital-1tb",
+    ("slim-825", "digital"): "ps5-slim-digital-825gb",
     ("pro", None): "ps5-pro-2tb",
 }
 CONSOLE_RE = re.compile(r"\b(consola|console)\b")
@@ -145,6 +146,11 @@ def _ps5(t: str, allow_used: bool) -> MatchResult:
         edition = "disc"
     else:
         return MatchResult("unmatched", is_bundle=is_bundle, reason="ediție neclară (Disc sau Digital?)")
+    if gen == "slim" and "1tb" not in t and ("825gb" in t or re.search(r"\be-?chassis\b", t) or re.search(r"cfi-?\s?21\d\d", t)):
+        # șasiul E (2025, CFI-21xx): Slim Digital cu 825 GB. Slim cu disc are mereu 1 TB în UE -> „825 GB cu disc” e o greșeală.
+        if edition == "disc":
+            return MatchResult("unmatched", is_bundle=is_bundle, reason="Slim cu disc și 825 GB (nu există în UE: Slim cu disc are 1 TB)")
+        gen = "slim-825"
     return MatchResult("product", PS5_SLUGS[(gen, edition)], is_bundle)
 
 

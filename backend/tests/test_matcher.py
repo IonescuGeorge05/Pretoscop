@@ -7,14 +7,15 @@ PRODUCTS = [
     ProductRef("ps5-digital-825gb", None, "CFI-1xxx"),
     ProductRef("ps5-slim-disc-1tb", "5940000000001", "CFI-2xxx"),
     ProductRef("ps5-slim-digital-1tb", None, "CFI-2xxx"),
+    ProductRef("ps5-slim-digital-825gb", None, "CFI-21xx"),
     ProductRef("ps5-pro-2tb", None, "CFI-7xxx"),
 ]
 
 # (titlu, kind, slug, is_bundle) — multe sunt titluri reale de pe eMAG / Flanco / PC Garage / evoMAG
 CASES = [
     # consolă simplă
-    ("Consola PlayStation 5 Digital Edition (PS5) Slim, 825GB SSD, E-Chassis", "product", "ps5-slim-digital-1tb", False),
-    ("Consola Sony PS5 (PlayStation 5), E-Chassis, Slim, DIGITAL Edition 825GB, Alb", "product", "ps5-slim-digital-1tb", False),
+    ("Consola PlayStation 5 Digital Edition (PS5) Slim, 825GB SSD, E-Chassis", "product", "ps5-slim-digital-825gb", False),
+    ("Consola Sony PS5 (PlayStation 5), E-Chassis, Slim, DIGITAL Edition 825GB, Alb", "product", "ps5-slim-digital-825gb", False),
     ("Consola Sony PlayStation 5 Slim PS5 E-Chassis 1TB Disc Edition Alb", "product", "ps5-slim-disc-1tb", False),
     ("Consola PlayStation 5 Pro Digital Edition (PS5), 2TB SSD, White", "product", "ps5-pro-2tb", False),
     ("Consola Sony PlayStation 5 Standard Edition 825GB", "product", "ps5-disc-825gb", False),
@@ -23,11 +24,11 @@ CASES = [
     ("Consolă Sony PlayStation 5 Slim cu unitate disc Blu-ray, 1 TB", "product", "ps5-slim-disc-1tb", False),
     # pachete -> marcate is_bundle
     ("Consola PlayStation 5 Digital Edition (PS5) Slim, 825GB SSD, E-Chassis + Fortnite Flowering Chaos Bundle",
-     "product", "ps5-slim-digital-1tb", True),
+     "product", "ps5-slim-digital-825gb", True),
     ("Consola Sony PlayStation 5 Slim Disk Edition 1TB White + EA Sports FC 26", "product", "ps5-slim-disc-1tb", True),
     ("Consola Sony PlayStation 5 Slim PS5 1TB Disc Edition Alb Extra Controller", "product", "ps5-slim-disc-1tb", True),
     ("Consola Sony PlayStation 5 Digital Edition 825GB SSD joc NBA 2K26 CFI-2116B + voucher",
-     "product", "ps5-slim-digital-1tb", True),
+     "product", "ps5-slim-digital-825gb", True),
     ("Consola Sony PlayStation 5 Pro 2TB + DualSense Edge", "product", "ps5-pro-2tb", True),
     # capcane: accesorii cu "PS5" în titlu
     ("Controller wireless Sony DualSense pentru PS5, Midnight Black", "accessory", None, False),
@@ -163,3 +164,11 @@ def test_slim_1tb_without_chassis_stays_unmatched():
 )
 def test_real_accessories_from_new_shops(title):
     assert match_title(title).kind == "accessory"
+
+
+def test_slim_e_chassis_825_and_d_chassis_1tb_are_different_products():
+    assert match_title("Consola Sony PlayStation 5, Slim, Digital Edition, 825GB, Alb").product_slug == "ps5-slim-digital-825gb"
+    assert match_title("Consola PlayStation 5 Slim Digital Edition 1TB SSD, D-Chassis").product_slug == "ps5-slim-digital-1tb"
+    assert match_title("Consola PlayStation 5 (PS5) Slim, 1TB SSD, E-Chassis").product_slug == "ps5-slim-disc-1tb"
+    r = match_title("Consola PlayStation 5 Slim Disc Edition 825GB")
+    assert r.kind == "unmatched" and "nu există" in r.reason

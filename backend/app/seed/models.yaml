@@ -51,7 +51,21 @@
   image_url: null
   msrp_ron: 3049
   msrp_verified: false
-  msrp_note: "599,99 € x 5,09 lei/€ (preț UE PS5 Digital din 02.04.2026)"
+  msrp_note: "599,99 € x 5,09 lei/€ (preț UE PS5 Digital din 02.04.2026; în UE varianta 1 TB a fost înlocuită din 09.2025 de cea de 825 GB, la același preț)"
+
+# Slim Digital cu șasiu E (2025): 825 GB în loc de 1 TB, ca să țină prețul; doar ediția digitală (Slim cu disc rămâne 1 TB).
+# Cod de pe cutie raportat de presă (billbil-kun, mydealz): CFI-2116 — neconfirmat de Sony, de aceea prefixul.
+- slug: ps5-slim-digital-825gb
+  name: PlayStation 5 Slim Digital Edition, 825 GB (E-Chassis)
+  family: PlayStation 5
+  edition: digital
+  storage_gb: 825
+  model_code: CFI-21xx
+  ean: null
+  image_url: null
+  msrp_ron: 3049
+  msrp_verified: false
+  msrp_note: "599,99 € x 5,09 lei/€ (preț UE PS5 Digital din 02.04.2026; în UE e varianta Digital vândută acum)"
 
 - slug: ps5-pro-2tb
   name: PlayStation 5 Pro, 2 TB (fără unitate disc)

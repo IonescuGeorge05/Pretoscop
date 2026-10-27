@@ -26,7 +26,7 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 
 | Module | Name | Status | Branch / PR | Verified by founder | Notes |
 |---|---|---|---|---|---|
-| M06 | Core normalization (GTIN, Romanian text, brands, attributes, pricing) | todo | | | |
+| M06 | Core normalization (GTIN, Romanian text, brands, attributes, pricing) | review | `mod/M06-core` (merged locally into `daniel`) | | 491 tests; 696 brands; corpus ≥ 99% per field |
 | M07 | Matching v1 (deterministic + review queue) | todo | | | |
 | M08 | Rollups, stats, anomaly filters, verdicts | todo | | | |
 | M09 | Admin v1 (sources, review queue, merge/split) | todo | | | |
@@ -188,3 +188,18 @@ Founder checklist: `scripts/verify/M02.checklist.md` (not yet run by a founder).
 Human tasks needed: A1 (pretoscop.ro for the bot info URL; the page itself arrives with M17).
 Risks / open questions: per-host concurrency holds per process (one crawl worker per host); a flaky home network can pause hosts for 24 h (unpause after an outage); feeds obey robots.txt (IT Galaxy and Vexio disallow `/data/feeds*`: a founder-approved exemption would be needed).
 Next module: M05 wiring.
+
+### M06 — Core normalization (GTIN, Romanian text, brands, attributes, pricing) — 2026-10-27
+(Implemented by a delegated Opus agent; integrated and re-verified by the lead.)
+Scope delivered:
+- Money in integer bani everywhere (`baniToDecimalString`, `decimalStringToBani`, `formatLei`); `parsePrice`/`parsePriceRon` (Romanian, decimal and English separators, NBSP, "de la", "1.299,- lei", eMAG split cents, entities; rejects ranges, instalments, unit prices, zero/negative/placeholder, other currencies; flags ≤ 1 leu and "fără TVA"); VAT by date (21% from 2025-08-01); BNR conversion with a caller-supplied rate.
+- GTIN-8/12/13/14 (ISBN-10 → 13) with check digit, restricted/coupon/demo ranges, EAN-8 internal ranges, placeholders and a per-shop fakes list (property test over 100,000 corruptions).
+- Romanian text (cedilla → comma-below, ASCII fold, slugify, shop-boilerplate cleanup, match form, cel.ro hex-junk detection); 696 brands with aliases and 183 product lines; MPN normalization and title candidates; attributes (storage, RAM, VRAM, screen, resolution, colour, year, generation, connectivity, energy class, litres, kg, power, edition, watch case, pack count); condition, bundle, accessory, availability; `totalPrice` from shop rules; content hash `v1|price|old|shipping|availability` at `@pretoscop/core/hash` only.
+- `normalizeOffer(raw, ctx)` → accepted/rejected union with reasons and audit fields; corpus of 255 + 72 holdout synthetic titles and 66 real eMAG titles, every field ≥ 95% (now ≥ 99.5%); demo and GTIN CLIs; README with every rule.
+Out of scope / deferred: matching (M07), verdicts and quarantine (M08), reduced VAT rates.
+Deviations from plan: money fields are `*Bani` (not `*Ron`); `gtinQuality` adds `restricted`; `normalizeOffer` takes the hasher in `ctx` and returns a discriminated union; the real-title corpus has 66 titles (the plan wants ≥ 150 from Phase-0 data: append recorder titles); a seeded PRNG replaces fast-check (not in the offline store).
+Verification: `make verify M=06` (re-run on `daniel` after the merge) → lint/typecheck/491 tests, browser-safe root export, corpus ≥ 95% per field, PS5 demo (Sony, 1TB, Slim Digital, bundle), GTIN check → `OK`. Throughput ≈ 80 µs per offer.
+Founder checklist: `scripts/verify/M06.checklist.md` (not yet run by a founder).
+Human tasks needed: none.
+Risks / open questions: synthetic sets were written by the same agent as the rules (expect lower accuracy on messy real titles outside phones); model codes written with spaces are not extracted; phones with a free gift ("+ cadou") count as bundles and leave the price series (founder decision: exempt cheap gifts?); feeds must declare `priceFormat` ("12.500" without it reads as 12,500 lei).
+Next module: M07 (uses brand, MPN and attributes).

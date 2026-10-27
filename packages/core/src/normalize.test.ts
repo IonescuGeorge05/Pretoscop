@@ -256,6 +256,19 @@ describe('normalizeOffer: identifiers', () => {
     expect(gtinAsMpn.warnings).toContain('mpn_looks_like_gtin');
   });
 
+  it('exposes how an unknown title brand was read', () => {
+    const marked = accepted(raw({ title: 'Consola Retro, BYONDSELF®, 128G, 4K, Negru' }));
+    expect(marked).toMatchObject({
+      brandName: 'Byondself',
+      brandKnown: false,
+      brandGuess: 'trademark',
+      brandConfidence: 0.8,
+    });
+    expect(marked.warnings).toContain('brand_unknown');
+    const known = accepted(raw({ title: 'Telefon mobil Samsung Galaxy A16, 128GB' }));
+    expect(known).toMatchObject({ brandName: 'Samsung', brandKnown: true, brandGuess: null });
+  });
+
   it('ignores an MPN field that is a spec or a chip (URL-slug leftovers)', () => {
     const oukitel = accepted(
       raw({

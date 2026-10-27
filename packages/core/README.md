@@ -186,7 +186,8 @@ affiliateUrl, observedAt`; money `priceBani` (non-null when accepted), `oldPrice
 `shippingEstimated`, `shippingBasis`, `shopLowest30dBani`, `currency` (observed), `fxRate`,
 `vatGrossedUp`, `priceIsFrom`; identifiers `gtin14` (valid only), `gtinQuality`, `gtinReason`,
 `gtinAlternates`, `gtinRaw`, `brandName`, `brandSlug`, `brandConfidence`, `brandVia`, `brandKnown`,
-`brandRaw`, `mpnNorm`, `mpnRaw`, `mpnSource`, `mpnCandidates`; `attributes`, `productKind`,
+`brandGuess` (how an unknown title brand was read, else null), `brandRaw`, `mpnNorm`, `mpnRaw`,
+`mpnSource`, `mpnCandidates`; `attributes`, `productKind`,
 `condition`, `conditionDetail`, `conditionReason`, `isBundle`, `bundleKind`, `bundleReason`,
 `isAccessory`, `accessoryReason`, `availability`; titles `titleRaw`, `titleClean`, `titleAscii`,
 `titleMatch`; `categoryRaw`, `sellerName`, `isMarketplaceSeller`; `contentHash` (non-null when

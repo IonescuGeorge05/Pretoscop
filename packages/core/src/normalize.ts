@@ -40,6 +40,7 @@ import {
   normalizeText,
   titleForMatch,
 } from './text';
+import type { UnknownBrandRule } from './unknown-brand';
 
 /** Why an offer must not be ingested. */
 export type RejectReason =
@@ -118,8 +119,13 @@ interface NormalizedOfferBase {
   brandSlug: string | null;
   brandConfidence: number | null;
   brandVia: BrandVia | null;
-  /** False when the brand is an unknown brand-field value (title-cased). */
+  /** False when the brand is not in the dictionary (an unknown brand field or a title guess). */
   brandKnown: boolean;
+  /**
+   * How an unknown title brand was read (`trademark` ®/™ at 0.8; `prefix`, `after_noun`,
+   * `segment` by position at 0.6), null otherwise. See `guessUnknownBrand`.
+   */
+  brandGuess: UnknownBrandRule | null;
   brandRaw: string | null;
 
   /** Normalized MPN: from the MPN field, else the best code in the title. */
@@ -372,6 +378,7 @@ export function normalizeOffer(raw: RawOffer, ctx: NormalizeContext): Normalized
     brandConfidence: brand?.confidence ?? null,
     brandVia: brand?.via ?? null,
     brandKnown: brand?.known ?? false,
+    brandGuess: brand?.guess ?? null,
     brandRaw: textOrNull(raw.brand),
     mpnNorm,
     mpnRaw,

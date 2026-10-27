@@ -7,8 +7,13 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "lint": "eslint src",
+    "lint": "eslint src test",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run",
+    "demo": "tsx src/cli/demo.ts"
+  },
+  "dependencies": {
+    "@pretoscop/config": "workspace:*",
+    "undici": "^7.30.1"
   }
 }

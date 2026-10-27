@@ -1,0 +1,20 @@
+# Synthetic fixture modelled on Decathlon Romania's robots.txt (2026-10-27): a plain-text
+# robots file that mentions a bot-management vendor path. It is NOT a challenge page.
+User-agent: *
+Disallow: /_Incapsula_Resource*
+Disallow: /*?Ntt=
+Disallow: /*?Nrpp=
+Disallow: /*?Ns=
+Disallow: /*?_rsc=
+Disallow: /api/*
+Disallow: /checkout
+
+User-agent: MJ12bot
+Crawl-delay: 2
+
+User-agent: FacebookBot
+Crawl-delay: 2
+
+Sitemap: https://www.decathlon.example/sitemap-index.xml
+Sitemap: https://www.decathlon.example/decathlon-products-index.xml
+Sitemap: https://www.decathlon.example/marketplace-products-index.xml

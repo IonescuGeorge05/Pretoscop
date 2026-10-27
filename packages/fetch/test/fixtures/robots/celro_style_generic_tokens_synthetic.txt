@@ -1,0 +1,31 @@
+# Synthetic fixture modelled on the structure of cel.ro's robots.txt (archived 2026-03-28):
+# one large group that lists bare, generic user-agent fragments with "Disallow: /", then the
+# "*" group. Under RFC 9309 product-token matching none of the fragments matches PretoscopBot.
+User-agent: AhrefsBot
+User-agent: MJ12bot
+User-agent: Dotbot
+User-agent: Yandex
+User-agent: ia_archiver
+User-agent: HTTrack
+User-agent: Wget
+User-agent: WebFetch
+User-agent: bot-
+User-agent: bot/
+User-agent: crawl
+User-agent: robot
+User-agent: spider
+Disallow: /
+
+User-agent: *
+Disallow: /index.php?main_page=login
+Disallow: /index.php?main_page=shopping_cart
+Disallow: /index.php?main_page=product_info
+Disallow: /index.php?main_page=create_account
+Disallow: /cumpara/
+Disallow: /compara/
+Disallow: /refurbished/
+Disallow: /resigilate/
+Disallow: /nou/
+Allow: /nou/blackfriday/
+Disallow: /t/
+Disallow: /ajax/

@@ -8,3 +8,4 @@ export * from './relations';
 export * from './events';
 export * from './quality';
 export * from './auth';
+export * from './contact';

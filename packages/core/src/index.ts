@@ -109,6 +109,7 @@ export {
   detectBrandInTitle,
 } from './brands';
 export { type BrandSeed, type LineSeed, BRAND_SEEDS } from './brands-data';
+export { type UnknownBrandGuess, type UnknownBrandRule, guessUnknownBrand } from './unknown-brand';
 
 // Attributes and flags
 export {
@@ -129,6 +130,7 @@ export {
   type Edition,
   type ExtractAttributesOptions,
   COLOR_LABELS_RO,
+  colorKeyOf,
   extractAttributes,
 } from './attributes';
 export {

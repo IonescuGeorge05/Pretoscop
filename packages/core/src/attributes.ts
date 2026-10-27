@@ -469,6 +469,11 @@ const COLOR_RE = new RegExp(
 );
 const COLOR_KEY = new Map(COLOR_WORDS.map(([w, k]) => [w, k] as const));
 
+/** Colour key of one word or phrase ("Negru" → black), or undefined. */
+export function colorKeyOf(word: string | null | undefined): ColorKey | undefined {
+  return COLOR_KEY.get(foldLower(word).trim());
+}
+
 /** Phrases where colour words are not colours (product lines, certifications, switches, OS names). */
 const COLOR_EXCLUSIONS: readonly RegExp[] = [
   /\bblack friday\b/g,

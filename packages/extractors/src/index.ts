@@ -24,4 +24,4 @@ export { parseSitemap } from './sitemap';
 export { emagPnk, emagSlugMpn, EMAG_VENDOR_ID } from './shops/emag';
 export { structuredProducts, sdToRawOffer } from './structured/generic';
 export type { SdOffer, SdProduct } from './structured/jsonld';
-export { canonicalUrl, absoluteUrl, slugLike } from './util';
+export { canonicalUrl, absoluteUrl, slugLike, decodeEntities } from './util';

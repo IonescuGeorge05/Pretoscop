@@ -1,5 +1,5 @@
 import type { CheerioAPI } from 'cheerio';
-import { asArray, isRecord, lenientJsonParse, nonEmpty, str } from '../util';
+import { asArray, decodeEntities, isRecord, lenientJsonParse, nonEmpty, str } from '../util';
 
 /** One offer of a schema.org Product, values as found (strings). */
 export interface SdOffer {
@@ -44,10 +44,16 @@ function typesOf(node: Record<string, unknown>): string[] {
   );
 }
 
+/** A display text from JSON-LD (name, brand, category), with stray HTML entities decoded. */
+function sdText(v: unknown): string | undefined {
+  const s = str(v);
+  return s === undefined ? undefined : nonEmpty(decodeEntities(s));
+}
+
 function nameOf(v: unknown): string | undefined {
-  if (typeof v === 'string') return nonEmpty(v);
+  if (typeof v === 'string') return nonEmpty(decodeEntities(v));
   if (Array.isArray(v)) return nameOf(v[0]);
-  if (isRecord(v)) return str(v.name) ?? str(v['@id']);
+  if (isRecord(v)) return sdText(v.name) ?? str(v['@id']);
   return undefined;
 }
 
@@ -128,7 +134,7 @@ function offerFrom(node: Record<string, unknown>): SdOffer[] {
 function productFrom(node: Record<string, unknown>): SdProduct[] {
   const base: SdProduct = {
     source: 'jsonld',
-    name: str(node.name),
+    name: sdText(node.name),
     sku: str(node.sku),
     mpn: str(node.mpn),
     productId: str(node.productID),

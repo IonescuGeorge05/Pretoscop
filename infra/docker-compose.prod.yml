@@ -1,0 +1,272 @@
+# Production and staging application stack (M18). One file, two projects on the same server:
+#   prod:    docker compose -p pretoscop-prod    -f infra/docker-compose.prod.yml --env-file .env up -d
+#   staging: docker compose -p pretoscop-staging -f infra/docker-compose.prod.yml --env-file .env up -d
+# Each environment lives in its own checkout (/srv/pretoscop/prod, /srv/pretoscop/staging) with its
+# own .env (app settings and secrets, never in git) and, in production, .env.backup (pgBackRest
+# repository credentials). Use infra/scripts/deploy.sh rather than calling compose by hand: it pulls
+# the release images, runs migrations once, and restarts the two web replicas one at a time.
+# Ingress is the separate edge stack (infra/docker-compose.edge.yml: Caddy, TLS), which reaches the
+# web replicas over the external network `pretoscop-edge` under the aliases <env>-web-1/2.
+name: pretoscop-prod
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: '20m'
+    max-file: '5'
+
+# Settings every app container shares; everything else comes from the .env file.
+x-app-environment: &app-environment
+  APP_ENV: ${APP_ENV:-prod}
+  # The deployed release (reported by /api/health and the worker's /health, used by deploy.sh).
+  APP_VERSION: ${IMAGE_TAG:-unknown}
+  DATABASE_URL: postgres://pretoscop:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/pretoscop
+  MEILI_URL: http://meilisearch:7700
+  LOG_PRETTY: 'false'
+  # The worker revalidates every web replica (each keeps its own page cache).
+  WEB_INTERNAL_URL: http://web-1:3000,http://web-2:3000
+
+x-web: &web
+  image: ${IMAGE_REGISTRY:-pretoscop}/pretoscop-web:${IMAGE_TAG:?set IMAGE_TAG (deploy.sh does)}-${DEPLOY_ENV:-prod}
+  restart: unless-stopped
+  init: true
+  env_file:
+    - path: ${ENV_FILE:-../.env}
+  environment:
+    <<: *app-environment
+    PORT: '3000'
+    HOSTNAME: 0.0.0.0
+  depends_on:
+    postgres:
+      condition: service_healthy
+    migrate:
+      condition: service_completed_successfully
+  stop_grace_period: 30s
+  # Exec form, generous timeout: a loaded box must not turn a healthy replica "unhealthy".
+  healthcheck:
+    test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:3000/api/health').then((r)=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+    interval: 15s
+    timeout: 10s
+    retries: 5
+    start_period: 60s
+  deploy:
+    resources:
+      limits:
+        memory: ${WEB_MEMORY_LIMIT:-1g}
+  logging: *logging
+
+services:
+  postgres:
+    image: ${IMAGE_REGISTRY:-pretoscop}/pretoscop-postgres:${POSTGRES_IMAGE_TAG:-18}
+    build:
+      context: ..
+      dockerfile: infra/docker/postgres.Dockerfile
+    restart: unless-stopped
+    # PostgreSQL must not be PID 1: an orphaned health-check child re-parented to the postmaster
+    # and exiting non-zero makes it restart every backend ("untracked child process", seen in dev
+    # on 2026-10-27). tini as PID 1 reaps such processes. Same rule for every long-running service.
+    init: true
+    shm_size: ${PG_SHM_SIZE:-1g}
+    stop_grace_period: 2m
+    env_file:
+      - path: ${BACKUP_ENV_FILE:-../.env.backup}
+        required: false
+    environment: &pg-environment
+      POSTGRES_USER: pretoscop
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: pretoscop
+      TZ: UTC
+      PGBACKREST_STANZA: pretoscop
+      PGBACKREST_PG1_PATH: /var/lib/postgresql/18/docker
+      PGBACKREST_PG1_USER: pretoscop
+      PGBACKREST_PG1_SOCKET_PATH: /var/run/postgresql
+      PGBACKREST_LOG_LEVEL_FILE: 'off'
+    command:
+      - postgres
+      - -c
+      - config_file=/etc/postgresql/postgresql.conf
+      - -c
+      - shared_buffers=${PG_SHARED_BUFFERS:-1GB}
+      - -c
+      - effective_cache_size=${PG_EFFECTIVE_CACHE_SIZE:-3GB}
+      - -c
+      - work_mem=${PG_WORK_MEM:-32MB}
+      - -c
+      - maintenance_work_mem=${PG_MAINTENANCE_WORK_MEM:-512MB}
+      - -c
+      - archive_mode=${PG_ARCHIVE_MODE:-off}
+    volumes:
+      # PostgreSQL 18 images keep data under /var/lib/postgresql/18/docker; mount the parent.
+      - pgdata:/var/lib/postgresql
+      - pgsocket:/var/run/postgresql
+    # Exec form (no shell) and a generous timeout: see `init` above.
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'pretoscop', '-d', 'pretoscop']
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+    logging: *logging
+
+  # Base backups, archive check and the weekly restore test (ADR-016). WAL itself is pushed by the
+  # database's archive_command. With BACKUPS_ENABLED=false (staging) it only warns when
+  # archive_mode is on without a repository, then idles.
+  pgbackrest:
+    image: ${IMAGE_REGISTRY:-pretoscop}/pretoscop-postgres:${POSTGRES_IMAGE_TAG:-18}
+    restart: unless-stopped
+    # tini reaps pgBackRest's children and the scratch server of the weekly restore test.
+    init: true
+    user: postgres
+    entrypoint: ['/usr/local/bin/pgbackrest-sidecar']
+    command: ['${PGBACKREST_SIDECAR_MODE:-loop}']
+    env_file:
+      - path: ${BACKUP_ENV_FILE:-../.env.backup}
+        required: false
+    environment:
+      <<: *pg-environment
+      APP_ENV: ${APP_ENV:-prod}
+      BACKUPS_ENABLED: ${BACKUPS_ENABLED:-false}
+      BACKUP_AT: ${BACKUP_AT:-02:30}
+      BACKUP_FULL_DOW: ${BACKUP_FULL_DOW:-7}
+      RESTORE_TEST_DOW: ${RESTORE_TEST_DOW:-7}
+      BACKUP_HEARTBEAT_URL: ${BACKUP_HEARTBEAT_URL:-}
+      RESTORE_TEST_HEARTBEAT_URL: ${RESTORE_TEST_HEARTBEAT_URL:-}
+      OPS_ALERT_TELEGRAM_BOT_TOKEN: ${OPS_ALERT_TELEGRAM_BOT_TOKEN:-}
+      OPS_ALERT_TELEGRAM_CHAT_ID: ${OPS_ALERT_TELEGRAM_CHAT_ID:-}
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - pgsocket:/var/run/postgresql
+    depends_on:
+      postgres:
+        condition: service_healthy
+    stop_grace_period: 30s
+    logging: *logging
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.56.0
+    restart: unless-stopped
+    init: true
+    environment:
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:?set MEILI_MASTER_KEY in .env}
+      MEILI_ENV: production
+      MEILI_NO_ANALYTICS: 'true'
+    volumes:
+      - meilidata:/meili_data
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', 'http://localhost:7700/health']
+      interval: 10s
+      timeout: 10s
+      retries: 30
+      start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: ${MEILI_MEMORY_LIMIT:-4g}
+    logging: *logging
+
+  # One-shot: applies pending migrations (under an advisory lock) before web and worker start.
+  migrate:
+    image: ${IMAGE_REGISTRY:-pretoscop}/pretoscop-worker:${IMAGE_TAG:?set IMAGE_TAG (deploy.sh does)}
+    restart: 'no'
+    init: true
+    command: ['node', '--import', 'tsx', '/app/packages/db/src/cli/migrate.ts']
+    env_file:
+      - path: ${ENV_FILE:-../.env}
+    environment:
+      <<: *app-environment
+    depends_on:
+      postgres:
+        condition: service_healthy
+    logging: *logging
+
+  web-1:
+    <<: *web
+    networks:
+      default: {}
+      edge:
+        aliases: ['${DEPLOY_ENV:-prod}-web-1']
+
+  web-2:
+    <<: *web
+    networks:
+      default: {}
+      edge:
+        aliases: ['${DEPLOY_ENV:-prod}-web-2']
+
+  # One worker process: the fetch layer keeps concurrency 1 per shop inside a process, so crawl jobs
+  # must never run in two processes (infra/runbooks/scale-workers.md).
+  worker:
+    image: ${IMAGE_REGISTRY:-pretoscop}/pretoscop-worker:${IMAGE_TAG:?set IMAGE_TAG (deploy.sh does)}
+    restart: unless-stopped
+    init: true
+    env_file:
+      - path: ${ENV_FILE:-../.env}
+    environment:
+      <<: *app-environment
+      BLOB_FS_ROOT: /app/data/blobs
+      METRICS_PORT: '9464'
+    volumes:
+      - workerdata:/app/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    stop_grace_period: 60s
+    healthcheck:
+      test: ['CMD', 'curl', '-fsS', '-m', '8', 'http://127.0.0.1:9464/health']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      # Startup runs migrations, the registry sync and pg-boss before /health answers.
+      start_period: 180s
+    deploy:
+      resources:
+        limits:
+          memory: ${WORKER_MEMORY_LIMIT:-2g}
+    logging: *logging
+
+  # Optional: ships metrics (worker :9464, Caddy) and container logs to Grafana Cloud.
+  #   COMPOSE_PROFILES=monitoring in .env, plus GRAFANA_CLOUD_* (infra/monitoring/README.md).
+  # Logs are read from Docker's json-file logs on disk (read-only), never through docker.sock.
+  alloy:
+    profiles: [monitoring]
+    image: grafana/alloy:v1.21.2
+    restart: unless-stopped
+    init: true
+    command: ['run', '--server.http.listen-addr=0.0.0.0:12345', '--storage.path=/var/lib/alloy/data', '/etc/alloy/config.alloy']
+    environment:
+      DEPLOY_ENV: ${DEPLOY_ENV:-prod}
+      GRAFANA_CLOUD_PROM_URL: ${GRAFANA_CLOUD_PROM_URL:-}
+      GRAFANA_CLOUD_PROM_USER: ${GRAFANA_CLOUD_PROM_USER:-}
+      GRAFANA_CLOUD_LOKI_URL: ${GRAFANA_CLOUD_LOKI_URL:-}
+      GRAFANA_CLOUD_LOKI_USER: ${GRAFANA_CLOUD_LOKI_USER:-}
+      GRAFANA_CLOUD_API_KEY: ${GRAFANA_CLOUD_API_KEY:-}
+      CADDY_METRICS_TARGET: ${CADDY_METRICS_TARGET:-caddy:9180}
+    volumes:
+      - ./monitoring/config.alloy:/etc/alloy/config.alloy:ro
+      - alloydata:/var/lib/alloy/data
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    networks:
+      default: {}
+      edge: {}
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    logging: *logging
+
+networks:
+  default: {}
+  edge:
+    external: true
+    name: ${EDGE_NETWORK:-pretoscop-edge}
+
+volumes:
+  pgdata:
+  pgsocket:
+  meilidata:
+  workerdata:
+  alloydata:

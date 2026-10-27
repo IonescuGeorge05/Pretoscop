@@ -1,0 +1,129 @@
+#!/usr/bin/env bash
+# Deploys one release to one environment on this server (M18). Run it from the environment's
+# checkout, e.g. /srv/pretoscop/prod, as the deploy user (member of the docker group):
+#   infra/scripts/deploy.sh prod v2026.11.03-1        (or: make deploy ENVIRONMENT=prod TAG=v2026.11.03-1)
+# Steps: preflight → pull images → data services up → migrations (one-shot, advisory lock) → web-1
+# then web-2 (each must turn healthy before the next; Caddy sends traffic to the other meanwhile) →
+# worker → smoke check → history line. If a web replica fails its health check, the replicas
+# already switched go back to the previous release and the script exits non-zero.
+#
+# Overrides: see infra/scripts/lib.sh (ENV_FILE, COMPOSE_PROJECT, COMPOSE_EXTRA_FILES), plus
+# NO_PULL=1 (use local images), SMOKE_URL (e.g. https://pretoscop.ro/api/health), SMOKE_CURL_OPTS,
+# DEPLOY_HEALTH_TIMEOUT (seconds), DEPLOY_HISTORY (file).
+set -Eeuo pipefail
+
+SCRIPT_NAME=deploy
+ENV_NAME="${1:-}"
+TAG="${2:-}"
+# shellcheck source=infra/scripts/lib.sh
+. "$(dirname "$0")/lib.sh"
+[[ "$TAG" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$ ]] || die "usage: deploy.sh <prod|staging> <tag> (invalid tag '${TAG}')"
+
+HISTORY="${DEPLOY_HISTORY:-$ROOT/.deploy-history}"
+HEALTH_TIMEOUT="${DEPLOY_HEALTH_TIMEOUT:-180}"
+export IMAGE_TAG="$TAG" DEPLOY_ENV="$ENV_NAME"
+
+previous_tag() {
+  [[ -f "$HISTORY" ]] || return 0
+  awk -v env="$ENV_NAME" -v cur="$TAG" '$2 == env && $4 == "ok" && $3 != cur { t = $3 } END { if (t) print t }' "$HISTORY"
+}
+
+record() { printf '%s %s %s %s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$ENV_NAME" "$TAG" "$1" "${SUDO_USER:-${USER:-ci}}" >>"$HISTORY"; }
+
+# ---------------------------------------------------------------- preflight
+say "preflight (${TAG})"
+command -v docker >/dev/null || die "docker is not installed"
+[[ "$(env_value DEPLOY_ENV)" == "" || "$(env_value DEPLOY_ENV)" == "$ENV_NAME" ]] ||
+  die "${ENV_FILE} says DEPLOY_ENV=$(env_value DEPLOY_ENV), not ${ENV_NAME}: wrong checkout?"
+if [[ "$ENV_NAME" == "staging" && "$(env_value CRAWL_ENABLED)" =~ ^(1|true|yes|on)$ ]]; then
+  die "staging must never crawl shops (CRAWL_ENABLED is on in ${ENV_FILE})"
+fi
+if [[ "$(env_value PG_ARCHIVE_MODE)" == "on" && "$(env_value BACKUPS_ENABLED)" != "true" ]]; then
+  die "PG_ARCHIVE_MODE=on needs BACKUPS_ENABLED=true (or WAL piles up in pg_wal)"
+fi
+compose config --quiet || die "compose configuration is invalid"
+PREV="$(previous_tag)"
+EDGE_NETWORK="$(env_value EDGE_NETWORK)"
+EDGE_NETWORK="${EDGE_NETWORK:-pretoscop-edge}"
+docker network inspect "$EDGE_NETWORK" >/dev/null 2>&1 || {
+  say "creating network ${EDGE_NETWORK} (start the edge stack too: infra/runbooks/deploy.md)"
+  docker network create "$EDGE_NETWORK" >/dev/null
+}
+record started
+
+failed() {
+  record failed
+  die "$1"
+}
+
+# ---------------------------------------------------------------- images
+if [[ "${NO_PULL:-0}" != "1" ]]; then
+  say "pulling images"
+  compose pull --quiet web-1 web-2 worker migrate meilisearch || failed "image pull failed (is the tag pushed? docker login ghcr.io?)"
+  compose pull --quiet postgres pgbackrest 2>/dev/null || {
+    say "postgres image not in the registry; building it here"
+    compose build postgres || failed "postgres image build failed"
+  }
+fi
+
+# ---------------------------------------------------------------- data services and migrations
+say "database, backups sidecar and search"
+compose up -d --wait --wait-timeout "$HEALTH_TIMEOUT" postgres meilisearch || failed "postgres/meilisearch not healthy"
+compose up -d --no-deps pgbackrest || failed "pgbackrest sidecar did not start"
+
+say "migrations (previous release: ${PREV:-none})"
+compose run --rm --no-deps migrate || failed "migrations failed; nothing else was restarted (the old release still serves)"
+
+# ---------------------------------------------------------------- web replicas, one at a time
+switched=()
+revert_web() {
+  [[ -n "$PREV" ]] || return 0
+  local svc
+  for svc in "${switched[@]}"; do
+    say "reverting ${svc} to ${PREV}"
+    IMAGE_TAG="$PREV" compose up -d --no-deps --wait --wait-timeout "$HEALTH_TIMEOUT" "$svc" ||
+      say "revert of ${svc} failed: run infra/scripts/rollback.sh ${ENV_NAME}"
+  done
+}
+for svc in web-1 web-2; do
+  say "switching ${svc}"
+  switched+=("$svc")
+  if ! compose up -d --no-deps --wait --wait-timeout "$HEALTH_TIMEOUT" "$svc"; then
+    compose logs --tail 80 "$svc" >&2 || true
+    revert_web
+    failed "${svc} did not become healthy on ${TAG}"
+  fi
+done
+
+# ---------------------------------------------------------------- worker and optional services
+say "worker"
+compose up -d --no-deps --wait --wait-timeout "$HEALTH_TIMEOUT" worker || {
+  compose logs --tail 80 worker >&2 || true
+  failed "worker did not become healthy on ${TAG} (web already runs ${TAG}; roll back with infra/scripts/rollback.sh ${ENV_NAME})"
+}
+if [[ ",$(env_value COMPOSE_PROFILES)," == *",monitoring,"* ]]; then
+  compose --profile monitoring up -d --no-deps alloy || say "alloy did not start (monitoring only)"
+fi
+
+# ---------------------------------------------------------------- smoke check
+if [[ -n "${SMOKE_URL:-}" ]]; then
+  say "smoke check ${SMOKE_URL}"
+  ok=0
+  body=""
+  for _ in $(seq 1 30); do
+    # SMOKE_CURL_OPTS is a list of curl flags (e.g. "-k" against a local CA): split on purpose.
+    # shellcheck disable=SC2086
+    body="$(curl -fsS -m 10 ${SMOKE_CURL_OPTS:-} "$SMOKE_URL" 2>/dev/null || true)"
+    if [[ "$body" == *"\"version\":\"${TAG}\""* ]]; then
+      ok=1
+      break
+    fi
+    sleep 2
+  done
+  ((ok == 1)) || failed "smoke check: ${SMOKE_URL} does not report version ${TAG} (got: ${body:-nothing})"
+fi
+
+record ok
+# Dangling layers of replaced releases (tagged releases stay for rollbacks).
+if [[ "${PRUNE_IMAGES:-1}" == "1" ]]; then docker image prune -f >/dev/null 2>&1 || true; fi
+say "done: ${ENV_NAME} runs ${TAG} (previous: ${PREV:-none})"

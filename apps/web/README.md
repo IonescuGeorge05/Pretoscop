@@ -24,5 +24,52 @@ Next.js 16 (App Router): public site, admin, API routes and click-out. Romanian 
   inlined at build) loads only after Accept; nothing third-party loads before a choice (e2e network assertion).
   `useConsent()` exposes the choice.
 - **Static vs dynamic**: pages prerendered at build read env at build time; use `NEXT_PUBLIC_*` for client values.
-- **Security headers** in `next.config.ts` (nosniff, referrer policy, frame options, permissions policy). CSP comes with M16/M17.
+- **Security headers** in `next.config.ts` (nosniff, referrer policy, frame options, permissions policy). CSP is not set yet (M16/M18).
 - **Accessibility**: jsx-a11y recommended rules are errors; skip link; landmarks; visible focus ring.
+
+## Legal and trust pages (M17)
+
+- **Pages**: `/despre`, `/cum-functioneaza`, `/cum-castigam-bani`, `/metodologie`, `/bot`, `/pentru-magazine`, `/termeni`,
+  `/confidentialitate`, `/cookies`, `/accesibilitate` in `src/app/(site)/`; `/contact` in `src/app/(forms)/`, a route group
+  that re-exports the site layout **without** `loading.tsx`: dynamic pages under a loading boundary are streamed into a
+  hidden container that only JavaScript reveals, and the contact form must work without JavaScript. Put future forms
+  that must work without JavaScript there too.
+- **Writing a page**: `LegalPage` (`src/components/legal/legal-page.tsx`) takes `doc` (version and date from
+  `legalDocuments` in `@pretoscop/config/legal-texts`), an optional `intro` and `sections` (`{ id, title, content }`; four or
+  more get a table of contents). Content is plain JSX inside `Prose`; use `DataTable`, `InfoCard`, `Callout` and
+  `CodeBlock` from `prose.tsx`. Bump `version` and `updatedAt` in `legalDocuments` for every substantive change; pages
+  of kind `legal` show "Document provizoriu, în curs de revizuire juridică" until `reviewed: true` (after setup B5).
+  Long-form text lives in the page files, not in `ro.json`.
+- **Wording rules**: say only what is true today; plans are phrased as plans (company in formation, no revenue yet, no
+  promoted placements, crawler IPs published at launch). `/bot` describes PretoscopBot only; `/metodologie` keeps the
+  sentence about the third-party data-collection service.
+- **Coverage statement** on `/cum-functioneaza` (ISR, hourly): `countCoveredShops()` and `listNotYetIncludedShops()` in
+  `src/lib/coverage.ts` (active shops with an active tier 1–2 offer checked in the last 48 h; shops with status `blocked`).
+  A database that is down or slow at build time renders a neutral sentence instead of failing the build.
+- **Ranking contract**: `/cum-functioneaza` promises the default order total price ascending, then in stock first, then
+  most recently checked; stale offers stay in place, greyed, without the "cel mai mic preț" badge; marketplace offers
+  ranked the same way but outside the default "cel mai mic preț" chart series. The product page (M13) must implement
+  exactly this, or the page must change with it.
+- **Contact channel**: `POST /api/contact` (JSON from the enhanced form, or a plain form post answered with a 303 to
+  `/contact?trimis=PS-…`): validation in `src/lib/contact.ts` (shared with the form), 16 KB cap, `Sec-Fetch-Site:
+  cross-site` refused, honeypot field `website`, 5 requests per hour per daily-salted session hash, a `contact_requests`
+  row, a team email to `MAIL_REPLY_TO` with the kind in the subject, and a confirmation of receipt to the sender for
+  shop objections and illegal-content notices (DSA art. 16(4)). `?subiect=<kind>` preselects the kind.
+- **Bot identity**: `src/lib/bot-policy.ts` holds the UA strings (from `BOT_INFO_URL`), the politeness numbers shown on
+  `/bot` (keep them equal to `packages/fetch`) and `BOT_CHANGELOG`; `GET /bot/ips.json` serves the UAs and the
+  `BOT_EGRESS_IPS` addresses at request time, dated by the newest changelog entry.
+- **Consent texts**: the banner reads `analyticsConsent.v1` from `@pretoscop/config/legal-texts`; `resetConsent()` clears
+  the choice and re-opens the banner (reloading the page when Plausible is already running); `/cookies` has the
+  "Schimbă preferințele" control.
+
+## Plausible (self-hosted, after consent)
+
+| Variable | Example | Notes |
+|---|---|---|
+| `NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL` | `https://stats.pretoscop.ro/js/script.js` (production), `http://localhost:8100/js/script.js` (dev) | Build-time: inlined into the client bundle, so rebuild after a change. Use the classic `script.js` snippet (still supported by Plausible CE v3); the newer `pa-….js` snippet needs a `plausible.init()` call the loader does not make. Empty = analytics off. |
+| `NEXT_PUBLIC_PLAUSIBLE_DOMAIN` | `pretoscop.ro` (dev: `localhost`) | The site name registered in the Plausible dashboard (`data-domain`). |
+
+Local instance: `docker compose -f infra/docker-compose.dev.yml -p pretoscop --profile analytics up -d` starts Plausible
+CE v3.2.1 with ClickHouse and its own Postgres on http://localhost:8100 (about 2 GB of RAM; not started by `make dev`).
+Register the first account, add the site, then build the web app with the two variables above. When a Content Security
+Policy is added (M16/M18), allow the Plausible origin in `script-src` and `connect-src`.

@@ -55,7 +55,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['packages/core/src/**/*.ts', 'packages/extractors/src/**/*.ts'],
+    files: ['packages/core/src/**/*.ts', 'packages/extractors/src/**/*.ts', 'packages/report/src/**/*.ts'],
     ignores: ['**/*.test.ts', '**/demo.ts', '**/cli/**'],
     rules: {
       'no-restricted-imports': [

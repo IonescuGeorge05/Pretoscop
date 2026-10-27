@@ -19,6 +19,8 @@
     "match:eval:build": "tsx src/cli/match-eval-build.ts",
     "match:label": "tsx src/cli/match-label.ts",
     "compare:live": "tsx src/cli/compare-live.ts",
+    "report": "tsx src/cli/report.ts",
+    "report:approve": "tsx src/cli/report-approve.ts",
     "alerts:simulate": "tsx src/cli/alerts-simulate.ts",
     "alerts:run": "tsx src/cli/alerts-run.ts"
   },
@@ -33,10 +35,12 @@
     "@pretoscop/fetch": "workspace:*",
     "@pretoscop/mailer": "workspace:*",
     "@pretoscop/notify": "workspace:*",
+    "@pretoscop/report": "workspace:*",
     "@pretoscop/storage": "workspace:*",
     "cron-parser": "^5.10.2",
     "drizzle-orm": "0.45.4",
     "pg-boss": "12.38.0",
-    "pino": "^10.4.0"
+    "pino": "^10.4.0",
+    "sharp": "0.35.5"
   }
 }

@@ -83,15 +83,20 @@ async function main(): Promise<void> {
   }
   const purpose = (values.purpose ?? (url.pathname === '/robots.txt' ? 'robots' : 'probe')) as FetchPurpose;
   if (!PURPOSES.includes(purpose)) usage(`unknown purpose "${values.purpose}"`);
+  if (purpose === 'robots' && url.pathname !== '/robots.txt') usage("purpose 'robots' is only for /robots.txt URLs");
   const cachedOnly = values.cached === true;
 
   loadRootEnvFile();
   const statePath = values.state ?? join(findRepoRoot(), 'data', 'fetch-demo-state.json');
   const userAgent = buildUserAgent(purpose === 'feed' ? 'feed' : 'page', resolveBotInfoUrl(process.env.BOT_INFO_URL));
   const entries: RequestLogEntry[] = [];
+  const crawlSwitch = process.env.CRAWL_ENABLED;
   const fetcher = createFetcher({
     stateStore: new FileDomainStateStore(statePath),
     requestLog: { write: (e) => void entries.push(e) },
+    // A founder runs this by hand for one request: the global CRAWL_ENABLED switch (meant for the
+    // worker) does not apply. Every other rule does.
+    crawlEnabled: true,
     // --cached: every host is "off", so nothing can reach the network; only the cache is read.
     policyFor: cachedOnly ? (host) => defaultDomainPolicy(host, { accessMode: 'off' }) : undefined,
   });
@@ -102,6 +107,9 @@ async function main(): Promise<void> {
   row('User-Agent', userAgent);
   row('State file', statePath);
   row('Interval', `${seconds(DEFAULT_MIN_INTERVAL_MS)} minimum per host, +0-10% jitter (Crawl-delay wins when longer)`);
+  if (crawlSwitch !== undefined && !['1', 'true', 'yes', 'on'].includes(crawlSwitch.trim().toLowerCase()) && !cachedOnly) {
+    row('Note', 'CRAWL_ENABLED is off in .env (the worker will not crawl); this manual demo makes its request anyway');
+  }
 
   let exitCode = 0;
   try {

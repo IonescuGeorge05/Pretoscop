@@ -16,7 +16,9 @@ the assisted-access channel (M05B) plugs into the same call.
   (longer when the shop asks for it with `Crawl-delay`, plus 0–10 % random extra).
 - If a shop refuses us (403, 429, a challenge page, a CAPTCHA redirect, a dropped connection), we stop
   asking that shop: 24 hours for refusals, at least 1 hour (or what the shop asks) for "too many
-  requests". We never try to get around a refusal.
+  requests". Requests already queued for that shop are cancelled too. We never try to get around a
+  refusal.
+- `CRAWL_ENABLED=false` stops every request at this layer, whatever the caller does.
 - Every request, and every request we decided not to make, is logged with the reason.
 
 ## Politeness and block policy
@@ -31,7 +33,9 @@ the assisted-access channel (M05B) plugs into the same call.
 | Never sent | cookies, `Referer`, `Sec-*` client hints, `Upgrade-Insecure-Requests` |
 
 `BOT_INFO_URL` defaults to `https://pretoscop.ro/bot`. The product token is fixed in code. The test-only
-`userAgent` override must still contain `PretoscopBot`.
+`userAgent` override must have exactly this shape (only the version and the URL may differ).
+Caller-supplied header values (`accept`, `etag`, `lastModified`) that are not plain printable ASCII
+are dropped, never sent (no header injection, no failed request blamed on the shop).
 
 ### robots.txt (RFC 9309)
 
@@ -40,9 +44,11 @@ value is `PretoscopBot` (also `PretoscopBot/1.0`); otherwise the `*` group appli
 nothing is disallowed. Feeds look for `PretoscopBot-Feed` first, then `PretoscopBot`, then `*`, so a
 shop that blocks PretoscopBot blocks the feed fetcher too. Rules: `*` matches anything, `$` at the
 end anchors, the longest matching rule wins, `Allow` wins a tie, percent-encoding is normalized,
-`/robots.txt` itself is always allowed. `Sitemap:` lines are collected. `Crawl-delay` is honoured
-when it is longer than the shop's interval (capped at one hour); a `Crawl-delay` line ends its
-group, so a delay written for `AhrefsBot` never applies to `*`.
+`/robots.txt` itself is always allowed. `Sitemap:` lines are collected. Groups are formed as in
+Google's reference parser (only an `Allow`/`Disallow` line closes a run of `User-agent` lines).
+`Crawl-delay` is honoured when it is longer than the shop's interval (capped at one hour), but only
+for the `User-agent` lines written above it, so `User-agent: AhrefsBot / Crawl-delay: 10 /
+User-agent: *` gives `*` no delay; the delay applies from the first page after robots.txt.
 
 Generic fragments are **not** our token. cel.ro's robots.txt lists `bot/`, `bot-`, `crawl`, `robot`,
 `spider` with `Disallow: /`; under RFC 9309 none of them names PretoscopBot, so the `*` group applies.
@@ -55,7 +61,7 @@ and in the demo, so the decision is visible per shop.
 | 2xx HTML page without rules (soft 404) | nothing disallowed, flagged `htmlBody` | 24 h |
 | 2xx HTML challenge page | **nothing allowed**, shop paused 24 h | 1 h |
 | 3xx | followed up to 5 hops (also to another host, as RFC 9309 says); never to a CAPTCHA host | as the final response |
-| more than 5 redirects | nothing allowed | 1 h |
+| more than 5 redirects, or a redirect to a paused host | nothing allowed | 1 h |
 | 404, 410, 401 and other 4xx | nothing disallowed | 24 h |
 | 403, 429 | treated as a block: **nothing allowed**, shop paused (403: 24 h; 429: Retry-After, at least 1 h) | 1 h |
 | 5xx, timeout, network error | **nothing allowed** (retried twice first) | 1 h |
@@ -71,10 +77,15 @@ A manual `unpauseDomain` also drops a robots.txt result cached while the shop wa
   reservation below.
 - Each request first reserves a start slot in the shared state store: `start = max(now, next free)`,
   `next free = start + interval`. The interval is the shop's `minIntervalMs` (default 5 000 ms) or its
-  robots.txt `Crawl-delay` when longer, plus 0–10 % random extra. Never less than the interval.
+  robots.txt `Crawl-delay` when longer, plus 0–10 % random extra, plus 100 ms of safety margin (so a
+  slow state-store answer for one caller cannot shrink the gap). Never less than the interval.
 - Every attempt and every redirect hop is a request of its own: it takes its own slot and counts
   against the daily budget.
-- Different hosts never wait for each other.
+- Right before sending, under the host lock and again after the slot wait, the request re-reads the
+  pause, the shop policy (kill switch, crawl window) and the budget: a pause set by a concurrent
+  request or another process, a kill switch flipped during the wait, or a window that closed during
+  it cancels the request.
+- Different hosts never wait for each other. Host names are canonical (`SHOP.ro.` is `shop.ro`).
 
 ### When and how much (from the shop registry, `DomainPolicy`)
 
@@ -83,12 +94,16 @@ A manual `unpauseDomain` also drops a robots.txt result cached while the shop wa
 | `accessMode: 'off'` (kill switch, disabled shop) | everything skipped: `access_off` |
 | `accessMode: 'feed_only'` | only `purpose: 'feed'` and robots.txt; the rest `feed_only` |
 | `accessMode: 'assisted'` | routed through the assisted client (M05B); without it `assisted_unavailable` |
-| `allowedHours` (Europe/Bucharest, e.g. 02:00–07:00 or 22:00–06:00) | outside the window `outside_allowed_hours`; robots.txt and `probe` requests are exempt (single diagnostic requests, not bulk crawling) |
+| `allowedHours` (Europe/Bucharest, e.g. 02:00–07:00 or 22:00–06:00) | outside the window `outside_allowed_hours`, also for redirect hops and when the window closes during a slot wait; only robots.txt itself is exempt |
 | `maxPagesPerDay` | requests per Bucharest calendar day, robots.txt included; then `budget_exhausted` |
 | `respectCrawlDelay: false` | ignore robots.txt `Crawl-delay` |
 
-The worker should map `CRAWL_ENABLED=false`, `shop_sources.kill_switch` and feature flags to
-`accessMode: 'off'` in `policyFor`, so the fetch layer itself refuses the request.
+`purpose: 'robots'` is accepted for `/robots.txt` URLs only (anything else throws), so no caller can
+use it to skip robots.txt or the crawl window. The global switch `CRAWL_ENABLED` (env, or the
+`crawlEnabled` dep) set to false turns every call into `skipped: 'access_off'` with
+`errorCode: 'crawl_disabled'`; unset means enabled. The worker should also map
+`shop_sources.kill_switch` and feature flags to `accessMode: 'off'` in `policyFor`, so the fetch layer
+itself refuses those requests.
 
 ### Blocks and pauses
 
@@ -97,7 +112,7 @@ The worker should map `CRAWL_ENABLED=false`, `shop_sources.kill_switch` and feat
 | 403 (vendor in `blockDetail`: Akamai "Access Denied … Reference #", CloudFront "Request blocked", Cloudflare) | `blocked`, `http_403` | 24 h |
 | Cloudflare challenge on any status (`cf-mitigated: challenge`, "Just a moment..." with `_cf_chl_opt`) | `blocked`, `challenge` | 24 h |
 | HTTP-200 interstitials: Fastly "Client Challenge" (`/_fs-ch-`, Hornbach), Tencent EdgeOne (`EO_Bot_Ssid`, Fashion Days), Distinct Captcha (evoMAG's hoster), DataDome (`captcha-delivery.com`), PerimeterX (`px-captcha`), Imperva incident page | `blocked`, `challenge`, body never returned | 24 h |
-| Redirect to a CAPTCHA/challenge host or path (`captcha.distinct.ro`, `geo.captcha-delivery.com`, `challenges.cloudflare.com`, `/.well-known/sgcaptcha`) | `blocked`, `captcha_redirect`, **never followed** | 24 h |
+| Redirect to another site's CAPTCHA/challenge host (`captcha.distinct.ro`, `geo.captcha-delivery.com`, `challenges.cloudflare.com`, any host label exactly `captcha`/`challenge`), or to a challenge path on any host (`/…captcha…`, `/_fs-ch-`, `/cdn-cgi/challenge-platform/`; the query string is not looked at) | `blocked`, `captcha_redirect`, **never followed** | 24 h |
 | Connection reset, HTTP/2 stream reset or GOAWAY (Akamai), TLS failure, connect timeout (cel.ro from abroad) | `blocked`, `transport` | 24 h |
 | 429 | `blocked`, `http_429` | `Retry-After`, at least 1 h (at most 7 days) |
 | 511 (eMAG-style bot throttling) | `blocked`, `http_429` | `Retry-After`, at least 24 h |
@@ -105,9 +120,10 @@ The worker should map `CRAWL_ENABLED=false`, `shop_sources.kill_switch` and feat
 | 3 consecutive failures (5xx, timeouts, DNS/refused) | not a block | 1 h, then 2, 4, 8, 16, 24 h while failures continue |
 | A paused host | `blocked: true, blockReason: 'paused', skipped: 'paused'`, no request | — |
 
-A healthy page response (2xx, 3xx, 4xx other than 403/429) resets the failure streak; robots.txt
-responses do not (a CDN-served file says nothing about the shop's pages). Automatic pauses only ever
-extend an existing pause; `pauseDomain(host, hours, reason)` sets one by hand and
+A healthy final page response (2xx, 304, 4xx other than 403/429) resets the failure streak; redirect
+hops do not (an edge that redirects in front of a dead origin must still trip the breaker), and
+neither do robots.txt responses (a CDN-served file says nothing about the shop's pages). Automatic
+pauses only ever extend an existing pause; `pauseDomain(host, hours, reason)` sets one by hand and
 `unpauseDomain(host)` clears it.
 
 False-positive guards: only HTML documents are scanned (never text/plain, XML, CSV, JSON); the
@@ -118,15 +134,23 @@ normal pages, is not a challenge; weak markers (`/_fs-ch-`, `EO_Bot_Ssid`, `_Inc
 ### Retries
 
 Transient failures (5xx without challenge markers, timeouts, refused connections) are retried at
-most twice, after 10 s and 20 s (plus up to 10 % jitter), each attempt waiting for a fresh slot.
-Blocks are never retried. The assisted channel is never retried (the vendor retries, and bills).
+most twice, after 10 s and 20 s (plus up to 10 % jitter), each attempt waiting for a fresh slot and
+re-checking the pause first. Blocks are never retried. The assisted channel is never retried (the
+vendor retries, and bills).
 
 ### Redirects
 
-Followed manually, at most 5 hops, each hop through the same checks (pause, robots.txt of the target,
-slot, budget). Redirects within the same site (`dedeman.ro` → `www.dedeman.ro`, http → https) are
-followed; redirects to another site are returned unfollowed (`errorCode: 'cross_site_redirect'`, with
-the `location` header) so the caller can decide; redirects to CAPTCHA hosts are blocks.
+Followed manually, at most 5 hops, each hop through the same checks (pause, kill switch, crawl
+window, robots.txt of the target, slot, budget). Redirects within the same site (`dedeman.ro` →
+`www.dedeman.ro`, http → https) are followed; redirects to another site are returned unfollowed
+(`errorCode: 'cross_site_redirect'`, with the `location` header) so the caller can decide; redirects
+to CAPTCHA hosts are blocks.
+
+### Aborts
+
+A caller's `signal` stops waiting at once. A request that was already sent is still logged (with
+`errorCode: 'aborted'`); a call aborted before sending anything is logged with `attempt: 0`. An abort
+never caches anything about the shop, and other callers sharing the same robots.txt fetch carry on.
 
 ### Downloads
 
@@ -159,9 +183,10 @@ else if (res.blocked) markSourceBlocked(res.blockReason, res.blockDetail);
 | Dep | Meaning |
 |---|---|
 | `stateStore` (required) | `DomainStateStore`: slots, pauses, failure streaks, daily counters, robots.txt cache |
-| `policyFor(host)` | `DomainPolicy` from `@pretoscop/config/policy` per `URL.host`; default `defaultDomainPolicy(host)` |
+| `policyFor(host)` | `DomainPolicy` from `@pretoscop/config/policy` per canonical `URL.host`; default `defaultDomainPolicy(host)`. Called again for every request (kill switches take effect mid-run) |
+| `crawlEnabled` | global switch; default env `CRAWL_ENABLED` when set, otherwise true |
 | `requestLog` | `{ write(entry: RequestLogEntry) }`; errors in the sink are logged, never thrown |
-| `assisted` | `{ fetch(url, { render, timeoutMs, purpose, shopSlug, signal }) → AssistedFetchResponse }` (M05B) |
+| `assisted` | `{ fetch(url, { render, followRedirects: false, timeoutMs, purpose, shopSlug, signal }) → AssistedFetchResponse }` (M05B) |
 | `logger` | pino-compatible; lines carry `shop`, `source_id`, `run_id` when given in the options |
 | `now`, `sleep`, `random`, `dispatcher`, `userAgent` | test hooks (fake clock, undici `MockAgent`/`H2CClient`) |
 | `botInfoUrl`, `defaultTimeoutMs`, `defaultMaxBytes`, `connectTimeoutMs`, `retry` | defaults: env `BOT_INFO_URL`, 30 000, 15 MiB, 10 000, `{ maxRetries: 2, baseDelayMs: 10 000 }` |
@@ -169,8 +194,8 @@ else if (res.blocked) markSourceBlocked(res.blockReason, res.blockDetail);
 ### `Fetcher`
 
 - `fetchPolite(url, { purpose, shopSlug?, accept?, etag?, lastModified?, timeoutMs?, maxBytes?, signal?, runId?, sourceId? })` → `FetchResult`.
-  `purpose` ∈ `robots | sitemap | listing | product | feed | probe`. Calling it for `/robots.txt` with
-  `purpose: 'robots'` also refreshes the robots.txt cache.
+  `purpose` ∈ `robots | sitemap | listing | product | feed | probe`; `robots` only for `/robots.txt`
+  (it also refreshes the robots.txt cache). An unknown purpose, or `robots` for another path, throws.
 - `isAllowedByRobots(url)` → `boolean` (false when robots.txt cannot be read).
 - `robotsFor(hostOrUrl)` → `RobotsDecisionInfo`: outcome, status, group used, its user-agent lines and
   rules, crawl-delay, sitemaps, ignored generic groups, cache times. A bare host means https.
@@ -186,13 +211,16 @@ Blocked responses never carry a body: a challenge page must never be parsed as d
 |---|---|
 | `robots_disallowed` | robots.txt disallows the URL, or robots.txt is unusable (then `errorCode: 'robots_unavailable'`, and `blocked` when its request was blocked) |
 | `paused` | host paused (also `blocked: true`, `blockReason: 'paused'`) |
-| `outside_allowed_hours`, `budget_exhausted`, `access_off`, `feed_only`, `assisted_unavailable` | policy |
+| `outside_allowed_hours`, `budget_exhausted`, `access_off` (also `CRAWL_ENABLED=false`, with `errorCode: 'crawl_disabled'`), `feed_only`, `assisted_unavailable` | policy |
+
+A skip can also come after some requests of the same call (a redirect target that is paused, a
+pause set while the request waited for its slot); `attempts` then counts the attempts started.
 
 `errorCode` values: `invalid_url`, `unsupported_scheme`, `aborted`, `timeout`, `connect_timeout`,
 `connection_reset`, `http2_reset`, `tls_error`, `tls_certificate`, `dns`, `connection_refused`,
 `network_unreachable`, `protocol_error`, `network`, `body_too_large`, `decode_error`,
-`too_many_redirects`, `cross_site_redirect`, `invalid_redirect`, `robots_unavailable`,
-`invalid_policy`, `assisted_error`.
+`too_many_redirects`, `cross_site_redirect`, `invalid_redirect`, `redirect_disallowed`,
+`robots_unavailable`, `invalid_policy`, `invalid_request`, `crawl_disabled`, `assisted_error`.
 
 Pure helpers are exported too: `detectBlock`, `classifyTransportError`, `detectChallengeRedirect`,
 `parseRetryAfter`, `parseRobotsTxt`, `selectRobotsGroups`, `evaluateRobots`, `normalizeRobotsPath`,
@@ -201,8 +229,9 @@ Pure helpers are exported too: `detectBlock`, `classifyTransportError`, `detectC
 
 ### Request log (`RequestLogEntry`)
 
-One entry per network request (each attempt, each redirect hop, robots.txt included) and one per
-skipped call (`attempt: 0`, no network): `ts, host, url, method, status, durationMs, bytes (wire),
+One entry per network request (each attempt, each redirect hop, robots.txt included, aborted ones
+too) and one per skipped or aborted-before-sending call (`attempt: 0` always means no request was
+sent; `hop` says where in a redirect chain): `ts, host, url, method, status, durationMs, bytes (wire),
 waitMs, purpose, shopSlug?, channel, attempt, hop, blocked, blockReason?, blockDetail?, skipped?,
 error?, errorCode?, robotsGroup?, robotsIgnoredGroups?, notModified?, contentType?, runId?, sourceId?`.
 Unset optional fields are omitted. Suggested table (M01 `request_log`, 30-day retention): one column
@@ -210,9 +239,10 @@ per field, `robots_ignored_groups text[]`, index on `(host, ts)`.
 
 ### `DomainStateStore`
 
-Keys: hosts are `URL.host` (`www.emag.ro`), robots.txt entries are origins (`https://www.emag.ro`).
-Every method must be atomic. `MemoryDomainStateStore` (tests, one process) and `FileDomainStateStore`
-(JSON file with an exclusive lock file; the demo CLI) are included; the worker implements PostgreSQL:
+Keys: hosts are canonical `URL.host` values (`www.emag.ro`, no trailing dot), robots.txt entries are
+origins (`https://www.emag.ro`). Every method must be atomic. `MemoryDomainStateStore` (tests, one
+process) and `FileDomainStateStore` (JSON file with an exclusive lock file, stale locks of dead
+processes broken by an atomic rename; the demo CLI) are included; the worker implements PostgreSQL:
 
 ```sql
 -- fetch_domain_state(host pk, next_slot_at timestamptz not null default '-infinity', paused_until,
@@ -254,17 +284,26 @@ RETURNING requests;
 ```
 
 `waitMs` is computed on the database clock, so processes on machines with slightly different clocks
-still keep the interval. Concurrency 1 per host is enforced inside a process; across processes only
-the interval is (run one crawl worker per host, e.g. pg-boss singleton keys per host).
+still keep the interval; the 100 ms slot margin absorbs differences in round-trip latency. Concurrency
+1 per host is enforced inside a process; across processes only the interval is (run one crawl
+worker per host, e.g. pg-boss singleton keys per host). The fetcher calls `getPause` and `policyFor`
+again for every request (before and after the slot wait), so keep both cheap.
 
 ### Assisted channel (M05B)
 
 For `accessMode: 'assisted'` the same `fetchPolite` call routes requests (robots.txt included) through
-`deps.assisted.fetch(url, { render: policy.assistedRender ?? false, timeoutMs, purpose, shopSlug, signal })`.
-Pause, crawl window, budget, robots.txt, slot interval and the request log apply unchanged
-(`channel: 'assisted'`). The returned body is still scanned: a challenge page or a vendor-reported
-block becomes `blockReason: 'vendor_blocked'` (no shop pause; it counts as a failure, and M05B's
-success-rate auto-pause decides). The vendor's cost ledger and cap belong to M05B.
+`deps.assisted.fetch(url, { render: policy.assistedRender ?? false, followRedirects: false, timeoutMs,
+purpose, shopSlug, signal })`. Pause, crawl window, budget, robots.txt, slot interval and the request
+log apply unchanged (`channel: 'assisted'`). The client must not follow redirects: it returns the 3xx
+with its `location`, and the fetch layer applies its redirect rules (robots.txt of the target,
+same-site only, never a CAPTCHA host) and asks again. If the vendor followed one anyway (`finalUrl`
+differs), the body is dropped unless the target passes those rules (`cross_site_redirect`,
+`redirect_disallowed`). A call that does not answer within `timeoutMs` plus up to 2 s is abandoned
+(`errorCode: 'timeout'`). The returned body is still scanned: a challenge page or any
+vendor-reported block becomes `blockReason: 'vendor_blocked'` (the vendor's own reason goes into
+`blockDetail`). That does not pause the shop at once, but it counts as a failure, so three in a row
+pause it for 1 h (doubling), on top of M05B's success-rate auto-pause. The vendor's cost ledger and
+cap belong to M05B.
 
 ## Demo CLI
 
@@ -275,7 +314,9 @@ pnpm --filter @pretoscop/fetch demo <url> [--purpose <p>] [--paths "/a,/b"] [--c
 Fetches one URL (robots.txt first when needed) with the state file `data/fetch-demo-state.json`
 (git-ignored), so two invocations within 5 s are throttled across processes, and prints the
 User-Agent, status, timing, slot wait, block verdict, and the host's robots.txt decisions with the
-rule that decided each sample path. `--cached` makes no request at all.
+rule that decided each sample path. `--cached` makes no request at all. Because a founder starts it
+by hand for one request, the demo ignores `CRAWL_ENABLED` (it says so when the switch is off); every
+other rule applies.
 
 ## Tests and fixtures
 
@@ -283,7 +324,10 @@ rule that decided each sample path. `--cached` makes no request at all.
 robots parser and matcher, robots status handling through the fetcher, block detection on fixtures,
 transport errors (socket reset, HTTP/2 stream reset and GOAWAY via an h2c server), throttle with a
 fake clock and with real timers, concurrency, crawl windows (overnight), budgets, pauses,
-Retry-After, retries, gzip/br, charsets, size caps and gzip bombs, conditional GET, redirects.
+Retry-After, retries, gzip/br, charsets, size caps and gzip bombs, conditional GET, redirects, and
+`fetcher-safety.test.ts`: request-time re-checks (concurrent callers after a block, a pause, kill
+switch or window change during a slot wait or back-off), canonical hosts, `purpose: 'robots'`
+misuse, aborts, unsendable headers, the assisted channel's timeout and redirect rules.
 
 The files in `test/fixtures/blocks/` and `test/fixtures/robots/` are **synthetic**: hand-written to
 reproduce the markers observed in the 2026-10-27 probes (`docs/research/notes/scraping_feasibility_recon.md`),

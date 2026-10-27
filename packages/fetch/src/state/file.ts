@@ -1,4 +1,4 @@
-import { mkdir, open, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { link, mkdir, open, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { KeyedMutex } from '../mutex';
@@ -84,11 +84,12 @@ export class FileDomainStateStore implements DomainStateStore {
     await rename(tmp, this.filePath);
   }
 
-  private async isStale(): Promise<boolean> {
+  /** True when the lock file at `path` was left by a dead process or is older than `staleLockMs`. */
+  private async isStale(path: string): Promise<boolean> {
     try {
-      const info = await stat(this.lockPath);
+      const info = await stat(path);
       if (Date.now() - info.mtimeMs > this.staleLockMs) return true;
-      const owner = JSON.parse(await readFile(this.lockPath, 'utf8')) as { pid?: unknown };
+      const owner = JSON.parse(await readFile(path, 'utf8')) as { pid?: unknown };
       if (typeof owner.pid === 'number' && owner.pid !== process.pid) {
         try {
           process.kill(owner.pid, 0);
@@ -100,6 +101,27 @@ export class FileDomainStateStore implements DomainStateStore {
     } catch {
       return false; // lock vanished or is being written: just retry
     }
+  }
+
+  /**
+   * Breaks a stale lock without racing another process doing the same: the lock is moved aside
+   * atomically (only one mover wins), then checked again; if what was moved turns out to be a
+   * live lock (another process re-created it in between), it is put back with `link`, which fails
+   * instead of overwriting when a newer lock already exists.
+   */
+  private async breakStaleLock(): Promise<void> {
+    const aside = `${this.lockPath}.stale-${process.pid}-${Math.random().toString(36).slice(2)}`;
+    try {
+      await rename(this.lockPath, aside);
+    } catch {
+      return; // someone else moved or released it
+    }
+    if (await this.isStale(aside)) {
+      await rm(aside, { force: true });
+      return;
+    }
+    await link(aside, this.lockPath).catch(() => undefined);
+    await rm(aside, { force: true });
   }
 
   private async lockFile(): Promise<() => Promise<void>> {
@@ -117,8 +139,8 @@ export class FileDomainStateStore implements DomainStateStore {
       } catch (error) {
         if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
       }
-      if (await this.isStale()) {
-        await rm(this.lockPath, { force: true });
+      if (await this.isStale(this.lockPath)) {
+        await this.breakStaleLock();
         continue;
       }
       if (Date.now() > deadline) throw new Error(`FileDomainStateStore: could not lock ${this.lockPath}`);

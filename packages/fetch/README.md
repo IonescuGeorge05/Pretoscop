@@ -58,6 +58,7 @@ and in the demo, so the decision is visible per shop.
 | robots.txt response | Decision | Cached |
 |---|---|---|
 | 2xx text | parse and obey (first 512 KiB) | 24 h, then revalidated with a conditional GET |
+| 2xx that carries an error or no body (an assisted vendor's partial answer, a redirect the vendor followed to another site) | **nothing allowed** (never "nothing disallowed") | 1 h |
 | 2xx HTML page without rules (soft 404) | nothing disallowed, flagged `htmlBody` | 24 h |
 | 2xx HTML challenge page | **nothing allowed**, shop paused 24 h | 1 h |
 | 3xx | followed up to 5 hops (also to another host, as RFC 9309 says); never to a CAPTCHA host | as the final response |
@@ -85,6 +86,11 @@ A manual `unpauseDomain` also drops a robots.txt result cached while the shop wa
   pause, the shop policy (kill switch, crawl window) and the budget: a pause set by a concurrent
   request or another process, a kill switch flipped during the wait, or a window that closed during
   it cancels the request.
+- The host lock is held until the response has been classified and any pause or failure is in the
+  store, so a request queued behind a slow refusal (a 403 that takes seconds, a connect timeout)
+  sees the pause and is never sent.
+- After robots.txt is fetched, a `Crawl-delay` longer than what its own request reserved pushes the
+  next slot by the difference only (never counted twice on a refresh).
 - Different hosts never wait for each other. Host names are canonical (`SHOP.ro.` is `shop.ro`).
 
 ### When and how much (from the shop registry, `DomainPolicy`)
@@ -100,8 +106,8 @@ A manual `unpauseDomain` also drops a robots.txt result cached while the shop wa
 
 `purpose: 'robots'` is accepted for `/robots.txt` URLs only (anything else throws), so no caller can
 use it to skip robots.txt or the crawl window. The global switch `CRAWL_ENABLED` (env, or the
-`crawlEnabled` dep) set to false turns every call into `skipped: 'access_off'` with
-`errorCode: 'crawl_disabled'`; unset means enabled. The worker should also map
+`crawlEnabled` dep) fails closed: unless it is explicitly on (`1/true/yes/on`), every call becomes
+`skipped: 'access_off'` with `errorCode: 'crawl_disabled'`. The worker should also map
 `shop_sources.kill_switch` and feature flags to `accessMode: 'off'` in `policyFor`, so the fetch layer
 itself refuses those requests.
 
@@ -112,13 +118,16 @@ itself refuses those requests.
 | 403 (vendor in `blockDetail`: Akamai "Access Denied … Reference #", CloudFront "Request blocked", Cloudflare) | `blocked`, `http_403` | 24 h |
 | Cloudflare challenge on any status (`cf-mitigated: challenge`, "Just a moment..." with `_cf_chl_opt`) | `blocked`, `challenge` | 24 h |
 | HTTP-200 interstitials: Fastly "Client Challenge" (`/_fs-ch-`, Hornbach), Tencent EdgeOne (`EO_Bot_Ssid`, Fashion Days), Distinct Captcha (evoMAG's hoster), DataDome (`captcha-delivery.com`), PerimeterX (`px-captcha`), Imperva incident page | `blocked`, `challenge`, body never returned | 24 h |
-| Redirect to another site's CAPTCHA/challenge host (`captcha.distinct.ro`, `geo.captcha-delivery.com`, `challenges.cloudflare.com`, any host label exactly `captcha`/`challenge`), or to a challenge path on any host (`/…captcha…`, `/_fs-ch-`, `/cdn-cgi/challenge-platform/`; the query string is not looked at) | `blocked`, `captcha_redirect`, **never followed** | 24 h |
+| Redirect to a CAPTCHA/challenge host, of another site or of the shop's own (`captcha.distinct.ro`, `geo.captcha-delivery.com`, `challenges.cloudflare.com`, `captcha.shop.ro`: any host label exactly `captcha`/`challenge`), or to a challenge path on any host (`/…captcha…`, `/_fs-ch-`, `/cdn-cgi/challenge-platform/`; the query string is not looked at) | `blocked`, `captcha_redirect`, **never followed** | 24 h |
 | Connection reset, HTTP/2 stream reset or GOAWAY (Akamai), TLS failure, connect timeout (cel.ro from abroad) | `blocked`, `transport` | 24 h |
 | 429 | `blocked`, `http_429` | `Retry-After`, at least 1 h (at most 7 days) |
 | 511 (eMAG-style bot throttling) | `blocked`, `http_429` | `Retry-After`, at least 24 h |
 | 503 without challenge markers | not a block; retried unless `Retry-After` is present | `Retry-After`, at least 1 h, once the call gives up |
 | 3 consecutive failures (5xx, timeouts, DNS/refused) | not a block | 1 h, then 2, 4, 8, 16, 24 h while failures continue |
 | A paused host | `blocked: true, blockReason: 'paused', skipped: 'paused'`, no request | — |
+
+A block anywhere in a redirect chain pauses every host of that chain, so `www.shop.ro` is paused
+when its redirect target `m.shop.ro` serves a challenge.
 
 A healthy final page response (2xx, 304, 4xx other than 403/429) resets the failure streak; redirect
 hops do not (an edge that redirects in front of a dead origin must still trip the breaker), and
@@ -144,13 +153,17 @@ Followed manually, at most 5 hops, each hop through the same checks (pause, kill
 window, robots.txt of the target, slot, budget). Redirects within the same site (`dedeman.ro` →
 `www.dedeman.ro`, http → https) are followed; redirects to another site are returned unfollowed
 (`errorCode: 'cross_site_redirect'`, with the `location` header) so the caller can decide; redirects
-to CAPTCHA hosts are blocks.
+to CAPTCHA hosts are blocks. A chain never switches channel: an assisted chain stays on the vendor
+for every hop and for the robots.txt those hops need; a direct chain returns a redirect to a host
+that may only be read through the assisted channel unfollowed (`errorCode: 'channel_change'`).
 
 ### Aborts
 
-A caller's `signal` stops waiting at once. A request that was already sent is still logged (with
-`errorCode: 'aborted'`); a call aborted before sending anything is logged with `attempt: 0`. An abort
-never caches anything about the shop, and other callers sharing the same robots.txt fetch carry on.
+A caller's `signal` stops waiting at once, also while waiting for a robots.txt fetch started by
+another caller. A request that was already sent is still logged (with `errorCode: 'aborted'`); a call
+aborted before sending anything is logged with `attempt: 0`. The aborted result keeps the attempts
+already sent and the time already waited. An abort never caches anything about the shop, and other
+callers sharing the same robots.txt fetch carry on.
 
 ### Downloads
 
@@ -184,7 +197,7 @@ else if (res.blocked) markSourceBlocked(res.blockReason, res.blockDetail);
 |---|---|
 | `stateStore` (required) | `DomainStateStore`: slots, pauses, failure streaks, daily counters, robots.txt cache |
 | `policyFor(host)` | `DomainPolicy` from `@pretoscop/config/policy` per canonical `URL.host`; default `defaultDomainPolicy(host)`. Called again for every request (kill switches take effect mid-run) |
-| `crawlEnabled` | global switch; default env `CRAWL_ENABLED` when set, otherwise true |
+| `crawlEnabled` | global switch; default env `CRAWL_ENABLED`, off unless explicitly on (fail closed) |
 | `requestLog` | `{ write(entry: RequestLogEntry) }`; errors in the sink are logged, never thrown |
 | `assisted` | `{ fetch(url, { render, followRedirects: false, timeoutMs, purpose, shopSlug, signal }) → AssistedFetchResponse }` (M05B) |
 | `logger` | pino-compatible; lines carry `shop`, `source_id`, `run_id` when given in the options |
@@ -204,7 +217,8 @@ else if (res.blocked) markSourceBlocked(res.blockReason, res.blockDetail);
 `FetchResult`: `url, finalUrl, status (0 = no response), ok (2xx or 304, not blocked), blocked,
 blockReason?, blockDetail?, skipped?, notModified, body (text for textual types), bodyBytes,
 contentType, headers (lower-case), durationMs (network, last attempt), waitedMs (slot waits and
-back-off), channel ('direct' | 'assisted'), attempts (0 when skipped), error?, errorCode?`.
+back-off), channel ('direct' | 'assisted'), attempts (attempts that sent a request; 0 when nothing
+was sent), error?, errorCode?`.
 Blocked responses never carry a body: a challenge page must never be parsed as data.
 
 | `skipped` | Meaning |
@@ -220,7 +234,8 @@ pause set while the request waited for its slot); `attempts` then counts the att
 `connection_reset`, `http2_reset`, `tls_error`, `tls_certificate`, `dns`, `connection_refused`,
 `network_unreachable`, `protocol_error`, `network`, `body_too_large`, `decode_error`,
 `too_many_redirects`, `cross_site_redirect`, `invalid_redirect`, `redirect_disallowed`,
-`robots_unavailable`, `invalid_policy`, `invalid_request`, `crawl_disabled`, `assisted_error`.
+`channel_change`, `robots_unavailable`, `invalid_policy`, `invalid_request`, `crawl_disabled`,
+`assisted_error`.
 
 Pure helpers are exported too: `detectBlock`, `classifyTransportError`, `detectChallengeRedirect`,
 `parseRetryAfter`, `parseRobotsTxt`, `selectRobotsGroups`, `evaluateRobots`, `normalizeRobotsPath`,
@@ -294,7 +309,10 @@ again for every request (before and after the slot wait), so keep both cheap.
 For `accessMode: 'assisted'` the same `fetchPolite` call routes requests (robots.txt included) through
 `deps.assisted.fetch(url, { render: policy.assistedRender ?? false, followRedirects: false, timeoutMs,
 purpose, shopSlug, signal })`. Pause, crawl window, budget, robots.txt, slot interval and the request
-log apply unchanged (`channel: 'assisted'`). The client must not follow redirects: it returns the 3xx
+log apply unchanged (`channel: 'assisted'`). The whole chain stays on the vendor, including
+same-site redirect targets without their own registry entry and the robots.txt they need. A
+robots.txt answer that carries an error or no body is "nothing allowed", never "nothing
+disallowed". The client must not follow redirects: it returns the 3xx
 with its `location`, and the fetch layer applies its redirect rules (robots.txt of the target,
 same-site only, never a CAPTCHA host) and asks again. If the vendor followed one anyway (`finalUrl`
 differs), the body is dropped unless the target passes those rules (`cross_site_redirect`,

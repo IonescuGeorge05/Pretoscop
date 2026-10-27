@@ -68,6 +68,8 @@ export const EnvSchema = z
     // Where the worker reaches the web app for cache revalidation (defaults to PUBLIC_BASE_URL).
     WEB_INTERNAL_URL: optionalString,
     SITE_INDEXABLE: bool.default(false),
+    // Server-side analytics rows (events table: searches, product views). The e2e suite turns them off.
+    EVENTS_ENABLED: bool.default(true),
 
     // Search
     MEILI_URL: z.string().min(1).default('http://localhost:7700'),

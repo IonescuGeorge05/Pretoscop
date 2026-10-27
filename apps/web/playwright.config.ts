@@ -20,6 +20,7 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
-    env: { PUBLIC_BASE_URL: `http://localhost:${PORT}` },
+    // The e2e search index (global setup) and no analytics rows from test traffic.
+    env: { PUBLIC_BASE_URL: `http://localhost:${PORT}`, MEILI_INDEX_PREFIX: 'e2e_', EVENTS_ENABLED: 'false' },
   },
 });

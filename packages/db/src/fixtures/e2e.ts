@@ -46,6 +46,8 @@ export interface E2eFixture {
   offers: Record<string, { offerId: number; total: string }>;
   /** Admin flows (M09): two duplicate products and a review-queue offer whose candidate is `dupA`. */
   admin: { dupA: number; dupB: number; dupBSlug: string; reviewOfferId: number; reviewTitle: string };
+  /** Search, browse, deals and SEO flows (M14–M16): brand Testoscop, see `createSearchFixture`. */
+  search: SearchFixture;
 }
 
 const MARK = '(produs de test E2E)';
@@ -105,6 +107,7 @@ export async function createE2eFixture(db: Db): Promise<E2eFixture> {
   await computeProductStats(db, [productId], today);
 
   const admin = await createAdminFixture(db, shopId, now);
+  const search = await createSearchFixture(db, shopId, now);
 
   const p = await db.execute<{ slug: string }>(sql`SELECT slug FROM products WHERE id = ${productId}`);
   const totals = await db.execute<{ external_id: string; id: string; total: string }>(
@@ -115,6 +118,7 @@ export async function createE2eFixture(db: Db): Promise<E2eFixture> {
     slug: p.rows[0]!.slug,
     offers: Object.fromEntries(totals.rows.map((r) => [r.external_id.slice(PREFIX.length), { offerId: Number(r.id), total: r.total }])),
     admin,
+    search,
   };
 }
 
@@ -177,5 +181,118 @@ export async function dropE2eFixture(db: Db): Promise<number> {
     await db.execute(sql`UPDATE products SET merged_into_id = NULL WHERE id = ANY(${ids}::bigint[])`);
     await db.execute(sql`DELETE FROM products WHERE id = ANY(${ids}::bigint[])`);
   }
+  await db.execute(sql`DELETE FROM brands b WHERE b.slug = ${SEARCH_BRAND.slug} AND NOT EXISTS (SELECT 1 FROM products p WHERE p.brand_id = b.id)`);
   return productIds.length;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Search, browse, deals and SEO (M14–M16)
+
+export const SEARCH_BRAND = { name: 'Testoscop', slug: 'testoscop' } as const;
+
+export interface SearchFixture {
+  brandSlug: string;
+  /** Two live offers, not provisional: indexable (sitemaps, ItemList). */
+  tv: { id: number; slug: string; title: string };
+  /** One offer, no history: listed and searchable, but not indexable. */
+  phone: { id: number; slug: string; title: string };
+  /** 45 days at 2.000 lei, then 1.700 lei for the last 4 days: a verified −15% drop and an all-time low. */
+  deal: { id: number; slug: string; title: string; dropSince: string };
+}
+
+interface SearchProduct {
+  key: 'tv' | 'phone' | 'deal';
+  title: string;
+  category: string;
+  attributes: Record<string, unknown>;
+  offers: Array<{ shop: string; steps: Array<{ daysAgo: number; price: number }> }>;
+}
+
+const SEARCH_PRODUCTS: SearchProduct[] = [
+  {
+    key: 'tv',
+    title: `Televizor Testoscop Vision 55TV1, 139 cm, Smart, 4K Ultra HD ${MARK}`,
+    category: 'televizoare',
+    attributes: { kind: 'tv', screenInches: 55, resolution: '4k' },
+    offers: [
+      { shop: 'emag', steps: [{ daysAgo: 2, price: 2999 }] },
+      { shop: 'itgalaxy', steps: [{ daysAgo: 2, price: 2899 }] },
+    ],
+  },
+  {
+    key: 'phone',
+    title: `Telefon mobil Testoscop Y5, 128GB, 5G, Negru ${MARK}`,
+    category: 'telefoane-mobile',
+    attributes: { kind: 'phone', storageGb: 128, color: 'black', colorRo: 'negru', connectivity: ['5g'] },
+    offers: [{ shop: 'emag', steps: [{ daysAgo: 1, price: 999 }] }],
+  },
+  {
+    key: 'deal',
+    title: `Consola Testoscop Play 5, 1TB ${MARK}`,
+    category: 'console',
+    attributes: { kind: 'console', storageGb: 1024 },
+    offers: [{ shop: 'emag', steps: [{ daysAgo: 45, price: 2000 }, { daysAgo: 4, price: 1700 }] }],
+  },
+];
+
+const slugPart = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+
+async function createSearchFixture(db: Db, shopId: Map<string, number>, now: number): Promise<SearchFixture> {
+  const brand = await db.execute<{ id: string }>(sql`
+    INSERT INTO brands (name, slug) VALUES (${SEARCH_BRAND.name}, ${SEARCH_BRAND.slug})
+    ON CONFLICT (slug) DO UPDATE SET name = brands.name RETURNING id::text`);
+  const brandId = Number(brand.rows[0]!.id);
+  const out: Partial<Record<SearchProduct['key'], { id: number; slug: string; title: string }>> = {};
+  const productIds: number[] = [];
+  for (const p of SEARCH_PRODUCTS) {
+    const ins = await db.execute<{ id: string }>(sql`
+      INSERT INTO products (slug, title, title_ascii, brand_id, category_id, attributes, provisional, created_by)
+      VALUES (${`tmp-e2e-${p.key}-${now}`}, ${p.title}, ${slugPart(p.title).replace(/-/g, ' ')}, ${brandId},
+        (SELECT id FROM categories WHERE slug = ${p.category}), ${JSON.stringify(p.attributes)}::jsonb, false, 'manual')
+      RETURNING id::text`);
+    const id = Number(ins.rows[0]!.id);
+    const slug = `${slugPart(p.title)}-${id}`;
+    await db.execute(sql`UPDATE products SET slug = ${slug} WHERE id = ${id}`);
+    productIds.push(id);
+    out[p.key] = { id, slug, title: p.title };
+    for (const o of p.offers) {
+      const sid = shopId.get(o.shop);
+      if (!sid) throw new Error(`e2e fixture: shop ${o.shop} missing (run make seed)`);
+      const externalId = `${PREFIX}${p.key}-${o.shop}`;
+      // One check a day like the recorder; unchanged checks write no event.
+      for (let d = o.steps[0]!.daysAgo; d >= 0; d--) {
+        const s = o.steps.filter((x) => x.daysAgo >= d).at(-1)!;
+        const r = await recordObservation(db, {
+          shopId: sid,
+          sourceId: null,
+          sourceTier: 1,
+          runId: null,
+          externalId,
+          url: `https://example.com/e2e/${p.key}-${o.shop}`,
+          titleRaw: p.title,
+          titleClean: p.title,
+          attributes: p.attributes,
+          priceBani: bani(s.price),
+          shippingBani: 0,
+          totalBani: bani(s.price),
+          availability: 'in_stock',
+          condition: 'new',
+          contentHash: createHash('sha256').update(`${externalId}|${s.price}`).digest('hex'),
+          observedAt: new Date(d === 0 ? now - 3600_000 : now - d * 86_400_000),
+        });
+        if (r.offerId) await db.execute(sql`UPDATE offers SET product_id = ${id}, match_status = 'manual', matched_at = now() WHERE id = ${r.offerId} AND product_id IS NULL`);
+      }
+    }
+  }
+  const today = bucharestToday();
+  await rollupProducts(db, { productIds, from: addDaysIso(today, -46), to: today });
+  await computeProductStats(db, productIds, today);
+  return { brandSlug: SEARCH_BRAND.slug, tv: out.tv!, phone: out.phone!, deal: { ...out.deal!, dropSince: addDaysIso(today, -4) } };
 }

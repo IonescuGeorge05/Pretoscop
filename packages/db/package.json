@@ -6,7 +6,8 @@
   "exports": {
     ".": "./src/index.ts",
     "./testing": "./src/testing.ts",
-    "./schema": "./src/schema/index.ts"
+    "./schema": "./src/schema/index.ts",
+    "./migrator": "./src/migrator.ts"
   },
   "scripts": {
     "lint": "eslint src",
@@ -15,7 +16,9 @@
     "migrate": "tsx src/cli/migrate.ts",
     "seed": "tsx src/cli/seed.ts",
     "generate": "drizzle-kit generate",
-    "studio": "drizzle-kit studio"
+    "studio": "drizzle-kit studio",
+    "perf:rollup": "tsx src/cli/perf-rollup.ts",
+    "e2e:fixture": "tsx src/cli/e2e-fixture.ts"
   },
   "devDependencies": {
     "@types/pg": "^8.23.1",
@@ -23,6 +26,7 @@
   },
   "dependencies": {
     "@pretoscop/config": "workspace:*",
+    "@pretoscop/core": "workspace:*",
     "drizzle-orm": "0.45.4",
     "pg": "^8.23.1"
   }

@@ -12,7 +12,13 @@
     "shops:sync": "tsx src/cli/shops-sync.ts",
     "run:source": "tsx src/cli/run-source.ts",
     "replay": "tsx src/cli/replay.ts",
-    "backup": "tsx src/cli/backup.ts"
+    "backup": "tsx src/cli/backup.ts",
+    "stats:show": "tsx src/cli/stats-show.ts",
+    "match:run": "tsx src/cli/match-run.ts",
+    "match:eval": "tsx src/cli/match-eval.ts",
+    "match:eval:build": "tsx src/cli/match-eval-build.ts",
+    "match:label": "tsx src/cli/match-label.ts",
+    "compare:live": "tsx src/cli/compare-live.ts"
   },
   "devDependencies": {
     "pino-pretty": "^13.2.0"
@@ -22,6 +28,7 @@
     "@pretoscop/core": "workspace:*",
     "@pretoscop/db": "workspace:*",
     "@pretoscop/extractors": "workspace:*",
+    "@pretoscop/fetch": "workspace:*",
     "@pretoscop/storage": "workspace:*",
     "cron-parser": "^5.10.2",
     "drizzle-orm": "0.45.4",

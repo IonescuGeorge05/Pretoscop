@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { isIP } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
 import { z } from 'zod';
 
@@ -19,6 +20,35 @@ const optionalString = z
 
 const DEV_SECRET = 'dev-only-insecure-secret-change-me';
 
+/** `203.0.113.10`, `2001:db8::1`, or a CIDR prefix such as `203.0.113.0/28` or `2001:db8::/64`. */
+export function isIpOrCidr(value: string): boolean {
+  const [addr, prefix, ...rest] = value.split('/');
+  if (rest.length > 0 || !addr) return false;
+  const family = isIP(addr);
+  if (family === 0) return false;
+  if (prefix === undefined) return true;
+  if (!/^\d{1,3}$/.test(prefix)) return false;
+  return Number(prefix) <= (family === 4 ? 32 : 128);
+}
+
+/** Comma-separated IP addresses / CIDR prefixes; every entry must be valid. */
+const ipList = z
+  .string()
+  .default('')
+  .transform((v) =>
+    v
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  )
+  .superRefine((items, ctx) => {
+    for (const item of items) {
+      if (!isIpOrCidr(item)) {
+        ctx.addIssue({ code: 'custom', message: `"${item}" is not an IPv4/IPv6 address or CIDR prefix` });
+      }
+    }
+  });
+
 export const EnvSchema = z
   .object({
     APP_ENV: z.enum(['dev', 'test', 'staging', 'prod']).default('dev'),
@@ -35,6 +65,8 @@ export const EnvSchema = z
 
     // Public site
     PUBLIC_BASE_URL: z.string().min(1).default('http://localhost:3000'),
+    // Where the worker reaches the web app for cache revalidation (defaults to PUBLIC_BASE_URL).
+    WEB_INTERNAL_URL: optionalString,
     SITE_INDEXABLE: bool.default(false),
 
     // Search
@@ -43,6 +75,8 @@ export const EnvSchema = z
 
     // Crawler identity and politeness (CLAUDE.md non-negotiable rules)
     BOT_INFO_URL: z.string().min(1).default('https://pretoscop.ro/bot'),
+    /** Fixed crawler egress IPs published on /bot and /bot/ips.json (empty until setup A4). */
+    BOT_EGRESS_IPS: ipList,
     CRAWL_ENABLED: bool.default(false),
     FETCH_DEFAULT_MIN_INTERVAL_MS: int(5000),
     FETCH_TIMEOUT_MS: int(30000),
@@ -111,8 +145,9 @@ export const EnvSchema = z
     PROFITSHARE_API_KEY: optionalString,
 
     // Analytics and monitoring
-    PLAUSIBLE_DOMAIN: optionalString,
-    PLAUSIBLE_SCRIPT_URL: optionalString,
+    NEXT_PUBLIC_PLAUSIBLE_DOMAIN: optionalString,
+    NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL: optionalString,
+    NEXT_PUBLIC_MEDIA_BASE_URL: optionalString,
     SENTRY_DSN: optionalString,
     METRICS_PORT: int(9464),
   })
@@ -132,18 +167,18 @@ let cached: Env | undefined;
 
 /** Walks up from `start` to the directory holding `pnpm-workspace.yaml`. */
 export function findRepoRoot(start: string = process.cwd()): string {
-  let dir = resolve(start);
+  let dir = resolve(/*turbopackIgnore: true*/ start);
   for (;;) {
-    if (existsSync(join(dir, 'pnpm-workspace.yaml'))) return dir;
+    if (existsSync(join(/*turbopackIgnore: true*/ dir, 'pnpm-workspace.yaml'))) return dir;
     const parent = dirname(dir);
-    if (parent === dir) return resolve(start);
+    if (parent === dir) return resolve(/*turbopackIgnore: true*/ start);
     dir = parent;
   }
 }
 
 /** Loads the repository-root `.env` into `process.env` without overriding variables already set. */
 export function loadRootEnvFile(start?: string): void {
-  const file = join(findRepoRoot(start), '.env');
+  const file = join(/*turbopackIgnore: true*/ findRepoRoot(start), '.env');
   if (!existsSync(file)) return;
   try {
     process.loadEnvFile(file);
@@ -171,5 +206,5 @@ export function resetEnvCache(): void {
 
 /** Resolves a path relative to the repository root (used for BLOB_FS_ROOT and similar). */
 export function repoPath(...parts: string[]): string {
-  return join(findRepoRoot(), ...parts);
+  return join(/*turbopackIgnore: true*/ findRepoRoot(), ...parts);
 }

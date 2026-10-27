@@ -26,6 +26,7 @@ export interface OfferObservation {
   brandName?: string | null;
   mpnRaw?: string | null;
   mpnNorm?: string | null;
+  mpnSource?: 'field' | 'title' | null;
   gtinRaw?: string | null;
   gtin14?: string | null;
   categoryRaw?: string | null;
@@ -105,7 +106,7 @@ export async function recordObservation(
     const res = await tx.execute<UpsertRow>(sql`
       INSERT INTO offers (
         shop_id, source_id, source_tier, external_id, url, affiliate_url,
-        title_raw, title_clean, title_ascii, brand_raw, brand_name, mpn_raw, mpn_norm,
+        title_raw, title_clean, title_ascii, brand_raw, brand_name, mpn_raw, mpn_norm, mpn_source,
         gtin_raw, gtin14, category_raw, attributes,
         price, old_price, shop_lowest_30d, currency, fx_rate,
         shipping_cost, shipping_note, shipping_estimated, total_price,
@@ -116,7 +117,7 @@ export async function recordObservation(
       ) VALUES (
         ${o.shopId}, ${o.sourceId}, ${o.sourceTier}, ${o.externalId}, ${o.url}, ${o.affiliateUrl ?? null},
         ${o.titleRaw}, ${o.titleClean ?? null}, ${o.titleAscii ?? null}, ${o.brandRaw ?? null},
-        ${o.brandName ?? null}, ${o.mpnRaw ?? null}, ${o.mpnNorm ?? null},
+        ${o.brandName ?? null}, ${o.mpnRaw ?? null}, ${o.mpnNorm ?? null}, ${o.mpnSource ?? null},
         ${o.gtinRaw ?? null}, ${o.gtin14 ?? null}, ${o.categoryRaw ?? null}, ${attrs}::jsonb,
         ${price}, ${oldPrice}, ${lowest}, ${o.currency ?? 'RON'}, ${o.fxRate ?? null},
         ${shipping}, ${o.shippingNote ?? null}, ${o.shippingEstimated ?? true}, ${total},
@@ -135,8 +136,13 @@ export async function recordObservation(
         title_ascii = COALESCE(EXCLUDED.title_ascii, offers.title_ascii),
         brand_raw = COALESCE(EXCLUDED.brand_raw, offers.brand_raw),
         brand_name = COALESCE(EXCLUDED.brand_name, offers.brand_name),
-        mpn_raw = COALESCE(EXCLUDED.mpn_raw, offers.mpn_raw),
-        mpn_norm = COALESCE(EXCLUDED.mpn_norm, offers.mpn_norm),
+        -- A field MPN (structured data, slug) always beats a title guess; a guess never replaces a field MPN.
+        mpn_raw = CASE WHEN EXCLUDED.mpn_source = 'field' OR offers.mpn_source IS DISTINCT FROM 'field'
+                       THEN COALESCE(EXCLUDED.mpn_raw, offers.mpn_raw) ELSE offers.mpn_raw END,
+        mpn_norm = CASE WHEN EXCLUDED.mpn_source = 'field' OR offers.mpn_source IS DISTINCT FROM 'field'
+                        THEN COALESCE(EXCLUDED.mpn_norm, offers.mpn_norm) ELSE offers.mpn_norm END,
+        mpn_source = CASE WHEN EXCLUDED.mpn_source = 'field' OR offers.mpn_source IS DISTINCT FROM 'field'
+                          THEN COALESCE(EXCLUDED.mpn_source, offers.mpn_source) ELSE offers.mpn_source END,
         gtin_raw = COALESCE(EXCLUDED.gtin_raw, offers.gtin_raw),
         gtin14 = COALESCE(EXCLUDED.gtin14, offers.gtin14),
         category_raw = COALESCE(EXCLUDED.category_raw, offers.category_raw),
@@ -162,6 +168,10 @@ export async function recordObservation(
           WHEN EXCLUDED.identity_hash IS NOT NULL
            AND offers.identity_hash IS DISTINCT FROM EXCLUDED.identity_hash THEN 'pending'
           ELSE offers.match_status END,
+        matched_at = CASE
+          WHEN EXCLUDED.identity_hash IS NOT NULL
+           AND offers.identity_hash IS DISTINCT FROM EXCLUDED.identity_hash THEN NULL
+          ELSE offers.matched_at END,
         last_seen_at = EXCLUDED.last_seen_at,
         last_checked_at = EXCLUDED.last_checked_at,
         price_changed_at = CASE

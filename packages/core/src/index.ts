@@ -143,3 +143,11 @@ export {
   isAcceptedOffer,
   normalizeOffer,
 } from './normalize';
+
+// M07/M08 (lead): verdicts, discount facts, anomaly guards, taxonomy, matching
+export * from './verdict';
+export * from './discount';
+export * from './anomaly';
+export * from './taxonomy';
+export * from './matching';
+export * from './matching-eval';

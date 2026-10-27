@@ -5,3 +5,8 @@ export * from './matching';
 export * from './system';
 export * from './crawl';
 export * from './relations';
+export * from './events';
+export * from './quality';
+export * from './auth';
+export * from './contact';
+export * from './clicks';

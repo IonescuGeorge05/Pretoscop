@@ -6,6 +6,7 @@ slug: emag
 name: eMAG
 domain: emag.ro
 website_url: https://www.emag.ro
+search_url: "https://www.emag.ro/search/{q}"
 hosts: [www.emag.ro]
 kind: marketplace_host
 status: active

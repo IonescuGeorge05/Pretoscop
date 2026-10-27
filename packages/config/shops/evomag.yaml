@@ -2,6 +2,7 @@ slug: evomag
 name: "evoMAG"
 domain: evomag.ro
 website_url: https://www.evomag.ro
+search_url: "https://www.evomag.ro/?sn.q={q}"
 kind: retail
 status: blocked
 access_mode: off

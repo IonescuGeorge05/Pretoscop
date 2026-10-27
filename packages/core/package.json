@@ -5,6 +5,11 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./verdict": "./src/verdict.ts",
+    "./discount": "./src/discount.ts",
+    "./anomaly": "./src/anomaly.ts",
+    "./taxonomy": "./src/taxonomy.ts",
+    "./matching": "./src/matching.ts",
     "./hash": "./src/hash.ts"
   },
   "scripts": {

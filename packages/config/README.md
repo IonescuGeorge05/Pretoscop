@@ -7,6 +7,26 @@ Contract:
   is documented in the root `.env.example`. `loadRootEnvFile()` loads the repository-root `.env`.
 - `@pretoscop/config/logger`: `createLogger(name)` returns a pino JSON logger. Source jobs bind
   `source_id`, `run_id` and `shop` on a child logger.
+- `BOT_EGRESS_IPS` (M17): comma-separated IPv4/IPv6 addresses or CIDR prefixes of the crawler's
+  fixed egress, parsed to `string[]`; an invalid entry fails `getEnv()` with the offending value
+  (`isIpOrCidr()` is exported). Published on `/bot` and `/bot/ips.json`.
+
+## Legal and consent texts (M17)
+
+`@pretoscop/config/legal-texts` (also re-exported from the root) is pure data, safe in client
+components:
+
+- `legalTexts.alertConsent.v1` (price-alert checkbox for M19: explicit consent for the chosen
+  product, double opt-in, unsubscribe in every email, link to `/confidentialitate#alerte`) and
+  `legalTexts.analyticsConsent.v1` (the consent banner). `currentVersion` names the version shown
+  today; `currentConsentText(name)` returns it; `consentTextByKey('alertConsent.v1')` resolves a
+  stored key. Store the key with every consent (`alerts.consent_text_version`).
+- A published text is never edited: add `v2`, move `currentVersion`, keep `v1` for the evidence.
+  `reviewed` turns true only after the lawyer review (setup B5).
+- `legalDocuments`: version, date and kind (`legal` or `trust`) of each public page;
+  `legalContacts` (privacy@, bot@) and `supervisoryAuthority` (ANSPDCP).
+- Tests: `test/legal-texts.test.ts` (versions present, keys consistent, required content, no
+  cedilla diacritics).
 
 ## Shop registry (M04)
 

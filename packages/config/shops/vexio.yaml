@@ -2,6 +2,7 @@ slug: vexio
 name: "Vexio"
 domain: vexio.ro
 website_url: https://www.vexio.ro
+search_url: "https://www.vexio.ro/search/?q={q}"
 kind: retail
 status: blocked
 access_mode: off

@@ -92,6 +92,8 @@ export const ShopSchema = z
     access_mode: z.enum(['direct', 'assisted', 'feed_only', 'off']),
     trust_tier: z.number().int().min(1).max(3).default(2),
     categories: z.array(z.string()).default([]),
+    /** The shop's own search page for users (`{q}` = URL-encoded query); never fetched by us. */
+    search_url: z.string().regex(/^https:\/\/[^\s]+\{q\}/, 'expected https URL with {q}').optional(),
     legal: z
       .object({
         basis_ref: z.string().nullable().default(null),

@@ -2,6 +2,7 @@ slug: mediagalaxy
 name: "Media Galaxy"
 domain: mediagalaxy.ro
 website_url: https://www.mediagalaxy.ro
+search_url: "https://mediagalaxy.ro/cauta/?q={q}"
 kind: retail
 status: blocked
 access_mode: off

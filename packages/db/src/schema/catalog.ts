@@ -86,6 +86,7 @@ export const products = pgTable(
     familyId: bigint('family_id', { mode: 'number' }).references(() => productFamilies.id),
     mpn: text('mpn'),
     mpnNorm: text('mpn_norm'),
+    mpnSource: text('mpn_source'),
     attributes: jsonb('attributes').$type<Record<string, unknown>>().notNull().default({}),
     primaryImageId: bigint('primary_image_id', { mode: 'number' }),
     status: text('status').$type<ProductStatus>().notNull().default('active'),

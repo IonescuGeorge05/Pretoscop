@@ -61,6 +61,8 @@ export const shops = pgTable(
     crawlPolicy: jsonb('crawl_policy').$type<CrawlPolicyJson>().notNull().default({}),
     vatIncludedDefault: boolean('vat_included_default').notNull().default(true),
     legalNotes: text('legal_notes'),
+    /** Plain search link (`{q}` placeholder) for the "check also at" block on product pages. */
+    searchUrlTemplate: text('search_url_template'),
     createdAt: ts('created_at').notNull().defaultNow(),
     updatedAt: ts('updated_at')
       .notNull()

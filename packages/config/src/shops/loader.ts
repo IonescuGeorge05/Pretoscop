@@ -1,11 +1,11 @@
 import { readdirSync, readFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse as parseYaml } from 'yaml';
 import { type DomainPolicy, defaultDomainPolicy } from '../policy';
 import { ShopSchema, type ShopConfig } from './schema';
 
-export const SHOPS_DIR = fileURLToPath(new URL('../../shops/', import.meta.url));
+export const SHOPS_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'shops');
 
 export class ShopRegistryError extends Error {
   constructor(public readonly problems: string[]) {

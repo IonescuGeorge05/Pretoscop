@@ -21,8 +21,10 @@ export const sourceRunJob = defineJob<{ sourceId: number; trigger?: 'schedule' |
   name: SOURCE_RUN,
   queue: { retryLimit: 1, retryDelay: 600, expireInSeconds: 6 * 3600, deleteAfterSeconds: 14 * 86400 },
   work: { localConcurrency: 6, localGroupConcurrency: 1, pollingIntervalSeconds: 5 },
-  handler: async (job, { db, env, log, services }) => {
-    await runSource({ db, env, log, ...services }, job.data.sourceId, { trigger: job.data.trigger ?? 'schedule' });
+  handler: async (job, { db, env, log, boss, services }) => {
+    const out = await runSource({ db, env, log, ...services }, job.data.sourceId, { trigger: job.data.trigger ?? 'schedule' });
+    // New or changed offers need matching; matching then re-rolls up the products it touched.
+    if ((out.touchedOffers?.length ?? 0) > 0) await boss.send('match.pending', {}, { singletonKey: 'match' });
   },
 });
 

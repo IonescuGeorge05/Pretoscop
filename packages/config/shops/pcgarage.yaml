@@ -2,6 +2,7 @@ slug: pcgarage
 name: "PC Garage"
 domain: pcgarage.ro
 website_url: https://www.pcgarage.ro
+search_url: "https://www.pcgarage.ro/cauta/{q}/"
 kind: retail
 status: blocked
 access_mode: off

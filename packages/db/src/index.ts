@@ -1,5 +1,4 @@
 export { createDb, createPool, type Db } from './client';
-export { runMigrations, MIGRATIONS_FOLDER } from './migrator';
 export { baniToNumeric, numericToBani, nullableBaniToNumeric } from './money';
 export * from './schema/index';
 export * from './queries/offers';
@@ -8,3 +7,10 @@ export * from './queries/flags';
 export * from './queries/maintenance';
 export { seedDev } from './seed';
 export * from './queries/crawl';
+export * from './queries/rollup';
+export * from './queries/quarantine';
+export * from './queries/outliers';
+// Query helpers re-exported so apps use the same drizzle-orm instance as the schema.
+export { and, asc, count, desc, eq, gt, gte, ilike, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from 'drizzle-orm';
+export * from './queries/matching';
+export * from './queries/admin';

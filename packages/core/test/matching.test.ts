@@ -56,6 +56,17 @@ describe('scorePair', () => {
     expect(scorePair(side('Apple iPhone 17 Pro 256GB', { brand: 'Apple' }), side('Apple iPhone 17 Pro Max 256GB', { brand: 'Apple' })).conflicts).toContain('edition');
   });
 
+  it('found by the eval set: S26 vs S26+, 4G vs 5G, a list comma before a capacity', () => {
+    expect(tokenSets('Samsung Galaxy S26+, 256GB').edition).toEqual(new Set(['plus']));
+    expect(tokenSets('Laptop 512GB SSD+2TB HDD').edition).toEqual(new Set());
+    expect(scorePair(side('Telefon mobil Samsung Galaxy S26, 256GB'), side('Telefon mobil Samsung Galaxy S26+, 256GB')).conflicts).toContain('edition');
+    expect(
+      scorePair(side('Galaxy A17, 128GB, 5G', { attributes: { connectivity: ['5g', 'dual_sim'] } }), side('Galaxy A17, 128GB, 4G', { attributes: { connectivity: ['4g'] } })).conflicts,
+    ).toContain('network 5g≠4g');
+    expect(tokenSets('Laptop Blackview Acebook 10,16GB DDR4').model).toEqual(new Set(['10']));
+    expect(tokenSets('Telefon 6,7 inch').all.has('67inch')).toBe(true);
+  });
+
   it('title-only scores stay below auto-accept', () => {
     const s = scorePair(side('Samsung Galaxy S26 FE 128GB Blueberry'), side('Telefon mobil Samsung Galaxy S26 FE, 128GB, 5G, Blueberry'));
     expect(s.conflicts).toEqual([]);

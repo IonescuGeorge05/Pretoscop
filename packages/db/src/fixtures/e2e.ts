@@ -168,6 +168,9 @@ export async function dropE2eFixture(db: Db): Promise<number> {
     UNION SELECT id::text FROM products WHERE title = ${E2E_TITLE} OR title LIKE ${`%${MARK}`}
   `);
   const productIds = products.rows.map((r) => Number(r.id));
+  // Accounts of the alert e2e flows (M19); their alerts go with the products below anyway.
+  await db.execute(sql`DELETE FROM consent_records WHERE user_id IN (SELECT id FROM users WHERE email LIKE ${E2E_ALERT_EMAIL_LIKE})`);
+  await db.execute(sql`DELETE FROM users WHERE email LIKE ${E2E_ALERT_EMAIL_LIKE}`);
   await db.execute(sql`DELETE FROM clicks WHERE offer_id IN (SELECT id FROM offers WHERE external_id LIKE ${like})`);
   await db.execute(sql`DELETE FROM offer_aliases WHERE external_id LIKE ${like}`);
   await db.execute(sql`DELETE FROM offers WHERE external_id LIKE ${like}`);
@@ -177,5 +180,141 @@ export async function dropE2eFixture(db: Db): Promise<number> {
     await db.execute(sql`UPDATE products SET merged_into_id = NULL WHERE id = ANY(${ids}::bigint[])`);
     await db.execute(sql`DELETE FROM products WHERE id = ANY(${ids}::bigint[])`);
   }
+  return productIds.length;
+}
+
+// ---------------------------------------------------------------------------------------------
+// Price alerts (M19): a separate throwaway product, so a synthetic price drop never disturbs the
+// product-page fixture above. Same markers (`e2e-fixture-` ids, "(produs de test E2E)" title), so
+// `dropE2eFixture` removes it too; `dropAlertsFixture` removes only this one.
+
+/** Test addresses of the alert flows: `alerte-e2e-…@pretoscop.test`. */
+export const E2E_ALERT_EMAIL_LIKE = 'alerte-e2e-%@pretoscop.test';
+const ALERTS_PREFIX = `${PREFIX}alerts-`;
+export const E2E_ALERTS_TITLE = `Telefon mobil Testoscop Z3, 256GB, 12GB RAM, Verde ${MARK}`;
+const ALERT_OFFERS = [
+  { key: 'a', shop: 'itgalaxy', price: 1499 },
+  { key: 'b', shop: 'forit', price: 1549 },
+];
+
+export interface E2eAlertsFixture {
+  productId: number;
+  slug: string;
+  offers: Record<string, { offerId: number; total: string }>;
+  /** `alerts.email.enabled` before the fixture turned it on (restored by the drop). */
+  flagWas: boolean;
+}
+
+async function observeAlertOffer(db: Db, shopId: number, key: string, lei: number, observedAt: Date): Promise<number> {
+  const priceBani = bani(lei);
+  const r = await recordObservation(db, {
+    shopId,
+    sourceId: null,
+    sourceTier: 1,
+    runId: null,
+    externalId: `${ALERTS_PREFIX}${key}`,
+    url: `https://example.com/e2e/alerts-${key}`,
+    titleRaw: E2E_ALERTS_TITLE,
+    titleClean: E2E_ALERTS_TITLE,
+    attributes: { kind: 'phone', storageGb: 256, ramGb: 12, color: 'green', colorRo: 'verde' },
+    priceBani,
+    shippingBani: 0,
+    totalBani: priceBani,
+    availability: 'in_stock',
+    condition: 'new',
+    contentHash: createHash('sha256').update(`alerts|${key}|${lei}`).digest('hex'),
+    observedAt,
+  });
+  return r.offerId!;
+}
+
+export async function createAlertsFixture(db: Db): Promise<E2eAlertsFixture> {
+  const flag = await db.execute<{ enabled: boolean }>(sql`SELECT enabled FROM feature_flags WHERE key = 'alerts.email.enabled'`);
+  const flagWas = flag.rows[0]?.enabled ?? false;
+  await dropAlertsFixture(db, { emailHashes: [] });
+  const shops = await db.execute<{ slug: string; id: string }>(sql`SELECT slug, id::text FROM shops WHERE slug IN ('itgalaxy','forit')`);
+  const shopId = new Map(shops.rows.map((r) => [r.slug, Number(r.id)]));
+  const ids: Record<string, number> = {};
+  for (const o of ALERT_OFFERS) {
+    const sid = shopId.get(o.shop);
+    if (!sid) throw new Error(`e2e alerts fixture: shop ${o.shop} missing (run make seed / shops:sync)`);
+    ids[o.key] = await observeAlertOffer(db, sid, o.key, o.price, new Date(Date.now() - 3600_000));
+  }
+  const productId = await decideManually(db, ids.a!, { kind: 'new_product' }, 'e2e-fixture');
+  if (!productId) throw new Error('e2e alerts fixture: product not created');
+  await decideManually(db, ids.b!, { kind: 'accept', productId }, 'e2e-fixture');
+  await db.execute(sql`UPDATE products SET provisional = true WHERE id = ${productId}`);
+  const today = bucharestToday();
+  await rollupProducts(db, { productIds: [productId], from: addDaysIso(today, -1), to: today });
+  await computeProductStats(db, [productId], today);
+  await db.execute(sql`
+    INSERT INTO feature_flags (key, enabled, description) VALUES ('alerts.email.enabled', true, 'Price alert emails (M19)')
+    ON CONFLICT (key) DO UPDATE SET enabled = true, updated_at = now()`);
+  const p = await db.execute<{ slug: string }>(sql`SELECT slug FROM products WHERE id = ${productId}`);
+  const totals = await db.execute<{ external_id: string; id: string; total: string }>(
+    sql`SELECT external_id, id::text, total_price::text AS total FROM offers WHERE external_id LIKE ${`${ALERTS_PREFIX}%`}`,
+  );
+  return {
+    productId,
+    slug: p.rows[0]!.slug,
+    offers: Object.fromEntries(totals.rows.map((r) => [r.external_id.slice(ALERTS_PREFIX.length), { offerId: Number(r.id), total: r.total }])),
+    flagWas,
+  };
+}
+
+/** A synthetic price change of one fixture offer (test data only), observed now, re-rolled up. */
+export async function alertsFixturePrice(db: Db, key: string, lei: number): Promise<{ offerId: number; total: string }> {
+  const o = await db.execute<{ shop_id: string; product_id: string }>(sql`SELECT shop_id::text, product_id::text FROM offers WHERE external_id = ${`${ALERTS_PREFIX}${key}`}`);
+  const row = o.rows[0];
+  if (!row) throw new Error(`e2e alerts fixture: offer ${key} missing`);
+  const offerId = await observeAlertOffer(db, Number(row.shop_id), key, lei, new Date());
+  const today = bucharestToday();
+  await rollupProducts(db, { productIds: [Number(row.product_id)], from: today, to: today });
+  await computeProductStats(db, [Number(row.product_id)], today);
+  const t = await db.execute<{ total: string }>(sql`SELECT total_price::text AS total FROM offers WHERE id = ${offerId}`);
+  return { offerId, total: t.rows[0]!.total };
+}
+
+/** What the database holds for a test address (assertions of the e2e flows). */
+export async function alertsFixtureState(db: Db, email: string): Promise<Record<string, unknown>> {
+  const u = await db.execute<{ id: string; email_verified: boolean }>(sql`SELECT id, email_verified FROM users WHERE lower(email) = lower(${email})`);
+  const userId = u.rows[0]?.id ?? null;
+  const alerts = userId
+    ? await db.execute(sql`
+        SELECT id::text, status, kind, target_price::text, channel, consent_text_version, consent_ip_hash IS NOT NULL AS consent_ip_hashed,
+          confirmed_at IS NOT NULL AS confirmed, confirm_method, confirm_ip_hash IS NOT NULL AS confirm_ip_hashed, last_notified_total::text
+        FROM alerts WHERE user_id = ${userId} ORDER BY id`)
+    : { rows: [] };
+  const sends = userId ? await db.execute(sql`SELECT status, total::text, reason, simulated FROM alert_sends WHERE user_id = ${userId} ORDER BY id`) : { rows: [] };
+  return { userId, emailVerified: u.rows[0]?.email_verified ?? null, alerts: alerts.rows, sends: sends.rows };
+}
+
+/** Consent records and suppressions of test addresses, by their hashes (users may be gone). */
+export async function alertsFixtureEvidence(db: Db, emailHashes: string[]): Promise<Record<string, unknown>> {
+  const h = sql.param(emailHashes);
+  const consents = await db.execute(sql`
+    SELECT purpose, text_version, given_ip_hash IS NOT NULL AS given_ip_hashed, confirmed_at IS NOT NULL AS confirmed, confirm_method,
+      withdrawn_at IS NOT NULL AS withdrawn, withdraw_method
+    FROM consent_records WHERE email_hash = ANY(${h}::text[]) ORDER BY id`);
+  const suppressions = await db.execute(sql`SELECT reason FROM email_suppressions WHERE email_hash = ANY(${h}::text[])`);
+  return { consents: consents.rows, suppressions: suppressions.rows };
+}
+
+/** Removes the alert fixture: test accounts, their evidence and suppressions, the product; restores the flag. */
+export async function dropAlertsFixture(db: Db, opts: { emailHashes: string[]; restoreFlag?: boolean }): Promise<number> {
+  const h = sql.param(opts.emailHashes);
+  await db.execute(sql`DELETE FROM consent_records WHERE user_id IN (SELECT id FROM users WHERE email LIKE ${E2E_ALERT_EMAIL_LIKE}) OR email_hash = ANY(${h}::text[])`);
+  await db.execute(sql`DELETE FROM email_suppressions WHERE email_hash = ANY(${h}::text[])`);
+  await db.execute(sql`DELETE FROM users WHERE email LIKE ${E2E_ALERT_EMAIL_LIKE}`);
+  const like = `${ALERTS_PREFIX}%`;
+  const products = await db.execute<{ id: string }>(sql`
+    SELECT DISTINCT product_id::text AS id FROM offers WHERE external_id LIKE ${like} AND product_id IS NOT NULL
+    UNION SELECT id::text FROM products WHERE title = ${E2E_ALERTS_TITLE}`);
+  const productIds = products.rows.map((r) => Number(r.id));
+  await db.execute(sql`DELETE FROM clicks WHERE offer_id IN (SELECT id FROM offers WHERE external_id LIKE ${like})`);
+  await db.execute(sql`DELETE FROM offer_aliases WHERE external_id LIKE ${like}`);
+  await db.execute(sql`DELETE FROM offers WHERE external_id LIKE ${like}`);
+  if (productIds.length) await db.execute(sql`DELETE FROM products WHERE id = ANY(${sql.param(productIds)}::bigint[])`);
+  if (opts.restoreFlag !== undefined) await db.execute(sql`UPDATE feature_flags SET enabled = ${opts.restoreFlag}, updated_at = now() WHERE key = 'alerts.email.enabled'`);
   return productIds.length;
 }

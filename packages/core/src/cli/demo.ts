@@ -139,6 +139,7 @@ function main(): number {
           attributes,
           mpnCandidates: mpn.map((c) => c.norm),
           isBundle: bundle.isBundle,
+          bundleKind: bundle.kind,
           bundleReason: bundle.reason,
           isAccessory: accessory.isAccessory,
           condition,
@@ -157,7 +158,7 @@ function main(): number {
     [
       'brand',
       brand
-        ? `${brand.name}  (via ${brand.via}${brand.line ? ` "${brand.line}"` : ''}, confidence ${brand.confidence})`
+        ? `${brand.name}  (via ${brand.via}${brand.line ? ` "${brand.line}"` : ''}${brand.guess ? `, unknown brand guessed by ${brand.guess}` : ''}, confidence ${brand.confidence})`
         : '–',
     ],
     ['attributes', describeAttributes(attributes)],

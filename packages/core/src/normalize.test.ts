@@ -256,6 +256,36 @@ describe('normalizeOffer: identifiers', () => {
     expect(gtinAsMpn.warnings).toContain('mpn_looks_like_gtin');
   });
 
+  it('exposes how an unknown title brand was read', () => {
+    const marked = accepted(raw({ title: 'Consola Retro, BYONDSELF®, 128G, 4K, Negru' }));
+    expect(marked).toMatchObject({
+      brandName: 'Byondself',
+      brandKnown: false,
+      brandGuess: 'trademark',
+      brandConfidence: 0.8,
+    });
+    expect(marked.warnings).toContain('brand_unknown');
+    const known = accepted(raw({ title: 'Telefon mobil Samsung Galaxy A16, 128GB' }));
+    expect(known).toMatchObject({ brandName: 'Samsung', brandKnown: true, brandGuess: null });
+  });
+
+  it('ignores an MPN field that is a spec or a chip (URL-slug leftovers)', () => {
+    const oukitel = accepted(
+      raw({
+        title: 'Telefon mobil Oukitel WP200 Pro, Dual SIM, 5G, 6.7-inch AMOLED 120Hz',
+        mpn: '67INCH',
+      }),
+    );
+    expect(oukitel).toMatchObject({ mpnNorm: 'WP200', mpnSource: 'title', mpnRaw: '67INCH' });
+    expect(oukitel.warnings).toContain('mpn_looks_like_spec');
+    const r36s = accepted(
+      raw({ title: 'Consola retro portabila R36S 64GB, CPU RK3326', mpn: 'CORTEXA53' }),
+    );
+    expect(r36s).toMatchObject({ mpnNorm: null, mpnSource: null });
+    const real = accepted(raw({ title: 'Televizor SAMSUNG LED 43U8072H', mpn: 'UE43U8072HUXXH' }));
+    expect(real).toMatchObject({ mpnNorm: 'UE43U8072HUXXH', mpnSource: 'field' });
+  });
+
   it('reports unknown and conflicting brand fields', () => {
     const unknown = accepted(raw({ title: 'Husa silicon pentru iPhone 17', brand: 'Lemonttix' }));
     expect(unknown).toMatchObject({ brandName: 'Lemonttix', brandKnown: false });
@@ -278,11 +308,42 @@ describe('normalizeOffer: titles and flags', () => {
       brandName: 'Sony',
       brandVia: 'product_line',
       isBundle: true,
-      bundleReason: 'plus:joc',
+      bundleKind: 'game',
+      bundleReason: 'game:plus:joc',
       condition: 'new',
       productKind: 'console',
     });
     expect(n.attributes).toMatchObject({ storageGb: 1024, edition: ['slim', 'digital'] });
+  });
+
+  it('keeps eMAG device listings out of accessories and gifts visible (live run 2026-10-27)', () => {
+    const macbook = accepted(
+      raw({
+        title:
+          "Apple MacBook Air 13'' cu procesor Apple M5, 10 nuclee CPU, 16GB RAM, 512GB SSD, Midnight, Tastatura Internationala, Manual RO, Fara incarcator",
+        category: 'Laptop, Tablete & Telefoane > Laptopuri si accesorii > Laptop > Notebook',
+        price: '5.999,99 lei',
+      }),
+    );
+    expect(macbook).toMatchObject({
+      productKind: 'laptop',
+      isAccessory: false,
+      accessoryReason: 'kind:laptop',
+      isBundle: false,
+      bundleKind: null,
+    });
+    const redmi = accepted(
+      raw({
+        title: 'Telefon mobil Xiaomi Redmi 15C, 4GB RAM, 128GB ROM, Black + Woven Strap Ring Stand',
+        category: 'Laptop, Tablete & Telefoane > Telefoane mobile & accesorii > Telefoane Mobile',
+        price: '599,99 lei',
+      }),
+    );
+    expect(redmi).toMatchObject({
+      isBundle: true,
+      bundleKind: 'gift',
+      bundleReason: 'gift:plus:woven',
+    });
   });
 
   it('flags accessories, refurbished and used offers', () => {

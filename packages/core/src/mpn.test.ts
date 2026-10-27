@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractMpnCandidates, normalizeMpn } from './mpn';
+import { extractMpnCandidates, isSpecToken, normalizeMpn } from './mpn';
 
 const best = (title: string, productCode?: string): string | null =>
   extractMpnCandidates(title, { productCode: productCode ?? null })[0]?.norm ?? null;
@@ -85,4 +85,54 @@ describe('extractMpnCandidates', () => {
     expect(extractMpnCandidates('Lenovo LOQ 15IAX9', { brand: 'Lenovo' })[0]?.source).toBe('title');
     expect(extractMpnCandidates(null)).toEqual([]);
   });
+
+  // Live eMAG run, 2026-10-27: specs and chips the first version took for part numbers.
+  it.each([
+    'Laptop 14" cu procesor Intel Celeron J4105, 8GB RAM, 128GB SSD',
+    'Laptop Xiaman 14, Intel Atom A3950, 12GB RAM, SSD 256GB',
+    'Laptop AUUSDA, Procesor AMD 3 3250C(pana la 3.6 GHz), 16GB RAM',
+    'Consola retro portabila R36S 64GB cu jocuri, quad core Cortex-A53 1.5GHz, 1GB DDR3L',
+    'Consola retro portabila R36S, CPU RK3326, GPU MALI-G31MP2, 1GB DDR3L',
+    'Consola portabila jocuri, NUODWELL, Acumulator 1500 mah, ABS, 17.5x7.5cm, Gri',
+    'Consola de jocuri, Evercade, VS-R, Full HD 1080p, dimensiuni 197x126x48mm',
+    'Telefon mobil iHunt Primo 4G, Dual SIM, Ecran 2.4-inch, Butoane Mari',
+    'Mini Laptop 8" 2-in-1, Laptop Computer Win 11, Intel N95(up to 3.4GHz)',
+    'Kiano Slim TV Travel Televizor 19" | LED HD TV | Tuner DVB-T2/S2 | Negru |',
+    'Laptop Blackview Acebook 10,16GB DDR4 512GB SSD+2TB TF',
+    'Consola retro portabila R36S, Bedee, Doua carduri 32GB+128G',
+    'Telefon mobil Blackview Wave 7C, 16GB+128GB（2TB TF),6.56"HD+ IPS',
+    'Consola retro portabila R36TMAX, Bedee, 64GB',
+    'Consolă de jocuri Bedee X12plus, 7 inch, 16GB, design ergonomic, multicolor',
+  ])('%s → no part number', (title) => {
+    expect(all(title)).toEqual([]);
+  });
+
+  it('keeps model codes next to the filtered chips', () => {
+    expect(best('Consola portabila retro ANBERNIC RG35XX H cu jocuri, quad core Cortex-A53')).toBe(
+      'RG35XX',
+    );
+    expect(best('Laptop ASUS ExpertBook B1 B1503CVA cu procesor Intel Core 5 120U')).toBe(
+      'B1503CVA',
+    );
+  });
+});
+
+describe('isSpecToken', () => {
+  it.each(['67INCH', '2.4-inch', '175X75CM', '197X126X48MM', 'CORTEXA35', 'Cortex-A7', 'RK3326'])(
+    '%s is a spec',
+    (token) => {
+      expect(isSpecToken(token)).toBe(true);
+    },
+  );
+
+  it.each(['MALIG31MP2', 'J4105', 'DVB-T2', '16GB', '2-in-1'])('%s is a spec', (token) => {
+    expect(isSpecToken(token)).toBe(true);
+  });
+
+  it.each(['UE43U8072HUXXH', 'NH.QSGEX.00H', 'B1503CVA', 'SM-S938BZKDEUE', '', null])(
+    '%s is not a spec',
+    (token) => {
+      expect(isSpecToken(token)).toBe(false);
+    },
+  );
 });

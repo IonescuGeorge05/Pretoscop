@@ -29,7 +29,7 @@ describe('eMAG listing', () => {
       title: 'Telefon mobil Samsung Galaxy S26 FE, Dual SIM, 8GB RAM, 128GB, 5G, Blueberry',
       price: '3.170,99 Lei',
       priceFormat: 'ro',
-      availability: 'in_stock',
+      availability: 'https://schema.org/InStock',
       mpn: 'SM-S741BZVDEUE',
       category: 'Laptop, Tablete & Telefoane > Telefoane mobile & accesorii > Telefoane Mobile',
     });
@@ -45,8 +45,10 @@ describe('eMAG listing', () => {
     expect(String(withRrp?.raw.rrp)).toMatch(/Lei$/);
   });
 
-  it('maps limited stock classes and recovers MPNs from slugs', () => {
-    expect(res.offers.some((o) => o.availability === 'limited_stock_qty')).toBe(true);
+  it('maps eMAG availability ids (3 in stock, 2 limited, 8 pre-order) and recovers MPNs from slugs', () => {
+    expect(res.offers.filter((o) => o.availability === 'https://schema.org/LimitedAvailability').length).toBeGreaterThan(0);
+    expect(res.offers.filter((o) => o.availability === 'https://schema.org/PreOrder').length).toBeGreaterThan(0);
+    expect(res.offers.every((o) => o.availability !== undefined)).toBe(true);
     expect(res.offers.filter((o) => o.mpn).length).toBeGreaterThanOrEqual(55);
   });
 

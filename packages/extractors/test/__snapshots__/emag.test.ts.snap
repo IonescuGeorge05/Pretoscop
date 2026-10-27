@@ -3,7 +3,7 @@
 exports[`eMAG listing > matches the snapshot 1`] = `
 [
   {
-    "availability": "in_stock",
+    "availability": "https://schema.org/InStock",
     "brand": undefined,
     "condition": undefined,
     "externalId": "421625672",
@@ -18,7 +18,7 @@ exports[`eMAG listing > matches the snapshot 1`] = `
     "title": "Telefon mobil Samsung Galaxy S26 FE, Dual SIM, 8GB RAM, 128GB, 5G, Blueberry",
   },
   {
-    "availability": "limited_stock_qty",
+    "availability": "https://schema.org/LimitedAvailability",
     "brand": undefined,
     "condition": undefined,
     "externalId": "186779240",
@@ -33,7 +33,7 @@ exports[`eMAG listing > matches the snapshot 1`] = `
     "title": "Telefon mobil Huawei Nova 10, Dual SIM, 8GB RAM, 128GB, 4G, Starry Silver",
   },
   {
-    "availability": undefined,
+    "availability": "https://schema.org/InStock",
     "brand": undefined,
     "condition": undefined,
     "externalId": "273691829",
@@ -48,7 +48,7 @@ exports[`eMAG listing > matches the snapshot 1`] = `
     "title": "Telefon mobil Apple iPhone 17 Pro Max, 256GB, 5G, Silver",
   },
   {
-    "availability": "in_stock",
+    "availability": "https://schema.org/InStock",
     "brand": undefined,
     "condition": undefined,
     "externalId": "455963273",
@@ -63,7 +63,7 @@ exports[`eMAG listing > matches the snapshot 1`] = `
     "title": "Telefon mobil Google Pixel 10 Pro, 128GB, 16GB RAM, 5G, Obsidian",
   },
   {
-    "availability": "in_stock",
+    "availability": "https://schema.org/InStock",
     "brand": undefined,
     "condition": undefined,
     "externalId": "371710599",
@@ -78,7 +78,7 @@ exports[`eMAG listing > matches the snapshot 1`] = `
     "title": "Telefon mobil Samsung Galaxy A57, 12GB RAM, 256GB, 5G, Awesome Gray",
   },
   {
-    "availability": "in_stock",
+    "availability": "https://schema.org/InStock",
     "brand": undefined,
     "condition": undefined,
     "externalId": "260266798",
@@ -93,7 +93,7 @@ exports[`eMAG listing > matches the snapshot 1`] = `
     "title": "Telefon mobil Samsung Galaxy A17, Dual SIM, 4GB RAM, 128GB, 5G, Gray",
   },
   {
-    "availability": undefined,
+    "availability": "https://schema.org/PreOrder",
     "brand": undefined,
     "condition": undefined,
     "externalId": "430975330",
@@ -108,7 +108,7 @@ exports[`eMAG listing > matches the snapshot 1`] = `
     "title": "Telefon mobil Apple iPhone 18 Pro Max, 256GB, 5G, Burgundy",
   },
   {
-    "availability": "limited_stock_qty",
+    "availability": "https://schema.org/LimitedAvailability",
     "brand": undefined,
     "condition": undefined,
     "externalId": "278660298",

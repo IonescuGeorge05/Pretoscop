@@ -28,6 +28,17 @@ export const EMAG_VENDOR_ID = 1;
 
 const PNK_RE = /\/pd\/([A-Z0-9]{6,12})\/?/;
 
+/**
+ * eMAG's card `data-availability-id`, observed on the 2026-10-27 fixtures: 3 = in stock (with or
+ * without a visible label), 2 = limited stock ("ultimul produs in stoc"), 8 = pre-order
+ * ("Precomandă"). Mapped to schema.org values the normalizer understands.
+ */
+const EMAG_AVAILABILITY: Record<string, string> = {
+  '3': 'https://schema.org/InStock',
+  '2': 'https://schema.org/LimitedAvailability',
+  '8': 'https://schema.org/PreOrder',
+};
+
 /** `…/telefon-mobil-…-blueberry-sm-s741bzvdeue/pd/DF1MLR2BM/` → `DF1MLR2BM`. */
 export function emagPnk(url: string): string | undefined {
   return PNK_RE.exec(url)?.[1];
@@ -102,7 +113,7 @@ export function parseEmagListing(html: string, ctx: PageContext): PageParseResul
       priceFormat: 'ro',
       oldPrice,
       currency: 'RON',
-      availability: availClass ?? nonEmpty(availEl.text()),
+      availability: EMAG_AVAILABILITY[card.attr('data-availability-id') ?? ''] ?? availClass ?? nonEmpty(availEl.text()),
       mpn: emagSlugMpn(canonical, title),
       category: nonEmpty(card.attr('data-category-trail'))?.replace(/\//g, ' > '),
       shopLowest30d: oldPrice,

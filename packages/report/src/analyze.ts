@@ -10,7 +10,8 @@ import { REPORT_SCHEMA, type ChangeClass, type GroupStats, type ProductDrop, typ
  *   - a "claim" is a reduction the shop displayed (a crossed reference price above the price);
  *   - raise-then-cut: the peak in [start−30, start−3] is ≥ 115% of the median in [start−60,
  *     start−31] and the event price is still ≥ 97% of that median (needs 60 days of history).
- * Product drops use shop-sold offers only, like the history chart's main series.
+ * Product drops use shop-sold offers only, like the history chart's main series. A day's price is
+ * the one in effect at the end of the day (see packages/db reportOffers).
  */
 
 export interface ReportInputDay extends OfferDay {

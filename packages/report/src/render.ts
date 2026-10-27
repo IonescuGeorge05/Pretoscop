@@ -12,6 +12,7 @@ function table(head: string[], rows: string[][]): string {
 }
 
 function groupTable(groups: GroupStats[], first: string): string {
+  if (!groups.some((g) => g.withHistory > 0)) return 'Nicio ofertă cu istoric suficient.';
   return table(
     [first, 'Oferte cu istoric', 'Cu reducere afișată', 'Reduceri fără scădere reală', 'Scădere reală', 'Fără scădere reală', 'Mai scump', 'Variația mediană'],
     groups
@@ -39,7 +40,7 @@ export function renderMarkdown(r: ReportData, charts: Array<{ file: string; alt:
   out.push('');
   out.push(
     r.approval.approved
-      ? `Cifre verificate și aprobate de ${r.approval.by} la ${r.approval.at}.`
+      ? `Cifre verificate și aprobate de ${r.approval.by} pe ${r.approval.at ? roDay(r.approval.at.slice(0, 10)) : '—'} ${r.approval.at?.slice(0, 4) ?? ''}.`
       : '> **Date preliminare.** Cifrele nu se publică până nu sunt verificate și aprobate de fondatori (`report:approve`).',
   );
   out.push('');
@@ -107,7 +108,8 @@ export function renderMarkdown(r: ReportData, charts: Array<{ file: string; alt:
   out.push('- „Scădere reală”: cel mai mic preț din perioadă este cu cel puțin 2% sub cel mai mic preț observat la aceeași ofertă în cele 30 de zile dinainte. Comparația se face doar dacă am observat oferta în cel puțin 70% din acele zile.');
   out.push('- „Reducere afișată”: magazinul a afișat un preț de referință tăiat, mai mare decât prețul de vânzare. Nu verificăm ce spune magazinul despre acel preț; îl comparăm doar cu prețurile pe care le-am observat noi.');
   out.push('- „Preț crescut înainte, apoi redus”: vârful din [−30, −3] zile este cu cel puțin 15% peste mediana din [−60, −31] zile, iar prețul din perioadă este încă la cel puțin 97% din acea mediană.');
-  out.push('- Scăderile pe produse folosesc doar ofertele vândute direct de magazine (ca seria principală din graficele de istoric). Zilele fără observații rămân goale; nu interpolăm.');
+  out.push('- Prețul unei zile este cel în vigoare la sfârșitul zilei, după ultima noastră observație. Zilele fără observații rămân goale; nu interpolăm.');
+  out.push('- Scăderile pe produse folosesc doar ofertele vândute direct de magazine (ca seria principală din graficele de istoric).');
   out.push('- Detalii: https://pretoscop.ro/metodologie');
   out.push('');
   if (r.notes.length) {

@@ -166,10 +166,10 @@ export function offerHistoryChart(
   opts: { title: string; subtitle: string; source: string; window: { from: string; to: string }; windowLabel: string },
 ): string {
   const width = 960;
-  const height = 420;
+  const height = 436;
   const left = 96;
   const right = width - 140;
-  const top = 96;
+  const top = 112;
   const bottom = height - 70;
   const days = [...new Set([...price, ...reference].map((p) => p.day))].sort();
   if (days.length === 0) return frame(width, height, opts.title, opts.subtitle, '', opts.source);

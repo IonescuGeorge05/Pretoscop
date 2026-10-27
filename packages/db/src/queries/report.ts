@@ -5,9 +5,11 @@ import { addDaysIso } from './rollup';
 
 /**
  * Input for an event report (M23): every new, non-bundle offer of a trusted shop (tier ≤ 2) seen
- * during [from, to], with its observed in-stock price and displayed reference price per day from
- * 60 days before `from` (gap days stay absent: no interpolation). Shapes match
- * `@pretoscop/report`'s ReportInput without importing it (packages/db stays independent of it).
+ * during [from, to], with its in-stock price and displayed reference price per day from 60 days
+ * before `from` (gap days stay absent: no interpolation). A day's price is the one in effect at the
+ * end of that day, as last observed: with change-only events a daily minimum would credit the
+ * previous price to the morning of a change day (a Black Friday increase would read as "no change").
+ * Shapes match `@pretoscop/report`'s ReportInput without importing it.
  */
 export interface ReportOfferDays {
   offerId: number;
@@ -45,17 +47,13 @@ export async function reportOffers(db: Db, opts: { from: string; to: string; cat
         AND (g.from_ts AT TIME ZONE 'Europe/Bucharest')::date < d::date AND (g.to_ts AT TIME ZONE 'Europe/Bucharest')::date > d::date)
     )
     SELECT days.id::text, days.shop, days.seller_type, days.product_id::text, days.product_title, days.category, days.day::text,
-      min(e.price)::text AS price, (array_agg(e.old_price::text ORDER BY e.price))[1] AS old_price
+      e.price::text AS price, e.old_price::text AS old_price
     FROM days CROSS JOIN LATERAL (
-      (SELECT price, old_price, availability FROM price_events WHERE offer_id = days.id
-        AND observed_at < (days.day::timestamp AT TIME ZONE 'Europe/Bucharest') ORDER BY observed_at DESC LIMIT 1)
-      UNION ALL
-      (SELECT price, old_price, availability FROM price_events WHERE offer_id = days.id
-        AND observed_at >= (days.day::timestamp AT TIME ZONE 'Europe/Bucharest')
-        AND observed_at < ((days.day + 1)::timestamp AT TIME ZONE 'Europe/Bucharest'))
+      SELECT price, old_price, availability FROM price_events WHERE offer_id = days.id
+        AND observed_at < ((days.day + 1)::timestamp AT TIME ZONE 'Europe/Bucharest')
+      ORDER BY observed_at DESC LIMIT 1
     ) e
     WHERE e.availability = 'in_stock'
-    GROUP BY days.id, days.shop, days.seller_type, days.product_id, days.product_title, days.category, days.day
     ORDER BY days.id, days.day
   `);
   const out = new Map<number, ReportOfferDays>();

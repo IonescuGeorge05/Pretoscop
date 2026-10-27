@@ -369,10 +369,10 @@ export function parsePrice(input: unknown, options: ParsePriceOptions = {}): Amo
   if (tokens.length === 0) return { ok: false, reason: 'empty' };
   if (tokens.length > 1) {
     const [a, b] = tokens;
-    if (a && b) {
+    if (a && b && tokens.length === 2) {
       const between = low.slice(a.index + a.text.length, b.index);
-      if (tokens.length === 2 && RANGE_BETWEEN_RE.test(between))
-        return { ok: false, reason: 'range' };
+      const glued = between.trim() === '' && b.text.startsWith('-'); // "1.000-2.000 lei"
+      if (RANGE_BETWEEN_RE.test(between) || glued) return { ok: false, reason: 'range' };
     }
     return { ok: false, reason: 'multiple_numbers' };
   }

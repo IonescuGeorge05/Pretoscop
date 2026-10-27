@@ -111,6 +111,8 @@ describe('parsePriceRon: rejections', () => {
   it.each([
     ['1.000 - 2.000 lei', 'range'],
     ['1.000 lei - 2.000 lei', 'range'],
+    ['1.000-2.000 lei', 'range'],
+    ['1.000,- \u{2013} 2.000,- lei', 'range'],
     ['intre 1.000 si 2.000 lei', 'range'],
     ['de la 1.000 pana la 2.000 lei', 'range'],
     ['99 lei/lună', 'instalment'],

@@ -17,7 +17,8 @@
     "match:run": "tsx src/cli/match-run.ts",
     "match:eval": "tsx src/cli/match-eval.ts",
     "match:eval:build": "tsx src/cli/match-eval-build.ts",
-    "match:label": "tsx src/cli/match-label.ts"
+    "match:label": "tsx src/cli/match-label.ts",
+    "compare:live": "tsx src/cli/compare-live.ts"
   },
   "devDependencies": {
     "pino-pretty": "^13.2.0"

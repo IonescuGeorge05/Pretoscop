@@ -28,9 +28,9 @@ if (!isAcceptedOffer(n)) {
 
 ### Entry points
 
-| Import | What | Runs in |
-|---|---|---|
-| `@pretoscop/core` | everything below except the SHA-256 | Node and browsers |
+| Import                 | What                                                     | Runs in                   |
+| ---------------------- | -------------------------------------------------------- | ------------------------- |
+| `@pretoscop/core`      | everything below except the SHA-256                      | Node and browsers         |
 | `@pretoscop/core/hash` | `contentHash`, `sha256Hex` (+ `contentHashInput`, types) | Node only (`node:crypto`) |
 
 `normalizeOffer` takes the hash function as `ctx.hash` (dependency injection), so the root export
@@ -48,7 +48,7 @@ sub-path; tests or other runtimes may pass any `(fields) => string`.
 - Shop rules stored in lei as JSON numbers (`shops.shipping_rules`) are converted with
   `leiToBani(19.99) → 1999`.
 - Display: `formatLei(123456) → "1.234,56 lei"`; `formatLei(123400, { decimals: 'auto' }) →
-  "1.234 lei"`; `{ nbsp: true }` uses a no-break space before "lei"; `{ unit: false }` drops it.
+"1.234 lei"`; `{ nbsp: true }` uses a no-break space before "lei"; `{ unit: false }` drops it.
 - Arithmetic on money uses `sumBani` and `mulDivRound` (BigInt, round half up).
 
 ## API
@@ -126,11 +126,13 @@ KNOWN_FAKE_GTINS: Record<shopSlug | '*', string[]>
 
 normalizeMpn(raw): string | null
 extractMpnCandidates(title, { brand?, productCode? }): { raw; norm; score; source: 'title' | 'product_code' }[]
+isSpecToken(token): boolean             // "67INCH", "175X75CM", "CORTEX-A35", "RK3326": never an MPN
 
 detectBrand(title, brandField?, categoryHint?):
   { name; slug; confidence; via: 'field' | 'title' | 'alias' | 'product_line'; known: boolean;
-    line?; matched?; conflict? } | null
+    line?; matched?; conflict?; guess?: 'trademark' | 'prefix' | 'after_noun' | 'segment' } | null
 detectBrandInTitle(title, categoryHint?): BrandMatch | null
+guessUnknownBrand(title, explainedKind, isKnown): { text; rule; confidence } | null
 findBrand(nameOrAlias): Brand | null
 isPlaceholderBrand(raw): boolean
 BRANDS: Brand[]; BRAND_SEEDS; brandTokens(input); brandDictionaryIssues()
@@ -141,10 +143,17 @@ Attributes and flags (`product-kind.ts`, `attributes.ts`, `condition.ts`, `bundl
 
 ```ts
 detectProductKind(title, categoryHint?): ProductKind   // 'phone' | 'tv' | 'washer' | 'accessory' | 'game' | … | 'other'
+explainProductKind(title, categoryHint?): { kind: ProductKind;
+  via: 'title' | 'head' | 'compat' | 'category' | 'line' | 'none'; word: string | null }
+categoryKind(categoryHint): ProductKind | null         // breadcrumb only, leaf first
+lineKind(title): ProductKind | null                    // product line only (MacBook → laptop)
 extractAttributes(title, { categoryHint?, brand?, kind? }): Attributes
+colorKeyOf(word): ColorKey | undefined
 detectCondition(title, field?): { condition: 'new' | 'refurbished' | 'used';
   detail?: 'open_box' | 'grade_a' | 'grade_b' | 'grade_c' | 'renewed' | 'damaged'; reason: string }
-detectBundle(title, categoryHint?): { isBundle: boolean; reason: string | null }
+detectBundle(title, categoryHint?): { isBundle: boolean;
+  kind: 'game' | 'gift' | 'accessory' | 'subscription' | 'other' | null;
+  reason: string | null }                              // reason = `${kind}:${evidence}`
 detectAccessory(title, categoryHint?): { isAccessory: boolean; reason: string | null }
 mapAvailability(raw: unknown): 'in_stock' | 'out_of_stock' | 'preorder' | 'unknown'
 
@@ -177,10 +186,17 @@ affiliateUrl, observedAt`; money `priceBani` (non-null when accepted), `oldPrice
 `shippingEstimated`, `shippingBasis`, `shopLowest30dBani`, `currency` (observed), `fxRate`,
 `vatGrossedUp`, `priceIsFrom`; identifiers `gtin14` (valid only), `gtinQuality`, `gtinReason`,
 `gtinAlternates`, `gtinRaw`, `brandName`, `brandSlug`, `brandConfidence`, `brandVia`, `brandKnown`,
-`brandRaw`, `mpnNorm`, `mpnRaw`, `mpnSource`, `mpnCandidates`; `attributes`, `productKind`,
-`condition`, `conditionDetail`, `conditionReason`, `isBundle`, `bundleReason`, `isAccessory`,
-`accessoryReason`, `availability`; titles `titleRaw`, `titleClean`, `titleAscii`, `titleMatch`;
-`categoryRaw`, `sellerName`, `isMarketplaceSeller`; `contentHash` (non-null when accepted).
+`brandGuess` (how an unknown title brand was read, else null), `brandRaw`, `mpnNorm`, `mpnRaw`,
+`mpnSource`, `mpnCandidates`; `attributes`, `productKind`,
+`condition`, `conditionDetail`, `conditionReason`, `isBundle`, `bundleKind`, `bundleReason`,
+`isAccessory`, `accessoryReason`, `availability`; titles `titleRaw`, `titleClean`, `titleAscii`,
+`titleMatch`; `categoryRaw`, `sellerName`, `isMarketplaceSeller`; `contentHash` (non-null when
+accepted).
+
+Warnings include `brand_unknown` (no dictionary brand: an unknown field or a guessed title brand),
+`brand_conflict`, `mpn_looks_like_gtin`, `mpn_looks_like_spec` (an MPN field such as "67INCH" or
+"CORTEXA35" is ignored and the title is used), `gtin_<quality>`, `price_<flag>`, `vat_conflict`,
+`old_price_not_higher`, `old_price_implausible`, `<amount>_unparseable`.
 
 ## Rules in plain English
 
@@ -222,7 +238,7 @@ affiliateUrl, observedAt`; money `priceBani` (non-null when accepted), `oldPrice
 ### Prices
 
 - Accepted: `1.234,56 lei`, `1234.56 RON`, `1 234,56 Lei` (any space, incl. no-break), `de la
-  1.234 lei` (flagged `from`), `1.299 Lei` (= 1299), `1.234,5`, `1.299,- lei`, numbers (lei),
+1.234 lei` (flagged `from`), `1.299 Lei` (= 1299), `1.234,5`, `1.299,- lei`, numbers (lei),
   `3,638.99 Lei` (evoMAG writes English separators), eMAG's split cents `1.234<sup>99</sup>` and
   `1.234 99`, `&nbsp;` entities, `Preț: … (TVA inclus)`.
 - **How dots and commas are read**:
@@ -298,7 +314,8 @@ Order: missing → malformed → placeholder → check digit → restricted rang
   (PlayStation/PS5/DualSense → Sony, Xbox/Surface → Microsoft, iPhone/iPad/MacBook/AirPods/Apple
   Watch → Apple, Galaxy → Samsung, Pixel → Google, ThinkPad/Legion/IdeaPad/Yoga/LOQ → Lenovo,
   ROG/TUF/Zenbook/Vivobook → ASUS, Redmi/POCO → Xiaomi, Kindle/Echo → Amazon, Alienware → Dell,
-  Roomba → iRobot, Ninebot → Segway …). Edit `src/brands-data.ts`.
+  Roomba → iRobot, Ninebot → Segway …), handheld makers (Anbernic, Trimui, Miyoo, Retroid,
+  Powkiddy, Evercade, My Arcade, Ayaneo, GPD, Mangmi). Edit `src/brands-data.ts`.
 - **Brand field first**: a shop brand field that maps to a known brand wins (case, diacritics
   and punctuation ignored; "SRL", "SA", "Electronics", "Romania" … stripped). Placeholder fields
   ("Generic", "OEM", "Fără brand", "N/A", "Universal" …) count as no field. If the title names a
@@ -308,6 +325,8 @@ Order: missing → malformed → placeholder → check digit → restricted rang
   - anything after "pentru", "compatibil(ă) cu", "for" when a device or brand follows
     ("Husă pentru iPhone 17 Pro" has no brand; "Tabletă pentru copii Lenovo" is Lenovo), except
     accessory makers ("Suport auto pentru telefon Hoco" is Hoco);
+  - anything after "emulator", "emulatoare", "emulare", "simulatoare" (what a retro handheld
+    emulates is not its maker: "R36S …, Emulator N64 PSP PS1 PlayStation Sega" is not Sony);
   - device lines on accessory titles ("Husă iPhone 17" is not Apple) and platform lines on game
     titles ("Joc … PS5" is not Sony);
   - component and co-branding names (Intel, AMD, NVIDIA, Qualcomm, Leica, Zeiss, Harman Kardon,
@@ -326,8 +345,24 @@ Order: missing → malformed → placeholder → check digit → restricted rang
     after them ("Proiector Galaxy Star", "Saltea yoga", "Switch rețea" are not brands).
 - An unknown brand field is returned title-cased ("LEMONTTIX" → "Lemonttix") with confidence
   0.5 (0.6 if the title contains it), unless the title names a known brand.
-- Confidence: field 1.0; title name 0.9; alias 0.85; product line 0.8; ambiguous word 0.7; weak
-  brand 0.6.
+- **Unknown brands in titles** (`guessUnknownBrand`, only when the title names no known brand;
+  `known: false`, `guess` says which rule): no-name devices carry the seller's brand word, which
+  no dictionary can list.
+  - `trademark` (0.8, any product): a word glued to ® or ™ ("Garsonal®", "HAPPY JOKER®" → Happy
+    Joker), not a known brand or a technology mark (Intel® Core™, Radeon™, Wi-Fi®);
+  - for devices only (phones, tablets, laptops, PCs, monitors, TVs, consoles, watches), at 0.6:
+    `prefix`, the first word before a later product noun ("SweetLink S2 Plus Telefon mobil");
+    `after_noun`, the first word after the product noun and its descriptors ("Telefon Mobil pentru
+    Seniori Mapajoy MP2", "Laptop XIAORAN 15.6"", "Consola SUP Game Box") when followed by a model
+    code, an upper-case word, "cu"/"pentru" or the end of the segment, or written in capitals;
+    `segment`, a second title segment of one or two capitalized words ("Consola portabila,
+    Taipintee, 800 jocuri").
+  - Never guessed: generic, marketing and technology words (Retro, Gaming, Mini, Game, Android,
+    PSP, NES …), colours, words with digits, lower-case words. A brand field, even unknown, wins
+    over a guess. The worker keeps brands with confidence ≥ 0.7 as matching constraints, so
+    ®-marked brands are kept and position guesses stay informational.
+- Confidence: field 1.0; title name 0.9; alias 0.85; product line 0.8; ®/™ guess 0.8; ambiguous
+  word 0.7; weak brand 0.6; position guess 0.6.
 
 ### MPN (manufacturer part number)
 
@@ -335,43 +370,74 @@ Order: missing → malformed → placeholder → check digit → restricted rang
   ("N/A", "-", "Generic", "0000") and values shorter than 3 characters → null.
 - From titles (`extractMpnCandidates`), a candidate mixes letters and digits and has at least 5
   characters (4 if it contains an inner dash or dot). Never candidates: units and specs (16GB,
-  55inch, 120Hz, 4K, 5G, WiFi6, USB-C, DDR5, M.2, A+++, IP68, 2x16GB, 10-core, 256-bit, CL30,
-  3-pack, 1080p), years, CPU models (i5-13420H, 8645HS, 9800X3D, 265K), GPU models (RTX4070,
-  4070Ti), chipsets (B650-A, X870E), model names (Fold7, Watch8, Reno14, HERO13, PRO1). A slash
-  code keeps a short suffix (MXU23ZD/A, 50PUS8009/12); a list such as PS5/PS4/PC is not a code.
-  Numeric codes with a dash are allowed (Logitech 910-006162, Russell Hobbs 26960-56).
+  55inch, 2.4-inch, 120Hz, 4K, 5G, WiFi6, USB-C, DDR5, DDR3L, M.2, A+++, IP68, 2x16GB,
+  17.5x7.5cm, 197x126x48mm, 10-core, 2-in-1, 256-bit, CL30, 3-pack, 1080p, DVB-T2/S2), years,
+  CPU models (i5-13420H, 8645HS, 9800X3D, 265K, 3250C, N95, N5095, J4105), any token right after
+  Intel/Celeron/Pentium/Atom/Core/Ryzen/AMD/procesor/CPU/GPU/Snapdragon/MediaTek/Unisoc/Allwinner/
+  Rockchip, SoC parts (Cortex-A53, RK3326, Mali-G31 MP2), GPU models (RTX4070, 4070Ti), chipsets
+  (B650-A, X870E), model names (Fold7, Watch8, Reno14, HERO13, PRO1, X12plus, R36TMAX). Items
+  joined by "+" are separate tokens ("SSD+2TB", "32GB+128G"). A slash code keeps a short suffix
+  (MXU23ZD/A, 50PUS8009/12); a list such as PS5/PS4/PC is not a code. Numeric codes with a dash
+  are allowed (Logitech 910-006162, Russell Hobbs 26960-56).
 - Ranking: longer, structured (dash/slash/dot), upper-case codes that alternate letters and digits
   first; a "cod produs" value removed by the title cleanup gets a bonus.
 - In `normalizeOffer`, the MPN field wins (`mpnSource: 'field'`); an MPN field that is really a
-  valid GTIN is ignored (warning `mpn_looks_like_gtin`); otherwise the best title code
-  (`mpnSource: 'title'`). Codes written with spaces ("FFB 8458 BV EE") are not recovered.
+  valid GTIN is ignored (warning `mpn_looks_like_gtin`), and so is one that is a spec or a chip
+  (`isSpecToken`: "67INCH", "175X75CM", "CORTEXA35", "RK3326"; warning `mpn_looks_like_spec`);
+  otherwise the best title code (`mpnSource: 'title'`). Codes written with spaces ("FFB 8458 BV
+  EE") are not recovered.
 
 ### Product kind
 
-The product noun at the start of the title decides (`detectProductKind`): Telefon/Smartphone →
-phone, Tabletă → tablet (Tabletă grafică → peripheral), Laptop/Notebook → laptop, Televizor →
-tv, Monitor → monitor, Consolă / Pachet/Set consolă / Set PS5 → console, Joc → game, Placă video
-→ gpu, Memorie RAM/DDR → ram, SSD/Hard disk → storage, Card de memorie → memory_card, Stick/
-Memorie USB → usb_drive, Carcasă PC/…-Tower → pc_case, Husă/Folie/Cablu/Încărcător/Adaptor/
-Suport/Geantă/Rucsac/Carcasă/Curea/Brățară (not fitness)/Controller/Volan … → accessory, Brățară
-fitness → fitness_band, Baterie externă → power_bank, Mașină de spălat rufe (cu uscător) →
-washer (washer_dryer), Uscător de rufe → dryer, Mașină de spălat vase → dishwasher, Frigider/
-Combină frigorifică/Congelator → fridge, Cuptor cu microunde → microwave, Aspirator → vacuum,
-Espressor/Cafetieră → coffee, and so on; else the shop category; else `other`.
+`explainProductKind` (and `detectProductKind`, its `kind`) decides in this order:
+
+1. `title`: the product noun the title starts with: Telefon/Smartphone → phone, Tabletă → tablet
+   (Tabletă grafică → peripheral), Laptop/Notebook/MacBook → laptop, Televizor → tv, Monitor →
+   monitor, Consolă/Console / Pachet/Set consolă / Set PS5 / Joc TV / Joc portabil / Joc cu
+   afișaj / Gameboy → console, Joc → game, Placă video → gpu, Memorie RAM/DDR → ram, SSD/Hard disk →
+   storage, Card de memorie → memory_card, Stick/Memorie USB → usb_drive, Carcasă PC/…-Tower →
+   pc_case, Husă/Folie/Cablu/Încărcător/Adaptor/Suport/Geantă/Rucsac/Carcasă/Curea/Brățară (not
+   fitness)/Controller(s)/Volan/"Set 2 Controllers" … → accessory, Brățară fitness → fitness_band,
+   Baterie externă → power_bank, Mașină de spălat rufe (cu uscător) → washer (washer_dryer),
+   Uscător de rufe → dryer, Mașină de spălat vase → dishwasher, Frigider/Combină frigorifică/
+   Congelator → fridge, Cuptor cu microunde → microwave, Aspirator → vacuum, Espressor/Cafetieră →
+   coffee, and so on;
+2. `head`: a product noun among words 2–6 of the first title segment, after a brand, seller or
+   model prefix ("SweetLink S2 Plus Telefon mobil", "Kiano Slim TV Travel Televizor", "Miyoo Mini
+   Plus Consola", "Gaming Notebook", "Mini Laptop", "HAPPY JOKER Controller", "Baseus Cablu");
+   a device noun found there yields to an accessory breadcrumb;
+3. `compat`: "… pentru / compatibil cu <device or brand>" → accessory;
+4. `category`: the breadcrumb, **leaf first** (`categoryKind`): in each segment an accessory word
+   wins ("Huse telefoane"), but a segment that only groups a family with its accessories
+   ("Telefoane mobile & accesorii", "Laptopuri si accesorii") is not an accessory category, and a
+   segment naming several kinds ("Console, Jocuri & Accesorii") defers to its parent;
+5. `line`: a product line named before any "pentru/compatibil/emulator" (`lineKind`): MacBook,
+   ThinkPad, IdeaPad, LOQ, Vivobook, Zenbook … → laptop; iPhone, Galaxy S/A/Z, Pixel, Redmi →
+   phone; iPad, Galaxy Tab → tablet; Apple/Galaxy Watch → smartwatch; AirPods, Galaxy Buds →
+   headphones; PlayStation 5/Portal, Xbox Series, Nintendo Switch, Steam Deck, ROG Ally, Legion
+   Go, Anbernic, Miyoo, Trimui … → console; Kindle → ereader; iMac, Mac mini → desktop;
+6. else `other`. Negations never name the product ("…, Fără încărcător").
 
 ### Attributes
 
 - **Storage, RAM, graphics memory**: `GB`/`TB` values (1 TB = 1024 GB; 1000 GB = 1 TB). A value
   followed or preceded by RAM/DDR/LPDDR is RAM; by SSD/HDD/eMMC/UFS/stocare/ROM is storage; by
-  GDDR/VRAM, or right after a GPU name ("RTX 4060 8GB"), is graphics memory. Pairs "8/256GB",
-  "8GB/256GB", "12+512GB" are RAM/storage. RAM kits "2x16GB" are ignored (the total is stated).
+  GDDR/VRAM, or right after a GPU name ("RTX 4060 8GB"), is graphics memory; by a bare "memorie",
+  RAM on laptops and PCs ("Memorie 16GB") and storage elsewhere ("Memorie 32GB" on a console).
+  The word before a value wins ("RAM 16GB SSD 512GB"), unless that word follows another value
+  and labels it ("12GB RAM 512GB SSD": 512 GB is storage). Expandable or optional capacities are
+  ignored ("pana la 128GB", "up to 1TB", "suport 1TB", "Expansion SSD 1TB", "1 TB SSD
+  expansiune", "memorie extensibila"). Sellers' forms: "128G"/"64G" (16–512) are GB, "SSD512"
+  and "SSD1TB" are storage, "10,16GB" is a list (not 10.16 GB), DDR3L is RAM. Pairs "8/256GB",
+  "8GB/256GB", "12+512GB" are RAM/storage when the first value is at most 24 GB ("32GB+128G" are
+  two cards). RAM kits "2x16GB" are ignored (the total is stated).
   Unlabelled values: on RAM modules → RAM; graphics cards → graphics memory; drives, cards and
   sticks → storage; on devices, with RAM known the larger value is storage, two values are
   RAM (smaller, ≤ 64 GB) and storage (larger), one value of 32 GB or more is storage (also on
   e-readers and consoles), one small value on a laptop/PC is RAM; a single small value on a
   phone is left out (ambiguous). MB values (cache) are ignored. "4G RAM" (a frequent typo) is
   4 GB of RAM, not 4G connectivity.
-- **Screen**: `55"`, `55''`, `55 inch`, `55 inchi`, `toli`; ranges ("32-65"") are ignored; drives
+- **Screen**: `55"`, `55''`, `15.6'`, `55 inch`, `2.4-inch`, `55 inchi`, `toli`; ranges ("32-65"") are ignored; drives
   and PC parts never have a screen ("2.5 inch" HDD); centimetres only on TVs, monitors and
   laptops (see the conversion rule above); "2 in 1" is not a size.
 - **Resolution**: 8K, 5K, 4K/UHD/Ultra HD/2160p/3840x2160, DQHD, UWQHD/3440x1440, WQXGA,
@@ -387,8 +453,10 @@ Espressor/Cafetieră → coffee, and so on; else the shop category; else `other`
   multicolor. The colour is taken from the **last comma-separated part that names one** (shops
   put it at the end), the first colour in that part ("Negru/Roșu" → black); adjacent colour words
   and one-word compounds name one colour and the last word decides ("Blue Black" → black,
-  "LightGray" → gray, "Graygreen" → green), a specific colour wins over the material
-  ("Titanium Black" → black, "Desert Titanium" → beige); marketing names that do not say a colour
+  "LightGray" → gray, "Graygreen" → green), a specific colour wins over the material or finish
+  ("Titanium Black" → black, "Desert Titanium" → beige, "negru transparent" and "Transparent
+  negru" → black; "Transparent" alone stays transparent); colours listed in a row of
+  comma-separated parts name the first ("…, negru, roșu" → black, like "Negru/Roșu"); marketing names that do not say a colour
   ("Glacier", "Night Sky", "Arabesque") give no colour; and watch-band parts ("Curea … Albastru") only
   when nothing else names a colour. Not colours: "80+ Gold", "WD Black", "Black Friday", "Titan
   OS", "Hue White and Color", "Red/Blue/Brown Switch", "Gold Edition", "Black Shark".
@@ -426,25 +494,41 @@ Espressor/Cafetieră → coffee, and so on; else the shop category; else `other`
 
 - Bundle: the word "bundle"; a title starting with "Pachet" (not "Pachet 4 baterii", not
   "Pachet Office"); gifts ("+ … cadou", "cu … cadou", "cadou:"; not "card cadou", "set cadou");
-  included games ("cu joc", "joc inclus", "include … jocul", "cod joc", "și 2 jocuri"); a
-  free-standing "+" followed by an item ("+ joc", "+ Mario Kart", "+ Husă", "+ Office").
+  included games ("cu joc", "joc inclus", "include … jocul", "cod joc", "și 2 jocuri", and on a
+  console a segment "…, joc NBA 2K26"); a second controller ("și 2 controlere", "Controller
+  suplimentar", "Extra controller"); a free-standing "+" followed by an item ("+ joc", "+ Mario
+  Kart", "+ Husă", "+ Office", "+ Woven Strap Ring Stand"), also right after a spec word when an
+  item follows ("1TB SSD + Joc …").
 - Not a bundle: "+" between specs ("Wi-Fi + Cellular", "GPS + Cellular", "8GB + 256GB",
   "Print + Scan", "+ adaptor SD"); "+" glued to a model (S25+, A+++, 80+, HDR10+); "+" inside
   kits, accessories, peripherals, lighting and kitchen sets ("Kit … 3 becuri + Bridge",
   "Set tastatură + mouse"); "Set" alone ("Set cuțite"); multipacks ("Set 2 becuri" →
   `packCount`), which are products of their own.
+- What a product ships with is not a bundle: built-in games ("cu jocuri", "15000 jocuri",
+  "+ 20.000 jocuri", "jocuri preinstalate/încorporate/clasice/retro", "400 in 1"), a memory card
+  with the games ("card inclus de 64GB", "Game Memory Card"), compatibility phrases ("compatibil
+  doar cu jocuri din PS4"). On a console that is not a mainstream platform (PlayStation, Xbox,
+  Nintendo, Steam Deck, ROG Ally, Legion Go, MSI Claw, named before any "pentru/emulator"), the
+  "+" items and a leading "Pachet" are package contents ("Joc TV Consola Retro + Pistol 2x Pady",
+  "Consola Retro … + Controller"); only "bundle" or a gift makes those a bundle.
+- Kind (`bundleKind`, and the first part of `bundleReason` = `<kind>:<evidence>`): `gift` for
+  "cadou" and for any extra item on a phone, tablet or watch (eMAG's "+ Woven Strap Ring Stand",
+  "+ Stativ cu stație de încărcare", "+ moto buds"); `game` for included games, a "+" game or a
+  game named in a "… Bundle" title ("EA Sports FC 26 Bundle", "Fortnite … Bundle"); `accessory`
+  for an extra controller or accessory; `subscription` ("+ 90 zile Abonament", "Game Pass");
+  `other` ("30th Anniversary Limited Edition Bundle", "+ Office 2024").
 
 ### Accessories
 
-- The title starts with an accessory noun (husă, folie, sticlă de protecție, cablu, încărcător,
-  alimentator, adaptor, suport, geantă, rucsac, carcasă (not PC case), bumper, stylus, curea,
-  brățară (not fitness), dock, hub, telecomandă, cartuș, toner, filtru, rezerve, controller,
-  gamepad, volan …) → accessory.
-- It starts with a device noun (telefon, laptop, smartwatch, carcasă PC, baterie externă,
-  mouse, tastatură …) → not an accessory, whatever follows ("Smartwatch …, Curea Sport M/L").
-- Otherwise: an accessory noun among the first three words ("Apple Husă …") or "… pentru /
-  compatibil cu <device or brand>" → accessory; else the shop category (Accesorii, Huse,
-  Încărcătoare …).
+The product kind decides (`explainProductKind`, see Product kind): an accessory noun that names
+the product — at the start ("Husă …", "Controller …", "Set 2 Controllers") or after a brand or
+seller prefix ("HAPPY JOKER Controller", "Apple Husă") → accessory (`noun:<word>`); a device noun,
+a device breadcrumb or a device product line → not an accessory (`kind:<kind>`), whatever
+accessory words describe it ("Smartwatch …, Curea Sport", "SweetLink Telefon mobil … Stand
+încărcare", "MacBook Air …, Fără încărcător", "Televizor … | Încărcător auto"); "… pentru /
+compatibil cu <device or brand>" → accessory (`compat`); an accessory breadcrumb ("Accesorii GSM >
+Huse") → accessory (`category`). Breadcrumbs that only group a family with its accessories
+("Laptopuri și accesorii > Notebook") never make an accessory.
 
 ### Availability
 
@@ -473,9 +557,10 @@ true/false, booleans and stock counts (5 → in stock, 0 → out of stock). Anyt
    rules.
 5. GTIN, brand, product kind, attributes, MPN, condition, bundle, accessory and availability as
    described above. Warnings: `gtin_invalid`/`gtin_placeholder`/`gtin_restricted`,
-   `brand_unknown`, `brand_conflict`, `price_<flag>`.
+   `brand_unknown`, `brand_conflict`, `mpn_looks_like_gtin`, `mpn_looks_like_spec`,
+   `price_<flag>`.
 6. Accepted offers carry `contentHash = ctx.hash({ priceBani, oldPriceBani, shippingBani,
-   availability })`; rejected offers carry `contentHash: null` and `rejects`.
+availability })`; rejected offers carry `contentHash: null` and `rejects`.
 
 ## Title corpus and accuracy
 
@@ -489,18 +574,42 @@ true/false, booleans and stock counts (5 → in stock, 0 → out of stock). Anyt
 - `REAL_CORPUS`: the 66 distinct **real** titles of eMAG's phone listing recorded by PretoscopBot
   on 2026-10-27 (M03 fixtures).
 
-The Phase-0 recorder's snapshots will provide more real titles across categories; append them to
-`REAL_CORPUS` (or a new set) with honest labels. `corpus.test.ts` requires at least 95% accuracy
-per field (brand, MPN, storage, RAM, screen, colour, energy class, litres, kilograms, condition,
-bundle, accessory) on every set and prints the table and every miss: `pnpm --filter @pretoscop/core exec vitest run src/corpus.test.ts --silent=false`.
+`src/__corpus__/real-live-2026-10-27.ts` holds `REAL_LIVE_CORPUS`: 168 **real** eMAG titles from
+the first live run (960 offers recorded 2026-10-27 22:50–23:10: phones, laptops, TVs, console
+hardware), every 6th offer per category plus the titles the lead reported, each with its
+breadcrumb (evaluated like `raw.category`). Labelled by reading before the second M06 round;
+accuracy before → after that round:
+
+| field                               | before | after |
+| ----------------------------------- | ------ | ----- |
+| brand                               | 77.4%  | 99.4% |
+| MPN                                 | 90.5%  | 98.8% |
+| storage                             | 95.8%  | 100%  |
+| RAM                                 | 98.2%  | 100%  |
+| screen                              | 98.8%  | 100%  |
+| colour                              | 97.6%  | 100%  |
+| bundle                              | 95.2%  | 100%  |
+| accessory                           | 91.7%  | 100%  |
+| energy class, litres, kg, condition | 100%   | 100%  |
+
+Append more real titles from the recorder's snapshots as new sets with honest labels.
+`corpus.test.ts` compares brands by slug, requires at least 95% accuracy per field (brand, MPN,
+storage, RAM, screen, colour, energy class, litres, kilograms, condition, bundle, accessory) on
+every set and prints the table and every miss: `pnpm --filter @pretoscop/core exec vitest run src/corpus.test.ts --silent=false`.
 Label what a careful person reads in the title, never what the code outputs.
 
 ## Known limitations
 
-- Model codes written with spaces ("FFB 8458 BV EE", "W7I HP42 L") are not extracted from titles;
-  the MPN field usually carries them.
+- Model codes written with spaces ("FFB 8458 BV EE", "W7I HP42 L", "43 HYN 8110 VDQ4K") are not
+  extracted from titles; the MPN field usually carries them.
 - A game title names its platform, not its publisher ("Joc Mario Kart World pentru Nintendo
   Switch 2" has no brand).
+- Unknown seller brands written in lower case ("lynker", "asskanaer", ", bedee,"), at the end of
+  the title ("…, Gonga", "…, Blasko") or with two letters ("Televizor UD QLED") are not guessed;
+  a capitalized model name right after the product noun can be taken for a brand ("Consola …
+  LCX 4.3 Inch" → LCX).
+- Laptop titles from small sellers often carry no part number at all ("Laptop 14" cu procesor
+  Intel Celeron …"); only the shop's MPN field can identify them.
 - Only the standard VAT rate is modelled; reduced rates (books, food) are not.
 - Colour names outside the dictionary (marketing names such as "Scarab", "Porcelain") are left
   out rather than guessed.

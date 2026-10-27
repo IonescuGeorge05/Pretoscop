@@ -6,6 +6,9 @@ services:
   postgres:
     image: pgvector/pgvector:0.8.7-pg18-trixie
     restart: unless-stopped
+    # tini as PID 1: an orphaned process (e.g. a timed-out healthcheck) re-parented to the
+    # postmaster made PostgreSQL treat its exit as a backend crash and restart (27 Oct 2026).
+    init: true
     environment:
       POSTGRES_USER: pretoscop
       POSTGRES_PASSWORD: pretoscop
@@ -26,10 +29,12 @@ services:
       # PostgreSQL 18 images keep data under /var/lib/postgresql/18/docker; mount the parent.
       - pgdata:/var/lib/postgresql
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U pretoscop -d pretoscop']
-      interval: 2s
-      timeout: 3s
+      # Exec form (no shell that could leave pg_isready orphaned when the check times out).
+      test: ['CMD', 'pg_isready', '-U', 'pretoscop', '-d', 'pretoscop']
+      interval: 5s
+      timeout: 10s
       retries: 30
+      start_period: 20s
 
   meilisearch:
     image: getmeili/meilisearch:v1.56.0

@@ -4,7 +4,7 @@ import type { Logger } from '@pretoscop/config/logger';
 import { normalizeOffer } from '@pretoscop/core';
 import { contentHash } from '@pretoscop/core/hash';
 import { type Db, latestFxRate } from '@pretoscop/db';
-import { createFetcher } from '@pretoscop/fetch';
+import { createFetcher, createGuardedDispatcher } from '@pretoscop/fetch';
 import { createBlobStore } from '@pretoscop/storage';
 import { createPolicyResolver } from './fetch/policy';
 import { PgDomainStateStore } from './fetch/pg-state';
@@ -86,7 +86,10 @@ export function createNormalize(eurRonRate: () => number | null): NormalizeFn {
 /** Long-lived collaborators of the worker: blob store, the polite fetcher, normalizer, ops alerts. */
 export function createServices(env: Env, db: Db, log: Logger): Services & { close: () => Promise<void> } {
   const requestLog = new PgRequestLogSink(db, log);
+  // Only public internet addresses (M20: merchants type feed URLs); local fixtures need FETCH_ALLOW_PRIVATE_HOSTS.
+  const dispatcher = createGuardedDispatcher({ allowPrivate: env.FETCH_ALLOW_PRIVATE_HOSTS, timeoutMs: env.FETCH_TIMEOUT_MS });
   const fetcher = createFetcher({
+    dispatcher,
     policyFor: createPolicyResolver(db),
     stateStore: new PgDomainStateStore(db),
     requestLog,
@@ -119,6 +122,7 @@ export function createServices(env: Env, db: Db, log: Logger): Services & { clos
     async close() {
       await requestLog.flush();
       await fetcher.close?.();
+      await dispatcher.close();
     },
   };
 }

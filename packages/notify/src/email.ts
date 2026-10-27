@@ -118,7 +118,8 @@ export function confirmationEmail(i: ConfirmationEmailInput): RenderedEmail {
 }
 
 export type AlertReason = 'below_target' | 'lower_below_target' | 'drop';
-export type ReferenceKind = 'target' | 'baseline' | 'last_notified';
+/** `current`: a simulation (`pnpm alerts:simulate`) measured against today's real price. */
+export type ReferenceKind = 'target' | 'baseline' | 'last_notified' | 'current';
 
 export interface AlertItem {
   alertId: number;
@@ -148,6 +149,7 @@ export function reasonLine(item: Pick<AlertItem, 'reason' | 'referenceBani' | 'r
   if (item.reason === 'below_target') return `Sub pragul tău de ${lei(ref)}.`;
   const pct = dropPercent(item.totalBani, ref);
   if (item.reason === 'lower_below_target') return `A scăzut din nou: cu ${pct}% sub ${lei(ref)}, prețul din alerta anterioară.`;
+  if (item.referenceKind === 'current') return `Cu ${pct}% sub ${lei(ref)}, prețul real de acum (simulare).`;
   return item.referenceKind === 'baseline'
     ? `Cu ${pct}% sub ${lei(ref)}, prețul de la pornirea alertei.`
     : `Cu ${pct}% sub ${lei(ref)}, prețul din alerta anterioară.`;

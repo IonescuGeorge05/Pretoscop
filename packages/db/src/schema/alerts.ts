@@ -35,7 +35,7 @@ export const alerts = pgTable(
     anyVariant: boolean('any_variant').notNull().default(false),
     channel: text('channel').$type<AlertChannel>().notNull().default('email'),
     status: text('status').$type<AlertStatus>().notNull().default('pending'),
-    /** Why a paused alert is paused: 'user', 'channel_unavailable', 'bounce'. */
+    /** Why a paused alert is paused: 'user', 'channel_unavailable' (bounce, blocked bot, expired push), 'suppressed'. */
     pausedReason: text('paused_reason'),
     // Consent evidence (docs/03 §5.5): the ticked box, when, from where (daily-salted hash), which text.
     consentAt: ts('consent_at').notNull(),

@@ -132,6 +132,12 @@ importers:
       '@pretoscop/fetch':
         specifier: workspace:*
         version: link:../../packages/fetch
+      '@pretoscop/mailer':
+        specifier: workspace:*
+        version: link:../../packages/mailer
+      '@pretoscop/notify':
+        specifier: workspace:*
+        version: link:../../packages/notify
       '@pretoscop/storage':
         specifier: workspace:*
         version: link:../../packages/storage

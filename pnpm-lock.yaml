@@ -53,6 +53,9 @@ importers:
       '@pretoscop/mailer':
         specifier: workspace:*
         version: link:../../packages/mailer
+      '@pretoscop/report':
+        specifier: workspace:*
+        version: link:../../packages/report
       '@pretoscop/search':
         specifier: workspace:*
         version: link:../../packages/search
@@ -135,6 +138,9 @@ importers:
       '@pretoscop/fetch':
         specifier: workspace:*
         version: link:../../packages/fetch
+      '@pretoscop/report':
+        specifier: workspace:*
+        version: link:../../packages/report
       '@pretoscop/search':
         specifier: workspace:*
         version: link:../../packages/search
@@ -153,6 +159,9 @@ importers:
       pino:
         specifier: ^10.4.0
         version: 10.4.0
+      sharp:
+        specifier: 0.35.5
+        version: 0.35.5(@types/node@24.19.2)
     devDependencies:
       pino-pretty:
         specifier: ^13.2.0
@@ -249,6 +258,12 @@ importers:
       '@types/nodemailer':
         specifier: ^8.0.2
         version: 8.0.2
+
+  packages/report:
+    dependencies:
+      '@pretoscop/core':
+        specifier: workspace:*
+        version: link:../core
 
   packages/search:
     dependencies:
@@ -4450,8 +4465,7 @@ snapshots:
 
   '@humanwhocodes/retry@0.4.3': {}
 
-  '@img/colour@1.1.0':
-    optional: true
+  '@img/colour@1.1.0': {}
 
   '@img/sharp-darwin-arm64@0.35.5':
     optionalDependencies:
@@ -6809,7 +6823,6 @@ snapshots:
       '@img/sharp-win32-ia32': 0.35.5
       '@img/sharp-win32-x64': 0.35.5
       '@types/node': 24.19.2
-    optional: true
 
   shebang-command@2.0.0:
     dependencies:

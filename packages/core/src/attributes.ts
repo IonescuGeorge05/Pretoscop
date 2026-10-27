@@ -138,9 +138,13 @@ export interface ExtractAttributesOptions {
 
 /** Folded, lower-case text with decimal commas as dots and ×/x unified. */
 function prepare(title: string): string {
-  return foldLower(title)
-    .replace(/\u{D7}/gu, 'x')
-    .replace(/(\d),(\d)/g, '$1.$2');
+  return (
+    foldLower(title)
+      .replace(/\u{D7}/gu, 'x')
+      // "Acebook 10,16GB DDR4" lists a model number and a capacity; it is not 10.16 GB.
+      .replace(/(?<![\d.,])(\d{2,}),(\d{2,})(?=\s*(?:gb|tb|mb)\b)/g, '$1, $2')
+      .replace(/(\d),(\d)/g, '$1.$2')
+  );
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -159,8 +163,21 @@ function toGb(value: number, unit: string): number {
 }
 
 const RAM_AFTER =
-  /^[\s(),]*(?:de\s+)?(?:memorie\s+)?(?:ram|lpddr\d*x?|ddr\d*|so-?dimm|dimm|unified|memorie unificata)\b/;
-const RAM_BEFORE = /\b(?:ram|memorie ram|memorie)\s*:?\s*$/;
+  /^[\s(),]*(?:de\s+)?(?:memorie\s+)?(?:ram|lpddr\d*[a-z]?x?|ddr\d*[a-z]?x?|so-?dimm|dimm|unified|memorie unificata)\b/;
+const RAM_BEFORE = /\b(?:ram|memorie ram)\s*:?\s*$/;
+/** Bare "memorie": RAM on computers ("Memorie 16GB"), storage elsewhere ("Memorie 32GB" console). */
+const MEMORY_AFTER = /^[\s(),]*(?:de\s+)?memorie\b(?!\s+(?:ram|interna|externa))/;
+const MEMORY_BEFORE = /\bmemorie\s*:?\s*$/;
+/**
+ * Expandable or optional capacities are not built in: "pana la 128GB", "Expansion SSD 1TB",
+ * "1 TB SSD expansiune" (the English word precedes its noun, the Romanian one follows it).
+ */
+const EXPANSION_BEFORE =
+  /\b(?:pana la|up to|maxim(?:um)?|max|extensibil\w*|expandabil\w*|extindere|expansiune|expansion|suport\w*)\s*:?\s*(?:(?:ssd|hdd|card|microsd|tf|sd|de|cu)\s+){0,2}$/;
+const EXPANSION_AFTER =
+  /^\s*(?:(?:ssd|hdd|card|microsd|tf|sd)\s+)?(?:expansiune|extensibil\w*|expandabil\w*|optional\w*)\b/;
+/** "12GB RAM 512GB": the word between two capacities labels the first one. */
+const OWNED_BEFORE = /\d\s*(?:gb|tb)\s+[a-z]+\s*:?\s*$/;
 const VRAM_AFTER = /^[\s(),]*(?:gddr\d*x?|vram|hbm\d?)\b/;
 const VRAM_BEFORE =
   /\b(?:rtx|gtx|rx|radeon|geforce|arc|quadro|graphics|placa video)\b[\s\w.-]{0,22}$/;
@@ -194,17 +211,43 @@ function extractMemory(
     out.ramGb = Number(gRam[1]);
     s = s.slice(0, gRam.index) + ' '.repeat(gRam[0].length) + s.slice(gRam.index + gRam[0].length);
   }
-  // Pairs "8/256GB", "8GB/256GB", "12+512GB": RAM then storage.
+  // "128G", "64G incorporat": a capacity without the B (never a network generation at these sizes).
+  s = s.replace(/(?<![\w.])(16|32|64|128|256|512)\s?g\b(?!\s*(?:ram|lte|retea|network))/g, '$1gb');
+  // "SSD512", "SSD 256" (no unit), "SSD1TB": the capacity of the named memory.
+  s = s.replace(
+    /\b(ssd|hdd|emmc|ufs|rom)\s?(64|128|256|512|1024|2048)\b(?!\s*(?:gb|tb|mb))/g,
+    '$1 $2gb',
+  );
+  s = s.replace(/\b(ssd|hdd|emmc|ufs|rom|ram)(\d{1,4}(?:\.\d{1,2})?\s*(?:gb|tb))\b/g, '$1 $2');
+  // Pairs "8/256GB", "8GB/256GB", "12+512GB": RAM then storage ("32GB+128G" are two cards).
   const pair = /\b(\d{1,2})\s*(?:gb)?\s*[/+]\s*(\d{2,4})\s*(gb|tb)\b/.exec(s);
   if (pair && kind !== 'ram' && kind !== 'gpu') {
     const ram = Number(pair[1]);
     const storage = toGb(Number(pair[2]), pair[3] ?? 'gb');
-    if (ram > 0 && ram < storage) {
+    if (ram > 0 && ram <= 24 && ram < storage) {
       out.ramGb = ram;
       out.storageGb = storage;
+      s =
+        s.slice(0, pair.index) + ' '.repeat(pair[0].length) + s.slice(pair.index + pair[0].length);
     }
-    s = s.slice(0, pair.index) + ' '.repeat(pair[0].length) + s.slice(pair.index + pair[0].length);
   }
+  const memoryLabel: Capacity['label'] =
+    kind === 'laptop' || kind === 'desktop' ? 'ram' : 'storage';
+  const labelBefore = (before: string): Capacity['label'] => {
+    if (OWNED_BEFORE.test(before)) return null;
+    if (VRAM_BEFORE.test(before)) return 'vram';
+    if (RAM_BEFORE.test(before)) return 'ram';
+    if (STORAGE_BEFORE.test(before)) return 'storage';
+    if (MEMORY_BEFORE.test(before)) return memoryLabel;
+    return null;
+  };
+  const labelAfter = (after: string): Capacity['label'] => {
+    if (VRAM_AFTER.test(after)) return 'vram';
+    if (RAM_AFTER.test(after)) return 'ram';
+    if (STORAGE_AFTER.test(after)) return 'storage';
+    if (MEMORY_AFTER.test(after)) return memoryLabel;
+    return null;
+  };
   const caps: Capacity[] = [];
   const re = /(?<![\w.])(\d{1,4}(?:\.\d{1,2})?)\s*(gb|tb)\b/g;
   for (let m = re.exec(s); m !== null; m = re.exec(s)) {
@@ -212,11 +255,9 @@ function extractMemory(
     if (!(gb > 0)) continue;
     const before = s.slice(Math.max(0, m.index - 40), m.index);
     const after = s.slice(m.index + m[0].length, m.index + m[0].length + 24);
-    let label: Capacity['label'] = null;
-    if (VRAM_AFTER.test(after) || VRAM_BEFORE.test(before)) label = 'vram';
-    else if (RAM_AFTER.test(after) || RAM_BEFORE.test(before)) label = 'ram';
-    else if (STORAGE_AFTER.test(after) || STORAGE_BEFORE.test(before)) label = 'storage';
-    caps.push({ gb, index: m.index, label });
+    if (EXPANSION_BEFORE.test(before) || EXPANSION_AFTER.test(after)) continue;
+    // The word before wins ("RAM 16GB SSD 512GB") unless it labels the previous capacity.
+    caps.push({ gb, index: m.index, label: labelBefore(before) ?? labelAfter(after) });
   }
   const first = (label: Capacity['label']): number | undefined =>
     caps.find((c) => c.label === label)?.gb;
@@ -289,7 +330,9 @@ function screenContextFor(kind: ProductKind): ScreenContext | null {
 
 function extractScreen(text: string, kind: ProductKind): number | undefined {
   if (NO_SCREEN_KINDS.has(kind)) return undefined;
-  const re = /(?<![\w.])(\d{1,3}(?:\.\d{1,2})?)\s*(?:"|''|inch(?:es)?\b|inchi\b|inci\b|toli\b)/g;
+  // 15.6", 13'', 15.6' (a single quote is an inch mark too), 2.4-inch, 6.7 inchi.
+  const re =
+    /(?<![\w.])(\d{1,3}(?:\.\d{1,2})?)(?:\s*(?:"|''|'(?![a-z0-9]))|\s*-?\s*(?:inch(?:es)?\b|inchi\b|inci\b|toli\b))/g;
   for (let m = re.exec(text); m !== null; m = re.exec(text)) {
     const before = text.slice(Math.max(0, m.index - 6), m.index);
     if (/\d\s*[-/]\s*$/.test(before)) continue; // "32-65"" is a range
@@ -469,6 +512,11 @@ const COLOR_RE = new RegExp(
 );
 const COLOR_KEY = new Map(COLOR_WORDS.map(([w, k]) => [w, k] as const));
 
+/** Colour key of one word or phrase ("Negru" → black), or undefined. */
+export function colorKeyOf(word: string | null | undefined): ColorKey | undefined {
+  return COLOR_KEY.get(foldLower(word).trim());
+}
+
 /** Phrases where colour words are not colours (product lines, certifications, switches, OS names). */
 const COLOR_EXCLUSIONS: readonly RegExp[] = [
   /\bblack friday\b/g,
@@ -488,7 +536,8 @@ const COLOR_EXCLUSIONS: readonly RegExp[] = [
 ];
 
 const BAND_SEGMENT = /\b(?:curea|curele|bratara|bratari|strap|band|loop)\b/;
-const MATERIAL_KEYS: ReadonlySet<ColorKey> = new Set(['titanium']);
+/** Finishes rather than colours: next to a colour word, the colour wins ("negru transparent"). */
+const MATERIAL_KEYS: ReadonlySet<ColorKey> = new Set(['titanium', 'transparent']);
 
 /** One-word compounds ending in a base colour ("LightGray", "Graygreen"): the last word decides. */
 const COMPOUND_COLOR_RE =
@@ -530,6 +579,21 @@ function colorMatches(seg: string): ColorMatch[] {
   return merged;
 }
 
+/** The colour a segment names: its first non-material colour ("negru transparent" → black). */
+function segmentColor(seg: string): ColorKey | undefined {
+  const found = colorMatches(seg).map((m) => m.key);
+  return found.find((k) => !MATERIAL_KEYS.has(k)) ?? found[0];
+}
+
+/** A segment that is only colour words ("negru", "alb argintiu"). */
+function onlyColors(seg: string): boolean {
+  const matches = colorMatches(seg);
+  if (matches.length === 0) return false;
+  let rest = seg;
+  for (const m of [...matches].reverse()) rest = rest.slice(0, m.start) + rest.slice(m.end);
+  return /^[\s/&-]*$/.test(rest);
+}
+
 function extractColor(text: string): ColorKey | undefined {
   let s = text;
   for (const re of COLOR_EXCLUSIONS) s = s.replace(re, (m) => ' '.repeat(m.length));
@@ -537,13 +601,15 @@ function extractColor(text: string): ColorKey | undefined {
   let fallback: ColorKey | undefined;
   for (let i = segments.length - 1; i >= 0; i--) {
     const seg = segments[i] as string;
-    const found = colorMatches(seg).map((m) => m.key);
-    if (found.length === 0) continue;
-    const specific = found.find((k) => !MATERIAL_KEYS.has(k));
-    const pick = specific ?? (found[0] as ColorKey);
+    let pick = segmentColor(seg);
+    if (pick === undefined) continue;
     if (BAND_SEGMENT.test(seg)) {
       fallback ??= pick;
       continue;
+    }
+    // "…, negru, rosu": colours listed in a row name the first one, as "negru/rosu" does.
+    for (let j = i - 1; j >= 0 && onlyColors(segments[j] as string); j--) {
+      pick = segmentColor(segments[j] as string) ?? pick;
     }
     return pick;
   }

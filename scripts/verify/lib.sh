@@ -12,6 +12,8 @@ fail() {
 
 ensure_services() {
   step "services (postgres, meilisearch, mailpit)"
+  # --no-recreate: start what is missing, never recreate running services (a branch with an older
+  # compose file would otherwise restart the shared PostgreSQL for every other process).
   $COMPOSE up -d --wait --no-recreate postgres meilisearch mailpit >/dev/null 2>&1 || fail "docker compose up failed (is Docker running?)"
   ok "services healthy"
 }

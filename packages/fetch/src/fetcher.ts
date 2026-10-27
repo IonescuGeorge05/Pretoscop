@@ -6,6 +6,7 @@ import { detectBlock, detectChallengeRedirect, looksLikeHtml, type BlockDetectio
 import { FetchError, fetchCodeOf } from './errors';
 import {
   BOT_PRODUCT_TOKEN,
+  USER_AGENT_FORMAT,
   buildRequestHeaders,
   buildUserAgent,
   isValidBotInfoUrl,
@@ -22,11 +23,13 @@ import {
   selectRobotsGroups,
   type ParsedRobots,
 } from './robots';
+import { canonicalUrl, hostKey, normalizeHost, sameSite, toOrigin } from './site';
 import type { DomainPause, DomainStateStore, RobotsCacheEntry } from './state/types';
 import { bucharestDay, isWithinAllowedHours } from './time';
 import { httpGet } from './transport';
 import type {
   AssistedChannel,
+  AssistedFetchResponse,
   BlockReason,
   Channel,
   FetchErrorCode,
@@ -63,16 +66,21 @@ export const ROBOTS_MAX_BYTES = ROBOTS_PARSE_LIMIT_BYTES;
 export const MAX_CRAWL_DELAY_SEC = 3600;
 /** Extra random delay on top of the interval: 0–10 %. */
 export const JITTER_RATIO = 0.1;
+/**
+ * Added to every slot so that differences in state-store latency between two callers (the wait
+ * is computed when the store answers, not when the caller starts sleeping) cannot eat into the
+ * interval.
+ */
+export const SLOT_SAFETY_MARGIN_MS = 100;
 export const DEFAULT_TIMEOUT_MS = 30_000;
 export const DEFAULT_MAX_BYTES = 15 * 1024 * 1024;
 export const DEFAULT_CONNECT_TIMEOUT_MS = 10_000;
 export const DEFAULT_MAX_RETRIES = 2;
 export const DEFAULT_RETRY_BASE_MS = 10_000;
+/** The assisted client gets `timeoutMs`; the fetch layer gives up `min(timeoutMs, 2 s)` later. */
+export const ASSISTED_TIMEOUT_GRACE_MS = 2000;
 
 const PURPOSES: ReadonlySet<string> = new Set<FetchPurpose>(['robots', 'sitemap', 'listing', 'product', 'feed', 'probe']);
-
-/** Purposes that ignore the bulk-crawl window (`allowedHours`): one small diagnostic request. */
-const HOURS_EXEMPT: ReadonlySet<FetchPurpose> = new Set(['robots', 'probe']);
 
 const NOOP_LOGGER: FetchLogger = { debug() {}, info() {}, warn() {}, error() {} };
 
@@ -83,6 +91,8 @@ interface CallContext {
   log: FetchLogger;
   timeoutMs: number;
   maxBytes: number;
+  /** The bulk-crawl window (`allowedHours`) applies: everything except robots.txt. */
+  checkHours: boolean;
 }
 
 interface ChainFlags {
@@ -94,6 +104,16 @@ interface ChainFlags {
   truncate: boolean;
   robotsGroup?: string;
   robotsIgnored?: string[];
+}
+
+/** Why no request may be made right now. */
+interface Denial {
+  skipped: SkipReason;
+  blocked?: boolean;
+  blockReason?: BlockReason;
+  blockDetail?: string;
+  error?: string;
+  errorCode?: FetchErrorCode;
 }
 
 interface HopResponse {
@@ -110,7 +130,7 @@ interface HopResponse {
   durationMs: number;
   waitMs: number;
   startedAt: number;
-  vendorBlock?: { reason: BlockReason; detail: string };
+  vendorBlock?: { reason: string; detail: string };
   vendorError?: string;
 }
 
@@ -119,15 +139,18 @@ interface HopError {
   url: URL;
   channel: Channel;
   error: unknown;
+  /** The caller aborted while the request was on the wire. */
+  aborted: boolean;
   durationMs: number;
   waitMs: number;
   startedAt: number;
 }
 
-interface HopSkip {
+interface HopSkip extends Denial {
   kind: 'skip';
   url: URL;
-  skipped: SkipReason;
+  channel: Channel;
+  waitMs: number;
 }
 
 type HopOutcome = HopResponse | HopError | HopSkip;
@@ -160,37 +183,6 @@ interface RobotsVerdict {
   errorCode?: FetchErrorCode;
 }
 
-export function hostKey(url: URL): string {
-  return url.host.toLowerCase();
-}
-
-/** `www.x.ro`, `https://www.x.ro/any/path` or `http://x.ro:8080` to an origin. */
-export function toOrigin(hostOrUrl: string): string {
-  const s = hostOrUrl.trim();
-  return new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(s) ? s : `https://${s}`).origin;
-}
-
-function normalizeHost(hostOrUrl: string): string {
-  return new URL(toOrigin(hostOrUrl)).host.toLowerCase();
-}
-
-const SECOND_LEVEL_LABELS = new Set(['com', 'co', 'org', 'net', 'gov', 'edu', 'ac', 'nom', 'info', 'firm', 'store', 'tm', 'www', 'arts', 'rec', 'nt']);
-
-/** Registrable-domain approximation (`www.dedeman.ro` and `dedeman.ro` share `dedeman.ro`). */
-export function siteKey(hostname: string): string {
-  const h = hostname.toLowerCase().replace(/\.$/, '');
-  if (/^\d+\.\d+\.\d+\.\d+$/.test(h) || h.includes(':') || h.startsWith('[')) return h;
-  const labels = h.split('.');
-  if (labels.length <= 2) return h;
-  const tld = labels[labels.length - 1] as string;
-  const sld = labels[labels.length - 2] as string;
-  return tld.length === 2 && SECOND_LEVEL_LABELS.has(sld) ? labels.slice(-3).join('.') : labels.slice(-2).join('.');
-}
-
-export function sameSite(a: URL, b: URL): boolean {
-  return siteKey(a.hostname) === siteKey(b.hostname);
-}
-
 function isRedirect(status: number): boolean {
   return status === 301 || status === 302 || status === 303 || status === 307 || status === 308;
 }
@@ -202,6 +194,11 @@ function isAbort(error: unknown): boolean {
 
 function positive(value: number | undefined, fallback: number): number {
   return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : fallback;
+}
+
+function envFlag(value: string | undefined, fallback: boolean): boolean {
+  if (value === undefined || value.trim() === '') return fallback;
+  return ['1', 'true', 'yes', 'on'].includes(value.trim().toLowerCase());
 }
 
 function describePause(pause: DomainPause): string {
@@ -231,12 +228,36 @@ function channelOf(policy: DomainPolicy): Channel {
   return policy.accessMode === 'assisted' ? 'assisted' : 'direct';
 }
 
+function minIntervalOf(policy: DomainPolicy): number {
+  return Number.isFinite(policy.minIntervalMs) && policy.minIntervalMs >= 0 ? policy.minIntervalMs : DEFAULT_MIN_INTERVAL_MS;
+}
+
+/** Rejects as soon as `signal` aborts, even if `promise` never settles (a hung vendor call). */
+function raceWithSignal<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(signal.reason);
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = () => reject(signal.reason);
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(value);
+      },
+      (error: unknown) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(error);
+      },
+    );
+  });
+}
+
 class PoliteFetcher implements Fetcher {
   private readonly now: () => number;
   private readonly sleep: (ms: number, signal?: AbortSignal) => Promise<void>;
   private readonly random: () => number;
   private readonly store: DomainStateStore;
   private readonly policyFor: (host: string) => DomainPolicy | Promise<DomainPolicy>;
+  private readonly crawlEnabled: boolean;
   private readonly logger: FetchLogger;
   private readonly requestLog: RequestLogSink | undefined;
   private readonly assisted: AssistedChannel | undefined;
@@ -258,6 +279,7 @@ class PoliteFetcher implements Fetcher {
     this.random = deps.random ?? Math.random;
     this.store = deps.stateStore;
     this.policyFor = deps.policyFor ?? ((host) => defaultDomainPolicy(host));
+    this.crawlEnabled = deps.crawlEnabled ?? envFlag(process.env.CRAWL_ENABLED, true);
     this.logger = deps.logger ?? NOOP_LOGGER;
     this.requestLog = deps.requestLog;
     this.assisted = deps.assisted;
@@ -271,9 +293,9 @@ class PoliteFetcher implements Fetcher {
     }
     const infoUrl = resolveBotInfoUrl(deps.botInfoUrl ?? process.env.BOT_INFO_URL);
     if (deps.userAgent !== undefined) {
-      // Test hook only: even then the request must carry our product token (no spoofing).
-      if (!deps.userAgent.includes(BOT_PRODUCT_TOKEN) || /[\r\n]/.test(deps.userAgent)) {
-        throw new Error(`createFetcher: userAgent override must contain "${BOT_PRODUCT_TOKEN}"`);
+      // Test hook only. Even then it must be our exact UA shape: only version and URL may differ.
+      if (!USER_AGENT_FORMAT.test(deps.userAgent)) {
+        throw new Error(`createFetcher: userAgent override must look like "${buildUserAgent('page', infoUrl)}"`);
       }
       this.pageUserAgent = deps.userAgent;
       this.feedUserAgent = deps.userAgent;
@@ -301,60 +323,80 @@ class PoliteFetcher implements Fetcher {
     if (!PURPOSES.has(opts?.purpose)) {
       throw new TypeError(`fetchPolite: unknown purpose "${String(opts?.purpose)}"`);
     }
-    let url: URL;
+    let parsed: URL;
     try {
-      url = new URL(rawUrl);
+      parsed = new URL(rawUrl);
     } catch {
       return this.invalidUrl(rawUrl, opts, 'invalid_url', `not a valid absolute URL: ${rawUrl}`);
     }
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
-      return this.invalidUrl(rawUrl, opts, 'unsupported_scheme', `only http(s) URLs are fetched: ${url.protocol}`);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      return this.invalidUrl(rawUrl, opts, 'unsupported_scheme', `only http(s) URLs are fetched: ${parsed.protocol}`);
     }
-    url.hash = '';
+    const url = canonicalUrl(parsed);
+    // 'robots' is a property of the URL, not a caller's choice: it skips the robots check and the
+    // crawl window, so it is accepted for /robots.txt only.
+    if (opts.purpose === 'robots' && url.pathname !== '/robots.txt') {
+      throw new TypeError(`fetchPolite: purpose 'robots' is only for /robots.txt, not ${url.pathname}`);
+    }
     const host = hostKey(url);
     const policy = await this.policy(host);
     const ctx = this.context(opts, policy);
     try {
-      const gate = await this.gate(ctx, url, host, policy, !HOURS_EXEMPT.has(opts.purpose));
+      const gate = await this.gate(ctx, url, host, policy);
       if (gate) return gate;
 
-      if (opts.purpose === 'robots' && url.pathname === '/robots.txt') {
+      if (opts.purpose === 'robots') {
         const state = await this.loadRobots(url.origin, ctx, policy, true);
-        return state.fetchResult ?? this.skipResult(ctx, url, host, channelOf(policy), 'paused');
+        return state.fetchResult ?? this.skipResult(ctx, url, host, channelOf(policy), { skipped: 'paused' });
       }
 
-      let flags: ChainFlags = { followAnyHost: false, checkRobots: opts.purpose !== 'robots', truncate: false };
-      if (opts.purpose !== 'robots') {
-        const verdict = await this.robotsVerdict(url, policy, ctx);
-        if (!verdict.allowed) {
-          return this.skipResult(ctx, url, host, channelOf(policy), 'robots_disallowed', {
-            blocked: verdict.blocked ?? false,
-            blockReason: verdict.blockReason,
-            blockDetail: verdict.blockDetail,
-            error: verdict.error,
-            errorCode: verdict.errorCode,
-            robotsGroup: verdict.group,
-            robotsIgnored: verdict.ignored,
-          });
-        }
-        flags = { ...flags, robotsGroup: verdict.group, robotsIgnored: verdict.ignored };
+      const verdict = await this.robotsVerdict(url, policy, ctx);
+      if (!verdict.allowed) {
+        return this.skipResult(ctx, url, host, channelOf(policy), { skipped: 'robots_disallowed', ...verdict }, {
+          robotsGroup: verdict.group,
+          robotsIgnored: verdict.ignored,
+        });
       }
+      const flags: ChainFlags = {
+        followAnyHost: false,
+        checkRobots: true,
+        truncate: false,
+        robotsGroup: verdict.group,
+        robotsIgnored: verdict.ignored,
+      };
       return (await this.execute(url, policy, ctx, flags)).result;
     } catch (error) {
       if (!isAbort(error)) throw error;
-      const result = emptyResult(url.href, channelOf(policy));
-      return { ...result, error: 'request aborted by caller', errorCode: 'aborted' };
+      // Aborted before a request of this call was on the wire (host lock, slot wait, back-off).
+      const channel = channelOf(policy);
+      await this.writeLog(ctx, {
+        ts: new Date(this.now()),
+        host,
+        url: url.href,
+        status: 0,
+        durationMs: 0,
+        bytes: 0,
+        waitMs: 0,
+        channel,
+        attempt: 0,
+        hop: 0,
+        blocked: false,
+        error: 'request aborted by caller',
+        errorCode: 'aborted',
+      });
+      return { ...emptyResult(url.href, channel), error: 'request aborted by caller', errorCode: 'aborted' };
     }
   }
 
   async isAllowedByRobots(rawUrl: string): Promise<boolean> {
-    let url: URL;
+    let parsed: URL;
     try {
-      url = new URL(rawUrl);
+      parsed = new URL(rawUrl);
     } catch {
       return false;
     }
-    if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return false;
+    const url = canonicalUrl(parsed);
     const policy = await this.policy(hostKey(url));
     const ctx = this.context({ purpose: 'product' }, policy);
     return (await this.robotsVerdict(url, policy, ctx)).allowed;
@@ -362,7 +404,7 @@ class PoliteFetcher implements Fetcher {
 
   async robotsFor(hostOrUrl: string): Promise<RobotsDecisionInfo> {
     const origin = toOrigin(hostOrUrl);
-    const host = new URL(origin).host.toLowerCase();
+    const host = hostKey(new URL(origin));
     const policy = await this.policy(host);
     const ctx = this.context({ purpose: 'robots' }, policy);
     const state = await this.loadRobots(origin, ctx, policy, false);
@@ -421,6 +463,7 @@ class PoliteFetcher implements Fetcher {
       log,
       timeoutMs: positive(opts.timeoutMs, this.defaultTimeoutMs),
       maxBytes: positive(opts.maxBytes, this.defaultMaxBytes),
+      checkHours: opts.purpose !== 'robots',
     };
   }
 
@@ -437,48 +480,40 @@ class PoliteFetcher implements Fetcher {
     }
   }
 
-  /** Checks that never need a request: access mode, pause, crawl window, daily budget. */
-  private async gate(
-    ctx: CallContext,
-    url: URL,
-    host: string,
-    policy: DomainPolicy,
-    checkHours: boolean,
-  ): Promise<FetchResult | null> {
-    const channel = channelOf(policy);
+  /**
+   * Everything that forbids a request without making one: global switch, access mode, pause,
+   * crawl window, daily budget (peeked, not consumed). Checked when a call starts and again for
+   * every request, under the host lock, before and after the slot wait.
+   */
+  private async denial(ctx: CallContext, host: string, policy: DomainPolicy, peekBudget: boolean): Promise<Denial | null> {
+    if (!this.crawlEnabled) {
+      return { skipped: 'access_off', error: 'crawling is disabled (CRAWL_ENABLED=false)', errorCode: 'crawl_disabled' };
+    }
     const access = this.accessSkip(policy, ctx.purpose);
-    if (access) return this.skipResult(ctx, url, host, channel, access);
-
+    if (access) return { skipped: access };
     const pause = await this.store.getPause(host);
-    if (pause) {
-      return this.skipResult(ctx, url, host, channel, 'paused', {
-        blocked: true,
-        blockReason: 'paused',
-        blockDetail: describePause(pause),
-      });
-    }
-
-    if (checkHours) {
+    if (pause) return { skipped: 'paused', blocked: true, blockReason: 'paused', blockDetail: describePause(pause) };
+    if (ctx.checkHours) {
       const within = isWithinAllowedHours(policy.allowedHours, this.now());
-      if (within !== true) {
-        return this.skipResult(
-          ctx,
-          url,
-          host,
-          channel,
-          'outside_allowed_hours',
-          within === 'invalid'
-            ? { error: `invalid allowedHours ${JSON.stringify(policy.allowedHours)}`, errorCode: 'invalid_policy' }
-            : {},
-        );
+      if (within === 'invalid') {
+        return {
+          skipped: 'outside_allowed_hours',
+          error: `invalid allowedHours ${JSON.stringify(policy.allowedHours)}`,
+          errorCode: 'invalid_policy',
+        };
       }
+      if (!within) return { skipped: 'outside_allowed_hours' };
     }
-
-    if (policy.maxPagesPerDay !== null && policy.maxPagesPerDay !== undefined) {
+    if (peekBudget && policy.maxPagesPerDay !== null && policy.maxPagesPerDay !== undefined) {
       const count = await this.store.getDailyCount(host, bucharestDay(this.now()));
-      if (count >= policy.maxPagesPerDay) return this.skipResult(ctx, url, host, channel, 'budget_exhausted');
+      if (count >= policy.maxPagesPerDay) return { skipped: 'budget_exhausted' };
     }
     return null;
+  }
+
+  private async gate(ctx: CallContext, url: URL, host: string, policy: DomainPolicy): Promise<FetchResult | null> {
+    const denial = await this.denial(ctx, host, policy, true);
+    return denial ? this.skipResult(ctx, url, host, channelOf(policy), denial) : null;
   }
 
   private async skipResult(
@@ -486,26 +521,18 @@ class PoliteFetcher implements Fetcher {
     url: URL,
     host: string,
     channel: Channel,
-    skipped: SkipReason,
-    extra: {
-      blocked?: boolean;
-      blockReason?: BlockReason;
-      blockDetail?: string;
-      error?: string;
-      errorCode?: FetchErrorCode;
-      robotsGroup?: string;
-      robotsIgnored?: string[];
-    } = {},
+    denial: Denial,
+    log: { robotsGroup?: string; robotsIgnored?: string[]; hop?: number; waitMs?: number } = {},
   ): Promise<FetchResult> {
     const result: FetchResult = {
       ...emptyResult(url.href, channel),
-      skipped,
-      blocked: extra.blocked ?? false,
+      skipped: denial.skipped,
+      blocked: denial.blocked ?? false,
     };
-    if (extra.blockReason) result.blockReason = extra.blockReason;
-    if (extra.blockDetail) result.blockDetail = extra.blockDetail;
-    if (extra.error) result.error = extra.error;
-    if (extra.errorCode) result.errorCode = extra.errorCode;
+    if (denial.blockReason) result.blockReason = denial.blockReason;
+    if (denial.blockDetail) result.blockDetail = denial.blockDetail;
+    if (denial.error) result.error = denial.error;
+    if (denial.errorCode) result.errorCode = denial.errorCode;
     await this.writeLog(ctx, {
       ts: new Date(this.now()),
       host,
@@ -513,20 +540,24 @@ class PoliteFetcher implements Fetcher {
       status: 0,
       durationMs: 0,
       bytes: 0,
-      waitMs: 0,
+      waitMs: log.waitMs ?? 0,
       channel,
+      // attempt 0 always means "no request was sent" (the hop says where in a redirect chain).
       attempt: 0,
-      hop: 0,
+      hop: log.hop ?? 0,
       blocked: result.blocked,
       blockReason: result.blockReason,
       blockDetail: result.blockDetail,
-      skipped,
+      skipped: denial.skipped,
       error: result.error,
       errorCode: result.errorCode,
-      robotsGroup: extra.robotsGroup,
-      robotsIgnoredGroups: extra.robotsIgnored,
+      robotsGroup: log.robotsGroup,
+      robotsIgnoredGroups: log.robotsIgnored,
     });
-    ctx.log.debug({ host, url: url.href, purpose: ctx.purpose, skipped, detail: result.blockDetail ?? result.error }, 'request skipped');
+    ctx.log.debug(
+      { host, url: url.href, purpose: ctx.purpose, skipped: denial.skipped, detail: result.blockDetail ?? result.error },
+      'request skipped',
+    );
     return result;
   }
 
@@ -576,34 +607,51 @@ class PoliteFetcher implements Fetcher {
 
   // ---------------------------------------------------------------- requests
 
-  private intervalFor(url: URL, policy: DomainPolicy, purpose: FetchPurpose, log: FetchLogger): number {
-    let interval =
-      Number.isFinite(policy.minIntervalMs) && policy.minIntervalMs >= 0 ? policy.minIntervalMs : DEFAULT_MIN_INTERVAL_MS;
-    if (policy.respectCrawlDelay !== false) {
-      const memo = this.robotsMemo.get(url.origin);
-      const delaySec = memo ? selectRobotsGroups(memo.parsed, robotsTokensFor(purpose)).crawlDelaySec : null;
-      if (delaySec !== null && delaySec * 1000 > interval) {
-        if (delaySec > MAX_CRAWL_DELAY_SEC) {
-          log.warn({ host: hostKey(url), crawlDelaySec: delaySec }, 'robots.txt Crawl-delay capped at 3600 s');
-        }
-        interval = Math.min(delaySec, MAX_CRAWL_DELAY_SEC) * 1000;
-      }
-    }
-    const r = Math.min(Math.max(this.random(), 0), 0.999_999);
-    return interval + Math.floor(interval * JITTER_RATIO * r);
+  /** Crawl-delay (seconds) of the cached robots.txt for this URL's origin and purpose, if any. */
+  private crawlDelayFor(url: URL, policy: DomainPolicy, purpose: FetchPurpose): number | null {
+    if (policy.respectCrawlDelay === false) return null;
+    const memo = this.robotsMemo.get(url.origin);
+    return memo ? selectRobotsGroups(memo.parsed, robotsTokensFor(purpose)).crawlDelaySec : null;
   }
 
-  /** One network request: host lock, daily budget, slot, then the request. */
-  private async performHop(url: URL, policy: DomainPolicy, ctx: CallContext, truncate: boolean): Promise<HopOutcome> {
+  private intervalFor(url: URL, policy: DomainPolicy, ctx: CallContext): number {
+    let interval = minIntervalOf(policy);
+    const delaySec = this.crawlDelayFor(url, policy, ctx.purpose);
+    if (delaySec !== null && delaySec * 1000 > interval) {
+      if (delaySec > MAX_CRAWL_DELAY_SEC) {
+        ctx.log.warn({ host: hostKey(url), crawlDelaySec: delaySec }, 'robots.txt Crawl-delay capped at 3600 s');
+      }
+      interval = Math.min(delaySec, MAX_CRAWL_DELAY_SEC) * 1000;
+    }
+    const r = Math.min(Math.max(this.random(), 0), 0.999_999);
+    return interval + Math.floor(interval * JITTER_RATIO * r) + SLOT_SAFETY_MARGIN_MS;
+  }
+
+  /**
+   * One network request. Under the host lock: re-check the live policy and pause, reserve a slot,
+   * wait for it, re-check (another process may have paused the host or flipped a kill switch
+   * meanwhile), count it against the daily budget, then send it.
+   */
+  private async performHop(url: URL, ctx: CallContext, truncate: boolean): Promise<HopOutcome> {
     const host = hostKey(url);
-    const channel = channelOf(policy);
     const release = await processHostLocks.acquire(host, ctx.opts.signal);
     try {
+      let policy = await this.policy(host);
+      let denial = await this.denial(ctx, host, policy, true);
+      if (denial) return { kind: 'skip', url, channel: channelOf(policy), waitMs: 0, ...denial };
+
+      const slot = await this.store.reserveSlot(host, this.intervalFor(url, policy, ctx));
+      if (slot.waitMs > 0) {
+        await this.sleep(slot.waitMs, ctx.opts.signal);
+        policy = await this.policy(host);
+        denial = await this.denial(ctx, host, policy, false);
+        if (denial) return { kind: 'skip', url, channel: channelOf(policy), waitMs: slot.waitMs, ...denial };
+      }
       const budget = await this.store.consumeDailyRequest(host, bucharestDay(this.now()), policy.maxPagesPerDay ?? null);
-      if (!budget.allowed) return { kind: 'skip', url, skipped: 'budget_exhausted' };
-      const slot = await this.store.reserveSlot(host, this.intervalFor(url, policy, ctx.purpose, ctx.log));
-      if (slot.waitMs > 0) await this.sleep(slot.waitMs, ctx.opts.signal);
+      if (!budget.allowed) return { kind: 'skip', url, channel: channelOf(policy), waitMs: slot.waitMs, skipped: 'budget_exhausted' };
+
       const startedAt = this.now();
+      const channel = channelOf(policy);
       if (channel === 'assisted') return await this.assistedHop(url, policy, ctx, startedAt, slot.waitMs);
       try {
         const res = await httpGet(url.href, {
@@ -646,8 +694,16 @@ class PoliteFetcher implements Fetcher {
           startedAt,
         };
       } catch (error) {
-        if (isAbort(error) && ctx.opts.signal?.aborted) throw error;
-        return { kind: 'error', url, channel, error, durationMs: this.now() - startedAt, waitMs: slot.waitMs, startedAt };
+        return {
+          kind: 'error',
+          url,
+          channel,
+          error,
+          aborted: isAbort(error) && Boolean(ctx.opts.signal?.aborted),
+          durationMs: this.now() - startedAt,
+          waitMs: slot.waitMs,
+          startedAt,
+        };
       }
     } finally {
       release();
@@ -669,14 +725,26 @@ class PoliteFetcher implements Fetcher {
     waitMs: number,
   ): Promise<HopOutcome> {
     const channel: Channel = 'assisted';
+    // The vendor gets the time budget; if it does not answer shortly after, we stop waiting
+    // (a hung vendor call must not hold the host lock forever).
+    const deadline = new AbortController();
+    const grace = Math.min(ASSISTED_TIMEOUT_GRACE_MS, ctx.timeoutMs);
+    const timer = setTimeout(() => {
+      deadline.abort(new FetchError('timeout', `assisted channel gave no answer within ${ctx.timeoutMs} ms`));
+    }, ctx.timeoutMs + grace);
+    const signal = ctx.opts.signal ? AbortSignal.any([deadline.signal, ctx.opts.signal]) : deadline.signal;
     try {
-      const r = await (this.assisted as AssistedChannel).fetch(url.href, {
-        render: policy.assistedRender ?? false,
-        timeoutMs: ctx.timeoutMs,
-        purpose: ctx.purpose,
-        shopSlug: ctx.shopSlug,
-        signal: ctx.opts.signal,
-      });
+      const r: AssistedFetchResponse = await raceWithSignal(
+        (this.assisted as AssistedChannel).fetch(url.href, {
+          render: policy.assistedRender ?? false,
+          followRedirects: false,
+          timeoutMs: ctx.timeoutMs,
+          purpose: ctx.purpose,
+          shopSlug: ctx.shopSlug,
+          signal,
+        }),
+        signal,
+      );
       const headers: Record<string, string> = {};
       for (const [k, v] of Object.entries(r.headers ?? {})) headers[k.toLowerCase()] = v;
       const contentType = r.contentType ?? headers['content-type'] ?? null;
@@ -686,7 +754,7 @@ class PoliteFetcher implements Fetcher {
       }
       let finalUrl = url;
       try {
-        if (r.finalUrl) finalUrl = new URL(r.finalUrl);
+        if (r.finalUrl) finalUrl = canonicalUrl(new URL(r.finalUrl));
       } catch {
         // keep the requested URL
       }
@@ -705,14 +773,25 @@ class PoliteFetcher implements Fetcher {
         waitMs,
         startedAt,
       };
-      if (r.blocked) hop.vendorBlock = { reason: r.blockReason ?? 'vendor_blocked', detail: r.blockDetail ?? 'blocked (reported by the assisted vendor)' };
+      if (r.blocked) {
+        hop.vendorBlock = {
+          reason: r.blockReason ?? 'vendor_blocked',
+          detail: r.blockDetail ?? 'blocked (reported by the assisted vendor)',
+        };
+      }
       if (r.error || r.status === 0) hop.vendorError = r.error ?? 'assisted vendor returned no response';
       return hop;
     } catch (error) {
-      if (isAbort(error) && ctx.opts.signal?.aborted) throw error;
+      const aborted = Boolean(ctx.opts.signal?.aborted);
       const wrapped =
-        error instanceof FetchError ? error : new FetchError('assisted_error', `assisted channel failed: ${String(error)}`, { cause: error });
-      return { kind: 'error', url, channel, error: wrapped, durationMs: this.now() - startedAt, waitMs, startedAt };
+        error instanceof FetchError
+          ? error
+          : deadline.signal.aborted
+            ? new FetchError('timeout', `assisted channel gave no answer within ${ctx.timeoutMs} ms`)
+            : new FetchError(aborted ? 'aborted' : 'assisted_error', `assisted channel failed: ${String(error)}`, { cause: error });
+      return { kind: 'error', url, channel, error: wrapped, aborted, durationMs: this.now() - startedAt, waitMs, startedAt };
+    } finally {
+      clearTimeout(timer);
     }
   }
 
@@ -727,7 +806,8 @@ class PoliteFetcher implements Fetcher {
       last = await this.runChain(start, policy, ctx, flags, attempt, attempt >= maxAttempts);
       waited += last.waitedMs;
       if (!last.retryable || attempt >= maxAttempts) break;
-      if (await this.store.getPause(hostKey(new URL(last.result.finalUrl)))) break; // breaker tripped
+      // Don't sleep a back-off for nothing; the next attempt re-checks the pause under the lock.
+      if (await this.store.getPause(hostKey(new URL(last.result.finalUrl)))) break;
       const backoff = this.retryBaseMs * 2 ** (attempt - 1) + Math.floor(this.retryBaseMs * 0.1 * this.random());
       ctx.log.info({ url: start.href, attempt, backoffMs: backoff, error: last.result.error, status: last.result.status }, 'transient failure; retrying');
       await this.sleep(backoff, ctx.opts.signal);
@@ -763,33 +843,34 @@ class PoliteFetcher implements Fetcher {
     for (let hop = 0; ; hop++) {
       const host = hostKey(current);
       if (hop > 0) {
-        const gate = await this.gate(ctx, current, host, policy, false);
-        if (gate) return done(gate);
+        // A redirect target: no request at all when its host is paused or off, or robots.txt says no.
+        const denial = await this.denial(ctx, host, policy, true);
+        if (denial) {
+          return done(await this.skipResult(ctx, current, host, channelOf(policy), denial, { robotsGroup, hop }));
+        }
         if (flags.checkRobots) {
           const verdict = await this.robotsVerdict(current, policy, ctx);
           robotsGroup = verdict.group;
           robotsIgnored = verdict.ignored;
           if (!verdict.allowed) {
             return done(
-              await this.skipResult(ctx, current, host, channelOf(policy), 'robots_disallowed', {
-                blocked: verdict.blocked ?? false,
-                blockReason: verdict.blockReason,
-                blockDetail: verdict.blockDetail,
-                error: verdict.error,
-                errorCode: verdict.errorCode,
+              await this.skipResult(ctx, current, host, channelOf(policy), { skipped: 'robots_disallowed', ...verdict }, {
                 robotsGroup: verdict.group,
                 robotsIgnored: verdict.ignored,
+                hop,
               }),
             );
           }
         }
       }
 
-      const out = await this.performHop(current, policy, ctx, flags.truncate);
-      if (out.kind === 'skip') {
-        return done(await this.skipResult(ctx, current, host, channelOf(policy), out.skipped, { robotsGroup }));
-      }
+      const out = await this.performHop(current, ctx, flags.truncate);
       waited += out.waitMs;
+      if (out.kind === 'skip') {
+        return done(
+          await this.skipResult(ctx, current, host, out.channel, out, { robotsGroup, hop, waitMs: out.waitMs }),
+        );
+      }
       duration += out.durationMs;
       const logBase = {
         ts: new Date(out.startedAt),
@@ -805,11 +886,15 @@ class PoliteFetcher implements Fetcher {
       };
 
       if (out.kind === 'error') {
+        if (out.aborted) {
+          await this.writeLog(ctx, { ...logBase, status: 0, bytes: 0, blocked: false, error: 'request aborted by caller', errorCode: 'aborted' });
+          return done({ ...emptyResult(start.href, out.channel), finalUrl: current.href, error: 'request aborted by caller', errorCode: 'aborted' });
+        }
         const det = detectBlock({ error: out.error });
         const cls = det.transportError;
         const message = cls?.message ?? String(out.error);
         const code = cls?.code ?? 'network';
-        if (det.blocked) {
+        if (det.blocked && out.channel === 'direct') {
           const pause = await this.pauseForBlock(host, 'transport', det, 0, ctx);
           await this.writeLog(ctx, { ...logBase, status: 0, bytes: 0, blocked: true, blockReason: 'transport', blockDetail: det.detail, error: message, errorCode: code });
           return done({
@@ -822,7 +907,7 @@ class PoliteFetcher implements Fetcher {
             errorCode: code,
           });
         }
-        if (cls?.countsAsFailure) await this.registerFailure(host, `${code}: ${message}`, ctx);
+        if (cls?.countsAsFailure || out.channel === 'assisted') await this.registerFailure(host, `${code}: ${message}`, ctx);
         await this.writeLog(ctx, { ...logBase, status: 0, bytes: 0, blocked: false, error: message, errorCode: code });
         return done(
           { ...emptyResult(start.href, out.channel), finalUrl: current.href, error: message, errorCode: code },
@@ -832,11 +917,37 @@ class PoliteFetcher implements Fetcher {
 
       // ---- a response
       const status = out.status;
-      if (out.channel === 'direct' && isRedirect(status) && out.headers.location) {
+      const response = (extra: Partial<FetchResult>): FetchResult => ({
+        ...emptyResult(start.href, out.channel),
+        finalUrl: out.url.href,
+        status,
+        headers: out.headers,
+        contentType: out.contentType,
+        ...extra,
+      });
+      const vendorFailure = async (detail: string, error?: string, errorCode?: FetchErrorCode): Promise<ExecOutcome> => {
+        // The vendor handles challenges: a block here is the vendor's, not a reason to pause the shop
+        // at once. It counts as a failure, so three in a row pause the shop (1 h, doubling).
+        await this.registerFailure(host, detail, ctx);
+        await this.writeLog(ctx, {
+          ...logBase,
+          status,
+          bytes: out.wireBytes,
+          blocked: !error,
+          blockReason: error ? undefined : 'vendor_blocked',
+          blockDetail: error ? undefined : detail,
+          error,
+          errorCode,
+        });
+        return done(
+          response(error ? { error, errorCode } : { blocked: true, blockReason: 'vendor_blocked', blockDetail: detail }),
+        );
+      };
+
+      if (isRedirect(status) && out.headers.location) {
         let target: URL | null = null;
         try {
-          target = new URL(out.headers.location, current);
-          target.hash = '';
+          target = canonicalUrl(new URL(out.headers.location, current));
         } catch {
           target = null;
         }
@@ -855,6 +966,7 @@ class PoliteFetcher implements Fetcher {
         }
         const challenge = detectChallengeRedirect(current, target);
         if (challenge) {
+          if (out.channel === 'assisted') return vendorFailure(`${challenge.detail} (not followed)`);
           const det: BlockDetection = { blocked: true, reason: 'captcha_redirect', vendor: challenge.vendor, detail: challenge.detail };
           const pause = await this.pauseForBlock(host, 'captcha_redirect', det, status, ctx);
           await this.writeLog(ctx, { ...logBase, status, bytes: out.wireBytes, blocked: true, blockReason: 'captcha_redirect', blockDetail: challenge.detail });
@@ -876,12 +988,34 @@ class PoliteFetcher implements Fetcher {
           await this.writeLog(ctx, { ...logBase, status, bytes: out.wireBytes, blocked: false, error, errorCode: 'cross_site_redirect' });
           return done(redirectResult({ error, errorCode: 'cross_site_redirect' }));
         }
-        if (ctx.purpose !== 'robots') await this.store.resetFailures(host);
+        // A redirect does not end a failure streak: an edge that redirects in front of a dead
+        // origin must still trip the breaker.
         await this.writeLog(ctx, { ...logBase, status, bytes: out.wireBytes, blocked: false });
         const nextHost = hostKey(target);
         if (nextHost !== host) policy = await this.policy(nextHost);
         current = target;
         continue;
+      }
+
+      if (out.channel === 'assisted' && out.url.href !== current.href) {
+        // The vendor followed a redirect although asked not to: apply our redirect rules after the
+        // fact and drop the body when the target is not one we may read.
+        const challenge = detectChallengeRedirect(current, out.url);
+        if (challenge) return vendorFailure(`vendor followed ${challenge.detail}`);
+        if (!sameSite(current, out.url)) {
+          return vendorFailure(`vendor followed a cross-site redirect to ${out.url.href}`, `cross-site redirect to ${out.url.href} (followed by the vendor; body dropped)`, 'cross_site_redirect');
+        }
+        if (flags.checkRobots) {
+          const targetPolicy = hostKey(out.url) === host ? policy : await this.policy(hostKey(out.url));
+          const verdict = await this.robotsVerdict(out.url, targetPolicy, ctx);
+          if (!verdict.allowed) {
+            return vendorFailure(
+              `vendor followed a redirect to ${out.url.href}, which robots.txt disallows`,
+              `redirect target ${out.url.href} is not allowed by robots.txt (followed by the vendor; body dropped)`,
+              'redirect_disallowed',
+            );
+          }
+        }
       }
 
       const det = detectBlock({
@@ -893,42 +1027,13 @@ class PoliteFetcher implements Fetcher {
         purpose: ctx.purpose,
         nowMs: this.now(),
       });
-      const response = (extra: Partial<FetchResult>): FetchResult => ({
-        ...emptyResult(start.href, out.channel),
-        finalUrl: out.url.href,
-        status,
-        headers: out.headers,
-        contentType: out.contentType,
-        ...extra,
-      });
 
       if (out.channel === 'assisted' && (out.vendorBlock || det.blocked || out.vendorError)) {
-        // The vendor handles challenges; a block or failure here is the vendor's, not a reason to
-        // pause the shop (M05B's success-rate auto-pause decides). It still counts as a failure.
-        const blocked = Boolean(out.vendorBlock || det.blocked);
-        const blockReason: BlockReason | undefined = blocked ? (out.vendorBlock?.reason ?? 'vendor_blocked') : undefined;
-        const blockDetail = out.vendorBlock?.detail ?? det.detail;
-        const error = out.vendorError;
-        await this.registerFailure(host, blockDetail ?? error ?? 'assisted failure', ctx);
-        await this.writeLog(ctx, {
-          ...logBase,
-          status,
-          bytes: out.wireBytes,
-          blocked,
-          blockReason,
-          blockDetail,
-          error,
-          errorCode: error ? 'assisted_error' : undefined,
-        });
-        return done(
-          response({
-            blocked,
-            blockReason,
-            blockDetail,
-            error,
-            errorCode: error ? 'assisted_error' : undefined,
-          }),
-        );
+        if (out.vendorError && !out.vendorBlock && !det.blocked) return vendorFailure(out.vendorError, out.vendorError, 'assisted_error');
+        const detail = out.vendorBlock
+          ? `${out.vendorBlock.reason === 'vendor_blocked' ? '' : `${out.vendorBlock.reason}: `}${out.vendorBlock.detail}`
+          : `${det.reason}: ${det.detail ?? ''}`.trim();
+        return vendorFailure(detail);
       }
 
       if (det.blocked && det.reason) {
@@ -1070,7 +1175,7 @@ class PoliteFetcher implements Fetcher {
   private async fetchRobots(origin: string, parent: CallContext, policyHint: DomainPolicy): Promise<RobotsState> {
     const robotsUrl = new URL('/robots.txt', origin);
     const host = hostKey(robotsUrl);
-    const policy = policyHint.host === new URL(origin).hostname || policyHint.host === host ? policyHint : await this.policy(host);
+    const policy = policyHint.host === host || policyHint.host === robotsUrl.hostname ? policyHint : await this.policy(host);
     const cached = await this.store.getRobots(origin);
     const conditional = cached?.outcome === 'parsed';
     const ctx: CallContext = {
@@ -1087,9 +1192,10 @@ class PoliteFetcher implements Fetcher {
       log: parent.log,
       timeoutMs: this.defaultTimeoutMs,
       maxBytes: ROBOTS_MAX_BYTES,
+      checkHours: false,
     };
 
-    const gate = await this.gate(ctx, robotsUrl, host, policy, false);
+    const gate = await this.gate(ctx, robotsUrl, host, policy);
     if (gate) {
       return {
         origin,
@@ -1108,6 +1214,8 @@ class PoliteFetcher implements Fetcher {
 
     const exec = await this.execute(robotsUrl, policy, ctx, { followAnyHost: true, checkRobots: false, truncate: true });
     const result = exec.result;
+    // A caller's abort says nothing about the shop: nothing is cached.
+    if (result.errorCode === 'aborted') throw new FetchError('aborted', 'robots.txt request aborted by caller');
     const entry = this.robotsEntryFrom(origin, result, exec.truncated, cached);
     if (!entry) {
       return {
@@ -1115,13 +1223,26 @@ class PoliteFetcher implements Fetcher {
         entry: null,
         parsed: null,
         source: 'none',
-        unavailable: { skipped: result.skipped, blocked: result.blocked, blockReason: result.blockReason, detail: result.blockDetail ?? result.skipped ?? 'unavailable' },
+        unavailable: {
+          skipped: result.skipped,
+          blocked: result.blocked,
+          blockReason: result.blockReason,
+          detail: result.blockDetail ?? result.error ?? result.skipped ?? 'unavailable',
+        },
         fetchResult: result,
       };
     }
     await this.store.setRobots(origin, entry);
     const state = this.stateFromEntry(entry, 'network');
     state.fetchResult = result;
+
+    // The robots.txt request took its slot with the policy interval; when the file asks for a
+    // longer Crawl-delay, push the host's next slot so the very next page respects it too.
+    const delaySec = this.crawlDelayFor(robotsUrl, policy, parent.purpose);
+    if (delaySec !== null) {
+      const extra = Math.min(delaySec, MAX_CRAWL_DELAY_SEC) * 1000 - minIntervalOf(policy);
+      if (extra > 0) await this.store.reserveSlot(host, extra);
+    }
 
     const selection = state.parsed ? selectRobotsGroups(state.parsed, [BOT_PRODUCT_TOKEN]) : null;
     const ignored = state.parsed && selection ? findIgnoredGroups(state.parsed, selection, this.pageUserAgent) : [];
@@ -1146,7 +1267,6 @@ class PoliteFetcher implements Fetcher {
     truncated: boolean,
     cached: RobotsCacheEntry | null,
   ): RobotsCacheEntry | null {
-    if (result.skipped) return null;
     const now = this.now();
     const base = {
       origin,
@@ -1165,6 +1285,13 @@ class PoliteFetcher implements Fetcher {
       detail,
     });
 
+    if (result.skipped) {
+      // Nothing was requested: nothing to remember (the same gate will answer next time).
+      if (result.attempts === 0) return null;
+      // The chain stopped after a request (e.g. robots.txt redirects to a paused CDN host): remember
+      // it, or the shop would see a robots.txt request on every page call until the pause ends.
+      return failed('unreachable', `robots.txt request stopped: ${result.skipped}${result.blockDetail ? ` (${result.blockDetail})` : ''}`);
+    }
     if (result.blocked) {
       return {
         ...base,

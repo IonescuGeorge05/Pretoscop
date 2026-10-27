@@ -62,9 +62,18 @@ export function robotsTokensFor(purpose: FetchPurpose): string[] {
   return purpose === 'feed' ? [FEED_PRODUCT_TOKEN, BOT_PRODUCT_TOKEN] : [BOT_PRODUCT_TOKEN];
 }
 
+/** Exactly our User-Agent shape; only the version and the info URL may vary (test override). */
+export const USER_AGENT_FORMAT = /^Mozilla\/5\.0 \(compatible; PretoscopBot(?:-Feed)?\/\d+(?:\.\d+)*; \+https?:\/\/[^\s;()]+\)$/;
+
+/** A header value we are willing to send: visible ASCII and spaces only, at most 1 KiB. */
+export function isSafeHeaderValue(value: string | undefined): value is string {
+  return typeof value === 'string' && value.length > 0 && value.length <= 1024 && /^[\x20-\x7e\t]+$/.test(value);
+}
+
 /**
  * The complete request header set. Nothing else is ever sent: no cookies, no Referer, no
- * browser client hints (`Sec-*`), no `Upgrade-Insecure-Requests`.
+ * browser client hints (`Sec-*`), no `Upgrade-Insecure-Requests`. Caller-supplied values that are
+ * not plain ASCII (a corrupt stored ETag, say) are dropped rather than sent.
  */
 export function buildRequestHeaders(input: {
   userAgent: string;
@@ -73,14 +82,13 @@ export function buildRequestHeaders(input: {
   etag?: string;
   lastModified?: string;
 }): Record<string, string> {
-  const accept = input.accept && !/[\r\n]/.test(input.accept) ? input.accept : DEFAULT_ACCEPT[input.purpose];
   const headers: Record<string, string> = {
     'user-agent': input.userAgent,
-    accept,
+    accept: isSafeHeaderValue(input.accept) ? input.accept : DEFAULT_ACCEPT[input.purpose],
     'accept-encoding': ACCEPT_ENCODING,
     'accept-language': ACCEPT_LANGUAGE,
   };
-  if (input.etag && !/[\r\n]/.test(input.etag)) headers['if-none-match'] = input.etag;
-  if (input.lastModified && !/[\r\n]/.test(input.lastModified)) headers['if-modified-since'] = input.lastModified;
+  if (isSafeHeaderValue(input.etag)) headers['if-none-match'] = input.etag;
+  if (isSafeHeaderValue(input.lastModified)) headers['if-modified-since'] = input.lastModified;
   return headers;
 }

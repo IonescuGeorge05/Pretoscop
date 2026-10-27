@@ -83,6 +83,7 @@ export function testFetcher(overrides: Partial<FetcherDeps> & { policy?: Partial
     now: clock.now,
     sleep: clock.sleep,
     random: () => 0,
+    crawlEnabled: true,
     requestLog: log.sink,
     retry: { maxRetries: 2, baseDelayMs: 10_000 },
     policyFor: (host) => defaultDomainPolicy(host, policy),

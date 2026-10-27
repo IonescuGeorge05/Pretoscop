@@ -49,8 +49,11 @@ export type FetchErrorCode =
   | 'too_many_redirects'
   | 'cross_site_redirect'
   | 'invalid_redirect'
+  | 'redirect_disallowed'
   | 'robots_unavailable'
   | 'invalid_policy'
+  | 'invalid_request'
+  | 'crawl_disabled'
   | 'assisted_error';
 
 export interface FetchPoliteOptions {
@@ -161,6 +164,14 @@ export interface FetchLogger {
 export interface AssistedFetchRequest {
   /** Use the vendor's browser-rendered tier (`DomainPolicy.assistedRender`). */
   render: boolean;
+  /**
+   * Always false: the client must not follow redirects but return the 3xx with its `location`
+   * header, so robots.txt and the CAPTCHA/cross-site rules apply to every hop. If the vendor
+   * follows one anyway (`finalUrl` differs), the fetch layer checks the target and drops the body
+   * when the target is not allowed.
+   */
+  followRedirects: false;
+  /** The vendor must answer within this time; the fetch layer gives up shortly after it. */
   timeoutMs: number;
   purpose: FetchPurpose;
   shopSlug?: string;
@@ -240,6 +251,11 @@ export interface FetcherDeps {
   /** Policy per host (`www.emag.ro`). Default: `defaultDomainPolicy(host)`. Map kill switches to `accessMode: 'off'`. */
   policyFor?: (host: string) => DomainPolicy | Promise<DomainPolicy>;
   stateStore: DomainStateStore;
+  /**
+   * Global switch for any request to a shop. Default: env `CRAWL_ENABLED` when set (`false` turns
+   * every call into `skipped: 'access_off'`, `errorCode: 'crawl_disabled'`), otherwise true.
+   */
+  crawlEnabled?: boolean;
   requestLog?: RequestLogSink;
   /** Assisted-access client (M05B). Without it, `accessMode: 'assisted'` hosts return `skipped: 'assisted_unavailable'`. */
   assisted?: AssistedChannel;
@@ -250,7 +266,7 @@ export interface FetcherDeps {
   random?: () => number;
   /** undici dispatcher (tests: MockAgent, H2CClient). Default: an internal Agent. */
   dispatcher?: Dispatcher;
-  /** Tests only. Must contain the `PretoscopBot` product token. */
+  /** Tests only. Must have our exact format: `Mozilla/5.0 (compatible; PretoscopBot[-Feed]/<version>; +<url>)`. */
   userAgent?: string;
   /** Info URL inside the User-Agent. Default: env `BOT_INFO_URL`, else https://pretoscop.ro/bot. */
   botInfoUrl?: string;

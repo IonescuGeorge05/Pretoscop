@@ -5,7 +5,7 @@ import zlib from 'node:zlib';
 import { defaultDomainPolicy } from '@pretoscop/config/policy';
 import { H2CClient } from 'undici';
 import { afterEach, describe, expect, it } from 'vitest';
-import { buildUserAgent, createFetcher, MemoryDomainStateStore, type Fetcher } from '../src/index';
+import { buildUserAgent, createFetcher, MemoryDomainStateStore, SLOT_SAFETY_MARGIN_MS, type Fetcher } from '../src/index';
 import { collectLog, startServer, testFetcher, type TestServer } from './helpers';
 
 const PAGE = '<!doctype html><html><head><title>Produs</title></head><body>Preț: 2.199,99 lei</body></html>';
@@ -172,8 +172,8 @@ describe('redirects', () => {
     expect(res).toMatchObject({ ok: true, status: 200, finalUrl: `${s.origin}/new`, url: `${s.origin}/old` });
     expect(log.network().map((e) => [new URL(e.url).pathname, e.status, e.hop, e.waitMs])).toEqual([
       ['/robots.txt', 200, 0, 0],
-      ['/old', 301, 0, 5000],
-      ['/new', 200, 1, 5000],
+      ['/old', 301, 0, 5000 + SLOT_SAFETY_MARGIN_MS],
+      ['/new', 200, 1, 5000 + SLOT_SAFETY_MARGIN_MS],
     ]);
   });
 
@@ -265,7 +265,8 @@ describe('transport blocks and timeouts', () => {
     const res = await fetcher.fetchPolite(`${s.origin}/slow`, { purpose: 'product', timeoutMs: 150 });
     expect(res).toMatchObject({ ok: false, blocked: false, errorCode: 'timeout', attempts: 3 });
     // slot, back-off 1 s, rest of the next slot, back-off 2 s, rest of the next slot
-    expect(clock.sleeps).toEqual([5000, 1000, 4000, 2000, 3000]);
+    const M = SLOT_SAFETY_MARGIN_MS;
+    expect(clock.sleeps).toEqual([5000 + M, 1000, 4000 + M, 2000, 3000 + M]);
     expect(await store.getFailures(s.host)).toBe(3);
     expect(await store.getPause(s.host)).not.toBeNull();
   });
@@ -275,6 +276,7 @@ describe('real-time politeness', () => {
   function realFetcher(intervalMs: number) {
     const fetcher: Fetcher = createFetcher({
       stateStore: new MemoryDomainStateStore(),
+      crawlEnabled: true,
       policyFor: (host) => defaultDomainPolicy(host, { minIntervalMs: intervalMs }),
       requestLog: collectLog().sink,
     });
@@ -291,7 +293,7 @@ describe('real-time politeness', () => {
     await Promise.all([fetcher.fetchPolite(`${s.origin}/p/1`, { purpose: 'product' }), fetcher.fetchPolite(`${s.origin}/p/2`, { purpose: 'product' })]);
     const times = s.hits.map((h) => h.at);
     expect(s.hits.map((h) => h.path).sort()).toEqual(['/p/1', '/p/2', '/robots.txt']);
-    for (let i = 1; i < times.length; i++) expect((times[i] as number) - (times[i - 1] as number)).toBeGreaterThanOrEqual(295);
+    for (let i = 1; i < times.length; i++) expect((times[i] as number) - (times[i - 1] as number)).toBeGreaterThanOrEqual(300);
   });
 
   it('runs one request at a time per host, even when a response is slower than the interval', async () => {

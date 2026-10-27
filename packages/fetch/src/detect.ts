@@ -1,4 +1,5 @@
 import { fetchCodeOf } from './errors';
+import { sameSite } from './site';
 import type { BlockReason, FetchErrorCode, FetchPurpose } from './types';
 
 /**
@@ -140,6 +141,8 @@ export function classifyTransportError(error: unknown): TransportErrorClass {
     if (own === 'aborted' || own === 'body_too_large' || own === 'decode_error') return neutral(own);
     return failure(own, true);
   }
+  // A request we could not even build (bad header value): our fault, not the shop's.
+  if (has('UND_ERR_INVALID_ARG', 'ERR_INVALID_CHAR', 'ERR_INVALID_HTTP_TOKEN')) return neutral('invalid_request');
   if (codes.some((c) => CERT_ERROR_CODES.has(c))) return neutral('tls_certificate');
   if (has('UND_ERR_CONNECT_TIMEOUT', 'ETIMEDOUT')) return block('connect_timeout');
   if (
@@ -326,33 +329,35 @@ const CHALLENGE_HOSTS: Array<{ re: RegExp; vendor: BlockVendor }> = [
   { re: /(^|\.)(hcaptcha\.com|recaptcha\.net|perfdrive\.com|geetest\.com|arkoselabs\.com|funcaptcha\.com)$/i, vendor: 'unknown' },
 ];
 
+/** Matched against the path only (never the query: `/login?recaptcha=1` is not a challenge). */
 const CHALLENGE_PATHS: Array<{ re: RegExp; vendor: BlockVendor }> = [
   { re: /captcha/i, vendor: 'unknown' },
   { re: /\/_fs-ch-/, vendor: 'fastly' },
   { re: /\/cdn-cgi\/challenge-platform\//, vendor: 'cloudflare' },
   { re: /\/_Incapsula_Resource/i, vendor: 'imperva' },
   { re: /\/_sec\/cp_challenge/, vendor: 'akamai' },
-  { re: /\/\.well-known\/sgcaptcha/, vendor: 'unknown' },
 ];
+
+/** A whole host label that names a challenge service: `captcha.distinct.ro`, `challenge.hoster.ro`. */
+const CHALLENGE_LABEL = /^(captcha\d*|challenges?|botcheck)$/i;
 
 /**
  * A redirect that leads to a CAPTCHA or challenge (evoMAG's 302 to `captcha.distinct.ro`). Such a
- * redirect is never followed.
+ * redirect is never followed. Known vendor hosts and whole `captcha`/`challenge` labels count only
+ * when the target is another site; challenge paths count anywhere.
  */
 export function detectChallengeRedirect(from: URL, to: URL): { vendor: BlockVendor; detail: string } | null {
   const host = to.hostname.toLowerCase();
-  const crossHost = host !== from.hostname.toLowerCase();
-  if (crossHost) {
+  if (!sameSite(from, to)) {
     for (const { re, vendor } of CHALLENGE_HOSTS) {
       if (re.test(host)) return { vendor, detail: `redirect to challenge host ${host}` };
     }
-    if (host.split('.').some((label) => label.includes('captcha') || label.includes('challenge'))) {
+    if (host.split('.').some((label) => CHALLENGE_LABEL.test(label))) {
       return { vendor: 'unknown', detail: `redirect to challenge host ${host}` };
     }
   }
-  const pathAndQuery = `${to.pathname}${to.search}`;
   for (const { re, vendor } of CHALLENGE_PATHS) {
-    if (re.test(pathAndQuery)) return { vendor, detail: `redirect to challenge path ${to.pathname}` };
+    if (re.test(to.pathname)) return { vendor, detail: `redirect to challenge path ${to.pathname}` };
   }
   return null;
 }

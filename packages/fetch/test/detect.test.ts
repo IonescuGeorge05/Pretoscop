@@ -247,6 +247,14 @@ describe('redirects to CAPTCHA hosts', () => {
     expect(detectChallengeRedirect(from, new URL('https://www.evomag.example/laptopuri/'))).toBeNull();
     expect(detectBlock({ status: 301, headers: { location: '/laptopuri/' }, url: from.href }).blocked).toBe(false);
   });
+
+  it('does not flag a shop whose own name contains "challenge", nor "captcha" in a query string', () => {
+    const shop = new URL('https://challenge-sport.example/robots.txt');
+    expect(detectChallengeRedirect(shop, new URL('https://www.challenge-sport.example/robots.txt'))).toBeNull();
+    expect(detectChallengeRedirect(from, new URL('https://www.challenge-sport.example/'))).toBeNull();
+    expect(detectChallengeRedirect(from, new URL('https://www.evomag.example/login?next=%2F&recaptcha=1'))).toBeNull();
+    expect(detectChallengeRedirect(from, new URL('https://www.evomag.example/recaptcha/verify'))).not.toBeNull();
+  });
 });
 
 describe('transport errors', () => {
@@ -286,6 +294,13 @@ describe('transport errors', () => {
     { name: 'headers timeout', error: new undiciErrors.HeadersTimeoutError(), code: 'timeout', block: false, transient: true },
     { name: 'our overall timeout', error: new FetchError('timeout', 'no complete response within 30000 ms'), code: 'timeout', block: false, transient: true },
     { name: 'size cap', error: new FetchError('body_too_large', 'too big'), code: 'body_too_large', block: false, transient: false },
+    {
+      name: 'a request we could not build (bad header value) is our fault, not a shop failure',
+      error: new undiciErrors.InvalidArgumentError('invalid if-none-match header'),
+      code: 'invalid_request',
+      block: false,
+      transient: false,
+    },
   ];
 
   it.each(cases)('$name', (c) => {

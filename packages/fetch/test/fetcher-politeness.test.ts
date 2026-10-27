@@ -1,6 +1,6 @@
 import { errors as undiciErrors, type MockAgent } from 'undici';
 import { afterEach, describe, expect, it } from 'vitest';
-import { PAUSE_BLOCK_MS } from '../src/fetcher';
+import { PAUSE_BLOCK_MS, SLOT_SAFETY_MARGIN_MS as M } from '../src/fetcher';
 import type { AssistedChannel } from '../src/types';
 import { ROBOTS_ALLOW_ALL, mockAgent, readFixture, testFetcher } from './helpers';
 
@@ -39,10 +39,10 @@ describe('per-host throttle', () => {
     expect(log.network().map((e) => new URL(e.url).pathname)).toEqual(['/robots.txt', '/p/1', '/p/2']);
     for (let i = 1; i < starts.length; i++) {
       const gap = (starts[i] as number) - (starts[i - 1] as number);
-      expect(gap).toBeGreaterThanOrEqual(5000);
-      expect(gap).toBeLessThanOrEqual(5500);
+      expect(gap).toBeGreaterThanOrEqual(5000 + M);
+      expect(gap).toBeLessThanOrEqual(5500 + M);
     }
-    expect(second.waitedMs).toBe(5250);
+    expect(second.waitedMs).toBe(5250 + M);
   });
 
   it('never goes below the interval even with the largest jitter, and never above 10% extra', async () => {
@@ -54,8 +54,8 @@ describe('per-host throttle', () => {
     const waits = log.network().map((e) => e.waitMs);
     expect(waits[0]).toBe(0);
     for (const w of waits.slice(1)) {
-      expect(w).toBeGreaterThanOrEqual(5000);
-      expect(w).toBeLessThan(5500);
+      expect(w).toBeGreaterThanOrEqual(5000 + M);
+      expect(w).toBeLessThan(5500 + M);
     }
   });
 
@@ -71,7 +71,7 @@ describe('per-host throttle', () => {
     const b = await fetcher.fetchPolite(`${B}/p/1`, { purpose: 'product' });
     expect(a.ok && b.ok).toBe(true);
     // Each host's page waits only for its own robots.txt request, never for the other host.
-    expect(log.network().slice(before).map((e) => e.waitMs)).toEqual([5000, 0]);
+    expect(log.network().slice(before).map((e) => e.waitMs)).toEqual([5000 + M, 0]);
   });
 
   it('honours a robots.txt Crawl-delay longer than the policy interval, unless the policy says not to', async () => {
@@ -80,12 +80,13 @@ describe('per-host throttle', () => {
     const { fetcher, log } = testFetcher({ dispatcher: agent });
     await fetcher.fetchPolite(`${A}/p/1`, { purpose: 'product' });
     await fetcher.fetchPolite(`${A}/p/2`, { purpose: 'product' });
-    expect(log.network().map((e) => e.waitMs)).toEqual([0, 5000, 12_000]);
+    // The first page already waits the full Crawl-delay after robots.txt, not just the policy interval.
+    expect(log.network().map((e) => e.waitMs)).toEqual([0, 12_000 + M, 12_000 + M]);
 
     const other = testFetcher({ dispatcher: agent, policy: { respectCrawlDelay: false } });
     await other.fetcher.fetchPolite(`${A}/p/1`, { purpose: 'product' });
     await other.fetcher.fetchPolite(`${A}/p/2`, { purpose: 'product' });
-    expect(other.log.network().map((e) => e.waitMs)).toEqual([0, 5000, 5000]);
+    expect(other.log.network().map((e) => e.waitMs)).toEqual([0, 5000 + M, 5000 + M]);
   });
 });
 
@@ -164,7 +165,7 @@ describe('access modes', () => {
     ]);
     expect(log.network().map((e) => [e.channel, e.waitMs])).toEqual([
       ['assisted', 0],
-      ['assisted', 5000],
+      ['assisted', 5000 + M],
     ]);
   });
 
@@ -247,7 +248,7 @@ describe('blocks and pauses', () => {
     const { fetcher, clock, store, log } = testFetcher({ dispatcher: agent });
     const res = await fetcher.fetchPolite(`${A}/p/1`, { purpose: 'product' });
     expect(res).toMatchObject({ ok: true, status: 200, attempts: 3 });
-    expect(clock.sleeps).toEqual([5000, 10_000, 20_000]);
+    expect(clock.sleeps).toEqual([5000 + M, 10_000, 20_000]);
     expect(log.network().map((e) => [e.attempt, e.status])).toEqual([
       [1, 200],
       [1, 500],

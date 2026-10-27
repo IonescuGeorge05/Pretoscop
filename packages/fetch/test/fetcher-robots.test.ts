@@ -300,8 +300,11 @@ describe('robots.txt decisions per shop', () => {
     const third = fetcher.fetchPolite(`${A}/p/3`, { purpose: 'product' });
     const fourth = fetcher.fetchPolite(`${A}/p/4`, { purpose: 'product' });
     expect((await Promise.all([third, fourth])).every((r) => r.ok)).toBe(true);
-    // The aborted robots.txt request is not logged as a response; the retry is fetched once and then cached.
-    expect(log.network().filter((e) => e.purpose === 'robots').map((e) => e.status)).toEqual([200]);
+    // The aborted robots.txt request is logged as aborted (not cached); the retry is fetched once, then cached.
+    expect(log.network().filter((e) => e.purpose === 'robots').map((e) => [e.status, e.errorCode ?? null])).toEqual([
+      [0, 'aborted'],
+      [200, null],
+    ]);
   });
 
   it('closing a fetcher with an injected dispatcher leaves the dispatcher alone', async () => {

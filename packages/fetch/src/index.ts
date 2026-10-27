@@ -23,6 +23,7 @@ export type {
 } from './types';
 
 export {
+  ASSISTED_TIMEOUT_GRACE_MS,
   DEFAULT_CONNECT_TIMEOUT_MS,
   DEFAULT_MAX_BYTES,
   DEFAULT_MAX_RETRIES,
@@ -40,11 +41,11 @@ export {
   ROBOTS_FAILURE_TTL_MS,
   ROBOTS_MAX_BYTES,
   ROBOTS_TTL_MS,
+  SLOT_SAFETY_MARGIN_MS,
   createFetcher,
-  sameSite,
-  siteKey,
-  toOrigin,
 } from './fetcher';
+
+export { canonicalUrl, hostKey, normalizeHost, sameSite, siteKey, toOrigin } from './site';
 
 export {
   ACCEPT_ENCODING,
@@ -57,8 +58,10 @@ export {
   DEFAULT_BOT_INFO_URL,
   FEED_PRODUCT_TOKEN,
   FEED_USER_AGENT,
+  USER_AGENT_FORMAT,
   buildRequestHeaders,
   buildUserAgent,
+  isSafeHeaderValue,
   resolveBotInfoUrl,
   robotsTokensFor,
 } from './identity';

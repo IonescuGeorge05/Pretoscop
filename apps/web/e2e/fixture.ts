@@ -6,6 +6,7 @@ export interface E2eFixture {
   productId: number;
   slug: string;
   offers: Record<string, { offerId: number; total: string }>;
+  admin: { dupA: number; dupB: number; dupBSlug: string; reviewOfferId: number; reviewTitle: string };
 }
 
 const DB_DIR = fileURLToPath(new URL('../../../packages/db', import.meta.url));

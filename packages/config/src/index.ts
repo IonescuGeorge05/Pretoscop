@@ -1,4 +1,5 @@
-export { getEnv, loadRootEnvFile, findRepoRoot, repoPath, resetEnvCache, type Env } from './env';
+export { getEnv, loadRootEnvFile, findRepoRoot, repoPath, resetEnvCache, isIpOrCidr, type Env } from './env';
+export * from './legal-texts';
 export {
   DEFAULT_MIN_INTERVAL_MS,
   defaultDomainPolicy,

@@ -1,4 +1,5 @@
 import { existsSync } from 'node:fs';
+import { isIP } from 'node:net';
 import { dirname, join, resolve } from 'node:path';
 import { z } from 'zod';
 
@@ -18,6 +19,35 @@ const optionalString = z
   .transform((v) => (v === undefined || v.trim() === '' ? undefined : v.trim()));
 
 const DEV_SECRET = 'dev-only-insecure-secret-change-me';
+
+/** `203.0.113.10`, `2001:db8::1`, or a CIDR prefix such as `203.0.113.0/28` or `2001:db8::/64`. */
+export function isIpOrCidr(value: string): boolean {
+  const [addr, prefix, ...rest] = value.split('/');
+  if (rest.length > 0 || !addr) return false;
+  const family = isIP(addr);
+  if (family === 0) return false;
+  if (prefix === undefined) return true;
+  if (!/^\d{1,3}$/.test(prefix)) return false;
+  return Number(prefix) <= (family === 4 ? 32 : 128);
+}
+
+/** Comma-separated IP addresses / CIDR prefixes; every entry must be valid. */
+const ipList = z
+  .string()
+  .default('')
+  .transform((v) =>
+    v
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean),
+  )
+  .superRefine((items, ctx) => {
+    for (const item of items) {
+      if (!isIpOrCidr(item)) {
+        ctx.addIssue({ code: 'custom', message: `"${item}" is not an IPv4/IPv6 address or CIDR prefix` });
+      }
+    }
+  });
 
 export const EnvSchema = z
   .object({
@@ -43,6 +73,8 @@ export const EnvSchema = z
 
     // Crawler identity and politeness (CLAUDE.md non-negotiable rules)
     BOT_INFO_URL: z.string().min(1).default('https://pretoscop.ro/bot'),
+    /** Fixed crawler egress IPs published on /bot and /bot/ips.json (empty until setup A4). */
+    BOT_EGRESS_IPS: ipList,
     CRAWL_ENABLED: bool.default(false),
     FETCH_DEFAULT_MIN_INTERVAL_MS: int(5000),
     FETCH_TIMEOUT_MS: int(30000),

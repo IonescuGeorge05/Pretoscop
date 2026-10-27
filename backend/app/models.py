@@ -79,6 +79,7 @@ class Offer(Base):
     warranty_months: Mapped[int | None] = mapped_column(Integer)
     condition: Mapped[str] = mapped_column(String(20), default="new")
     is_bundle: Mapped[bool] = mapped_column(Boolean, default=False)
+    preorder: Mapped[bool] = mapped_column(Boolean, default=False)  # disponibil la precomandă
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     source: Mapped[str] = mapped_column(String(10), default="real")  # real | mock
     seller: Mapped[str | None] = mapped_column(Text)  # cine vinde efectiv (marketplace); None = magazinul

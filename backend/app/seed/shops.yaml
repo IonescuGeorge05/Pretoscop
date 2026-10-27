@@ -178,3 +178,14 @@
   shipping_verified: false
   default_warranty_months: 24
   affiliate_url_template: null
+
+# iSTYLE (Shopify, doar Apple): a dat 429 după teste -> puține pagini pe rulare
+- slug: istyle
+  name: iSTYLE
+  base_url: https://istyle.ro
+  search_url_template: null
+  crawl: {type: sitemap, max_products: 12}
+  shipping_rules: {free_over: null, flat: 25}  # estimat
+  shipping_verified: false
+  default_warranty_months: 24
+  affiliate_url_template: null

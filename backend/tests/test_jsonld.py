@@ -85,3 +85,12 @@ def test_microdata_product_ignores_nested_brand_name_and_pads_gtin12():
     assert d["price"] == Decimal("2499.99")
     assert d["ean"] == "0711719577294"
     assert d["in_stock"] is True
+
+
+def test_preorder_counts_as_available_and_is_flagged():
+    from scrapers.jsonld import extract_product
+
+    html = """<script type="application/ld+json">{"@context":"http://schema.org","@type":"Product","name":"PS5 Slim",
+    "offers":{"@type":"Offer","price":"3699.90","priceCurrency":"RON","availability":"http://schema.org/PreOrder"}}</script>"""
+    data = extract_product(html)
+    assert data["in_stock"] is True and data["preorder"] is True

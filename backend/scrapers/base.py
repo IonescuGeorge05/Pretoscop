@@ -39,6 +39,7 @@ class ScrapedOffer:
     grade: str | None = None  # gradul estetic la refurbished
     location: str | None = None  # second hand: orașul din anunț
     posted_label: str | None = None  # second hand: data afișată în anunț
+    preorder: bool = False  # disponibil doar la precomandă (livrare ulterioară)
     match_hints: str = ""  # text suplimentar pentru matcher (ex. „Standard Edition” din specificații), neafișat
 
 
@@ -211,6 +212,7 @@ class BaseScraper(ABC):
             scraped_at=datetime.now(UTC),
             raw={"jsonld": data.get("raw"), "og": og},
             seller=data.get("seller"),
+            preorder=bool(data.get("preorder")),
         )
 
     @staticmethod

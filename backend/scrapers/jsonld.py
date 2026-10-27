@@ -6,6 +6,10 @@ from decimal import Decimal, InvalidOperation
 
 from selectolax.parser import HTMLParser
 
+# schema.org/ItemAvailability: precomanda se poate cumpăra acum (livrare ulterioară) -> disponibilă, marcată separat
+PREORDER = ("PreOrder", "PreSale")
+AVAILABLE = ("InStock", "LimitedAvailability", "OnlineOnly", *PREORDER)
+
 
 def parse_price(value) -> Decimal | None:
     """Acceptă 3499.99, "3499.99", "3.499,99 RON", "3,499.99", "3 499 lei"."""
@@ -90,9 +94,10 @@ def extract_product(html: str) -> dict | None:
                 "seller": seller_name.replace("™", "").strip() if seller_name else None,
                 "title": node.get("name"),
                 "price": parse_price(price),
-                "in_stock": ("InStock" in availability or "LimitedAvailability" in availability)
+                "in_stock": any(a in availability for a in AVAILABLE)
                 if availability
                 else None,
+                "preorder": any(a in availability for a in PREORDER),
                 "ean": ean,
                 "mpn": str(node["mpn"]).strip() if node.get("mpn") else None,
                 "warranty_months": _warranty_months(offers) or _warranty_months(node),
@@ -162,7 +167,8 @@ def extract_microdata(html: str) -> dict | None:
     return {
         "title": re.sub(r"\s+", " ", title).strip() if title else None,
         "price": parse_price(prop("price", offer)),
-        "in_stock": ("InStock" in availability or "LimitedAvailability" in availability) if availability else None,
+        "in_stock": any(a in availability for a in AVAILABLE) if availability else None,
+        "preorder": any(a in availability for a in PREORDER),
         "ean": normalize_gtin(prop("gtin13") or prop("gtin")),
         "mpn": prop("mpn"),
         "warranty_months": None,

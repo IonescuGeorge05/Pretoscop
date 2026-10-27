@@ -66,6 +66,7 @@ def offer_out(view: catalog.OfferView, fake: FakeDiscount | None = None, outlier
         price_since=p.ts,
         fake_discount=schemas.FakeDiscountOut(**asdict(fake)) if fake else None,
         price_outlier=outlier,
+        preorder=o.preorder,
     )
 
 

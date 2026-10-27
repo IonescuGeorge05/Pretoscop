@@ -93,7 +93,8 @@ export default async function ProductPage({ params, searchParams }: Props) {
                   {formatLeiShort(best.breakdown.final_price)}
                 </span>
                 <span className="text-muted">
-                  la <strong className="text-ink">{best.shop.name}</strong> · {formatLei(best.breakdown.price)}
+                  la <strong className="text-ink">{best.shop.name}</strong>
+                  {best.preorder ? " · precomandă" : ""} · {formatLei(best.breakdown.price)}
                   {best.breakdown.shipping > 0 ? ` + ${formatLei(best.breakdown.shipping)} transport` : " · transport gratuit"}
                 </span>
                 <a

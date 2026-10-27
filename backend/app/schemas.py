@@ -43,6 +43,7 @@ class OfferOut(BaseModel):
     seller: str | None  # vânzătorul efectiv (marketplace / persoană fizică)
     is_marketplace: bool  # vândut de un terț -> nu intră în minimul pieței și în recomandare
     suspicious_price: bool  # second hand mult sub MSRP: posibil țeapă / defect / greșeală
+    preorder: bool = False  # se poate comanda acum, livrare ulterioară
     price_outlier: str | None = None  # ofertă nouă cu preț aberant (motivul); exclusă din minimul pieței
     condition: str  # new | refurbished | used
     grade: str | None  # gradul estetic (refurbished)

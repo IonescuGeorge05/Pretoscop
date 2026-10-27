@@ -89,6 +89,14 @@ function OfferDetails({ o, isBest }: { o: Offer; isBest: boolean }) {
           ⚠ Preț suspect de mic
         </div>
       )}
+      {o.preorder && (
+        <div
+          className="mt-0.5 inline-block rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-bold text-sky-900 dark:bg-sky-950 dark:text-sky-200"
+          title="Se poate comanda acum; magazinul livrează când primește stocul."
+        >
+          Precomandă
+        </div>
+      )}
       {o.price_outlier && (
         <div
           className="mt-0.5 inline-block rounded bg-orange-100 px-1.5 py-0.5 text-[11px] font-medium text-orange-900 dark:bg-orange-950 dark:text-orange-200"

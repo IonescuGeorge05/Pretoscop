@@ -41,6 +41,7 @@ export interface Offer {
   is_marketplace: boolean;
   suspicious_price: boolean;
   price_outlier?: string | null;
+  preorder?: boolean;
   condition: "new" | "refurbished" | "used";
   grade: string | null;
   location: string | null;

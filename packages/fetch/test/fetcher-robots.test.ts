@@ -283,6 +283,27 @@ describe('robots.txt decisions per shop', () => {
     expect(log.network()).toHaveLength(1);
   });
 
+  it('fetches robots.txt once for concurrent callers, and an abort by one does not fail the others', async () => {
+    const agent = newAgent();
+    const pool = agent.get(A);
+    // If the aborted first request were not really aborted, its body would disallow /p/ for everyone.
+    pool.intercept({ path: '/robots.txt' }).reply(200, 'User-agent: *\nDisallow: /p/\n', { headers: TEXT }).delay(100);
+    pool.intercept({ path: '/robots.txt' }).reply(200, 'User-agent: *\nAllow: /\n', { headers: TEXT });
+    pool.intercept({ path: /^\/p\// }).reply(200, page, { headers: HTML }).persist();
+    const { fetcher, log } = testFetcher({ dispatcher: agent });
+    const controller = new AbortController();
+    const first = fetcher.fetchPolite(`${A}/p/1`, { purpose: 'product', signal: controller.signal });
+    const second = fetcher.fetchPolite(`${A}/p/2`, { purpose: 'product' });
+    setTimeout(() => controller.abort(), 20);
+    expect(await first).toMatchObject({ errorCode: 'aborted', ok: false });
+    expect(await second).toMatchObject({ ok: true, status: 200 });
+    const third = fetcher.fetchPolite(`${A}/p/3`, { purpose: 'product' });
+    const fourth = fetcher.fetchPolite(`${A}/p/4`, { purpose: 'product' });
+    expect((await Promise.all([third, fourth])).every((r) => r.ok)).toBe(true);
+    // The aborted robots.txt request is not logged as a response; the retry is fetched once and then cached.
+    expect(log.network().filter((e) => e.purpose === 'robots').map((e) => e.status)).toEqual([200]);
+  });
+
   it('closing a fetcher with an injected dispatcher leaves the dispatcher alone', async () => {
     const agent = newAgent();
     const { fetcher } = testFetcher({ dispatcher: agent });

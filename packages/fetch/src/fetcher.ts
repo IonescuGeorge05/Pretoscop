@@ -1053,7 +1053,15 @@ class PoliteFetcher implements Fetcher {
       if (cached && cached.expiresAt > this.now()) return this.stateFromEntry(cached, 'cache');
     }
     const inflight = this.robotsInflight.get(origin);
-    if (inflight) return inflight;
+    if (inflight) {
+      try {
+        return await inflight;
+      } catch (error) {
+        // The caller that started the shared fetch aborted; a caller that did not abort tries again.
+        if (isAbort(error) && !ctx.opts.signal?.aborted) return this.loadRobots(origin, ctx, policyHint, force);
+        throw error;
+      }
+    }
     const promise = this.fetchRobots(origin, ctx, policyHint).finally(() => this.robotsInflight.delete(origin));
     this.robotsInflight.set(origin, promise);
     return promise;

@@ -167,20 +167,20 @@ test.describe('consent', () => {
   test('"Schimbă preferințele" re-opens the banner and records the text version', async ({ page }) => {
     await stubPlausible(page);
     await page.goto('/cookies');
-    await expect(page.getByTestId('consent-current')).toContainText('Nu ai ales încă');
+    await expect(page.getByTestId('consent-current')).toContainText('încă nu ai ales');
     await page.getByTestId('consent-accept').click();
     await expect(page.getByTestId('consent-accept')).toBeHidden();
-    await expect(page.getByTestId('consent-current')).toContainText('Ai acceptat');
+    await expect(page.getByTestId('consent-current')).toContainText('ai acceptat');
 
     await page.getByTestId('consent-reset').click();
     await expect(page.getByTestId('consent-accept')).toBeVisible();
-    await expect(page.getByTestId('consent-current')).toContainText('Nu ai ales încă');
+    await expect(page.getByTestId('consent-current')).toContainText('încă nu ai ales');
     // Withdrawal leaves no analytics script running in the page.
     await expect(page.locator('script[data-pretoscop="plausible"]')).toHaveCount(0);
 
     await page.getByTestId('consent-reject').click();
     await expect(page.getByTestId('consent-accept')).toBeHidden();
-    await expect(page.getByTestId('consent-current')).toContainText('Ai refuzat');
+    await expect(page.getByTestId('consent-current')).toContainText('ai refuzat');
     const stored = JSON.parse((await page.evaluate(() => localStorage.getItem('pretoscop.consent'))) ?? '{}') as Record<string, string>;
     expect(stored).toMatchObject({ choice: 'rejected', version: 'analyticsConsent.v1' });
   });

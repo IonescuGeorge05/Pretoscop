@@ -186,8 +186,8 @@ export default function PrivacyPage() {
           content: (
             <>
               <p>
-                Lucrăm cu furnizori care prelucrează date în numele nostru, doar după instrucțiunile noastre și pe baza unor contracte de prelucrare a datelor.
-                Unii vor fi folosiți abia de la lansarea publică.
+                Furnizorii de mai jos prelucrează date în numele nostru, doar după instrucțiunile noastre. Unii vor fi folosiți abia de la lansarea publică;
+                înainte de lansare semnăm cu fiecare un contract de prelucrare a datelor.
               </p>
               <DataTable
                 caption="Furnizorii care prelucrează date în numele Pretoscop"

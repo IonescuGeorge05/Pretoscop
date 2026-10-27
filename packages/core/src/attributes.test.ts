@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { extractAttributes } from './attributes';
-import { detectProductKind } from './product-kind';
+import { categoryKind, detectProductKind, explainProductKind, lineKind } from './product-kind';
 
 const attrs = (title: string, categoryHint?: string) =>
   extractAttributes(title, { categoryHint: categoryHint ?? null });
@@ -324,5 +324,90 @@ describe('detectProductKind', () => {
       'accessory',
     );
     expect(detectProductKind('Ceva', null)).toBe('other');
+  });
+
+  it.each([
+    ['SweetLink S2 Plus Telefon mobil pentru seniori, negru', 'phone', 'telefon'],
+    ['Kiano Slim TV Travel Televizor 19" pentru camion | Incarcator auto', 'tv', 'televizor'],
+    ['Miyoo Mini Plus Consola de joc portabila', 'console', 'consola'],
+    ['ZHISHAN Consola de jocuri portabila 32 biti', 'console', 'consola'],
+    ['Gaming Notebook 16 GB RAM 512 GB', 'laptop', 'notebook'],
+    ['Mini Laptop 8" 2-in-1, Laptop Computer Win 11', 'laptop', 'laptop'],
+    ["Apple MacBook Air 13'' cu procesor Apple M5, Fara incarcator", 'laptop', 'macbook'],
+    ['HAPPY JOKER Controller wireless pentru PS4', 'accessory', 'controller'],
+    ['Baseus Cablu USB-C 100W', 'accessory', 'cablu'],
+  ])('%s → %s from a head noun after the prefix', (title, kind, word) => {
+    expect(explainProductKind(title)).toEqual({ kind, via: 'head', word });
+  });
+
+  it('starts with game devices sold as "Joc …" and plural "Console"', () => {
+    expect(detectProductKind('Joc TV Consola Retro + Pistol 2x Pady')).toBe('console');
+    expect(detectProductKind('Joc portabil STELS, ecran color de 7.1 inchi')).toBe('console');
+    expect(detectProductKind('Joc cu afisaj color LCD, Viva, portabil')).toBe('console');
+    expect(detectProductKind('Gameboy cu 400 de jocuri')).toBe('console');
+    expect(detectProductKind('Console Hardware DONFANLIA® Consola portabila')).toBe('console');
+    expect(detectProductKind('Set 2 Controllers wireless, PS4')).toBe('accessory');
+    expect(detectProductKind('Joc Mario Kart World pentru Nintendo Switch 2')).toBe('game');
+  });
+
+  it('never reads the product from a negation', () => {
+    expect(detectProductKind('Lenovo IdeaPad Slim 3, fara incarcator')).toBe('laptop');
+    expect(detectProductKind('Notebook X, Fara husa')).toBe('laptop');
+  });
+
+  it('lets an accessory breadcrumb overrule a device noun found after a prefix', () => {
+    expect(detectProductKind('Breloc Telefon universal', 'Accesorii GSM > Brelocuri')).toBe(
+      'accessory',
+    );
+    expect(detectProductKind('Lanyard telefon universal')).toBe('accessory');
+  });
+
+  it('reads the breadcrumb leaf first; "… & accesorii" parents only group', () => {
+    expect(
+      categoryKind('Laptop, Tablete & Telefoane > Laptopuri si accesorii > Laptop > Notebook'),
+    ).toBe('laptop');
+    expect(
+      categoryKind('Laptop, Tablete & Telefoane > Telefoane mobile & accesorii > Telefoane Mobile'),
+    ).toBe('phone');
+    expect(categoryKind('TV, Audio-Video & Foto > Televizoare & accesorii > Televizoare')).toBe(
+      'tv',
+    );
+    expect(
+      categoryKind('Gaming, Carti & Birotica > Console, Jocuri & Accesorii > Console Hardware'),
+    ).toBe('console');
+    expect(categoryKind('Gaming, Carti & Birotica > Console, Jocuri & Accesorii')).toBeNull();
+    expect(categoryKind('Telefoane mobile & accesorii > Huse telefoane')).toBe('accessory');
+    expect(categoryKind('Accesorii GSM')).toBe('accessory');
+    expect(categoryKind('')).toBeNull();
+  });
+
+  it.each([
+    ['Lenovo LOQ 15ARP9, 15.6", 16GB', 'laptop'],
+    ['Lenovo ThinkPad E14 Gen 6, 16GB', 'laptop'],
+    ['PlayStation Portal Remote Player, White', 'console'],
+    ['Sony PS5 Slim, 1TB', 'console'],
+    ['Nintendo Switch 2, Light Blue/Light Red JoyCon', 'console'],
+    ['Apple iPad Air 11 M3, 128GB', 'tablet'],
+    ['Samsung Galaxy Tab S10 FE, 128GB', 'tablet'],
+    ['Apple Watch Series 11, 46mm', 'smartwatch'],
+    ['Apple AirPods Pro 3', 'headphones'],
+    ['Apple iPhone 17, 256GB', 'phone'],
+    ['Samsung Galaxy S25 Ultra, 512GB', 'phone'],
+    ['Amazon Kindle Paperwhite 2024', 'ereader'],
+  ])('%s → %s from the product line', (title, kind) => {
+    expect(explainProductKind(title)).toEqual({ kind, via: 'line', word: null });
+  });
+
+  it('ignores product lines after "pentru", "compatibil" or "emulator"', () => {
+    expect(lineKind('R36S, Emulator N64 PSP PS1 PlayStation Sega')).toBeNull();
+    expect(lineKind('Spigen Ultra Hybrid pentru iPhone 17')).toBeNull();
+    expect(detectProductKind('Spigen Ultra Hybrid pentru iPhone 17')).toBe('accessory');
+  });
+
+  it('prefers the breadcrumb to a product line', () => {
+    expect(detectProductKind('Lenovo Legion Go S, 512GB', 'Console Hardware')).toBe('console');
+    expect(explainProductKind('PlayStation Portal Remote Player', 'Console Hardware').via).toBe(
+      'category',
+    );
   });
 });

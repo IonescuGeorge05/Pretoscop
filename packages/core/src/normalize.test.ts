@@ -278,11 +278,42 @@ describe('normalizeOffer: titles and flags', () => {
       brandName: 'Sony',
       brandVia: 'product_line',
       isBundle: true,
-      bundleReason: 'plus:joc',
+      bundleKind: 'game',
+      bundleReason: 'game:plus:joc',
       condition: 'new',
       productKind: 'console',
     });
     expect(n.attributes).toMatchObject({ storageGb: 1024, edition: ['slim', 'digital'] });
+  });
+
+  it('keeps eMAG device listings out of accessories and gifts visible (live run 2026-10-27)', () => {
+    const macbook = accepted(
+      raw({
+        title:
+          "Apple MacBook Air 13'' cu procesor Apple M5, 10 nuclee CPU, 16GB RAM, 512GB SSD, Midnight, Tastatura Internationala, Manual RO, Fara incarcator",
+        category: 'Laptop, Tablete & Telefoane > Laptopuri si accesorii > Laptop > Notebook',
+        price: '5.999,99 lei',
+      }),
+    );
+    expect(macbook).toMatchObject({
+      productKind: 'laptop',
+      isAccessory: false,
+      accessoryReason: 'kind:laptop',
+      isBundle: false,
+      bundleKind: null,
+    });
+    const redmi = accepted(
+      raw({
+        title: 'Telefon mobil Xiaomi Redmi 15C, 4GB RAM, 128GB ROM, Black + Woven Strap Ring Stand',
+        category: 'Laptop, Tablete & Telefoane > Telefoane mobile & accesorii > Telefoane Mobile',
+        price: '599,99 lei',
+      }),
+    );
+    expect(redmi).toMatchObject({
+      isBundle: true,
+      bundleKind: 'gift',
+      bundleReason: 'gift:plus:woven',
+    });
   });
 
   it('flags accessories, refurbished and used offers', () => {

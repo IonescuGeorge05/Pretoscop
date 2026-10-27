@@ -8,7 +8,7 @@ import { detectAccessory } from './accessory';
 import { type Attributes, extractAttributes } from './attributes';
 import { type Availability, mapAvailability } from './availability';
 import { type BrandVia, detectBrand } from './brands';
-import { detectBundle } from './bundle';
+import { type BundleKind, detectBundle } from './bundle';
 import { type Condition, type ConditionDetail, detectCondition } from './condition';
 import type { ContentHasher } from './content-hash';
 import {
@@ -135,6 +135,9 @@ interface NormalizedOfferBase {
   conditionDetail: ConditionDetail | null;
   conditionReason: string;
   isBundle: boolean;
+  /** game, gift, accessory, subscription or other (see `detectBundle`); null when not a bundle. */
+  bundleKind: BundleKind | null;
+  /** `<kind>:<evidence>`, e.g. `gift:plus:woven`, `game:bundle`; null when not a bundle. */
   bundleReason: string | null;
   isAccessory: boolean;
   accessoryReason: string | null;
@@ -375,6 +378,7 @@ export function normalizeOffer(raw: RawOffer, ctx: NormalizeContext): Normalized
     conditionDetail: condition.detail ?? null,
     conditionReason: condition.reason,
     isBundle: bundle.isBundle,
+    bundleKind: bundle.kind,
     bundleReason: bundle.reason,
     isAccessory: accessory.isAccessory,
     accessoryReason: accessory.reason,

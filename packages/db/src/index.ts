@@ -7,3 +7,6 @@ export * from './queries/flags';
 export * from './queries/maintenance';
 export { seedDev } from './seed';
 export * from './queries/crawl';
+export * from './queries/rollup';
+export * from './queries/quarantine';
+export * from './queries/outliers';

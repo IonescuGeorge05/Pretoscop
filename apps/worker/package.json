@@ -12,7 +12,8 @@
     "shops:sync": "tsx src/cli/shops-sync.ts",
     "run:source": "tsx src/cli/run-source.ts",
     "replay": "tsx src/cli/replay.ts",
-    "backup": "tsx src/cli/backup.ts"
+    "backup": "tsx src/cli/backup.ts",
+    "stats:show": "tsx src/cli/stats-show.ts"
   },
   "devDependencies": {
     "pino-pretty": "^13.2.0"

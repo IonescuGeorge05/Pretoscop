@@ -1,7 +1,11 @@
 import { gzipSync } from 'node:zlib';
 import type { RawOffer } from '@pretoscop/core';
+import { breakerTripped } from '@pretoscop/core';
 import {
   deactivateOffersByUrl,
+  offerBaselines,
+  recordWithGuard,
+  type OfferObservation,
   emptyStats,
   finishRun,
   lastDiscoveryAt,
@@ -9,7 +13,6 @@ import {
   markMissingOffers,
   medianParsedLast7Days,
   pickCrawlUrls,
-  recordObservation,
   shopSources,
   shops,
   startRun,
@@ -34,6 +37,8 @@ export interface RunOutcome {
   status: RunStatus | 'gated';
   stats: RunStats;
   reason?: string;
+  /** Offers recorded in this run that need (re)matching. */
+  touchedOffers?: number[];
 }
 
 interface Ctx {
@@ -42,8 +47,12 @@ interface Ctx {
   shop: ShopContext;
   sourceId: number;
   sourceTier: 1 | 2 | 3 | 4;
-  stats: RunStats & { rejected: number; stale: number; newOffers: number; pages: number; discovered: number };
+  stats: RunStats & { rejected: number; stale: number; newOffers: number; pages: number; discovered: number; quarantined: number };
   snapshot: string[];
+  /** Offers that need (re)matching after this run (M07 consumes them). */
+  touchedOffers: Set<number>;
+  /** Set when the run-level breaker trips: nothing more is recorded. */
+  held?: string;
   errors: string[];
   blockReason?: string;
   log: RecorderDeps['log'];
@@ -62,6 +71,8 @@ function cfgList(config: Record<string, unknown>, key: string): string[] {
 }
 
 async function ingest(ctx: Ctx, offers: RawOffer[], observedAt: Date): Promise<void> {
+  if (ctx.held) return;
+  const ready: OfferObservation[] = [];
   for (const raw of offers) {
     ctx.stats.parsed++;
     ctx.snapshot.push(JSON.stringify(raw));
@@ -77,8 +88,29 @@ async function ingest(ctx: Ctx, offers: RawOffer[], observedAt: Date): Promise<v
       if (ctx.errors.length < SNAPSHOT_SAMPLE_REJECTS) ctx.errors.push(`reject ${raw.externalId}: ${n.rejectReason}`);
       continue;
     }
+    ready.push(n.observation);
+  }
+  if (ready.length === 0) return;
+
+  // Run-level breaker (docs/03 §6.4): > 20% of the batch moving > 50% means a parsing or
+  // currency bug, not a sale. Nothing from the batch is recorded; the run is held.
+  const baselines = await offerBaselines(ctx.deps.db, ctx.shop.id, [...new Set(ready.map((o) => o.externalId))]);
+  const breaker = breakerTripped(ready.map((o) => ({ previousBani: baselines.get(o.externalId)?.currentBani ?? null, newBani: o.priceBani })));
+  if (breaker.tripped) {
+    ctx.held = `breaker: ${breaker.moved} of ${breaker.compared} offers moved > 50%`;
+    ctx.errors.push(ctx.held);
+    return;
+  }
+
+  for (const o of ready) {
     try {
-      const r = await recordObservation(ctx.deps.db, n.observation);
+      const g = await recordWithGuard(ctx.deps.db, o, baselines.get(o.externalId));
+      if (g.action === 'quarantined') {
+        ctx.stats.quarantined++;
+        if (ctx.errors.length < SNAPSHOT_SAMPLE_REJECTS) ctx.errors.push(`quarantine ${o.externalId}: ${g.reason}`);
+        continue;
+      }
+      const r = g.result;
       if (r.stale) {
         ctx.stats.stale++;
         continue;
@@ -86,9 +118,10 @@ async function ingest(ctx: Ctx, offers: RawOffer[], observedAt: Date): Promise<v
       ctx.stats.upserted++;
       if (r.eventKind) ctx.stats.changed++;
       if (r.inserted) ctx.stats.newOffers++;
+      if (r.needsMatch && r.offerId !== null) ctx.touchedOffers.add(r.offerId);
     } catch (err) {
       ctx.stats.errors++;
-      if (ctx.errors.length < SNAPSHOT_SAMPLE_REJECTS) ctx.errors.push(`record ${raw.externalId}: ${(err as Error).message}`);
+      if (ctx.errors.length < SNAPSHOT_SAMPLE_REJECTS) ctx.errors.push(`record ${o.externalId}: ${(err as Error).message}`);
     }
   }
 }
@@ -126,7 +159,7 @@ async function runListing(ctx: Ctx, source: { url: string; parserKey: string; co
   const maxPages = opts.maxPages ?? cfgNum(source.config, 'max_pages', 1);
   let url: string | null = source.url;
   let complete = false;
-  while (url && ctx.stats.pages < maxPages) {
+  while (url && ctx.stats.pages < maxPages && !ctx.held) {
     ctx.stats.pages++;
     const res = await ctx.deps.fetcher.fetchPolite(url, { shopSlug: ctx.shop.slug, purpose: 'listing', runId: ctx.runId });
     const outcome = fetchOutcome(ctx, res);
@@ -185,6 +218,7 @@ async function discoverSitemap(ctx: Ctx, source: { url: string; config: Record<s
 
 async function fetchProductPages(ctx: Ctx, picks: { id: number; url: string }[], parserKey: string): Promise<void> {
   for (const p of picks) {
+    if (ctx.held) break;
     ctx.stats.pages++;
     const res = await ctx.deps.fetcher.fetchPolite(p.url, { shopSlug: ctx.shop.slug, purpose: 'product', runId: ctx.runId });
     if (res.skipped && res.skipped !== 'robots_disallowed') {
@@ -271,8 +305,9 @@ export async function runSource(deps: RecorderDeps, sourceId: number, opts: RunO
     shop: { id: shop.id, slug: shop.slug, shippingRules: shop.shippingRules, vatIncludedDefault: shop.vatIncludedDefault },
     sourceId,
     sourceTier: (source.sourceTier as 1 | 2 | 3 | 4) ?? 1,
-    stats: { ...emptyStats(), rejected: 0, stale: 0, newOffers: 0, pages: 0, discovered: 0 },
+    stats: { ...emptyStats(), rejected: 0, stale: 0, newOffers: 0, pages: 0, discovered: 0, quarantined: 0 },
     snapshot: [],
+    touchedOffers: new Set<number>(),
     errors: [],
     log,
   };
@@ -324,7 +359,10 @@ export async function runSource(deps: RecorderDeps, sourceId: number, opts: RunO
 
   // Deactivation only after a complete, full-size run (docs/03 §6.1).
   let status: RunStatus;
-  if (ctx.blockReason) status = 'failed';
+  if (ctx.held) {
+    status = 'held';
+    await deps.alert(`Run held by the breaker: ${source.key}`, { reason: ctx.held, run_id: run.id });
+  } else if (ctx.blockReason) status = 'failed';
   else if (failure || (ctx.stats.parsed === 0 && ctx.stats.errors > 0)) status = 'failed';
   else if (ctx.stats.errors > 0) status = 'partial';
   else status = 'success';
@@ -374,5 +412,5 @@ export async function runSource(deps: RecorderDeps, sourceId: number, opts: RunO
   }
 
   log.info({ status, stats: ctx.stats, snapshot: snapshotKey }, 'source run finished');
-  return { runId: run.id, status, stats: ctx.stats };
+  return { runId: run.id, status, stats: ctx.stats, touchedOffers: [...ctx.touchedOffers] };
 }

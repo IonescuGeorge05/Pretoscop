@@ -36,6 +36,20 @@
       "when": 1793130555256,
       "tag": "0004_events",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1793131894902,
+      "tag": "0005_quality",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1793131942590,
+      "tag": "0006_rollups",
+      "breakpoints": true
     }
   ]
 }

@@ -1,0 +1,13 @@
+**/node_modules
+**/.next
+**/.turbo
+**/coverage
+**/dist
+data
+.git
+.claude
+.env
+.env.*
+!.env.example
+playwright-report
+test-results

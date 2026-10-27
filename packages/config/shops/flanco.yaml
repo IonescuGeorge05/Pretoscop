@@ -20,5 +20,9 @@ probes:
     vantage: "London, honest UA (research 2026-10-27)"
     result: blocked
     note: "see notes"
+  - date: "2026-10-27"
+    vantage: "founder home connection (Mac), honest UA"
+    result: challenge
+    note: "robots.txt 200; category page 403 with cf-mitigated: challenge (Cloudflare managed challenge)"
 notes: "Cloudflare challenge; Magento 2; MPN in analytics data. Designated for the assisted channel (M05B)."
 sources: []

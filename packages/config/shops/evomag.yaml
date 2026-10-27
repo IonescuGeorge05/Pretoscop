@@ -28,6 +28,10 @@ probes:
     vantage: "London, honest UA (research 2026-10-27)"
     result: challenge
     note: "Distinct CAPTCHA on first request"
+  - date: "2026-10-27"
+    vantage: "founder home connection (Mac), honest UA"
+    result: challenge
+    note: "robots.txt 302 → captcha.distinct.ro (Distinct Traffic Filter)"
 notes: "Distinct Traffic Filter CAPTCHA on the first request from London; feed first (2Performant). Designated for the assisted channel until its feed is live (M05B). Also sells as an eMAG marketplace seller."
 sources:
   - key: evomag:feed:2performant

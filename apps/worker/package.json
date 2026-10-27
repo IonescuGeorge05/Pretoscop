@@ -9,7 +9,10 @@
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "shops:sync": "tsx src/cli/shops-sync.ts"
+    "shops:sync": "tsx src/cli/shops-sync.ts",
+    "run:source": "tsx src/cli/run-source.ts",
+    "replay": "tsx src/cli/replay.ts",
+    "backup": "tsx src/cli/backup.ts"
   },
   "devDependencies": {
     "pino-pretty": "^13.2.0"
@@ -19,6 +22,8 @@
     "@pretoscop/core": "workspace:*",
     "@pretoscop/db": "workspace:*",
     "@pretoscop/extractors": "workspace:*",
+    "@pretoscop/storage": "workspace:*",
+    "cron-parser": "^5.10.2",
     "drizzle-orm": "0.45.4",
     "pg-boss": "12.38.0",
     "pino": "^10.4.0"

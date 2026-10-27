@@ -28,5 +28,9 @@ probes:
     vantage: "London, honest UA (research 2026-10-27)"
     result: challenge
     note: "Cloudflare managed challenge"
+  - date: "2026-10-27"
+    vantage: "founder home connection (Mac), honest UA"
+    result: challenge
+    note: "robots.txt 200 (Crawl-delay 1); sitemap.xml 403 with cf-mitigated: challenge"
 notes: "Cloudflare challenge. Listed on compari.ro (has a feed). Also an eMAG marketplace seller."
 sources: []

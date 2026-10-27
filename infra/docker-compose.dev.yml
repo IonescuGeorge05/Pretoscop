@@ -64,6 +64,28 @@ services:
       timeout: 3s
       retries: 30
 
+  # Long-running recorder (M05): `docker compose -f infra/docker-compose.dev.yml -p pretoscop --profile recorder up -d --build`
+  worker:
+    profiles: [recorder]
+    build:
+      context: ..
+      dockerfile: infra/docker/worker.Dockerfile
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      DATABASE_URL: postgres://pretoscop:pretoscop@postgres:5432/pretoscop
+      MEILI_URL: http://meilisearch:7700
+      SMTP_URL: smtp://mailpit:1025
+      BLOB_FS_ROOT: /app/data/blobs
+      PUBLIC_BASE_URL: http://host.docker.internal:3000
+    volumes:
+      - ../data:/app/data
+    ports:
+      - '9464:9464'
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   pgdata:
   meilidata:

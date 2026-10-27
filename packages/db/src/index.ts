@@ -7,3 +7,4 @@ export * from './queries/runs';
 export * from './queries/flags';
 export * from './queries/maintenance';
 export { seedDev } from './seed';
+export * from './queries/crawl';

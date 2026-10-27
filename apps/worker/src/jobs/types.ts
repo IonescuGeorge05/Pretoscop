@@ -1,11 +1,22 @@
 import type { Env } from '@pretoscop/config/env';
 import type { Db } from '@pretoscop/db';
+import type { FetchLike, NormalizeFn, OpsAlert } from '../recorder/types';
+import type { BlobStore } from '@pretoscop/storage';
 import type { Logger } from '@pretoscop/config/logger';
 import type { Job, PgBoss, Queue, WorkOptions } from 'pg-boss';
+
+/** Long-lived collaborators shared by jobs (created once per worker process). */
+export interface Services {
+  blob: BlobStore;
+  fetcher: FetchLike;
+  normalize: NormalizeFn;
+  alert: OpsAlert;
+}
 
 export interface JobContext {
   boss: PgBoss;
   db: Db;
+  services: Services;
   env: Env;
   log: Logger;
 }

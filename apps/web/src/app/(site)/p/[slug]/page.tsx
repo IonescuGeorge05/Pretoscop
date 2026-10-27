@@ -5,6 +5,7 @@ import { dropVersus30dMin } from '@pretoscop/core';
 import { OffersTable } from '@/components/product/offers-table';
 import { PriceChart } from '@/components/product/price-chart';
 import { ProductImage } from '@/components/product/product-image';
+import { IcecatCredit } from '@/components/product/icecat-credit';
 import { keySpecs } from '@/components/product/specs';
 import { SummaryCard } from '@/components/product/summary-card';
 import { Container } from '@/components/ui/container';
@@ -127,6 +128,7 @@ export default async function ProductPage({ params }: Props) {
                 {p.mpn && <span> · cod producător {p.mpn}</span>}
                 {p.gtins[0] && <span> · EAN {p.gtins[0].replace(/^0+(?=\d{13})/, '')}</span>}
               </p>
+              {(p.imageSource === 'icecat' || p.icecatSpecs) && <IcecatCredit image={p.imageSource === 'icecat'} specs={p.icecatSpecs} />}
               {specs.length > 0 && (
                 <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
                   {specs.map(([k, v]) => (

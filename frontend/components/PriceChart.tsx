@@ -37,6 +37,7 @@ const EVENT_SHORT: Record<string, string> = {
 };
 const DAY = 86400000;
 const LABEL_ROW_PX = 16;
+const LEAD_IN = 3; // câte zile (sau săptămâni) goale lăsăm înaintea primei zile cu date
 
 type Row = Record<string, number | string | null> & { t: number };
 
@@ -265,9 +266,16 @@ export default function PriceChart({
     });
 
   // minimul pieței se recalculează doar din magazinele selectate
+  // istoric scurt (ex. 3 zile din 90): fără tăiere, linia ar fi un punct în colțul din dreapta
+  const firstWithData = data.points.findIndex((p) => data.shops.some((s) => typeof p[s.key] === "number"));
+  const trimmed = firstWithData > LEAD_IN ? data.points.slice(firstWithData - LEAD_IN) : data.points;
+  const isTrimmed = trimmed.length < data.points.length;
+  // magazine fără niciun preț în stoc în interval: apar în legendă, dar nu au ce linie desena
+  const withData = new Set(data.shops.filter((s) => data.points.some((p) => typeof p[s.key] === "number")).map((s) => s.key));
+
   const rows: Row[] = useMemo(
     () =>
-      data.points.map((p) => {
+      trimmed.map((p) => {
         let min: number | null = null;
         let minShop: string | null = null;
         for (const s of visible) {
@@ -277,7 +285,7 @@ export default function PriceChart({
         return { ...p, market_min: min, min_shop: minShop, t: new Date(p.date).getTime() };
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data.points, hidden],
+    [data.points, hidden, firstWithData],
   );
 
   const mins = rows.map((r) => r.market_min).filter((v): v is number => typeof v === "number");
@@ -317,6 +325,17 @@ export default function PriceChart({
       {/* selector magazine — funcționează și ca legendă */}
       <div className="mt-4 flex flex-wrap items-center gap-2" role="group" aria-label="Magazine afișate">
         {data.shops.map((s, i) => {
+          if (!withData.has(s.key)) {
+            return (
+              <span
+                key={s.key}
+                title="Magazinul are oferte, dar fără stoc în acest interval — nu are ce linie să deseneze"
+                className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-line px-3 py-1 text-sm text-muted"
+              >
+                {s.name} · fără stoc
+              </span>
+            );
+          }
           const on = !hidden.has(s.key);
           return (
             <button
@@ -386,6 +405,9 @@ export default function PriceChart({
           Date pentru <strong className="text-ink">{data.coverage.days_with_data}</strong> din {data.coverage.days_total} zile.
           Golurile din linii = zile fără date (scraperul nu a rulat, de ex. calculator oprit); nu le completăm prin
           presupuneri. Punctele = capturi din arhiva Wayback Machine.
+          {isTrimmed && rows.length > 0 && (
+            <> Graficul începe de la prima zi cu date ({formatShortDate(rows[LEAD_IN]?.t ?? rows[0].t)}).</>
+          )}
         </p>
       )}
 

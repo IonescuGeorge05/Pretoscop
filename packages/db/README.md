@@ -41,6 +41,8 @@ products ─┬─< product_gtins (gtin14 PK)
 offer_aliases (shop_id, external_id) → product         sticky human decisions
 product_merges                                         merge log, undo, 301s
 feature_flags · audit_log · request_log (30 days) · crawl_domain_state (per-host politeness state)
+shops ─< merchants (portal account, M20) · shops ─< outreach (retailer contacts, M21)
+shops ─< extractor_canaries (weekly canary results per URL, M21)
 ```
 
 Column-level details follow `docs/03-architecture.md` §5; the Drizzle files in `src/schema/` are

@@ -327,6 +327,25 @@ vendor-reported block becomes `blockReason: 'vendor_blocked'` (the vendor's own 
 pause it for 1 h (doubling), on top of M05B's success-rate auto-pause. The vendor's cost ledger and
 cap belong to M05B.
 
+### Web Bot Auth (M21)
+
+`src/signing.ts` (also `@pretoscop/fetch/signing`, no undici) implements the RFC 9421 pieces the
+web-bot-auth drafts use: Ed25519 keys (`loadEd25519Key` from a base64url seed or PKCS#8 PEM,
+`generateEd25519Key`), the JWK thumbprint `keyid`, the signature base and parameters,
+`createWebBotAuthSigner({ key, agentOrigin })` (signs `("@authority" "signature-agent")` with
+`tag="web-bot-auth"`, a fresh 64-byte nonce and a 60 s validity), `directoryBody` +
+`signDirectoryResponse` for the key directory (tag `http-message-signatures-directory`, covering
+`"@authority";req`), and `verifyWebBotAuthRequest` (what a CDN checks: tag, known key, validity
+window, `@authority`, signature) for tests and self-checks.
+
+The fetcher signs each direct hop for its own authority (a redirect to another host gets a new
+signature) when `FetcherDeps.signer` is set; by default it uses `signerFromEnv(process.env)`: no signer
+unless `WEB_BOT_AUTH=1`, and `WEB_BOT_AUTH=1` without a usable `WEB_BOT_AUTH_PRIVATE_KEY` throws at
+construction (a crawler told to sign never runs unsigned). `signer: null` turns it off. The assisted
+channel is never signed with our key. Tests reproduce RFC 9421 Appendix B.2.6 and the
+draft-meunier-web-bot-auth-architecture example byte for byte. A key: `pnpm --filter @pretoscop/fetch
+bot-auth:keygen`; rollout and rotation: `infra/bot-program/web-bot-auth.md`.
+
 ## Demo CLI
 
 ```

@@ -117,7 +117,7 @@ describe('Web Bot Auth request signatures', () => {
     expect(verifyWebBotAuthRequest({ url: 'https://alt-magazin.ro/p/1', headers, keys, now })).toEqual({ ok: false, reason: 'bad_signature' });
     expect(verifyWebBotAuthRequest({ url, headers: { ...headers, 'signature-agent': '"https://evil.example"' }, keys, now })).toEqual({ ok: false, reason: 'bad_signature' });
     expect(verifyWebBotAuthRequest({ url, headers, keys: [generateEd25519Key().key.jwk], now })).toEqual({ ok: false, reason: 'unknown_key' });
-    expect(verifyWebBotAuthRequest({ url, headers, keys, now: now + 301_000 })).toEqual({ ok: false, reason: 'expired' });
+    expect(verifyWebBotAuthRequest({ url, headers, keys, now: now + 61_000 })).toEqual({ ok: false, reason: 'expired' });
     expect(verifyWebBotAuthRequest({ url, headers: {}, keys, now })).toEqual({ ok: false, reason: 'no_signature' });
     expect(verifyWebBotAuthRequest({ url, headers, keys, now, tag: DIRECTORY_TAG })).toEqual({ ok: false, reason: 'wrong_tag' });
   });
@@ -159,7 +159,7 @@ describe('key directory', () => {
     const now = 1_800_000_000_000;
     const h = signDirectoryResponse({ keys: [a, b], authority: 'pretoscop.ro', now, nonce: () => 'bm9uY2U=' });
     expect(h['signature-input'].split(', ')[0]).toBe(
-      `sig1=("@authority";req);created=1800000000;keyid="${RFC_KEY_THUMBPRINT}";alg="ed25519";expires=1800000300;nonce="bm9uY2U=";tag="http-message-signatures-directory"`,
+      `sig1=("@authority";req);created=1800000000;keyid="${RFC_KEY_THUMBPRINT}";alg="ed25519";expires=1800000060;nonce="bm9uY2U=";tag="http-message-signatures-directory"`,
     );
     expect(parseSignatureHeaders(h['signature-input'], h.signature).map((s) => s.params.keyid)).toEqual([a.keyid, b.keyid]);
 

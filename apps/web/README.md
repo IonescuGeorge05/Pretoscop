@@ -95,3 +95,16 @@ Policy is added (M16/M18), allow the Plausible origin in `script-src` and `conne
   P2B art. 4), reinstate, manual domain verification, re-check, run now. Every decision is in `audit_log`.
 - **Development only**: with `FETCH_ALLOW_PRIVATE_HOSTS=true` (refused in staging and production) a feed URL may point to a
   local IP and port, which the e2e flow uses.
+
+## Bot legitimacy (M21)
+
+- **`/bot`** (final): how to verify us — the published IPs (`BOT_EGRESS_IPS`), forward-confirmed reverse DNS
+  `crawl-N.bot.pretoscop.ro` (`BOT_RDNS_DOMAIN`), Web Bot Auth with its live status (key published / requests signed) —, the
+  anti-bot services table (`BOT_PROGRAMS` in `src/lib/bot-policy.ts`: update the status and add a changelog entry when a
+  programme answers) and the feed route through the merchant portal.
+- **`/bot/ips.json`** adds `creationTime` and `prefixes` (googlebot.json format) to the M17 fields.
+- **`/.well-known/http-message-signatures-directory`**: the public Ed25519 JWK, signed for the `Signature-Agent` authority
+  (origin of `BOT_INFO_URL`), `Cache-Control: max-age=300`; 404 until `WEB_BOT_AUTH_PRIVATE_KEY` is set
+  (`src/lib/web-bot-auth.ts`, signing primitives from `@pretoscop/fetch/signing`).
+- **`/admin/contactari`**: retailer outreach tracker (table `outreach`): add a contact, update its status, follow-ups due.
+- Runbooks and application dossiers: `infra/bot-program/`.

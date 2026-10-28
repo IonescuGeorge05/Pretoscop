@@ -27,8 +27,12 @@ export const WEB_BOT_AUTH_TAG = 'web-bot-auth';
 export const DIRECTORY_TAG = 'http-message-signatures-directory';
 export const DIRECTORY_PATH = '/.well-known/http-message-signatures-directory';
 export const DIRECTORY_MEDIA_TYPE = 'application/http-message-signatures-directory+json';
-/** Signatures are valid this long; a verifier rejects them afterwards (replay window). */
-export const DEFAULT_SIGNATURE_VALIDITY_SECONDS = 300;
+/**
+ * Request signatures are valid this long; a verifier rejects them afterwards (replay window).
+ * Cloudflare's guidance: "A minute is often sufficient". Signing happens right before sending,
+ * after the per-host wait, so a minute covers the 30 s request budget.
+ */
+export const DEFAULT_SIGNATURE_VALIDITY_SECONDS = 60;
 
 /** The public half of an Ed25519 key as a JWK (RFC 8037), without optional members. */
 export interface Ed25519PublicJwk {

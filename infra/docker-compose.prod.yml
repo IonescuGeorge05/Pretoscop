@@ -7,7 +7,8 @@
 # the release images, runs migrations once, and restarts the two web replicas one at a time.
 # Ingress is the separate edge stack (infra/docker-compose.edge.yml: Caddy, TLS), which reaches the
 # web replicas over the external network `pretoscop-edge` under the aliases <env>-web-1/2.
-name: pretoscop-prod
+# No `name:` on purpose: the project name always comes from `-p` (deploy.sh, make), so a compose
+# command typed in the staging checkout can never act on the production project.
 
 x-logging: &logging
   driver: json-file

@@ -35,7 +35,8 @@ describe('runMigrations under concurrency', () => {
     await admin.end();
   });
 
-  it('applies every migration exactly once when three migrators race on an empty database', async () => {
+  // Three full migration passes in a row (the lock serializes them): generous on a loaded machine.
+  it('applies every migration exactly once when three migrators race on an empty database', { timeout: 180_000 }, async () => {
     const dbs = [0, 1, 2].map(() => {
       const pool = createPool(url, 2);
       pools.push(pool);

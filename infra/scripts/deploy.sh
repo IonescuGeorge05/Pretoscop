@@ -106,7 +106,8 @@ else
 fi
 
 say "migrations (previous release: ${PREV:-none})"
-compose run --rm --no-deps migrate || failed "migrations failed; nothing else was restarted (the old release still serves)"
+# The migrate one-shot is also the first process to validate the new release's environment.
+compose run --rm --no-deps migrate || failed "migrations failed or the environment is invalid (see above); nothing else was restarted (the old release still serves)"
 
 # ---------------------------------------------------------------- web replicas, one at a time
 # A replica about to be replaced first leaves the edge's rotation: DRAIN_FILE is created in it,

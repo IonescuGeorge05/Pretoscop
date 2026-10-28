@@ -109,7 +109,7 @@ ok "scripts, workflows, alert rules (and their unit tests), Caddyfile, Alloy con
 if [[ "${M18_SKIP_STACK:-0}" == "1" ]]; then
   echo "(M18_SKIP_STACK=1: local prod-like run skipped)"
 else
-  step "local prod-like run (edge + app stack + MinIO; about 15 minutes)"
+  step "local prod-like run (edge + app stack + MinIO; about 25 minutes)"
   bash scripts/verify/M18-stack.sh
 fi
 

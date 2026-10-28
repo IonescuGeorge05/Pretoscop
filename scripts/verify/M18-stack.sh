@@ -82,6 +82,9 @@ cleanup() {
 trap cleanup EXIT
 
 rand() { openssl rand -hex "${1:-24}"; }
+# Clearly fake but not the dev placeholders: production refuses those (M19, Law 506/2004 art. 12).
+REHEARSAL_NAME="Pretoscop Test SRL (rehearsal)"
+REHEARSAL_ADDRESS="Str. Exemplu 1, București (rehearsal)"
 
 step "TLS certificates for the MinIO stand-in (throwaway CA)"
 mkdir -p "$WORK/certs"
@@ -115,6 +118,8 @@ PUBLIC_BASE_URL=${BASE}
 SITE_INDEXABLE=false
 CRAWL_ENABLED=false
 MAIL_DRIVER=log
+COMPANY_LEGAL_NAME=${REHEARSAL_NAME}
+COMPANY_POSTAL_ADDRESS=${REHEARSAL_ADDRESS}
 BLOB_DRIVER=s3
 S3_ENDPOINT=https://minio:9000
 S3_REGION=us-east-1
@@ -400,6 +405,22 @@ curl -fsSk "$BASE/api/health" | grep -q "\"version\":\"${TAG_A}\"" || fail "roll
 [[ "$(app ps -q postgres)" == "$pg_before" ]] || fail "the rollback restarted PostgreSQL"
 [[ "$(awk '$4 == "ok" { printf "%s ", $3 }' "$DEPLOY_HISTORY")" == "${TAG_A} ${TAG_B} ${TAG_A} " ]] || fail "unexpected deploy history: $(cat "$DEPLOY_HISTORY")"
 ok "deploy ${TAG_B} with 0/${total} failed requests and the database untouched; rollback to ${TAG_A}"
+
+step "a release with an invalid production .env stops at the migration step, before any replica is touched"
+# M19: production refuses to start without the operator's postal address (printed in every email).
+sed -i 's/^COMPANY_POSTAL_ADDRESS=.*/COMPANY_POSTAL_ADDRESS=/' "$ENV_FILE"
+web_before="$(app ps -q web-1) $(app ps -q web-2) $(app ps -q worker)"
+if SMOKE_URL="$BASE/api/health" SMOKE_CURL_OPTS=-k infra/scripts/deploy.sh prod "$TAG_B" >"$WORK/deploy-invalid.log" 2>&1; then
+  fail "deploy.sh accepted a production .env without COMPANY_POSTAL_ADDRESS"
+fi
+grep -q 'COMPANY_POSTAL_ADDRESS' "$WORK/deploy-invalid.log" || {
+  tail -n 20 "$WORK/deploy-invalid.log"
+  fail "the refused deploy does not name the missing setting"
+}
+[[ "$(app ps -q web-1) $(app ps -q web-2) $(app ps -q worker)" == "$web_before" ]] || fail "the refused deploy replaced running containers"
+curl -fsSk "$BASE/api/health" | grep -q "\"version\":\"${TAG_A}\"" || fail "the site stopped serving ${TAG_A} after a refused deploy"
+sed -i "s/^COMPANY_POSTAL_ADDRESS=.*/COMPANY_POSTAL_ADDRESS=${REHEARSAL_ADDRESS}/" "$ENV_FILE"
+ok "refused at the migration step (\"COMPANY_POSTAL_ADDRESS must be ...\"); ${TAG_A} kept serving"
 
 step "the waiting database image, applied on request (RECREATE_DATA_SERVICES=1)"
 RECREATE_DATA_SERVICES=1 SMOKE_URL="$BASE/api/health" SMOKE_CURL_OPTS=-k infra/scripts/deploy.sh prod "$TAG_A" >/dev/null

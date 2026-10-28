@@ -1,0 +1,129 @@
+import { createRequire } from 'node:module';
+import { DIRECTORY_MEDIA_TYPE, DIRECTORY_TAG, verifyWebBotAuthRequest, type Ed25519PublicJwk } from '@pretoscop/fetch/signing';
+import { expect, test, type Page } from '@playwright/test';
+
+/**
+ * M21: the key directory (signed), the final /bot page, ips.json in googlebot.json format and the
+ * outreach tracker. scripts/verify/M21.sh starts the server with the public RFC 9421 test key,
+ * BOT_INFO_URL on the e2e port and a documentation IP in BOT_EGRESS_IPS.
+ */
+
+const MAILPIT = 'http://localhost:8025/api/v1';
+const ADMIN = 'admin@pretoscop.test';
+const DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://pretoscop:pretoscop@localhost:5432/pretoscop';
+const ui = expect.configure({ timeout: 20_000 });
+
+const requireFromDb = createRequire(new URL('../../../packages/db/package.json', import.meta.url));
+interface PgClient {
+  connect(): Promise<void>;
+  query<R>(sql: string, params?: unknown[]): Promise<{ rows: R[] }>;
+  end(): Promise<void>;
+}
+const { Client } = requireFromDb('pg') as { Client: new (cfg: { connectionString: string }) => PgClient };
+async function query<R>(sql: string, params: unknown[] = []): Promise<R[]> {
+  const c = new Client({ connectionString: DATABASE_URL });
+  await c.connect();
+  try {
+    return (await c.query<R>(sql, params)).rows;
+  } finally {
+    await c.end();
+  }
+}
+
+async function magicLink(email: string, since: number): Promise<string> {
+  for (let i = 0; i < 30; i++) {
+    const list = (await (await fetch(`${MAILPIT}/search?query=to:${encodeURIComponent(email)}`)).json()) as { messages: { ID: string; Created: string }[] };
+    const id = list.messages.find((m) => Date.parse(m.Created) >= since - 2000)?.ID;
+    if (id) {
+      const msg = (await (await fetch(`${MAILPIT}/message/${id}`)).json()) as { Text: string };
+      const link = /(https?:\/\/\S+magic-link\/verify\S+)/.exec(msg.Text)?.[1];
+      if (link) return link;
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  throw new Error(`no magic link for ${email}`);
+}
+
+async function login(page: Page): Promise<void> {
+  await page.goto('/admin');
+  await page.getByLabel('Email').fill(ADMIN);
+  const since = Date.now();
+  await page.getByRole('button', { name: 'Trimite linkul' }).click();
+  await ui(page.getByText('Verifică emailul')).toBeVisible();
+  await page.goto(await magicLink(ADMIN, since));
+  await ui(page).toHaveURL(/\/admin$/);
+}
+
+test.describe('bot legitimacy', () => {
+  test.skip(({ isMobile }) => isMobile, 'desktop only');
+  test.describe.configure({ mode: 'serial' });
+
+  test('the key directory publishes the public key and its response signature verifies', async ({ request, baseURL }) => {
+    const res = await request.get('/.well-known/http-message-signatures-directory');
+    test.skip(res.status() === 404, 'no WEB_BOT_AUTH_PRIVATE_KEY on this server');
+    expect(res.status()).toBe(200);
+    const headers = res.headers();
+    expect(headers['content-type']).toBe(DIRECTORY_MEDIA_TYPE);
+    const body = (await res.json()) as { keys: Ed25519PublicJwk[] };
+    expect(body.keys).toHaveLength(1);
+    expect(Object.keys(body.keys[0]!).sort()).toEqual(['crv', 'kty', 'x']);
+    const url = `${baseURL}/.well-known/http-message-signatures-directory`;
+    expect(verifyWebBotAuthRequest({ url, headers, keys: body.keys, tag: DIRECTORY_TAG, request: { url } })).toMatchObject({ ok: true });
+  });
+
+  test('/bot/ips.json carries the googlebot.json prefixes next to the first-version fields', async ({ request }) => {
+    const body = (await (await request.get('/bot/ips.json')).json()) as { creationTime: string; prefixes: Array<Record<string, string>>; ipv4: string[]; ipv6: string[] };
+    expect(body.creationTime).toMatch(/^\d{4}-\d{2}-\d{2}T00:00:00\.000000Z$/);
+    expect(body.prefixes).toHaveLength(body.ipv4.length + body.ipv6.length);
+    for (const ip of body.ipv4) expect(body.prefixes).toContainEqual({ ipv4Prefix: ip.includes('/') ? ip : `${ip}/32` });
+  });
+
+  test('/bot explains the three ways to verify us and the anti-bot services', async ({ page, request }) => {
+    const directory = await request.get('/.well-known/http-message-signatures-directory');
+    await page.goto('/bot');
+    await expect(page.getByRole('heading', { name: 'Cum verifici că o cerere vine de la noi' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: '2. Reverse DNS' })).toBeVisible();
+    await expect(page.getByText('crawl-N.bot.pretoscop.ro', { exact: true }).first()).toBeVisible();
+    const status = page.getByTestId('web-bot-auth-status');
+    await expect(status).toContainText('RFC 9421');
+    if (directory.status() === 200) {
+      await expect(status).toContainText('Cheia publică este deja publicată');
+      await expect(page.getByTestId('web-bot-auth-directory')).toHaveAttribute('href', /\/\.well-known\/http-message-signatures-directory$/);
+    }
+    await expect(page.getByTestId('bot-program-cloudflare')).toHaveText('cerere în pregătire');
+    await expect(page.getByRole('link', { name: 'contul de magazin' })).toHaveAttribute('href', '/pentru-magazine/cont');
+  });
+
+  test('the outreach tracker records a contact and its answer', async ({ page }) => {
+    test.setTimeout(120_000);
+    const [shop] = await query<{ id: string; name: string }>(`SELECT id::text, name FROM shops WHERE slug = 'pcgarage'`);
+    expect(shop).toBeTruthy();
+    await query(`DELETE FROM outreach WHERE shop_id = $1`, [shop!.id]);
+    try {
+      await login(page);
+      await page.goto('/admin/contactari');
+      const before = Number(await page.getByTestId('outreach-contacted').innerText());
+      const form = page.getByTestId('outreach-form');
+      await form.getByLabel('Magazin').selectOption({ value: shop!.id });
+      await form.getByLabel('Scop').selectOption('feed_or_allowlist');
+      await form.getByLabel('Canal').selectOption('email');
+      await form.getByLabel('Șablon').selectOption('feed-listing-v1');
+      await form.getByLabel('Contact (adresă de rol, formular, centrală)').fill('marketing@pcgarage.ro');
+      await form.getByRole('button', { name: 'Adaugă' }).click();
+      await ui(page.getByRole('status')).toHaveText('Contactarea a fost adăugată.');
+      await expect(page.getByTestId('outreach-contacted')).toHaveText(String(before + 1));
+
+      const [row] = await query<{ id: string }>(`SELECT id::text FROM outreach WHERE shop_id = $1`, [shop!.id]);
+      const tr = page.getByTestId(`outreach-row-${row!.id}`);
+      await tr.getByLabel(`Stare pentru ${shop!.name}`).selectOption('replied');
+      await tr.getByLabel(`Răspuns de la ${shop!.name}`).fill('Revin după ce discută cu echipa tehnică.');
+      await tr.getByRole('button', { name: 'Salvează' }).click();
+      await ui(page.getByRole('status')).toHaveText('Contactarea a fost actualizată.');
+      await expect(page.getByTestId(`outreach-row-${row!.id}`)).toContainText('Au răspuns');
+      const audit = await query<{ action: string }>(`SELECT action FROM audit_log WHERE entity = 'outreach' AND entity_id = $1 ORDER BY id`, [row!.id]);
+      expect(audit.map((a) => a.action)).toEqual(['outreach.create', 'outreach.update']);
+    } finally {
+      await query(`DELETE FROM outreach WHERE shop_id = $1`, [shop!.id]);
+    }
+  });
+});

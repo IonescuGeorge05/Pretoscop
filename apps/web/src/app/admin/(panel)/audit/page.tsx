@@ -1,9 +1,12 @@
 import { auditLog, desc } from '@pretoscop/db';
 import { Section, Table, Td } from '@/components/admin/ui';
+import { requireAdmin } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { formatDateTime } from '@/lib/format';
 
 export default async function AuditPage() {
+  // Each admin page checks the session itself: the layout guard does not stop a segment from rendering.
+  await requireAdmin();
   const rows = await db().select().from(auditLog).orderBy(desc(auditLog.id)).limit(300);
   return (
     <div>

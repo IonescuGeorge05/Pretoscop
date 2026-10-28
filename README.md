@@ -48,6 +48,11 @@ packages/extractors  Page and feed parsers (no I/O), fixtures
 packages/fetch    Polite HTTP client (identified bot, robots.txt, throttling)
 packages/config   Environment, logger, shop registry
 packages/llm      Anthropic wrapper with budget caps
-infra/            Compose files, backups, runbooks
+infra/            Compose files (dev, prod/staging, edge), Dockerfiles, backups, monitoring, runbooks
 scripts/verify/   make verify M=XX scripts and founder checklists
 ```
+
+## Production
+
+One server, two environments (staging and production) and a shared edge proxy, all Docker
+Compose; images built by GitHub Actions on a release tag. Start at [`infra/README.md`](infra/README.md).

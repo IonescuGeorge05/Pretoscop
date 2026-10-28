@@ -2,7 +2,7 @@ import http from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { request } from 'undici';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createGuardedDispatcher, isNonPublicAddress, publicOnlyLookup } from '../src/index';
+import { classifyTransportError, createGuardedDispatcher, isNonPublicAddress, NonPublicAddressError, publicOnlyLookup } from '../src/index';
 
 describe('isNonPublicAddress', () => {
   it.each([
@@ -55,6 +55,27 @@ describe('createGuardedDispatcher', () => {
     const res = await request(`http://127.0.0.1:${port}/`, { dispatcher: open });
     expect(await res.body.text()).toBe('feed');
     await open.close();
+  });
+
+  it('allowTargets opens exactly one ip:port (an e2e fixture server) and keeps the guard on for the rest', async () => {
+    const other = http.createServer((_req, res) => res.end('internal'));
+    await new Promise<void>((resolve) => other.listen(0, '127.0.0.1', resolve));
+    const otherPort = (other.address() as AddressInfo).port;
+    const narrow = createGuardedDispatcher({ allowTargets: [`127.0.0.1:${port}`] });
+    try {
+      const res = await request(`http://127.0.0.1:${port}/`, { dispatcher: narrow });
+      expect(await res.body.text()).toBe('feed');
+      await expect(request(`http://127.0.0.1:${otherPort}/`, { dispatcher: narrow })).rejects.toThrow(/not a public internet address/);
+      await expect(request(`http://localhost:${port}/`, { dispatcher: narrow })).rejects.toThrow(/not a public internet address/);
+    } finally {
+      await narrow.close();
+      await new Promise<void>((resolve) => other.close(() => resolve()));
+    }
+  });
+
+  it('a refusal by the guard is classified as our own non-retried refusal, not a shop failure or block', () => {
+    const cls = classifyTransportError(new NonPublicAddressError('10.0.0.5'));
+    expect(cls).toMatchObject({ code: 'non_public_address', block: false, transient: false, countsAsFailure: false });
   });
 
   it('publicOnlyLookup fails for a loopback name and answers both lookup shapes for public ones', async () => {

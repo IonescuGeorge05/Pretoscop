@@ -172,5 +172,13 @@ export * from './alerts';
 
 // Company identifiers and shop domains (M20 merchant portal)
 export { type CuiResult, cuiControlDigit, validateCui } from './cui';
-export { FREE_MAIL_DOMAINS, emailProvesDomain, normalizeShopDomain, shopSlugFromDomain } from './merchant';
+export {
+  FREE_MAIL_DOMAINS,
+  PUBLIC_SUFFIXES,
+  emailProvesDomain,
+  hostOnShopDomain,
+  isPublicSuffix,
+  normalizeShopDomain,
+  shopSlugFromDomain,
+} from './merchant';
 export * from './affiliate';

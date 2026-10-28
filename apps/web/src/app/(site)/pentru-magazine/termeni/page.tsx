@@ -75,8 +75,10 @@ export default function MerchantTermsPage() {
                 <li>nu conțin produse interzise sau conținut ilegal.</li>
               </ul>
               <p>
-                Citim feed-ul de șase ori pe zi cu robotul PretoscopBot-Feed, cu respectarea robots.txt. Dacă un preț din feed diferă de cel de pe site, pe
-                Pretoscop rămâne valabilă mențiunea că prețul final este cel afișat de magazin la plasarea comenzii.
+                Un feed dat prin adresă îl citim de șase ori pe zi cu robotul PretoscopBot-Feed, cu respectarea robots.txt. Un fișier încărcat îl citim o
+                singură dată, la încărcare: ofertele lui apar ca verificate în acel moment și sunt marcate ca neactualizate după trei zile, dacă nu încarci
+                altul. Dacă un preț din feed diferă de cel de pe site, pe Pretoscop rămâne valabilă mențiunea că prețul final este cel afișat de magazin la
+                plasarea comenzii.
               </p>
             </>
           ),
@@ -126,7 +128,8 @@ export default function MerchantTermsPage() {
               <p>
                 Putem refuza, restricționa sau suspenda listarea dacă datele din feed sunt în mod repetat greșite, dacă se încalcă acești termeni sau legea ori
                 dacă ne obligă o autoritate. Îi transmitem magazinului motivele, cel târziu când decizia produce efecte, cu faptele și regulile pe care se sprijină
-                (conform art. 4 din Regulamentul (UE) 2019/1150).
+                (conform art. 4 din Regulamentul (UE) 2019/1150). Suspendarea produce efecte imediat: ofertele magazinului nu mai sunt afișate și feed-ul nu mai
+                este citit până la reluare; la reluare, ofertele revin după prima citire a feed-ului.
               </p>
               <p>
                 Putem înceta definitiv listarea cu un preaviz de 30 de zile, cu excepția cazurilor în care legea ne obligă sau a încălcărilor repetate ale acestor

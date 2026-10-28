@@ -164,3 +164,4 @@ export * from './taxonomy';
 export * from './matching';
 export * from './seo';
 export * from './matching-eval';
+export * from './deals';

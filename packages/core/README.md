@@ -598,6 +598,27 @@ storage, RAM, screen, colour, energy class, litres, kilograms, condition, bundle
 every set and prints the table and every miss: `pnpm --filter @pretoscop/core exec vitest run src/corpus.test.ts --silent=false`.
 Label what a careful person reads in the title, never what the code outputs.
 
+## Verdicts, verified drops and badges (M08, M15)
+
+All of these read only our own daily series: the shop-sold daily minimum total (price + known
+delivery) of new, in-stock offers, the line drawn by default on the product chart. Days we did not
+observe are absent and are never filled in. Money is integer bani; thresholds are integer comparisons.
+
+| Badge | Rule (`src/verdict.ts`, `src/deals.ts`) | Where |
+|---|---|---|
+| Preț bun / Preț obișnuit / Peste obișnuit | `computeVerdict`: needs ≥ 14 observed days; good ≤ 30-day minimum × 1.01; above ≥ 90-day median × 1.08 | product page, listings |
+| −X% față de minimul din 30 de zile | `verifiedDrop`: S = first observed day after the last day priced above today's total; S at most 30 days ago; ≥ 14 observed days in [S−30, S−1]; today ≤ 97% of that window's minimum. X is rounded **down** | product page (with `dropExplanation`), listings, /reduceri |
+| Minim istoric | `newAllTimeLow`: today strictly below every price observed before S, with ≥ 14 observed days before S | product page, listings, /reduceri |
+| La minimul ultimelor 30 de zile | `atThirtyDayLow`: today ≤ every price of the previous 30 observed days (≥ 14), and the window held a price ≥ 5% higher | /reduceri, second list |
+| Shop reference-price facts | `discountFacts` (M08): reference not supported, raise-then-cut, phantom old price, market-irrelevant discount | offers table |
+
+- A stepwise reduction counts from its latest step: 1.000 → 960 → 950 lei is "−1%" today (950 vs 960),
+  not −5%; a return to an earlier low (800 → 1.000 → 800) is no drop at all.
+- The shop's crossed price never makes a badge: it is shown as "preț de referință afișat de magazin".
+- Texts are factual and reproducible (`dropBadgeText`, `dropExplanation`, `allTimeLowExplanation`), with
+  the numbers and dates they rest on; never accusatory (docs/07 §2.9).
+- `dropVersus30dMin` (M08) is superseded for display: `product_stats.min_30d` includes today's price.
+
 ## Known limitations
 
 - Model codes written with spaces ("FFB 8458 BV EE", "W7I HP42 L", "43 HYN 8110 VDQ4K") are not

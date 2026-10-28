@@ -15,3 +15,4 @@ export { and, asc, count, desc, eq, gt, gte, ilike, inArray, isNotNull, isNull, 
 export * from './queries/matching';
 export * from './queries/admin';
 export * from './queries/report';
+export * from './queries/deals';

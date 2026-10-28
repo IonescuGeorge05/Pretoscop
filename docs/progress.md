@@ -4,6 +4,10 @@ Single page the founders read to supervise the build. The implementing agent upd
 
 Last updated: 2026-10-27 (autonomous build session started; see "Build session mode" below).
 
+## Build session paused (28 Oct 2026, machine move)
+
+All work stopped on 28 Oct 2026 to move to a new machine. Start with `docs/HANDOFF.md`: what to copy, setup, the state of every branch, the merge order for migrations and the open decisions.
+
 ## Build session mode (2026-10-27)
 
 Daniel asked the implementing agent to build the whole plan while the founders are away. His instructions for this session: one local branch `mod/MXX-*` per module, merged into `daniel` with `--no-ff` once `make verify M=XX` passes; nothing is pushed to GitHub; phase gates are marked **awaiting founder approval** and the build continues; no external credentials yet, so every integration runs against a local stand-in (filesystem blob store for R2, Mailpit for email, recorded responses for vendors); live, polite crawling from Daniel's Mac is allowed and the recorder is left running. Every module below in status `review` still needs the founders' 5-minute check.
@@ -18,7 +22,7 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 | M03 | Extractors: structured data and feed mappers | review | `mod/M03-extractors` (merged locally into `daniel`) | | eMAG listing/product, JSON-LD/microdata/OG, 5 feed mappers, sitemaps |
 | M04 | Shop registry and configuration | review | `mod/M04-registry` (merged locally into `daniel`) | | 28 shops, 49 sources (eMAG 43 listings + Tier A), idempotent sync |
 | M05 | Phase-0 price recorder (eMAG listings + first feeds) | review | chain `mod/M13-product-page` (from `mod/M05-recorder`) | | Live since 27 Oct: 960 eMAG offers; eMAG product pages answered with a CAPTCHA → Tier A off (decision needed) |
-| M05B | Assisted-access channel for blocked shops (prototype) | todo | | | decided 2026-10-27 after legal advice; file the written opinion and open the vendor account (A10) |
+| M05B | Assisted-access channel for blocked shops (prototype) | in progress | `mod/M05B-assisted` (unmerged) | | Implemented by an agent, verify script present, not yet reviewed; decided 2026-10-27 after legal advice; file the written opinion and open the vendor account (A10) |
 
 **Gate G0** — recorder runs daily on ≥5,000 products from ≥2 shops; raw snapshots in R2; backups on. Target: assisted channel live for ≥3 of the 5 designated shops at ≥90% success within the cap. Approved: ☐ date: ____
 
@@ -30,8 +34,8 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 | M07 | Matching v1 (deterministic + review queue) | review | chain `mod/M13-product-page` (from `mod/M07-matching`) | | Eval 375 pairs: 0 false accepts; 100 founder labels still needed |
 | M08 | Rollups, stats, anomaly filters, verdicts | review | chain `mod/M13-product-page` (from `mod/M08-rollups`) | | Known-answer series, quarantine, breaker; full rollup < 5 min |
 | M09 | Admin v1 (sources, review queue, merge/split) | review | chain `mod/M13-product-page` (from `mod/M09-admin`) | | Magic link via Mailpit; every mutation audited |
-| M10 | Source adapters batch 1 | todo | | | |
-| M11 | Icecat enrichment | todo | | | |
+| M10 | Source adapters batch 1 | review | `mod/M10-adapters` (merged locally into `daniel`) | | 105 listing sources: IT Galaxy, forIT, Carrefour, Dedeman, Auchan, Bonami; Flip product pages |
+| M11 | Icecat enrichment | review | `mod/M11-icecat` (merged locally into `daniel`) | | Built against synthetic fixtures; flag `icecat.enabled` off until B1 |
 
 **Gate G1** — ≥20,000 products with ≥2 live offers; audited match precision ≥98%; freshness ≥90% < 24h. Approved: ☐ date: ____
 
@@ -41,11 +45,11 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 |---|---|---|---|---|---|
 | M12 | Web foundation (Next.js app, design system, layout) | review | `mod/M12-web-foundation` (merged locally into `daniel`) | | Lighthouse mobile 98/95, desktop 100/100 |
 | M13 | Product page, history API, click-out | review | chain `mod/M13-product-page` | | Cached TTFB p95 13 ms; worker → web revalidation |
-| M14 | Search, category, brand and shop pages | todo | | | |
-| M15 | Deals page and discount verdict UI | todo | | | |
-| M16 | SEO: structured data, sitemaps, performance | todo | | | |
+| M14 | Search, category, brand and shop pages | in progress | `mod/M14-search` (unmerged) | | Implemented by an agent, verify script present, not yet reviewed |
+| M15 | Deals page and discount verdict UI | in progress | `mod/M15-deals` (unmerged) | | Implemented by an agent, not yet reviewed |
+| M16 | SEO: structured data, sitemaps, performance | in progress | `mod/M16-seo` (WIP) | | Stopped mid-work for the machine move |
 | M17 | Legal and trust pages, consent, analytics, bot page | review | `mod/M17-legal` (merged into the chain) | | Lawyer review pending (B5) |
-| M18 | Production deployment, backups, monitoring, staging | todo | | | |
+| M18 | Production deployment, backups, monitoring, staging | in progress | `mod/M18-deploy` (unmerged) | | Implemented by an agent; PITR rehearsal was running when stopped |
 
 **Gate G2** — staging reviewed by founders; launch checklist complete (`04-plan-normal.md` §9); SRL exists; lawyer review done. Launch date: ____ ANCOM DSA notification due: launch + 45 days.
 
@@ -53,10 +57,10 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 
 | Module | Name | Status | Branch / PR | Verified by founder | Notes |
 |---|---|---|---|---|---|
-| M19 | Accounts and price alerts | todo | | | |
-| M20 | Merchant self-serve feed portal (free listing) | todo | | | |
-| M21 | Bot legitimacy program and source adapters batch 2 | todo | | | |
-| M22 | LLM-assisted matching and attribute extraction | todo | | | |
+| M19 | Accounts and price alerts | in progress | `mod/M19-alerts` (unmerged) | | Implemented by an agent; merge first (migration 0014_alerts) |
+| M20 | Merchant self-serve feed portal (free listing) | in progress | `mod/M20-merchants` (unmerged) | | Implemented by an agent; regenerate its migration when merging |
+| M21 | Bot legitimacy program and source adapters batch 2 | in progress | `mod/M21-bot-legitimacy` (WIP) | | Stopped mid-work for the machine move |
+| M22 | LLM-assisted matching and attribute extraction | todo | `mod/M22-llm-matching` (empty) | | Brief in docs/HANDOFF.md §7 |
 | M23 | Black Friday / fake-discount report tooling | review | `mod/M23-reports` (merged locally into `daniel`) | | Generator deterministic, reconciled with SQL; BF 2026 page waits for approved data |
 
 **Gate G3** — alerts live with double opt-in; ≥10 merchants onboarded; Verified Bots application submitted. Approved: ☐ date: ____
@@ -65,10 +69,10 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 
 | Module | Name | Status | Branch / PR | Verified by founder | Notes |
 |---|---|---|---|---|---|
-| M24 | Affiliate operations (program sync, links, commissions, revenue dashboard) | todo | | | |
+| M24 | Affiliate operations (program sync, links, commissions, revenue dashboard) | in progress | `mod/M24-affiliate` (complete, unmerged) | | Merge after M19/M27/M20/M21 (migration 0014_commissions to regenerate) |
 | M25 | Promoted placements and merchant billing; optional ad slots | todo | | | |
 | M26 | Browser extension (MV3) | todo | | | |
-| M27 | Telegram bot and web push | todo | | | |
+| M27 | Telegram bot and web push | in progress | `mod/M27-telegram-push` (WIP) | | Stopped mid-work for the machine move |
 | M28 | B2B price intelligence MVP | todo | | | |
 | M29 | Category expansion playbook and CSS enrolment readiness | todo | | | |
 
@@ -82,6 +86,7 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 | | 2Performant ToS §9 clearance for price history on feed data | written clearance / own crawl of merchant pages / merchant direct feeds | pending |
 | | Company: SRL formation date | | pending |
 | 2026-10-27 | eMAG product pages (Tier A) after a CAPTCHA | keep Tier A off and rely on listings / retry Tier A at a slower pace after asking eMAG / stop eMAG entirely | **Pending founder decision.** Listing pages were fine (≈ 200 pages, 5 s apart); at 21:45 UTC eMAG answered the 6th product-page request (5 s apart) with a CAPTCHA (HTTP 511). The fetch layer paused www.emag.ro for 24 h (until 28 Oct 21:45 UTC), so the 28 Oct night has no eMAG observations (a gap, shown as a gap). The lead switched the Tier A source off (kill switch, audited) so the next pause does not also stop listings; nothing was retried or worked around |
+| 2026-10-28 | Recording Mac sleeping on battery (operations note) | keep the Mac plugged in and awake / move the recorder to the VPS (M18) | **Needs Daniel.** From about 00:29 UTC the Mac was on battery (66 % → 61 %) and in idle sleep with short maintenance wakes. Requests in flight broke as "connection reset" and the fetch layer paused six shops for 24 h. The lead matched each reset to a sleep or wake in `pmset -g log` and lifted five pauses (audited: `fetch.unpause`); Flip stays paused (its reset matches no sleep event). Two fixes: `caffeinate -i` for 4 h from ~07:15 UTC, and since `4d46a06` a transport error that surfaces > 30 s after its own timeout counts as a local suspension (no pause). Please keep the Mac on power with the lid open, or run the recorder on a server |
 | 2026-10-27 | Blocked shops policy (`12-blocked-shops-strategy.md` §0) | identity + feeds + partnerships only / assisted-access channel for the prototype / exclude | **Decided: assisted-access channel for the prototype**, after legal advice (verbal); written opinion to be filed (A10); exit per shop to feed or allowlist; eMAG excluded from this decision |
 
 ## Module report template
@@ -326,3 +331,33 @@ Founder checklist: `scripts/verify/M23.checklist.md`.
 Human tasks needed: approve each report (`report:approve`); confirm the data licence for reuse (e.g. CC BY 4.0) and the press contact; give shops the right of reply before a release that names them.
 Risks / open questions: Black Friday 2026 comes ~4 weeks after recording started, so the 30-day comparison is barely covered and raise-then-cut (60 days) cannot be evaluated this year; eMAG's history has a gap on 28 Oct (paused after the CAPTCHA).
 Next module: M16 (sitemap entries for approved reports).
+
+### M10 — Source adapters batch 1 — 2026-10-27
+(Implemented by a delegated Opus agent; integrated and re-verified by the lead.)
+Scope delivered:
+- Fixture recording through the polite fetcher (`pnpm --filter @pretoscop/fetch record`, `scripts/record-fixture.sh`), refusing any shop that is not `active` with `access_mode: direct`.
+- Generic JSON-LD listing pages (forIT, 60 per page, next-page link, relative URLs, stray HTML entities) and new parsers `itgalaxy-listing` (EAN on some cards), `dedeman-listing`, `carrefour-listing` (ignores the wishlist link carrying another product), `vtex-listing` (Auchan: page state, not the VTEX API; EAN everywhere), `bonami-listing`, `flip-product` (refurbished; grade in `raw.grade`; Flip's stated 30-day minimum as reference; its "0 lei delivery" ignored because it contradicts Flip's courier fee).
+- Registry: 105 listing sources (IT Galaxy 25, forIT 25, Carrefour 23, Dedeman 19, Auchan 11, Bonami 2) staggered from 02:15 Bucharest, page caps kept under each daily budget by a test, freshness 26 h; IT Galaxy and forIT sitemap sweeps disabled (one request per product; forIT's sitemaps exceed the 15 MiB cap); Flip keeps its sitemap (SLO 192 h).
+- Delivery rules only as the shops state them: Dedeman locker 11 lei; Flip courier 19,99 / locker 11,99 lei; forIT per offer; IT Galaxy, Carrefour, Auchan and Bonami state no fee (left unknown).
+- A listing page whose products are all unavailable ends the run normally. Tests: 16 parser tests, 8 recorder end-to-end cases with the real normalizer, 3 registry checks.
+Out of scope / deferred: Libris, Elefant, JYSK (no electronics; Phase 4); blocked shops (M05B / feeds).
+Deviations from plan: listing pages instead of sitemap sweeps for IT Galaxy and forIT; Auchan read from page HTML.
+Verification: `make verify M=10` → OK (extractors 47, config 24, fetch 194, worker 27 tests; fixtures parse; registry table; a blocked shop is refused). After the merge the lead ran the whole monorepo suite (35/36 tasks; the mailer package has no tests and passes on its own) and restarted the recorder with the new sources on 28 Oct 01:4x Bucharest. Live probes, 27 Oct 21:34–21:47 UTC: 33 requests, ≥ 5 s apart per host, none blocked.
+Founder checklist: `scripts/verify/M10.checklist.md`.
+Human tasks needed: read the six shops' terms; confirm the delivery amounts and add courier fees where shops state none; decide whether Dedeman's "Verifică disponibilitatea online" counts as in stock (recorded as unknown); decide on Auchan's VTEX API (allowed by robots.txt, terms not read).
+Risks / open questions: markup changes show as failing sources; Auchan pages are 4.4 MB and mostly unavailable products (the hold rule may alert); Flip records only the default grade.
+Next module: M11.
+
+### M11 — Icecat enrichment — 2026-10-27
+(Implemented by a delegated Opus agent; integrated by the lead.)
+Scope delivered:
+- `@pretoscop/icecat`: Open Icecat client through the polite fetcher (Icecat's robots.txt obeyed, as its licence requires) with lookup classes found / not found / restricted (Apple) / Full-Icecat-only (Sony) / cap reached / stop (a plain per-product 403 lifts the fetch layer's pause; a CDN 403, 429 or robots refusal stops the run), monthly cap counted before each datasheet request, pure mapper to `product_specs.data`, licensed image copies (120/400/800 px), licence texts, a local mock server.
+- Job `icecat.sync` (05:30, flag `icecat.enabled` off and `ICECAT_USERNAME` required): GTIN, then brand + MPN, Romanian then English; up to 6 images; primary image only when none; confirms provisional products found by GTIN; misses remembered 30 days; monthly refresh; alerts on stop or cap. CLIs `icecat:lookup`, `icecat:coverage`, `icecat:sync`, `icecat:demo`.
+- Product page: "Specs Icecat" credit linked to icecat.biz whenever specs or images come from Icecat. ADR-016: Icecat data is isolated (GTINs never copied into `product_gtins`/`products`).
+Out of scope / deferred: real responses (no account).
+Deviations from plan: fixtures hand-written to the documented shape and labelled `_synthetic`; per-product API lookups instead of index files; counters and misses in existing tables (`fetch_domain_daily` host `icecat:<LANG>`, `product_specs` rows with `source = 'icecat-miss'` — readers must filter on `source`); `is_icecat` as `source = 'icecat'`; images in the local blob store.
+Verification: `make verify M=11` → OK (icecat 16 tests, 6 end-to-end sync tests, web 7), licence checks, offline demo (3 found, 1 not found, 1 restricted, 1 Full-only, 5 images).
+Founder checklist: `scripts/verify/M11.checklist.md`.
+Human tasks needed: B1 (Open Icecat account); read and file the Open Content Licence (open item 40); keep `icecat.enabled` off until then and until M16 blocks AI crawlers in robots.txt (`ICECAT_ROBOTS_DISALLOW_AGENTS`).
+Risks / open questions: `live.icecat.biz/robots.txt` never read (bot wall): check once with `icecat:lookup` after creating the account; real responses may differ from the synthetic fixtures; schema wishes: `icecat_usage` and `icecat_lookups` tables, a unique index on `product_images(product_id, sha256)`.
+Next module: M16 (robots.txt AI-crawler rule), M22 (keep Icecat rows out of prompts).

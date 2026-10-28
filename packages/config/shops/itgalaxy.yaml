@@ -1,3 +1,7 @@
+# IT Galaxy — IT and electronics shop (custom PHP platform, template shared with Vexio).
+# M10 (2026-10-27): category listings replace the sitemap → product-page sweep. A listing page
+# carries 36 products with price, crossed price, stock and often the EAN; the sitemap path needed
+# one request per product (~94k products: a 60-day cycle at the daily budget).
 slug: itgalaxy
 name: "IT Galaxy"
 domain: itgalaxy.ro
@@ -6,17 +10,17 @@ kind: retail
 status: active
 access_mode: direct
 trust_tier: 2
-categories: [it, electronice]
+categories: [it, electronice, electrocasnice]
 legal:
-  basis_ref: "robots.txt allows product pages; recon 2026-10-27 served the honest bot"
-  robots_note: "Disallows /data/feeds/*, /ajax/*, /cos/, /compara/*, /alerta-*; product pages allowed."
+  basis_ref: "robots.txt allows product and category pages; recon 2026-10-27 served the honest bot"
+  robots_note: "Disallows /data/feeds/*, /feeds*, /ajax/*, /cos/, /compara/*, /alerta-*, /*/pret-*-pana-la-*/*; category pages and /paginaN/ allowed."
 shipping:
-  notes: "De verificat la onboarding."
+  notes: "Costul livrării se calculează în coș, după adresă și modalitatea de plată (https://www.itgalaxy.ro/info/comanda-si-livrare/modalitati-livrare/, citit 2026-10-27). Necunoscut până la verificare."
   verified: false
 crawl_policy:
   min_interval_ms: 5000
   max_pages_per_day: 2000
-  freshness_slo_hours: 72
+  freshness_slo_hours: 26
 affiliate:
   network: "profitshare"
   commission_text: "2–10% (Oct 2026)"
@@ -31,16 +35,295 @@ probes:
     vantage: "founder home connection (Mac), honest UA"
     result: served
     note: "robots, sitemap index, product 200"
-notes: "JSON-LD Product with price; EAN only in Flixmedia attributes; shares a template with Vexio."
+  - date: "2026-10-27"
+    vantage: "founder home connection (Mac), PretoscopBot via @pretoscop/fetch (M10)"
+    result: served
+    note: "/televizoare/ listing 200: 36 products, 19 pages, EAN in the card on 10 of 36; delivery page 200 (cost computed in the cart)"
+notes: "Listing cards: id (= product-page JSON-LD sku), title, price and crossed price in Romanian format, stock text, EAN ('Cod EAN') on many cards. Crossed price is the shop's reference, not a stated 30-day minimum. Shares a template with Vexio."
 sources:
   - key: itgalaxy:sitemap:produse
     kind: sitemap
     url: https://www.itgalaxy.ro/data/sitemaps/index.xml
     parser_key: sitemap
     schedule: "15 2 * * *"
-    enabled: true
+    enabled: false
     config:
       productParser: jsonld-product
       dailyBudget: 1500
       include: ["/data/sitemaps/products"]
-      note: "Product sitemaps (products-latest-0, products-0..3) → product pages, oldest first within the daily budget."
+      note: "Disabled in M10: superseded by the category listings (36 offers per request instead of 1). Keep for discovery of products outside the listed categories if ever needed."
+  - key: itgalaxy:listing:telefoane-mobile
+    kind: listing
+    url: https://www.itgalaxy.ro/telefoane-mobile/
+    parser_key: itgalaxy-listing
+    schedule: "15 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 40
+      label: "Telefoane mobile"
+      tier: B
+  - key: itgalaxy:listing:tablete
+    kind: listing
+    url: https://www.itgalaxy.ro/tablete/
+    parser_key: itgalaxy-listing
+    schedule: "17 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 20
+      label: "Tablete"
+      tier: B
+  - key: itgalaxy:listing:laptopuri
+    kind: listing
+    url: https://www.itgalaxy.ro/laptopuri/
+    parser_key: itgalaxy-listing
+    schedule: "19 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 60
+      label: "Laptopuri"
+      tier: B
+  - key: itgalaxy:listing:desktop-pc
+    kind: listing
+    url: https://www.itgalaxy.ro/desktop-pc/
+    parser_key: itgalaxy-listing
+    schedule: "21 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 30
+      label: "Calculatoare desktop"
+      tier: B
+  - key: itgalaxy:listing:monitoare
+    kind: listing
+    url: https://www.itgalaxy.ro/monitoare/
+    parser_key: itgalaxy-listing
+    schedule: "23 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 40
+      label: "Monitoare"
+      tier: B
+  - key: itgalaxy:listing:televizoare
+    kind: listing
+    url: https://www.itgalaxy.ro/televizoare/
+    parser_key: itgalaxy-listing
+    schedule: "25 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 25
+      label: "Televizoare"
+      tier: B
+  - key: itgalaxy:listing:placi-video
+    kind: listing
+    url: https://www.itgalaxy.ro/placi-video/
+    parser_key: itgalaxy-listing
+    schedule: "27 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 20
+      label: "Plăci video"
+      tier: B
+  - key: itgalaxy:listing:procesoare
+    kind: listing
+    url: https://www.itgalaxy.ro/procesoare/
+    parser_key: itgalaxy-listing
+    schedule: "29 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Procesoare"
+      tier: B
+  - key: itgalaxy:listing:placi-de-baza
+    kind: listing
+    url: https://www.itgalaxy.ro/placi-de-baza/
+    parser_key: itgalaxy-listing
+    schedule: "31 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 20
+      label: "Plăci de bază"
+      tier: B
+  - key: itgalaxy:listing:memorii
+    kind: listing
+    url: https://www.itgalaxy.ro/memorii/
+    parser_key: itgalaxy-listing
+    schedule: "33 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 20
+      label: "Memorii RAM"
+      tier: B
+  - key: itgalaxy:listing:ssd
+    kind: listing
+    url: https://www.itgalaxy.ro/ssd/
+    parser_key: itgalaxy-listing
+    schedule: "35 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 20
+      label: "SSD"
+      tier: B
+  - key: itgalaxy:listing:console-gaming
+    kind: listing
+    url: https://www.itgalaxy.ro/console-gaming/
+    parser_key: itgalaxy-listing
+    schedule: "37 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Console"
+      tier: B
+  - key: itgalaxy:listing:casti
+    kind: listing
+    url: https://www.itgalaxy.ro/casti/
+    parser_key: itgalaxy-listing
+    schedule: "39 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 40
+      label: "Căști"
+      tier: B
+  - key: itgalaxy:listing:boxe-portabile
+    kind: listing
+    url: https://www.itgalaxy.ro/boxe-portabile/
+    parser_key: itgalaxy-listing
+    schedule: "41 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 15
+      label: "Boxe portabile"
+      tier: B
+  - key: itgalaxy:listing:smartwatch
+    kind: listing
+    url: https://www.itgalaxy.ro/smartwatch/
+    parser_key: itgalaxy-listing
+    schedule: "43 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 15
+      label: "Smartwatch"
+      tier: B
+  - key: itgalaxy:listing:routere-wireless
+    kind: listing
+    url: https://www.itgalaxy.ro/routere-wireless/
+    parser_key: itgalaxy-listing
+    schedule: "45 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 15
+      label: "Routere wireless"
+      tier: B
+  - key: itgalaxy:listing:frigidere
+    kind: listing
+    url: https://www.itgalaxy.ro/frigidere/
+    parser_key: itgalaxy-listing
+    schedule: "47 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 15
+      label: "Frigidere"
+      tier: B
+  - key: itgalaxy:listing:combine-frigorifice
+    kind: listing
+    url: https://www.itgalaxy.ro/combine-frigorifice/
+    parser_key: itgalaxy-listing
+    schedule: "49 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 20
+      label: "Combine frigorifice"
+      tier: B
+  - key: itgalaxy:listing:masini-de-spalat-rufe
+    kind: listing
+    url: https://www.itgalaxy.ro/masini-de-spalat-rufe/
+    parser_key: itgalaxy-listing
+    schedule: "51 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 20
+      label: "Mașini de spălat rufe"
+      tier: B
+  - key: itgalaxy:listing:masini-de-spalat-vase
+    kind: listing
+    url: https://www.itgalaxy.ro/masini-de-spalat-vase/
+    parser_key: itgalaxy-listing
+    schedule: "53 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 15
+      label: "Mașini de spălat vase"
+      tier: B
+  - key: itgalaxy:listing:aragazuri
+    kind: listing
+    url: https://www.itgalaxy.ro/aragazuri/
+    parser_key: itgalaxy-listing
+    schedule: "55 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Aragazuri"
+      tier: B
+  - key: itgalaxy:listing:cuptoare-cu-microunde
+    kind: listing
+    url: https://www.itgalaxy.ro/cuptoare-cu-microunde/
+    parser_key: itgalaxy-listing
+    schedule: "57 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Cuptoare cu microunde"
+      tier: B
+  - key: itgalaxy:listing:aspiratoare
+    kind: listing
+    url: https://www.itgalaxy.ro/aspiratoare/
+    parser_key: itgalaxy-listing
+    schedule: "59 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 25
+      label: "Aspiratoare"
+      tier: B
+  - key: itgalaxy:listing:espressoare-cafea
+    kind: listing
+    url: https://www.itgalaxy.ro/espressoare-cafea/
+    parser_key: itgalaxy-listing
+    schedule: "1 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 15
+      label: "Espressoare"
+      tier: B
+  - key: itgalaxy:listing:aparate-aer-conditionat
+    kind: listing
+    url: https://www.itgalaxy.ro/aparate-aer-conditionat/
+    parser_key: itgalaxy-listing
+    schedule: "3 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 15
+      label: "Aparate de aer condiționat"
+      tier: B

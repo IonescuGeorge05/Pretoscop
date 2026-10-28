@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 // The throwaway product of packages/db/src/fixtures/e2e.ts, created in global setup.
@@ -6,7 +7,13 @@ export interface E2eFixture {
   productId: number;
   slug: string;
   offers: Record<string, { offerId: number; total: string }>;
-  admin: { dupA: number; dupB: number; dupBSlug: string; reviewOfferId: number; reviewTitle: string };
+  admin: {
+    dupA: number;
+    dupB: number;
+    dupBSlug: string;
+    reviewOfferId: number;
+    reviewTitle: string;
+  };
   /** Brand Testoscop (M14–M16): an indexable TV (2 offers), a single-offer phone, a console with a verified drop. */
   search: {
     brandSlug: string;
@@ -16,20 +23,54 @@ export interface E2eFixture {
   };
 }
 
-/** Index prefix of the e2e search index (built in global setup from the dev database + fixture). */
-export const E2E_SEARCH_PREFIX = 'e2e_';
+const DB_DIR = fileURLToPath(new URL('../../../packages/db', import.meta.url));
 const WORKER_DIR = fileURLToPath(new URL('../../worker', import.meta.url));
+const ROOT_ENV = fileURLToPath(new URL('../../../.env', import.meta.url));
 
-/** Rebuilds or drops the e2e search indexes (worker CLI with MEILI_INDEX_PREFIX=e2e_). */
-export function searchCli(cmd: 'rebuild' | 'drop'): void {
-  execFileSync('pnpm', ['exec', 'tsx', 'src/cli/search.ts', cmd], { cwd: WORKER_DIR, encoding: 'utf8', env: { ...process.env, MEILI_INDEX_PREFIX: E2E_SEARCH_PREFIX } });
+/** This checkout's MEILI_INDEX_PREFIX, read like the apps read it: the environment first, then `.env`. */
+function checkoutIndexPrefix(): string {
+  const fromEnv = process.env.MEILI_INDEX_PREFIX;
+  if (fromEnv !== undefined) return fromEnv.trim();
+  try {
+    const line = /^MEILI_INDEX_PREFIX=(.*)$/m.exec(readFileSync(ROOT_ENV, 'utf8'));
+    return line ? line[1]!.trim().replace(/^(['"])(.*)\1$/, '$2') : '';
+  } catch {
+    return '';
+  }
 }
 
-const DB_DIR = fileURLToPath(new URL('../../../packages/db', import.meta.url));
+/**
+ * Index prefix of the e2e search indexes (built in global setup from the dev database + fixture):
+ * the checkout's own prefix followed by `e2e_`, so parallel checkouts sharing one Meilisearch never
+ * read or drop each other's indexes, and the dev indexes are never touched.
+ */
+export const E2E_SEARCH_PREFIX = `${checkoutIndexPrefix()}e2e_`;
+
+/**
+ * Runs one of the monorepo's TypeScript CLIs in `cwd` and returns its stdout. Node loads it with tsx
+ * directly rather than through `pnpm exec`: on Windows pnpm is a .cmd shim, which child_process
+ * cannot start without a shell.
+ */
+export function runTsx(cwd: string, args: string[], env: NodeJS.ProcessEnv = process.env): string {
+  return execFileSync(process.execPath, ['--import', 'tsx', ...args], {
+    cwd,
+    encoding: 'utf8',
+    env,
+  });
+}
+
+/** Rebuilds or drops the e2e search indexes (worker search CLI with MEILI_INDEX_PREFIX=E2E_SEARCH_PREFIX). */
+export function searchCli(cmd: 'rebuild' | 'drop'): void {
+  runTsx(WORKER_DIR, ['src/cli/search.ts', cmd], { ...process.env, MEILI_INDEX_PREFIX: E2E_SEARCH_PREFIX });
+}
 
 export function fixtureCli(cmd: 'create' | 'drop' | 'clicks'): unknown {
-  const out = execFileSync('pnpm', ['exec', 'tsx', 'src/cli/e2e-fixture.ts', cmd], { cwd: DB_DIR, encoding: 'utf8' });
-  const line = out.trim().split('\n').reverse().find((l) => l.startsWith('{') || l.startsWith('['));
+  const out = runTsx(DB_DIR, ['src/cli/e2e-fixture.ts', cmd]);
+  const line = out
+    .trim()
+    .split('\n')
+    .reverse()
+    .find((l) => l.startsWith('{') || l.startsWith('['));
   if (!line) throw new Error(`e2e fixture ${cmd}: no JSON output\n${out}`);
   return JSON.parse(line);
 }

@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { E2E_SEARCH_PREFIX } from './e2e/fixture';
 
 const PORT = Number(process.env.E2E_PORT ?? 3200);
 
@@ -20,7 +21,12 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
-    // The e2e search index (global setup) and no analytics rows from test traffic.
-    env: { PUBLIC_BASE_URL: `http://localhost:${PORT}`, MEILI_INDEX_PREFIX: 'e2e_', EVENTS_ENABLED: 'false' },
+    // The e2e search indexes (global setup; this checkout's prefix + `e2e_`) and no analytics rows
+    // from test traffic.
+    env: {
+      PUBLIC_BASE_URL: `http://localhost:${PORT}`,
+      MEILI_INDEX_PREFIX: E2E_SEARCH_PREFIX,
+      EVENTS_ENABLED: 'false',
+    },
   },
 });

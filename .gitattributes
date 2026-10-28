@@ -1,0 +1,21 @@
+# LF in the working tree on every OS. A Windows checkout with core.autocrlf=true turned every
+# file into CRLF, which breaks the bash scripts (scripts/verify) and Prettier's checks.
+* text=auto eol=lf
+
+# Recorded shop pages, feeds and other fixtures stay byte-identical to what was recorded.
+**/fixtures/** -text
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.avif binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.gz binary
+*.zip binary
+*.dump binary
+*.bundle binary
+*.pdf binary

@@ -1,3 +1,6 @@
+# Carrefour — hypermarket chain; non-food online catalogue on Magento 2 (theme "CarrefourMarketplace",
+# products sold by Carrefour). M10 (2026-10-27): TV, phone, IT, gaming and appliance listings
+# (24 offers per request, ?p=N).
 slug: carrefour
 name: "Carrefour"
 domain: carrefour.ro
@@ -7,15 +10,274 @@ kind: retail
 status: active
 access_mode: direct
 trust_tier: 2
-categories: [electronice, electrocasnice]
+categories: [electronice, it, electrocasnice]
 legal:
-  basis_ref: "robots.txt allows product pages; recon 2026-10-27 served the honest bot"
+  basis_ref: "robots.txt allows product and category pages; recon 2026-10-27 served the honest bot"
+  robots_note: "Disallows /customer, /new_checkout, /wishlist, /mycarrefour, /catalogsearch, /*&|*, /*fbclid*, /*order=*, /*]=*, /catalog/product, /*ajax/. Category pages and ?p=N allowed."
 shipping:
-  notes: "De verificat la onboarding."
+  notes: "Nicio pagină publică de livrare găsită în meniu la 2026-10-27; costul se vede în coș. Necunoscut până la verificare."
   verified: false
 crawl_policy:
   min_interval_ms: 5000
   max_pages_per_day: 1000
-  freshness_slo_hours: 72
-notes: "Magento; JSON-LD; EAN via Flixmedia. Electronics subset only (M10)."
-sources: []
+  freshness_slo_hours: 26
+probes:
+  - date: "2026-10-27"
+    vantage: "founder home connection (Mac), PretoscopBot via @pretoscop/fetch (M10)"
+    result: served
+    note: "robots 200; home 200; televizoare-smart listing 200 (24 of 81 products, rel=next ?p=2, 17 with a crossed price); product page 200 (JSON-LD sku = card code, no EAN on this page)"
+notes: "Listing cards: article code (= JSON-LD sku and URL tail), price in meta[itemprop=price], crossed price rebuilt from its spans, brand and availability on the add-to-cart button. A card's wishlist link carries another product's data and is never read. EAN only via Flixmedia on some product pages."
+sources:
+  - key: carrefour:listing:televizoare-smart
+    kind: listing
+    url: https://carrefour.ro/tv-audio-home-cinema/televizoare-accesorii/televizoare-smart
+    parser_key: carrefour-listing
+    schedule: "10 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 8
+      label: "Televizoare smart"
+      tier: B
+  - key: carrefour:listing:televizoare-basic
+    kind: listing
+    url: https://carrefour.ro/tv-audio-home-cinema/televizoare-accesorii/televizoare-basic
+    parser_key: carrefour-listing
+    schedule: "12 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 4
+      label: "Televizoare"
+      tier: B
+  - key: carrefour:listing:soundbar
+    kind: listing
+    url: https://carrefour.ro/tv-audio-home-cinema/home-cinema-si-sisteme-audio/soundbar
+    parser_key: carrefour-listing
+    schedule: "14 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 4
+      label: "Soundbar"
+      tier: B
+  - key: carrefour:listing:casti-audio
+    kind: listing
+    url: https://carrefour.ro/tv-audio-home-cinema/playere-mici-si-audio-portabile/casti-audio
+    parser_key: carrefour-listing
+    schedule: "16 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Căști audio"
+      tier: B
+  - key: carrefour:listing:boxe-portabile
+    kind: listing
+    url: https://carrefour.ro/tv-audio-home-cinema/playere-mici-si-audio-portabile/boxe-portabile
+    parser_key: carrefour-listing
+    schedule: "18 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 8
+      label: "Boxe portabile"
+      tier: B
+  - key: carrefour:listing:telefoane-mobile
+    kind: listing
+    url: https://carrefour.ro/it-c/telefoane-tablete-gadget-uri/telefoane-mobile-si-accesorii/telefoane-mobile
+    parser_key: carrefour-listing
+    schedule: "20 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Telefoane mobile"
+      tier: B
+  - key: carrefour:listing:tablete
+    kind: listing
+    url: https://carrefour.ro/it-c/telefoane-tablete-gadget-uri/tablete-ebook-readere-si-accesorii/tablete
+    parser_key: carrefour-listing
+    schedule: "22 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 6
+      label: "Tablete"
+      tier: B
+  - key: carrefour:listing:smartwatch-uri
+    kind: listing
+    url: https://carrefour.ro/it-c/telefoane-tablete-gadget-uri/gadgeturi-wearebles-si-accesorii/smartwatch-uri
+    parser_key: carrefour-listing
+    schedule: "24 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 6
+      label: "Smartwatch"
+      tier: B
+  - key: carrefour:listing:laptopuri
+    kind: listing
+    url: https://carrefour.ro/it-c/laptop-pc-calculatoare-si-periferice/laptopuri
+    parser_key: carrefour-listing
+    schedule: "26 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Laptopuri"
+      tier: B
+  - key: carrefour:listing:console-si-jocuri
+    kind: listing
+    url: https://carrefour.ro/it-c/gaming/console-si-jocuri
+    parser_key: carrefour-listing
+    schedule: "28 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Console și jocuri"
+      tier: B
+  - key: carrefour:listing:combine-frigorifice
+    kind: listing
+    url: https://carrefour.ro/electrocasnice-climatizare/aparate-frigorifice/combine-frigorifice
+    parser_key: carrefour-listing
+    schedule: "30 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 8
+      label: "Combine frigorifice"
+      tier: B
+  - key: carrefour:listing:frigidere
+    kind: listing
+    url: https://carrefour.ro/electrocasnice-climatizare/aparate-frigorifice/frigidere
+    parser_key: carrefour-listing
+    schedule: "32 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 6
+      label: "Frigidere"
+      tier: B
+  - key: carrefour:listing:congelatoare
+    kind: listing
+    url: https://carrefour.ro/electrocasnice-climatizare/aparate-frigorifice/congelatoare
+    parser_key: carrefour-listing
+    schedule: "34 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 5
+      label: "Congelatoare"
+      tier: B
+  - key: carrefour:listing:side-by-side
+    kind: listing
+    url: https://carrefour.ro/electrocasnice-climatizare/aparate-frigorifice/side-by-side
+    parser_key: carrefour-listing
+    schedule: "36 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 4
+      label: "Side by side"
+      tier: B
+  - key: carrefour:listing:masini-de-spalat-rufe
+    kind: listing
+    url: https://carrefour.ro/electrocasnice-climatizare/masini-de-spalat-rufe-si-uscatoare/masini-de-spalat-rufe
+    parser_key: carrefour-listing
+    schedule: "38 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 8
+      label: "Mașini de spălat rufe"
+      tier: B
+  - key: carrefour:listing:masini-de-spalat-rufe-cu-uscator
+    kind: listing
+    url: https://carrefour.ro/electrocasnice-climatizare/masini-de-spalat-rufe-si-uscatoare/masini-de-spalat-rufe-cu-uscator
+    parser_key: carrefour-listing
+    schedule: "40 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 4
+      label: "Mașini de spălat cu uscător"
+      tier: B
+  - key: carrefour:listing:uscatoare-de-rufe
+    kind: listing
+    url: https://carrefour.ro/electrocasnice-climatizare/masini-de-spalat-rufe-si-uscatoare/uscatoare-de-rufe
+    parser_key: carrefour-listing
+    schedule: "42 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 4
+      label: "Uscătoare de rufe"
+      tier: B
+  - key: carrefour:listing:masini-de-spalat-vase
+    kind: listing
+    url: https://carrefour.ro/electrocasnice-climatizare/masini-de-spalat-vase
+    parser_key: carrefour-listing
+    schedule: "44 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 6
+      label: "Mașini de spălat vase"
+      tier: B
+  - key: carrefour:listing:aragazuri
+    kind: listing
+    url: https://carrefour.ro/electrocasnice-climatizare/aragazuri-cuptoare/aragazuri
+    parser_key: carrefour-listing
+    schedule: "46 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 6
+      label: "Aragazuri"
+      tier: B
+  - key: carrefour:listing:cuptoare-cu-microunde
+    kind: listing
+    url: https://carrefour.ro/electrocasnice-climatizare/aragazuri-cuptoare/cuptoare-cu-microunde
+    parser_key: carrefour-listing
+    schedule: "48 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 5
+      label: "Cuptoare cu microunde"
+      tier: B
+  - key: carrefour:listing:plite
+    kind: listing
+    url: https://carrefour.ro/electrocasnice-climatizare/aragazuri-cuptoare/plite
+    parser_key: carrefour-listing
+    schedule: "50 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 5
+      label: "Plite"
+      tier: B
+  - key: carrefour:listing:hote
+    kind: listing
+    url: https://carrefour.ro/electrocasnice-climatizare/hote
+    parser_key: carrefour-listing
+    schedule: "52 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 5
+      label: "Hote"
+      tier: B
+  - key: carrefour:listing:aparate-de-aer-conditionat
+    kind: listing
+    url: https://carrefour.ro/electrocasnice-climatizare/climatizare/aparate-de-aer-conditionat
+    parser_key: carrefour-listing
+    schedule: "54 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 6
+      label: "Aparate de aer condiționat"
+      tier: B

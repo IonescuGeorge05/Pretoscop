@@ -1,3 +1,8 @@
+# forit — IT shop (Cloudflare in front; served the identified bot on 2026-10-27).
+# M10 (2026-10-27): category listings replace the sitemap sweep. A listing page publishes a JSON-LD
+# ItemList of 60 Products with offers (price, stock, the offer's own delivery cost), read by the
+# generic parser; the sitemap children (~30k URLs and ~16.7 MB each, above the fetcher's 15 MiB cap)
+# would have needed one request per product.
 slug: forit
 name: "forit"
 domain: forit.ro
@@ -6,17 +11,17 @@ kind: retail
 status: active
 access_mode: direct
 trust_tier: 2
-categories: [it]
+categories: [it, electronice, electrocasnice]
 legal:
-  basis_ref: "robots.txt allows product pages; recon 2026-10-27 served the honest bot"
-  robots_note: "Disallows /lib/, /account/, /checkout/, /cauta/, /*_f*/, /*/filtre/."
+  basis_ref: "robots.txt allows product and category pages; recon 2026-10-27 served the honest bot"
+  robots_note: "Disallows /lib/, /account/, /checkout/, /cauta/, /*_f*/, /*/filtre/; Crawl-delay 10 only for named AI agents. Category pages and /<cat>/pN/c pagination allowed."
 shipping:
-  notes: "De verificat la onboarding."
+  notes: "Fiecare ofertă își declară costul de livrare în JSON-LD (OfferShippingDetails: 21,99 lei sub un prag, 0 lei peste; observat 2026-10-27); se folosește valoarea ofertei, nu o regulă a magazinului."
   verified: false
 crawl_policy:
   min_interval_ms: 5000
   max_pages_per_day: 2000
-  freshness_slo_hours: 72
+  freshness_slo_hours: 26
 affiliate:
   network: "profitshare"
   commission_text: "2% (Oct 2026)"
@@ -27,16 +32,295 @@ probes:
     vantage: "founder home connection (Mac), honest UA"
     result: served
     note: "robots and sitemap index 200"
-notes: "JSON-LD Product, no GTIN."
+  - date: "2026-10-27"
+    vantage: "founder home connection (Mac), PretoscopBot via @pretoscop/fetch (M10)"
+    result: served
+    note: "/Televizoare/ → 301 /televizoare/ listing 200 (JSON-LD ItemList, 60 products, rel=next /televizoare/p2/c); product page 200 (JSON-LD sku = mpn, shippingRate)"
+notes: "JSON-LD Product, sku = manufacturer code (also on listings), no GTIN. Offers state their delivery cost. Titles in JSON-LD carry HTML entities (32&quot;), decoded by the extractor."
 sources:
   - key: forit:sitemap:produse
     kind: sitemap
     url: https://www.forit.ro/sitemap.xml
     parser_key: sitemap
     schedule: "15 2 * * *"
-    enabled: true
+    enabled: false
     config:
       productParser: jsonld-product
       dailyBudget: 1500
       exclude: ["sitemap_category"]
-      note: "sitemap_30000/60000/90000 → product pages within the daily budget."
+      note: "Disabled in M10: superseded by the category listings (60 offers per request); its numbered children exceed the 15 MiB fetch cap."
+  - key: forit:listing:smartphone
+    kind: listing
+    url: https://www.forit.ro/smartphone/
+    parser_key: jsonld-product
+    schedule: "20 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 30
+      label: "Smartphone"
+      tier: B
+  - key: forit:listing:tablete
+    kind: listing
+    url: https://www.forit.ro/tablete/
+    parser_key: jsonld-product
+    schedule: "22 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 15
+      label: "Tablete"
+      tier: B
+  - key: forit:listing:laptopuri
+    kind: listing
+    url: https://www.forit.ro/laptopuri/
+    parser_key: jsonld-product
+    schedule: "24 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 40
+      label: "Laptopuri"
+      tier: B
+  - key: forit:listing:monitoare
+    kind: listing
+    url: https://www.forit.ro/monitoare/
+    parser_key: jsonld-product
+    schedule: "26 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 30
+      label: "Monitoare"
+      tier: B
+  - key: forit:listing:televizoare
+    kind: listing
+    url: https://www.forit.ro/televizoare/
+    parser_key: jsonld-product
+    schedule: "28 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 15
+      label: "Televizoare"
+      tier: B
+  - key: forit:listing:placi-video
+    kind: listing
+    url: https://www.forit.ro/placi-video/
+    parser_key: jsonld-product
+    schedule: "30 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 15
+      label: "Plăci video"
+      tier: B
+  - key: forit:listing:procesoare
+    kind: listing
+    url: https://www.forit.ro/procesoare/
+    parser_key: jsonld-product
+    schedule: "32 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Procesoare"
+      tier: B
+  - key: forit:listing:placi-de-baza
+    kind: listing
+    url: https://www.forit.ro/placi-de-baza/
+    parser_key: jsonld-product
+    schedule: "34 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 15
+      label: "Plăci de bază"
+      tier: B
+  - key: forit:listing:memorii-ram
+    kind: listing
+    url: https://www.forit.ro/memorii-ram/
+    parser_key: jsonld-product
+    schedule: "36 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 15
+      label: "Memorii RAM"
+      tier: B
+  - key: forit:listing:ssd-uri
+    kind: listing
+    url: https://www.forit.ro/ssd-uri/
+    parser_key: jsonld-product
+    schedule: "38 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 15
+      label: "SSD"
+      tier: B
+  - key: forit:listing:console-jocuri
+    kind: listing
+    url: https://www.forit.ro/console-jocuri/
+    parser_key: jsonld-product
+    schedule: "40 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Console"
+      tier: B
+  - key: forit:listing:casti-bluetooth
+    kind: listing
+    url: https://www.forit.ro/casti-bluetooth/
+    parser_key: jsonld-product
+    schedule: "42 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 15
+      label: "Căști Bluetooth"
+      tier: B
+  - key: forit:listing:smartwatch
+    kind: listing
+    url: https://www.forit.ro/smartwatch/
+    parser_key: jsonld-product
+    schedule: "44 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Smartwatch"
+      tier: B
+  - key: forit:listing:routere-wireless
+    kind: listing
+    url: https://www.forit.ro/routere-wireless/
+    parser_key: jsonld-product
+    schedule: "46 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Routere wireless"
+      tier: B
+  - key: forit:listing:frigidere
+    kind: listing
+    url: https://www.forit.ro/frigidere/
+    parser_key: jsonld-product
+    schedule: "48 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Frigidere"
+      tier: B
+  - key: forit:listing:combine-frigorifice
+    kind: listing
+    url: https://www.forit.ro/combine-frigorifice/
+    parser_key: jsonld-product
+    schedule: "50 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 15
+      label: "Combine frigorifice"
+      tier: B
+  - key: forit:listing:masini-de-spalat-rufe
+    kind: listing
+    url: https://www.forit.ro/masini-de-spalat-rufe/
+    parser_key: jsonld-product
+    schedule: "52 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 15
+      label: "Mașini de spălat rufe"
+      tier: B
+  - key: forit:listing:masini-de-spalat-vase
+    kind: listing
+    url: https://www.forit.ro/masini-de-spalat-vase/
+    parser_key: jsonld-product
+    schedule: "54 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Mașini de spălat vase"
+      tier: B
+  - key: forit:listing:aragaze
+    kind: listing
+    url: https://www.forit.ro/aragaze/
+    parser_key: jsonld-product
+    schedule: "56 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Aragazuri"
+      tier: B
+  - key: forit:listing:cuptoare-cu-microunde
+    kind: listing
+    url: https://www.forit.ro/cuptoare-cu-microunde/
+    parser_key: jsonld-product
+    schedule: "58 2 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Cuptoare cu microunde"
+      tier: B
+  - key: forit:listing:plite
+    kind: listing
+    url: https://www.forit.ro/plite/
+    parser_key: jsonld-product
+    schedule: "0 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Plite"
+      tier: B
+  - key: forit:listing:hote
+    kind: listing
+    url: https://www.forit.ro/hote/
+    parser_key: jsonld-product
+    schedule: "2 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Hote"
+      tier: B
+  - key: forit:listing:aspiratoare
+    kind: listing
+    url: https://www.forit.ro/aspiratoare/
+    parser_key: jsonld-product
+    schedule: "4 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 15
+      label: "Aspiratoare"
+      tier: B
+  - key: forit:listing:aspiratoare-robot
+    kind: listing
+    url: https://www.forit.ro/aspiratoare-robot/
+    parser_key: jsonld-product
+    schedule: "6 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Aspiratoare robot"
+      tier: B
+  - key: forit:listing:friteuze
+    kind: listing
+    url: https://www.forit.ro/friteuze/
+    parser_key: jsonld-product
+    schedule: "8 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Friteuze"
+      tier: B

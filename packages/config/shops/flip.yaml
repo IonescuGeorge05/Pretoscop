@@ -12,18 +12,25 @@ legal:
   basis_ref: "robots.txt allows product pages; recon 2026-10-27 served the honest bot"
   robots_note: "Disallows account, cart and tracking-parameter URLs."
 shipping:
-  notes: "De verificat la onboarding."
+  flat: 19.99
+  locker_flat: 11.99
+  notes: "Curier 19,99 lei, locker 11,99 lei; livrare gratuită doar pentru membrii eMAG Genius (datele paginii de produs, `shippingCosts`, citite 2026-10-27). JSON-LD-ul paginii declară 0 lei, în contradicție cu pagina: nu este folosit."
   verified: false
 crawl_policy:
   min_interval_ms: 5000
   max_pages_per_day: 1500
-  freshness_slo_hours: 72
+  # ≈6,900 product pages at 1,000 a day: every offer is re-read about once a week.
+  freshness_slo_hours: 192
 probes:
   - date: "2026-10-27"
     vantage: "founder home connection (Mac), honest UA"
     result: served
     note: "robots 200"
-notes: "Refurbished phones: condition refurbished, never in the main (new) minimum."
+  - date: "2026-10-27"
+    vantage: "founder home connection (Mac), PretoscopBot via @pretoscop/fetch (M10)"
+    result: served
+    note: "product page 200 (JSON-LD UsedCondition, sku per grade/colour/storage; __NEXT_DATA__ with grade, stock, previous price, delivery prices)"
+notes: "Refurbished phones with warranty, in grades (Bun, Foarte bun, Excelent, Ca nou) chosen with ?shape=; a page without it shows its default grade, the only one recorded. Parser flip-product: condition refurbished (JSON-LD says used), grade in raw.grade, crossed price = Flip's stated 30-day minimum. Never in the main (new) minimum."
 sources:
   - key: flip:sitemap:produse
     kind: sitemap
@@ -31,7 +38,8 @@ sources:
     parser_key: sitemap
     schedule: "15 2 * * *"
     enabled: true
+    freshness_slo_hours: 192
     config:
-      productParser: jsonld-product
+      productParser: flip-product
       dailyBudget: 1000
-      note: "Single sitemap with ≈6,900 product URLs."
+      note: "Single sitemap with ≈6,900 product URLs; product pages read with flip-product (M10)."

@@ -1,3 +1,6 @@
+# Dedeman — DIY chain with a large appliance range (Magento).
+# M10 (2026-10-27): appliance and TV category listings (up to 72 offers per request). The product
+# sitemap stays disabled: its URLs carry no category, so it would crawl the whole DIY catalogue.
 slug: dedeman
 name: "Dedeman"
 domain: dedeman.ro
@@ -9,20 +12,25 @@ trust_tier: 1
 categories: [electrocasnice, bricolaj]
 legal:
   basis_ref: "robots.txt allows product and category pages; recon 2026-10-27 served the honest bot"
-  robots_note: "Disallows /catalog/, /catalogsearch/, /checkout/, /customer/, /*?p=*&, /*SID=."
+  robots_note: "Disallows /catalog/, /catalogsearch/, /checkout/, /customer/, /api/, /xapiv2, /*?p=*&, /*SID=. Category pages and ?page=N allowed."
 shipping:
-  notes: "De verificat la onboarding."
+  locker_flat: 11
+  notes: "Ridicare din locker: cost fix 11,0 lei (primele 20 kg). Curier pentru produse mici și flota Dedeman pentru produse mari, cu cost estimat după adresă («Estimare cost livrare»); ridicare din magazin pentru comenzi online peste 50 lei. Sursa: https://www.dedeman.ro/ro/comenzi-online/modalitati-de-livrare (citit 2026-10-27). Costul de curier/flotă rămâne necunoscut."
   verified: false
 crawl_policy:
   min_interval_ms: 5000
   max_pages_per_day: 1500
-  freshness_slo_hours: 72
+  freshness_slo_hours: 26
 probes:
   - date: "2026-10-27"
     vantage: "founder home connection (Mac), honest UA"
     result: served
     note: "robots, listing, product 200"
-notes: "Listing ≈71 offers per page (no JSON-LD on listings); product pages carry microdata. Appliance categories only; a listing parser comes in M10."
+  - date: "2026-10-27"
+    vantage: "founder home connection (Mac), PretoscopBot via @pretoscop/fetch (M10)"
+    result: served
+    note: "sitemap index and categories sitemap 200 (2,584 categories); /ro/frigidere/c/1147 listing 200 (23 products, 2 with a crossed 'Super Preț'); delivery page 200"
+notes: "Listing cards: product code (= /p/<code>), Magento price amounts (decimal), crossed price only on discounted cards, stock line as worded. Large appliances say 'Verifică disponibilitatea online' (stock depends on the locality): recorded as unknown availability, so they are shown but not used for the in-stock minimum. Prices per piece; unit-priced cards are skipped."
 sources:
   - key: dedeman:sitemap:produse
     kind: sitemap
@@ -33,4 +41,213 @@ sources:
     config:
       productParser: jsonld-product
       dailyBudget: 800
-      note: "Disabled until M10 restricts it to appliance categories (product URLs carry no category)."
+      note: "Disabled: product URLs carry no category, so the sweep would cover the whole DIY catalogue. The appliance listings below replace it."
+  - key: dedeman:listing:frigidere
+    kind: listing
+    url: https://www.dedeman.ro/ro/frigidere/c/1147
+    parser_key: dedeman-listing
+    schedule: "0 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 5
+      label: "Frigidere"
+      tier: B
+  - key: dedeman:listing:congelatoare
+    kind: listing
+    url: https://www.dedeman.ro/ro/congelatoare/c/1149
+    parser_key: dedeman-listing
+    schedule: "2 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 5
+      label: "Congelatoare"
+      tier: B
+  - key: dedeman:listing:frigidere-incorporabile
+    kind: listing
+    url: https://www.dedeman.ro/ro/frigidere-incorporabile/c/676
+    parser_key: dedeman-listing
+    schedule: "4 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 5
+      label: "Frigidere încorporabile"
+      tier: B
+  - key: dedeman:listing:masini-de-spalat-frontale
+    kind: listing
+    url: https://www.dedeman.ro/ro/masini-de-spalat-frontale/c/1141
+    parser_key: dedeman-listing
+    schedule: "6 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 5
+      label: "Mașini de spălat frontale"
+      tier: B
+  - key: dedeman:listing:masini-de-spalat-verticale
+    kind: listing
+    url: https://www.dedeman.ro/ro/masini-de-spalat-verticale/c/1142
+    parser_key: dedeman-listing
+    schedule: "8 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 3
+      label: "Mașini de spălat verticale"
+      tier: B
+  - key: dedeman:listing:masini-de-spalat-cu-uscator
+    kind: listing
+    url: https://www.dedeman.ro/ro/masini-de-spalat-cu-uscator/c/1144
+    parser_key: dedeman-listing
+    schedule: "10 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 3
+      label: "Mașini de spălat cu uscător"
+      tier: B
+  - key: dedeman:listing:masini-de-spalat-vase-independente
+    kind: listing
+    url: https://www.dedeman.ro/ro/masini-de-spalat-vase-independente/c/665
+    parser_key: dedeman-listing
+    schedule: "12 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 3
+      label: "Mașini de spălat vase"
+      tier: B
+  - key: dedeman:listing:masini-de-spalat-vase-incorporabile
+    kind: listing
+    url: https://www.dedeman.ro/ro/masini-de-spalat-vase-incorporabile/c/673
+    parser_key: dedeman-listing
+    schedule: "14 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 3
+      label: "Mașini de spălat vase încorporabile"
+      tier: B
+  - key: dedeman:listing:aragazuri
+    kind: listing
+    url: https://www.dedeman.ro/ro/aragazuri/c/1153
+    parser_key: dedeman-listing
+    schedule: "16 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 3
+      label: "Aragazuri"
+      tier: B
+  - key: dedeman:listing:cuptoare-cu-microunde
+    kind: listing
+    url: https://www.dedeman.ro/ro/cuptoare-cu-microunde/c/668
+    parser_key: dedeman-listing
+    schedule: "18 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 3
+      label: "Cuptoare cu microunde"
+      tier: B
+  - key: dedeman:listing:plite-cu-inductie-incorporabile
+    kind: listing
+    url: https://www.dedeman.ro/ro/plite-cu-inductie-incorporabile/c/1161
+    parser_key: dedeman-listing
+    schedule: "20 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 3
+      label: "Plite cu inducție"
+      tier: B
+  - key: dedeman:listing:plite-vitroceramice-incorporabile
+    kind: listing
+    url: https://www.dedeman.ro/ro/plite-vitroceramice-incorporabile/c/1160
+    parser_key: dedeman-listing
+    schedule: "22 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 3
+      label: "Plite vitroceramice"
+      tier: B
+  - key: dedeman:listing:hote-telescopice
+    kind: listing
+    url: https://www.dedeman.ro/ro/hote-telescopice/c/1157
+    parser_key: dedeman-listing
+    schedule: "24 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 3
+      label: "Hote telescopice"
+      tier: B
+  - key: dedeman:listing:hote-decorative
+    kind: listing
+    url: https://www.dedeman.ro/ro/hote-decorative/c/1156
+    parser_key: dedeman-listing
+    schedule: "26 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 5
+      label: "Hote decorative"
+      tier: B
+  - key: dedeman:listing:aspiratoare-verticale
+    kind: listing
+    url: https://www.dedeman.ro/ro/aspiratoare-verticale/c/1169
+    parser_key: dedeman-listing
+    schedule: "28 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 3
+      label: "Aspiratoare verticale"
+      tier: B
+  - key: dedeman:listing:espressoare-cafea
+    kind: listing
+    url: https://www.dedeman.ro/ro/espressoare-cafea/c/1175
+    parser_key: dedeman-listing
+    schedule: "30 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 5
+      label: "Espressoare"
+      tier: B
+  - key: dedeman:listing:televizoare
+    kind: listing
+    url: https://www.dedeman.ro/ro/televizoare/c/1194
+    parser_key: dedeman-listing
+    schedule: "32 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 5
+      label: "Televizoare"
+      tier: B
+  - key: dedeman:listing:aparate-de-aer-conditionat
+    kind: listing
+    url: https://www.dedeman.ro/ro/aparate-de-aer-conditionat/c/1386
+    parser_key: dedeman-listing
+    schedule: "34 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 5
+      label: "Aparate de aer condiționat"
+      tier: B
+  - key: dedeman:listing:boilere-electrice-cu-incalzire-directa
+    kind: listing
+    url: https://www.dedeman.ro/ro/boilere-electrice-cu-incalzire-directa/c/2310
+    parser_key: dedeman-listing
+    schedule: "36 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 5
+      label: "Boilere electrice"
+      tier: B

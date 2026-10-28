@@ -21,6 +21,10 @@
     "compare:live": "tsx src/cli/compare-live.ts",
     "report": "tsx src/cli/report.ts",
     "report:approve": "tsx src/cli/report-approve.ts",
+    "icecat:lookup": "tsx src/cli/icecat-lookup.ts",
+    "icecat:coverage": "tsx src/cli/icecat-coverage.ts",
+    "icecat:sync": "tsx src/cli/icecat-sync.ts",
+    "icecat:demo": "tsx src/cli/icecat-demo.ts",
     "renormalize": "tsx src/cli/renormalize.ts"
   },
   "devDependencies": {
@@ -32,6 +36,7 @@
     "@pretoscop/db": "workspace:*",
     "@pretoscop/extractors": "workspace:*",
     "@pretoscop/fetch": "workspace:*",
+    "@pretoscop/icecat": "workspace:*",
     "@pretoscop/report": "workspace:*",
     "@pretoscop/storage": "workspace:*",
     "cron-parser": "^5.10.2",

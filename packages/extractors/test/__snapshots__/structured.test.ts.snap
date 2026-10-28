@@ -10,7 +10,6 @@ exports[`real product pages (generic parser) > IT Galaxy: JSON-LD Product with s
     "gtin": undefined,
     "isMarketplaceSeller": undefined,
     "mpn": undefined,
-    "mpnHint": undefined,
     "oldPrice": undefined,
     "price": "1975.99",
     "priceFormat": "decimal",

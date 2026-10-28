@@ -135,6 +135,9 @@ importers:
       '@pretoscop/fetch':
         specifier: workspace:*
         version: link:../../packages/fetch
+      '@pretoscop/icecat':
+        specifier: workspace:*
+        version: link:../../packages/icecat
       '@pretoscop/report':
         specifier: workspace:*
         version: link:../../packages/report
@@ -237,6 +240,18 @@ importers:
       undici:
         specifier: ^7.30.1
         version: 7.30.1
+
+  packages/icecat:
+    dependencies:
+      '@pretoscop/config':
+        specifier: workspace:*
+        version: link:../config
+      '@pretoscop/fetch':
+        specifier: workspace:*
+        version: link:../fetch
+      sharp:
+        specifier: 0.35.5
+        version: 0.35.5(@types/node@24.19.2)
 
   packages/llm: {}
 

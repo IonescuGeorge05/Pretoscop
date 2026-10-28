@@ -336,6 +336,22 @@ rule that decided each sample path. `--cached` makes no request at all. Because 
 by hand for one request, the demo ignores `CRAWL_ENABLED` (it says so when the switch is off); every
 other rule applies.
 
+## Fixture recorder CLI (M10)
+
+```
+pnpm --filter @pretoscop/fetch record <shop> <name> <url> [--ext html] [--purpose listing] [--out-dir dir] [--max-bytes n]
+scripts/record-fixture.sh <shop> <name> <url> [ext] [--purpose listing]      # same thing
+```
+
+Records one page as `packages/extractors/fixtures/<shop>/<name>_<YYYY-MM-DD>.<ext>` plus
+`.meta.json` (URL, final URL, status, time, User-Agent, content type, size, robots.txt group), through
+`fetchPolite` with every rule above: robots.txt first, the shop's registry policy (`getDomainPolicy`,
+≥ 5 s), the demo's shared state file (so the demo, the recorder and parallel invocations keep the
+interval), block detection. A blocked or challenged response writes nothing and exits 2. The URL's
+host must belong to the named shop, and shops whose registry status is not `active` or whose access
+mode is not `direct` are refused before any request (exit 3). Like the demo, it ignores
+`CRAWL_ENABLED` (started by hand for one page). `--out-dir` writes elsewhere (probes kept out of git).
+
 ## Tests and fixtures
 
 `pnpm --filter @pretoscop/fetch test` (Vitest, no network except local servers on 127.0.0.1):

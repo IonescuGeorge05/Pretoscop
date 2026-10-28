@@ -104,6 +104,13 @@ stop_scratch() {
 
 count_tables=(shops shop_sources offers price_events ingest_runs)
 
+# Server options of a scratch copy: the production settings file of this image (recovery refuses to
+# start when max_connections, max_worker_processes, max_wal_senders, ... are below the primary's),
+# a private socket and port, no TCP, a small cache and no WAL archiving.
+scratch_options() {
+  printf -- "-c config_file=/etc/postgresql/postgresql.conf -c port=%s -c listen_addresses='' -c unix_socket_directories=%s -c shared_buffers=%s -c effective_cache_size=512MB -c max_parallel_workers_per_gather=0 -c archive_mode=off" "$1" "$2" "$3"
+}
+
 restore_test() {
   local started rc=0
   started=$(date +%s)
@@ -121,7 +128,7 @@ restore_test() {
     return 1
   fi
   if ! pg_ctl -D "$RESTORE_DIR" -w -t 600 -l "${RESTORE_DIR}.sock/server.log" \
-      -o "-c config_file=$RESTORE_DIR/postgresql.conf -c port=${RESTORE_PORT} -c listen_addresses='' -c unix_socket_directories=${RESTORE_DIR}.sock -c shared_buffers=128MB -c archive_mode=off -c max_connections=20" start; then
+      -o "$(scratch_options "$RESTORE_PORT" "${RESTORE_DIR}.sock" 128MB)" start; then
     tail -n 30 "${RESTORE_DIR}.sock/server.log" || true
     alert "restore test: the restored cluster did not start"
     heartbeat "${RESTORE_TEST_HEARTBEAT_URL:-}" fail
@@ -204,7 +211,7 @@ restore_scratch() {
   log "scratch copy: restoring ${target:-latest} into ${SCRATCH_DIR}"
   pgbackrest "${args[@]}" restore
   pg_ctl -D "$SCRATCH_DIR" -w -t 600 -l "${SCRATCH_DIR}.sock/server.log" \
-    -o "-c port=${SCRATCH_PORT} -c listen_addresses='' -c unix_socket_directories=${SCRATCH_DIR}.sock -c shared_buffers=256MB -c archive_mode=off -c max_connections=20" start
+    -o "$(scratch_options "$SCRATCH_PORT" "${SCRATCH_DIR}.sock" 256MB)" start
   local waited=0
   until [[ "$(psql -X -At -h "${SCRATCH_DIR}.sock" -p "$SCRATCH_PORT" -U "$DB_USER" -d "$DB_NAME" -c 'select pg_is_in_recovery()' 2>/dev/null)" == "f" ]]; do
     sleep 5

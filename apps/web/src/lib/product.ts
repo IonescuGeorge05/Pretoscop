@@ -63,7 +63,7 @@ export interface ProductPageData {
   offers: ProductOffer[];
   variants: Array<{ id: number; slug: string; title: string; attributes: Record<string, unknown>; minTotal: string | null; current: boolean }>;
   notCovered: Array<{ slug: string; name: string; searchUrl: string }>;
-  /** Verified drop, new all-time low, 30-day low (M15), measured on the best shop-sold total shown. */
+  /** Verified drop, new all-time low, 30-day low (M15) on today's shop-sold minimum (see `load`); null for provisional products. */
   priceFacts: PriceFacts | null;
   updatedAt: string;
 }
@@ -165,10 +165,16 @@ async function load(id: number): Promise<ProductPageData | null> {
   // Ranking (published on /cum-functioneaza): fresh in-stock first, then stale, then unavailable;
   // within a group by total price, then by the most recent check.
   mapped.sort((a, b) => rank(a) - rank(b) || Number(a.total) - Number(b.total) || b.lastCheckedAt.localeCompare(a.lastCheckedAt));
-  // Like with like: the drop compares the best shop-sold offer with the shop-sold daily series.
-  const shopBest = bestOffer(mapped, { shopSoldOnly: true });
-  const shopBestBani = toBani(shopBest?.total ?? null);
-  const priceFacts = shopBestBani === null ? null : ((await priceFactsFor(d, new Map([[id, shopBestBani]])).catch(() => null))?.get(id) ?? null);
+  // Like with like: the drop compares today's shop-sold minimum as the rollup computes it
+  // (product_stats.current_min_total: new, in-stock, shop-sold, no bundles or accessories, trusted
+  // shops and sources) with the daily series built the same way — the numbers /reduceri and the
+  // listings use. Shown only while a fresh offer on this page sells at exactly that total, and never
+  // for a provisional product (an unverified match must not turn another product's price into a drop).
+  const statsRow = stats.rows[0] as ProductPageData['stats'] | undefined;
+  const currentBani = toBani(statsRow?.currentMinTotal ?? null);
+  const buyable = currentBani !== null && mapped.some((o) => o.sellerType === 'shop' && o.condition === 'new' && o.availability === 'in_stock' && !o.stale && toBani(o.total) === currentBani);
+  const priceFacts =
+    row.provisional || !buyable ? null : ((await priceFactsFor(d, new Map([[id, currentBani]])).catch(() => null))?.get(id) ?? null);
 
   return {
     id: Number(row.id),

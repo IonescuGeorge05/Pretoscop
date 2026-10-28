@@ -13,7 +13,7 @@ import { Container } from '@/components/ui/container';
 import { getCategoryTree, type CategoryNode } from '@/lib/catalog';
 import { db, serverEnv } from '@/lib/db';
 import { cn } from '@/lib/cn';
-import { formatDate, plural } from '@/lib/format';
+import { formatDate, inSentence, plural } from '@/lib/format';
 import { robotsFor } from '@/lib/seo';
 import { breadcrumbList, itemList } from '@/lib/structured-data';
 
@@ -36,12 +36,21 @@ interface DealsPage {
   href: string;
 }
 
-/** All deals are computed once; a category tab only filters them (and the tab counts stay right). */
-const load = cache(async (segments: string[]): Promise<DealsPage> => {
+/** Cards shown per list (the counts in the tabs cover every deal). */
+const MAX_DROPS = 120;
+const MAX_LOWS = 48;
+
+/**
+ * All deals are computed once, uncapped; a category tab filters them and then keeps the first
+ * MAX_DROPS / MAX_LOWS, so a category is never empty because other categories had bigger drops, and
+ * the tab counts are exact. Cached per request by the path string (generateMetadata and the page share it).
+ */
+const load = cache(async (key: string): Promise<DealsPage> => {
+  const segments = key ? key.split('/') : [];
   if (segments.length > 1) notFound();
   const tree = await getCategoryTree();
   const root = segments[0] ? (tree.roots.find((r) => r.slug === segments[0]) ?? notFound()) : null;
-  const all = await getDeals(db(), { windowDays: 7 }, bucharestToday());
+  const all = await getDeals(db(), { windowDays: 7, limit: Infinity, lowsLimit: Infinity }, bucharestToday());
   const inRoot = (d: DealItem) => !root || d.rootSlug === root.slug;
   const href = root ? `/reduceri/${root.slug}` : '/reduceri';
   const crumbs: Crumb[] = [
@@ -49,11 +58,19 @@ const load = cache(async (segments: string[]): Promise<DealsPage> => {
     { name: 'Reduceri verificate', href: '/reduceri' },
     ...(root ? [{ name: root.name, href }] : []),
   ];
-  return { all, root, roots: tree.roots, drops: all.drops.filter(inRoot), lows30: all.lows30.filter(inRoot), crumbs, href };
+  return {
+    all,
+    root,
+    roots: tree.roots,
+    drops: all.drops.filter(inRoot).slice(0, MAX_DROPS),
+    lows30: all.lows30.filter(inRoot).slice(0, MAX_LOWS),
+    crumbs,
+    href,
+  };
 });
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const p = await load((await params).categorie ?? []);
+  const p = await load(((await params).categorie ?? []).join('/'));
   const title = p.root ? `Reduceri verificate: ${p.root.name}` : 'Reduceri verificate – scăderi reale de preț';
   return {
     title,
@@ -102,7 +119,7 @@ function Filters() {
 }
 
 export default async function DealsPageView({ params }: Props) {
-  const p = await load((await params).categorie ?? []);
+  const p = await load(((await params).categorie ?? []).join('/'));
   const { all } = p;
   const base = serverEnv().PUBLIC_BASE_URL;
   const countByRoot = new Map<string, number>();
@@ -156,7 +173,7 @@ export default async function DealsPageView({ params }: Props) {
         </section>
       ) : (
         <div className="mt-6 max-w-3xl rounded-[var(--radius-card)] bg-surface p-5 ring-1 ring-line" data-testid="no-deals">
-          <p className="font-semibold text-ink">Nicio reducere verificată în ultimele 7 zile{p.root ? ` la ${p.root.name.toLowerCase()}` : ''}.</p>
+          <p className="font-semibold text-ink">Nicio reducere verificată în ultimele 7 zile{p.root ? ` la ${inSentence(p.root.name)}` : ''}.</p>
           <p className="mt-1 text-sm text-ink-soft">
             {all.eligibleProducts === 0
               ? `Avem încă prea puțin istoric: o reducere se poate verifica doar după ce am observat prețul cel puțin ${VERDICT_MIN_DAYS} zile.${

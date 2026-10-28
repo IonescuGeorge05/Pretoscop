@@ -18,7 +18,7 @@ import { BRAND_SETTINGS, CATEGORY_SETTINGS, PRODUCT_SETTINGS, type IndexNames } 
  */
 
 /** Bump DOC_VERSION when `buildProductDocument` changes shape; settings changes are detected by hash. */
-export const DOC_VERSION = 3;
+export const DOC_VERSION = 4;
 export const SCHEMA_VERSION = createHash('sha256')
   .update(JSON.stringify({ DOC_VERSION, PRODUCT_SETTINGS, CATEGORY_SETTINGS, BRAND_SETTINGS }))
   .digest('hex')
@@ -161,14 +161,17 @@ export async function loadProductRows(db: Db, opts: { ids?: number[]; afterId?: 
 
 /**
  * Documents for one batch, with the verified-drop facts of M15 (two queries per batch over the
- * daily series; the rules are @pretoscop/core `verifiedDrop` and `newAllTimeLow`).
+ * daily series; the rules are @pretoscop/core `verifiedDrop` and `newAllTimeLow`). Provisional
+ * products get none, as on /reduceri and the product page: an unverified match must not turn another
+ * product's price into a drop. The fraction is rounded down (the badge never shows more than the
+ * product page).
  */
 async function buildDocuments(db: Db, rows: ProductRow[]): Promise<ProductDocument[]> {
   const docs = rows.map(buildProductDocument);
-  const facts = await priceFactsFor(db, new Map(rows.map((r) => [r.id, r.currentShopBani])));
+  const facts = await priceFactsFor(db, new Map(rows.map((r) => [r.id, r.provisional ? null : r.currentShopBani])));
   for (const d of docs) {
     const f = facts.get(d.id);
-    d.drop_pct = f?.drop ? Math.round(f.drop.pct * 10_000) / 10_000 : null;
+    d.drop_pct = f?.drop ? Math.floor(f.drop.pct * 10_000 + 1e-9) / 10_000 : null;
     d.drop_ref_bani = f?.drop?.referenceBani ?? null;
     d.drop_since = f?.drop?.since ?? null;
     d.all_time_low = !!f?.allTimeLow;

@@ -131,7 +131,7 @@ export const legalDocuments = {
   ranking: { path: '/cum-functioneaza', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
   money: { path: '/cum-castigam-bani', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
   bot: { path: '/bot', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
-  methodology: { path: '/metodologie', kind: 'trust', version: '0.2', updatedAt: '2026-10-27', reviewed: false },
+  methodology: { path: '/metodologie', kind: 'trust', version: '0.3', updatedAt: '2026-10-28', reviewed: false },
   merchants: { path: '/pentru-magazine', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
   contact: { path: '/contact', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
   terms: { path: '/termeni', kind: 'legal', version: '0.1', updatedAt: '2026-10-27', reviewed: false },

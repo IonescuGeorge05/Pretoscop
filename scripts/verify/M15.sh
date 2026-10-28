@@ -9,14 +9,14 @@ PORT="${E2E_PORT:-3210}"
 ensure_services
 pnpm --silent --filter @pretoscop/db migrate >/dev/null
 curl -sf http://localhost:7700/health | grep -q available || fail "Meilisearch is not healthy on :7700"
-if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+if port_in_use "$PORT"; then
   fail "port $PORT is busy: stop the server there (Playwright would reuse it without the e2e search index)"
 fi
 
 step "lint, typecheck, unit + integration tests (core badge rules, db getDeals, search documents, web)"
 SEARCH_INTEGRATION=1 pnpm turbo run lint typecheck test --concurrency=2 \
   --filter=@pretoscop/core --filter=@pretoscop/db --filter=@pretoscop/search --filter=@pretoscop/web --output-logs=errors-only
-ok "green: no badge under 14 days, 3% floor, 30-day reference before the drop, raise-then-cut ignored, provisional excluded"
+ok "green: no badge under 14 days, 3% floor, 30-day reference before the drop, raise-then-cut and partial rebounds ignored, provisional excluded"
 
 step "what /reduceri shows on the dev database (read-only)"
 pnpm --silent --filter @pretoscop/worker deals:show | head -14

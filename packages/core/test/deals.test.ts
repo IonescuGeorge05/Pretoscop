@@ -70,6 +70,31 @@ describe('verifiedDrop (badge rules, docs/03 §6.4)', () => {
     expect(currentLevelStart(TODAY, 170_000, series)).toBe(day(3));
   });
 
+  it('a partial rebound after a lower price is not a drop: we observed the lower price ourselves', () => {
+    // 1.200 lei for 40 days, 800 lei for 20 days, back up to 1.000 lei today.
+    const series = [...run(60, 21, 1200), ...run(20, 1, 800), { day: TODAY, bani: 100_000 }];
+    expect(verifiedDrop({ today: TODAY, currentBani: 100_000, series })).toBeNull();
+    expect(newAllTimeLow({ today: TODAY, currentBani: 100_000, series })).toBeNull();
+    expect(atThirtyDayLow({ today: TODAY, currentBani: 100_000, series })).toBeNull();
+  });
+
+  it('a price that rose during the day is measured against today’s own lower minimum', () => {
+    // 2.000 lei for 45 days; earlier today 1.700 lei, now 1.800 lei.
+    const series = [...run(45, 1, 2000), { day: TODAY, bani: 170_000 }];
+    expect(verifiedDrop({ today: TODAY, currentBani: 180_000, series })).toBeNull();
+    expect(newAllTimeLow({ today: TODAY, currentBani: 180_000, series })).toBeNull();
+    // The same day without the rise (1.700 now) is a verified −15% drop and an all-time low.
+    expect(verifiedDrop({ today: TODAY, currentBani: 170_000, series })?.since).toBe(TODAY);
+    expect(newAllTimeLow({ today: TODAY, currentBani: 170_000, series })).not.toBeNull();
+    const lows = [...run(29, 10, 1000), ...run(9, 1, 950), { day: TODAY, bani: 94_000 }];
+    expect(atThirtyDayLow({ today: TODAY, currentBani: 95_000, series: lows })).toBeNull();
+  });
+
+  it('names the first day we observed the lower price (the drop may fall in a gap before it)', () => {
+    const d = verifiedDrop({ today: TODAY, currentBani: 170_000, series: [...run(45, 8, 2000), ...run(3, 0, 1700)] });
+    expect(dropExplanation(d!)).toContain('Am observat prețul mai mic începând cu');
+  });
+
   it('rounds the percentage down, never up', () => {
     expect(dropPercentLabel(0.149)).toBe('14%');
     expect(dropPercentLabel(0.15)).toBe('15%');
@@ -82,6 +107,8 @@ describe('newAllTimeLow', () => {
     const a = newAllTimeLow({ today: TODAY, currentBani: 170_000, series });
     expect(a).toMatchObject({ previousLowBani: 200_000, historyDays: 41, since: day(4) });
     expect(allTimeLowExplanation(a!)).toContain('2.000,00 lei');
+    expect(allTimeLowExplanation(a!)).toContain('minimul din 41 de zile observate');
+    expect(allTimeLowExplanation({ ...a!, historyDays: 14 })).toContain('minimul din 14 zile observate');
     // An older, lower price outside the loaded series rules it out.
     expect(newAllTimeLow({ today: TODAY, currentBani: 170_000, series, older: { lowBani: 160_000, days: 90 } })).toBeNull();
     // Too little history.

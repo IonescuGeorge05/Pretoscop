@@ -126,9 +126,16 @@ export interface DealsResult {
  * category (a root includes its leaves). Provisional products are left out: an unverified match
  * could turn a different product's price into a "drop".
  */
-export async function getDeals(db: Db, opts: { windowDays?: number; category?: string | null; limit?: number } = {}, today = bucharestToday()): Promise<DealsResult> {
+export async function getDeals(
+  db: Db,
+  opts: { windowDays?: number; category?: string | null; limit?: number; lowsLimit?: number } = {},
+  today = bucharestToday(),
+): Promise<DealsResult> {
   const windowDays = Math.max(1, Math.min(opts.windowDays ?? 7, 30));
+  // `limit` caps the drops (default 120), `lowsLimit` the 30-day lows (default min(limit, 48)); pass
+  // Infinity to get every one (the /reduceri page filters per category tab and slices itself).
   const limit = opts.limit ?? 120;
+  const lowsLimit = opts.lowsLimit ?? Math.min(limit, 48);
   const cat = opts.category ?? null;
   const catFilter = cat ? sql`AND (c.slug = ${cat} OR c.parent_id = (SELECT id FROM categories WHERE slug = ${cat}))` : sql``;
   const lookbackFrom = addDaysIso(today, -DROP_LOOKBACK_DAYS);
@@ -157,7 +164,7 @@ export async function getDeals(db: Db, opts: { windowDays?: number; category?: s
 
   const meta = await db.execute<{ eligible: string; started: string | null }>(sql`
     SELECT (SELECT count(*) FROM product_stats WHERE observations_days >= ${VERDICT_MIN_DAYS})::text AS eligible,
-      (SELECT min(day)::text FROM product_daily) AS started`);
+      (SELECT min(history_started_at)::text FROM product_stats) AS started`);
   const wanted = [...dropIds, ...lowIds];
   const info = new Map<number, Omit<DealItem, 'drop' | 'allTimeLow' | 'thirtyDayLow' | 'currentBani'>>();
   if (wanted.length) {
@@ -201,6 +208,6 @@ export async function getDeals(db: Db, opts: { windowDays?: number; category?: s
     .map(item)
     .filter((d): d is DealItem => d !== null)
     .sort((a, b) => range(b) - range(a) || a.id - b.id)
-    .slice(0, Math.min(limit, 48));
+    .slice(0, lowsLimit);
   return { today, drops, lows30, eligibleProducts: Number(meta.rows[0]?.eligible ?? 0), historyStartedAt: meta.rows[0]?.started ?? null };
 }

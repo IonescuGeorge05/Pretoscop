@@ -34,7 +34,8 @@
     "commissions:import": "tsx src/cli/commissions-import.ts",
     "ops:alert-test": "tsx src/cli/ops-alert-test.ts",
     "deals:show": "tsx src/cli/deals-show.ts",
-    "sitemap:build": "tsx src/cli/sitemap-build.ts"
+    "sitemap:build": "tsx src/cli/sitemap-build.ts",
+    "assisted:record": "tsx src/cli/assisted-record.ts"
   },
   "devDependencies": {
     "pino-pretty": "^13.2.0"

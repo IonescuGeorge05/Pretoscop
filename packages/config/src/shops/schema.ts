@@ -1,5 +1,6 @@
 import { CronExpressionParser } from 'cron-parser';
 import { z } from 'zod';
+import { ASSISTED_DESIGNATED_SHOPS, isAssistedDesignated } from '../assisted';
 
 /**
  * Shop registry schema (M04): one YAML file per shop in `packages/config/shops/`, validated here.
@@ -31,6 +32,13 @@ export const CrawlPolicySchema = z
     respect_crawl_delay: z.boolean().default(true),
     freshness_slo_hours: z.number().int().positive().default(26),
     assisted_render: z.boolean().default(false),
+    /** Assisted channel (M05B): the vendor's price tier of this domain (Zyte 1–5); unset = 5, the dearest. */
+    assisted_tier: z.number().int().min(1).max(5).optional(),
+    /** Assisted channel: exit country for the vendor (ISO 3166-1 alpha-2); unset = vendor's choice. */
+    assisted_country: z
+      .string()
+      .regex(/^[A-Z]{2}$/, 'expected an ISO 3166-1 alpha-2 country code, e.g. RO')
+      .optional(),
   })
   .strict();
 
@@ -138,6 +146,13 @@ export const ShopSchema = z
     });
     if (shop.access_mode === 'assisted' && !shop.legal.basis_ref) {
       ctx.addIssue({ code: 'custom', path: ['legal', 'basis_ref'], message: 'assisted access requires legal.basis_ref (ADR-015)' });
+    }
+    if (shop.access_mode === 'assisted' && !isAssistedDesignated(shop.slug)) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['access_mode'],
+        message: `assisted access is limited to the shops designated by the founders on 2026-10-27 (${ASSISTED_DESIGNATED_SHOPS.join(', ')}); another shop needs a founder decision recorded in docs/progress.md (eMAG never: ADR-013)`,
+      });
     }
   });
 

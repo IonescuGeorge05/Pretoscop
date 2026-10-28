@@ -107,7 +107,7 @@ If by month 6 none of Altex, Flanco or Media Galaxy has moved to a feed or an al
 ## 5. Engineering hooks already in the plan
 
 - `shops.status`, `access_mode` and `crawl_policy` record the probe outcomes per vantage point and the channel; `pnpm shops:probe <slug>` re-probes politely (M21).
-- Assisted-access channel: `packages/fetch/assisted`, `shops.access_mode`, `legal_basis_ref`, `access_costs` ledger and cap, runbook (M05B).
+- Assisted-access channel: `packages/fetch/assisted`, `shops.access_mode`, `legal_basis_ref`, `access_costs` ledger and cap, runbook (M05B). Built on 2026-10-28 and shipped off (no shop on it, no vendor key); switching a shop on follows `infra/runbooks/assisted-access.md` once A10 is done (ADR-022).
 - `fetchPolite` signs requests when `WEB_BOT_AUTH=1` (M21) and treats challenges as "stop and back off ≥24h" (M02).
 - Offer trust tiers: 1 crawled or merchant feed (verified, timestamped), 2 affiliate feed, 3 user-reported (extension, two independent reports), 4 link-only. Ranking uses tiers 1–2 by default; tier 3 is shown with its label; tier 4 is a link.
 - Coverage-honesty block and "Verifică și la" links on product pages (M13).

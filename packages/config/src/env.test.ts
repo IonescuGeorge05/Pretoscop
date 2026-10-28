@@ -88,6 +88,23 @@ describe('getEnv', () => {
     expect(() => getEnv({ ...prod, FETCH_PRIVATE_ALLOWLIST: '127.0.0.1:3399' })).toThrow(/FETCH_PRIVATE_ALLOWLIST is for local development only/);
     expect(() => getEnv({ ...prod, FETCH_ALLOW_PRIVATE_HOSTS: 'true' })).toThrow(/FETCH_ALLOW_PRIVATE_HOSTS is for local development only/);
   });
+
+  it('keeps the assisted channel off by default and its vendor endpoint on https (M05B)', () => {
+    const env = getEnv({});
+    expect(env).toMatchObject({ ASSISTED_VENDOR: 'none', ASSISTED_MONTHLY_CAP_EUR: 150, ZYTE_API_URL: 'https://api.zyte.com/v1/extract' });
+    expect(getEnv({ ZYTE_API_URL: 'http://127.0.0.1:4010/v1/extract' }).ZYTE_API_URL).toBe('http://127.0.0.1:4010/v1/extract');
+    expect(() => getEnv({ ZYTE_API_URL: 'http://api.zyte.com/v1/extract' })).toThrow(/ZYTE_API_URL must be an https URL/);
+    expect(() => getEnv({ ZYTE_API_URL: 'not a url' })).toThrow(/ZYTE_API_URL/);
+    expect(() => getEnv({ ASSISTED_MONTHLY_CAP_EUR: '-1' })).toThrow(/ASSISTED_MONTHLY_CAP_EUR/);
+    const prod = {
+      APP_ENV: 'prod',
+      BETTER_AUTH_SECRET: 'a'.repeat(32),
+      REVALIDATE_TOKEN: 'b'.repeat(32),
+      HASH_SALT_SECRET: 'c'.repeat(32),
+      ALERTS_SECRET: 'd'.repeat(32),
+    };
+    expect(() => getEnv({ ...prod, ZYTE_API_URL: 'http://127.0.0.1:4010/v1/extract' })).toThrow(/ZYTE_API_URL must be https outside development/);
+  });
 });
 
 describe('isIpOrCidr', () => {

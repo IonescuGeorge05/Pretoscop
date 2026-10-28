@@ -5,6 +5,7 @@ import { requireAdmin } from '@/lib/auth';
 const nav = [
   ['/admin', 'Panou'],
   ['/admin/surse', 'Surse'],
+  ['/admin/acces-asistat', 'Acces asistat'],
   ['/admin/rulari', 'Rulări'],
   ['/admin/potriviri', 'Potriviri'],
   ['/admin/produse', 'Produse'],

@@ -117,7 +117,7 @@ itself refuses those requests.
 |---|---|---|
 | 403 (vendor in `blockDetail`: Akamai "Access Denied … Reference #", CloudFront "Request blocked", Cloudflare) | `blocked`, `http_403` | 24 h |
 | Cloudflare challenge on any status (`cf-mitigated: challenge`, "Just a moment..." with `_cf_chl_opt`) | `blocked`, `challenge` | 24 h |
-| HTTP-200 interstitials: Fastly "Client Challenge" (`/_fs-ch-`, Hornbach), Tencent EdgeOne (`EO_Bot_Ssid`, Fashion Days), Distinct Captcha (evoMAG's hoster), DataDome (`captcha-delivery.com`), PerimeterX (`px-captcha`), Imperva incident page | `blocked`, `challenge`, body never returned | 24 h |
+| HTTP-200 interstitials: Fastly "Client Challenge" (`/_fs-ch-`, Hornbach), Tencent EdgeOne (`EO_Bot_Ssid`, Fashion Days), Distinct Captcha (evoMAG's hoster), cel.ro's own "Verificare rapida" (`validate_celcaptcha`; its JSON-LD products are decoys), DataDome (`captcha-delivery.com`), PerimeterX (`px-captcha`), Imperva incident page | `blocked`, `challenge`, body never returned | 24 h |
 | Redirect to a CAPTCHA/challenge host, of another site or of the shop's own (`captcha.distinct.ro`, `geo.captcha-delivery.com`, `challenges.cloudflare.com`, `captcha.shop.ro`: any host label exactly `captcha`/`challenge`), or to a challenge path on any host (`/…captcha…`, `/_fs-ch-`, `/cdn-cgi/challenge-platform/`; the query string is not looked at) | `blocked`, `captcha_redirect`, **never followed** | 24 h |
 | Connection reset, HTTP/2 stream reset or GOAWAY (Akamai), TLS failure, connect timeout (cel.ro from abroad) | `blocked`, `transport` | 24 h |
 | Any transport error that surfaces more than 30 s after the request's own timeout (this process was suspended: the machine slept and the shop closed the idle connection) | `local_suspend`, not blocked, retried on a fresh slot | none (no failure counted) |
@@ -244,7 +244,7 @@ pause set while the request waited for its slot); `attempts` then counts the att
 `network_unreachable`, `protocol_error`, `network`, `body_too_large`, `decode_error`,
 `too_many_redirects`, `cross_site_redirect`, `invalid_redirect`, `redirect_disallowed`,
 `channel_change`, `robots_unavailable`, `invalid_policy`, `invalid_request`, `crawl_disabled`,
-`assisted_error`, `non_public_address`, `local_suspend`.
+`assisted_error`, `non_public_address`, `local_suspend`, `assisted_cap`, `assisted_refused`.
 
 Pure helpers are exported too: `detectBlock`, `classifyTransportError`, `detectChallengeRedirect`,
 `parseRetryAfter`, `parseRobotsTxt`, `selectRobotsGroups`, `evaluateRobots`, `normalizeRobotsPath`,
@@ -350,8 +350,31 @@ differs), the body is dropped unless the target passes those rules (`cross_site_
 (`errorCode: 'timeout'`). The returned body is still scanned: a challenge page or any
 vendor-reported block becomes `blockReason: 'vendor_blocked'` (the vendor's own reason goes into
 `blockDetail`). That does not pause the shop at once, but it counts as a failure, so three in a row
-pause it for 1 h (doubling), on top of M05B's success-rate auto-pause. The vendor's cost ledger and
-cap belong to M05B.
+pause it for 1 h (doubling), on top of M05B's success-rate auto-pause.
+
+#### Implementation (M05B, `@pretoscop/fetch/assisted`)
+
+| Piece | What it does |
+|---|---|
+| `createZyteClient({ apiKey, endpoint? })` | `POST https://api.zyte.com/v1/extract`, Basic auth (key as user name). HTTP tier `{url, httpResponseBody, httpResponseHeaders, followRedirect:false}`; browser tier `{url, browserHtml}`; `geolocation` only when the shop sets `assisted_country`. **Never** headers (no User-Agent of any kind), `ipType`, sessions, cookies or actions. Maps 200 → the shop's response (billed), 520 → `vendor_blocked`, 429/503 → rate limited, 500 `/server/timed-out` → timeout, 401/403/451 → refused, else error (not billed) |
+| `createOxylabsClient()` | Second vendor behind the same `AssistedClient` interface: a stub that fails clearly until a founder picks it |
+| `createAssistedChannel({ client, ledger, monthlyCapCents, shopSettings })` | What `FetcherDeps.assisted` receives. `check()` runs inside the fetcher's gate (before a slot or the daily budget is used) and refuses (`assisted_refused`) a shop that is not designated (`@pretoscop/config/assisted`; eMAG never), a purpose other than robots/sitemap/listing/product, a host that is not the shop's own (`shopSettings().hosts`), login/account/cart/checkout/API paths (`assisted/scope.ts`), and calls while the vendor refuses our account (1 h) or the shop's domain (24 h); it refuses (`assisted_cap`) a call that could not fit under the month's cap at its highest price, and fails closed when the ledger cannot be read. `fetch()` checks again, **books the call in the ledger before sending it** (atomically against the cap), asks the vendor, and gives the booking back when the vendor does not bill the call; a call refused before sending throws `FetchError('assisted_cap' | 'assisted_refused')`, which the fetcher turns into a skip (never a shop failure). The browser tier is used for pages only (`listing`, `product`): robots.txt and sitemaps always go on the HTTP tier |
+| `AssistedLedger` / `MemoryAssistedLedger` | `reserve(entry, monthStart, cap)` books one call (requests, rendered requests, billable responses) only if the month stays within the cap; `release(entry)` gives an unbilled call back; row cost recomputed from the counters (`ledgerRowCostCents`). The worker's `PgAssistedLedger` writes `access_costs` under one advisory lock, so concurrent calls, retries and processes can never pass the cap together |
+| `zytePricing(tier, eurPerUsd)` | Zyte pay-as-you-go prices per tier (2026-10-27), EUR cents per 1,000, rounded up; unknown tier → 5, the dearest |
+
+`fetchPolite` result for a refusal: `skipped: 'assisted_unavailable'`, `errorCode: 'assisted_cap'` or
+`'assisted_refused'`, `attempts: 0`. Demo with a local stand-in for the vendor (no live call):
+`pnpm --filter @pretoscop/fetch assisted:demo`. Tests: `test/assisted.test.ts` (request shape,
+answer mapping on recorded shapes under `test/fixtures/zyte/`, a mock API server, the cap with
+concurrent calls, scope refusals, refusals, the interval, one request at a time, robots.txt through
+the channel, budgets and windows, relayed challenge pages, the merchant fetcher next to the channel).
+
+The assisted path never uses the fetcher's dispatcher: the shop is contacted by the vendor only, so
+the SSRF guard (`non_public_address`) applies to the vendor endpoint (the worker hands the guarded
+dispatcher to the Zyte client), not to shop URLs. The merchant fetcher (`ScopedDomainStateStore`) has
+no channel: a merchant-supplied URL on an assisted shop is refused (`assisted_unavailable`). Both
+share the per-host start slots, and assisted requests obey the crawler's pauses, never a
+merchant-scoped one.
 
 ## Demo CLI
 
@@ -395,7 +418,9 @@ misuse, aborts, unsendable headers, the assisted channel's timeout and redirect 
 
 The files in `test/fixtures/blocks/` and `test/fixtures/robots/` are **synthetic**: hand-written to
 reproduce the markers observed in the 2026-10-27 probes (`docs/research/notes/scraping_feasibility_recon.md`),
-not recorded shop pages, hence the `_synthetic` suffix instead of a recording date. Recorded pages
+not recorded shop pages, hence the `_synthetic` suffix instead of a recording date. `cel_celcaptcha_decoy_from-research-notes.html` is reconstructed from the description of
+two archived cel.ro captures in `docs/research/notes/gaps2_retailers.md` §3 (its quoted text, form
+action and decoy product names); the rest of its markup is invented. Recorded pages
 (when we have them) follow the `<shop>_<kind>_<date>` convention of `docs/05-plan-modular.md` A.5.
 
 ## Known limits

@@ -269,3 +269,48 @@ tests:
         exp_alerts:
           - exp_labels: { severity: warning, job: pretoscop-worker, env: prod }
             exp_annotations: { summary: 'Worker event loop p99 delay above 1 s for 15 minutes', runbook: infra/runbooks/scale-workers.md }
+
+  # Assisted-access spend (M05B): production at 87% of its cap alerts; staging's own small spend and
+  # an environment whose cap is 0 (channel never configured) do not, and production's spend is never
+  # compared with staging's cap (one-to-one per env).
+  - interval: 1m
+    input_series:
+      - series: 'pretoscop_assisted_spend_month_cents{job="pretoscop-worker", env="prod"}'
+        values: '13000x20'
+      - series: 'pretoscop_assisted_cap_cents{job="pretoscop-worker", env="prod"}'
+        values: '15000x20'
+      - series: 'pretoscop_assisted_spend_month_cents{job="pretoscop-worker", env="staging"}'
+        values: '500x20'
+      - series: 'pretoscop_assisted_cap_cents{job="pretoscop-worker", env="staging"}'
+        values: '15000x20'
+      - series: 'pretoscop_assisted_spend_month_cents{job="pretoscop-worker", env="dev"}'
+        values: '0x20'
+      - series: 'pretoscop_assisted_cap_cents{job="pretoscop-worker", env="dev"}'
+        values: '0x20'
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: AssistedSpendNearCap
+        exp_alerts: []
+      - eval_time: 10m
+        alertname: AssistedSpendNearCap
+        exp_alerts:
+          - exp_labels: { severity: warning, env: prod }
+            exp_annotations: { summary: 'Assisted-access spend at 13000 cents, 80% or more of the monthly cap (hard stop at 100%)', runbook: infra/runbooks/assisted-access.md }
+
+  # Assisted-access success (M05B): a shop below 90% over 7 days for 6 hours alerts, a healthy one
+  # does not.
+  - interval: 1m
+    input_series:
+      - series: 'pretoscop_assisted_success_ratio_7d{job="pretoscop-worker", env="prod", shop="altex"}'
+        values: '0.85x420'
+      - series: 'pretoscop_assisted_success_ratio_7d{job="pretoscop-worker", env="prod", shop="flanco"}'
+        values: '0.97x420'
+    alert_rule_test:
+      - eval_time: 5h
+        alertname: AssistedSuccessLow
+        exp_alerts: []
+      - eval_time: 7h
+        alertname: AssistedSuccessLow
+        exp_alerts:
+          - exp_labels: { severity: warning, job: pretoscop-worker, env: prod, shop: altex }
+            exp_annotations: { summary: 'Assisted access to altex: 85% success over 7 days (SLO 90%; auto-pause after 7 days below 80%)', runbook: infra/runbooks/assisted-access.md }

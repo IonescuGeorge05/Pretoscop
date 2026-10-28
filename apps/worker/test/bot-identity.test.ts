@@ -53,7 +53,7 @@ describe('key directory', () => {
   const now = Date.parse('2026-10-28T10:00:00Z');
   const served = (authority: string) => ({
     status: 200,
-    headers: { 'content-type': DIRECTORY_MEDIA_TYPE, ...signDirectoryResponse({ keys: [key], authority, now }) },
+    headers: { 'content-type': DIRECTORY_MEDIA_TYPE, ...signDirectoryResponse({ keys: [key], body: directoryBody([key]), authority, now }) },
     body: directoryBody([key]),
   });
 
@@ -67,6 +67,15 @@ describe('key directory', () => {
     expect(checkDirectory({ siteOrigin: 'https://pretoscop.ro', ...served('pretoscop.ro'), privateKey: generateEd25519Key().secret, now })).toMatchObject({
       ok: false,
       detail: expect.stringContaining('is not in the directory'),
+    });
+    const tampered = served('pretoscop.ro');
+    expect(checkDirectory({ siteOrigin: 'https://pretoscop.ro', ...tampered, body: tampered.body.replace('"use":"sig"', '"use":"enc"'), now })).toMatchObject({
+      ok: false,
+      detail: expect.stringContaining('Content-Digest'),
+    });
+    expect(checkDirectory({ siteOrigin: 'https://pretoscop.ro', ...served('pretoscop.ro'), now: now + 3_600_000 })).toMatchObject({
+      ok: false,
+      detail: expect.stringContaining('expired'),
     });
   });
 });

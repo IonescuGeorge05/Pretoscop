@@ -115,14 +115,14 @@ host crawl-1.${BOT_RDNS_DOMAIN}   # → 203.0.113.10 (aceeași adresă)`}</CodeB
               <h3 id="web-bot-auth">3. Semnătura criptografică (Web Bot Auth)</h3>
               {auth.signing ? (
                 <p data-testid="web-bot-auth-status">
-                  Fiecare cerere PretoscopBot este semnată conform RFC 9421 (HTTP Message Signatures), cu o cheie Ed25519. Cererile au antetele{' '}
+                  Fiecare cerere PretoscopBot este semnată conform RFC 9421 (HTTP Message Signatures) și protocolului Web Bot Auth al IETF, cu o cheie Ed25519. Cererile au antetele{' '}
                   <code>Signature</code>, <code>Signature-Input</code> (cu <code>tag=&quot;web-bot-auth&quot;</code>) și{' '}
-                  <code>Signature-Agent: &quot;{auth.agentOrigin}&quot;</code>.
+                  <code>Signature-Agent: {auth.signatureAgentHeader}</code>.
                 </p>
               ) : (
                 <p data-testid="web-bot-auth-status">
                   Pregătim semnarea fiecărei cereri conform RFC 9421 (HTTP Message Signatures), cu o cheie Ed25519: antetele <code>Signature</code>,{' '}
-                  <code>Signature-Input</code> (cu <code>tag=&quot;web-bot-auth&quot;</code>) și <code>Signature-Agent: &quot;{auth.agentOrigin}&quot;</code>.{' '}
+                  <code>Signature-Input</code> (cu <code>tag=&quot;web-bot-auth&quot;</code>) și <code>Signature-Agent: {auth.signatureAgentHeader}</code>.{' '}
                   {auth.keyPublished
                     ? 'Cheia publică este deja publicată; semnarea cererilor începe după ce o înregistrăm la serviciile anti-bot.'
                     : 'O activăm după ce publicăm cheia.'}

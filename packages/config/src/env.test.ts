@@ -91,6 +91,15 @@ describe('getEnv', () => {
     expect(getEnv({ WEB_BOT_AUTH: '1', WEB_BOT_AUTH_PRIVATE_KEY: seed })).toMatchObject({ WEB_BOT_AUTH: true, WEB_BOT_AUTH_PRIVATE_KEY: seed });
   });
 
+  it('signs only for an https Signature-Agent (http on loopback for local tests)', () => {
+    const seed = 'A'.repeat(43);
+    expect(() => getEnv({ WEB_BOT_AUTH: '1', WEB_BOT_AUTH_PRIVATE_KEY: seed, BOT_INFO_URL: 'http://pretoscop.ro/bot' })).toThrow(/https BOT_INFO_URL/);
+    expect(() => getEnv({ WEB_BOT_AUTH: '1', WEB_BOT_AUTH_PRIVATE_KEY: seed, BOT_INFO_URL: 'http://localhost.evil.example/bot' })).toThrow(/https BOT_INFO_URL/);
+    expect(getEnv({ WEB_BOT_AUTH: '1', WEB_BOT_AUTH_PRIVATE_KEY: seed, BOT_INFO_URL: 'http://localhost:3450/bot' }).WEB_BOT_AUTH).toBe(true);
+    // Signing off: any BOT_INFO_URL is accepted as before.
+    expect(getEnv({ BOT_INFO_URL: 'http://pretoscop.test/bot' }).WEB_BOT_AUTH).toBe(false);
+  });
+
   it('accepts the public RFC 9421 test key in dev only', () => {
     const testKey = 'n4Ni-HpISpVObnQMW0wOhCKROaIKqKtW_2ZYb2p9KcU';
     expect(getEnv({ WEB_BOT_AUTH_PRIVATE_KEY: testKey }).WEB_BOT_AUTH_PRIVATE_KEY).toBe(testKey);

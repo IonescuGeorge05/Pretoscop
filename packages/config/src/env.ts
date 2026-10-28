@@ -18,6 +18,8 @@ const int = (def: number) => z.coerce.number().int().default(def);
 const WEB_BOT_AUTH_KEY_FORMAT = /^[A-Za-z0-9_-]{43}=?$/;
 /** RFC 9421 Appendix B.1.4 "test-key-ed25519" (seed and PKCS#8 body): fine in tests, refused in staging/prod. */
 const RFC9421_TEST_KEY_MARKERS = ['n4Ni-HpISpVObnQMW0wOhCKROaIKqKtW_2ZYb2p9KcU', 'MC4CAQAwBQYDK2VwBCIEIJ+DYvh6SEqVTm50DFtMDoQikTmiCqirVv9mWG9qfSnF'];
+/** An https URL, or http on a loopback host (local tests): what a Web Bot Auth Signature-Agent may be. */
+const SIGNATURE_AGENT_URL = /^(https:\/\/[^\s/]+|http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?)(\/|$)/i;
 function isPublishedTestKey(key: string): boolean {
   return RFC9421_TEST_KEY_MARKERS.some((m) => key.includes(m));
 }
@@ -201,6 +203,10 @@ export const EnvSchema = z
     }
     if (key && !WEB_BOT_AUTH_KEY_FORMAT.test(key) && !key.startsWith('-----BEGIN')) {
       ctx.addIssue({ code: 'custom', path: ['WEB_BOT_AUTH_PRIVATE_KEY'], message: 'WEB_BOT_AUTH_PRIVATE_KEY must be a base64url Ed25519 seed (43 characters) or a PKCS#8 PEM block' });
+    }
+    // The Signature-Agent (origin of BOT_INFO_URL) must be https; plain http only on a loopback host (local tests).
+    if (env.WEB_BOT_AUTH && !SIGNATURE_AGENT_URL.test(env.BOT_INFO_URL.trim())) {
+      ctx.addIssue({ code: 'custom', path: ['BOT_INFO_URL'], message: 'WEB_BOT_AUTH needs an https BOT_INFO_URL (its origin is the Signature-Agent that serves the key directory)' });
     }
     if (env.APP_ENV === 'staging' || env.APP_ENV === 'prod') {
       if (key && isPublishedTestKey(key)) {

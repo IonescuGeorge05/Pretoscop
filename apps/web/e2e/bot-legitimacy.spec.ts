@@ -1,5 +1,5 @@
 import { createRequire } from 'node:module';
-import { DIRECTORY_MEDIA_TYPE, DIRECTORY_TAG, verifyWebBotAuthRequest, type Ed25519PublicJwk } from '@pretoscop/fetch/signing';
+import { DIRECTORY_MEDIA_TYPE, jwkThumbprint, verifyDirectoryResponse, type DirectoryJwk } from '@pretoscop/fetch/signing';
 import { expect, test, type Page } from '@playwright/test';
 
 /**
@@ -58,17 +58,19 @@ test.describe('bot legitimacy', () => {
   test.skip(({ isMobile }) => isMobile, 'desktop only');
   test.describe.configure({ mode: 'serial' });
 
-  test('the key directory publishes the public key and its response signature verifies', async ({ request, baseURL }) => {
-    const res = await request.get('/.well-known/http-message-signatures-directory');
+  test('the key directory publishes only the public key, with a digest and a possession proof that verify', async ({ request, baseURL }) => {
+    const res = await request.get('/.well-known/http-message-signatures-directory', { maxRedirects: 0 });
     test.skip(res.status() === 404, 'no WEB_BOT_AUTH_PRIVATE_KEY on this server');
     expect(res.status()).toBe(200);
     const headers = res.headers();
     expect(headers['content-type']).toBe(DIRECTORY_MEDIA_TYPE);
-    const body = (await res.json()) as { keys: Ed25519PublicJwk[] };
+    const text = await res.text();
+    const body = JSON.parse(text) as { keys: DirectoryJwk[] };
     expect(body.keys).toHaveLength(1);
-    expect(Object.keys(body.keys[0]!).sort()).toEqual(['crv', 'kty', 'x']);
+    expect(Object.keys(body.keys[0]!).sort()).toEqual(['crv', 'kid', 'kty', 'use', 'x']);
+    expect(body.keys[0]!.kid).toBe(jwkThumbprint(body.keys[0]!));
     const url = `${baseURL}/.well-known/http-message-signatures-directory`;
-    expect(verifyWebBotAuthRequest({ url, headers, keys: body.keys, tag: DIRECTORY_TAG, request: { url } })).toMatchObject({ ok: true });
+    expect(verifyDirectoryResponse({ requestUrl: url, headers, body: text })).toEqual({ ok: true, keyids: [body.keys[0]!.kid] });
   });
 
   test('/bot/ips.json carries the googlebot.json prefixes next to the first-version fields', async ({ request }) => {

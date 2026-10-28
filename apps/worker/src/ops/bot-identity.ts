@@ -1,13 +1,5 @@
 import { isIP } from 'node:net';
-import {
-  DIRECTORY_MEDIA_TYPE,
-  DIRECTORY_PATH,
-  DIRECTORY_TAG,
-  jwkThumbprint,
-  loadEd25519Key,
-  verifyWebBotAuthRequest,
-  type Ed25519PublicJwk,
-} from '@pretoscop/fetch';
+import { DIRECTORY_MEDIA_TYPE, DIRECTORY_PATH, loadEd25519Key, verifyDirectoryResponse } from '@pretoscop/fetch';
 
 /**
  * Self-checks of PretoscopBot's public identity (M21), run by `pnpm --filter @pretoscop/worker
@@ -80,7 +72,10 @@ export function checkIpsJson(body: unknown, configured: readonly string[]): Chec
   return { name, ok: true, detail: want.length > 0 ? `${want.length} address(es) published` : 'no address published yet (A4 pending)' };
 }
 
-/** The key directory: media type, JWKs, a signature for the site's authority, and our key in it. */
+/**
+ * The key directory (draft-ietf-webbotauth-httpsig-protocol-00): media type, a JWK Set of public Ed25519 keys whose
+ * Content-Digest matches, a possession proof per key for the site's authority, and our key in it.
+ */
 export function checkDirectory(input: {
   siteOrigin: string;
   status: number;
@@ -93,19 +88,16 @@ export function checkDirectory(input: {
   if (input.status === 404) return { name, ok: false, detail: 'not published (WEB_BOT_AUTH_PRIVATE_KEY is not set on the web app)' };
   if (input.status !== 200) return { name, ok: false, detail: `HTTP ${input.status}` };
   if (!(input.headers['content-type'] ?? '').startsWith(DIRECTORY_MEDIA_TYPE)) return { name, ok: false, detail: `content-type ${input.headers['content-type'] ?? 'missing'}` };
-  let keys: Ed25519PublicJwk[];
-  try {
-    keys = (JSON.parse(input.body) as { keys: Ed25519PublicJwk[] }).keys;
-    if (!Array.isArray(keys) || keys.length === 0) throw new Error('no keys');
-  } catch {
-    return { name, ok: false, detail: 'body is not {"keys":[…]}' };
-  }
   const url = `${input.siteOrigin}${DIRECTORY_PATH}`;
-  const v = verifyWebBotAuthRequest({ url, headers: input.headers, keys, now: input.now, tag: DIRECTORY_TAG, request: { url } });
-  if (!v.ok) return { name, ok: false, detail: `response signature does not verify (${v.reason})` };
+  const v = verifyDirectoryResponse({ requestUrl: url, headers: input.headers, body: input.body, now: input.now });
+  if (!v.ok) {
+    if (v.reason === 'bad_body') return { name, ok: false, detail: 'body is not a JWK Set of public Ed25519 keys ({"keys":[…]})' };
+    if (v.reason === 'bad_digest') return { name, ok: false, detail: 'Content-Digest missing or does not match the body' };
+    return { name, ok: false, detail: `response signature does not verify (${v.reason}${v.keyid ? `, key ${v.keyid}` : ''})` };
+  }
   if (input.privateKey) {
     const ours = loadEd25519Key(input.privateKey).keyid;
-    if (!keys.some((k) => jwkThumbprint(k) === ours)) return { name, ok: false, detail: `our key ${ours} is not in the directory` };
+    if (!v.keyids.includes(ours)) return { name, ok: false, detail: `our key ${ours} is not in the directory` };
   }
-  return { name, ok: true, detail: `${keys.length} key(s), signed by ${v.keyid}` };
+  return { name, ok: true, detail: `${v.keyids.length} key(s), signed by ${v.keyids.join(', ')}` };
 }

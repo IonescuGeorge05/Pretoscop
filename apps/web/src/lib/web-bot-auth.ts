@@ -20,8 +20,10 @@ export interface WebBotAuthStatus {
   /** The crawler signs its requests (`WEB_BOT_AUTH` on and a key configured). */
   signing: boolean;
   keyid: string | null;
-  /** Value of the `Signature-Agent` header, without the quotes: the origin of the bot info URL. */
+  /** Origin named in the `Signature-Agent` header: the origin of the bot info URL. */
   agentOrigin: string;
+  /** The `Signature-Agent` header our requests carry (dictionary form), e.g. `sig1="https://pretoscop.ro"`. */
+  signatureAgentHeader: string;
   directoryUrl: string;
 }
 
@@ -42,14 +44,16 @@ export function webBotAuthStatus(env: BotAuthEnv): WebBotAuthStatus {
     signing: key !== null && env.WEB_BOT_AUTH,
     keyid: key?.keyid ?? null,
     agentOrigin,
+    signatureAgentHeader: `sig1="${agentOrigin}"`,
     directoryUrl: `${agentOrigin}${DIRECTORY_PATH}`,
   };
 }
 
 /**
- * GET /.well-known/http-message-signatures-directory: `{"keys":[<Ed25519 JWK>]}`, signed for the
- * public authority of the Signature-Agent (never for a Host header a client made up). 404 until a
- * key is configured.
+ * GET /.well-known/http-message-signatures-directory: `{"keys":[<Ed25519 JWK>]}` (public members
+ * only), with `Content-Digest` and a possession proof signed for the public authority of the
+ * Signature-Agent, never for a Host header a client made up (draft Appendix B.1). 404 until a key
+ * is configured.
  */
 export function keyDirectoryResponse(env: BotAuthEnv, now: number = Date.now()): Response {
   const key = keyOf(env);
@@ -60,8 +64,9 @@ export function keyDirectoryResponse(env: BotAuthEnv, now: number = Date.now()):
     });
   }
   const authority = new URL(webBotAuthStatus(env).agentOrigin).host;
-  const signature = signDirectoryResponse({ keys: [key], authority, now, validitySeconds: DIRECTORY_SIGNATURE_VALIDITY_SECONDS });
-  return new Response(directoryBody([key]), {
+  const body = directoryBody([key]);
+  const signature = signDirectoryResponse({ keys: [key], body, authority, now, validitySeconds: DIRECTORY_SIGNATURE_VALIDITY_SECONDS });
+  return new Response(body, {
     status: 200,
     headers: {
       'content-type': DIRECTORY_MEDIA_TYPE,

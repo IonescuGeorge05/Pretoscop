@@ -1,3 +1,4 @@
+import { assistedHealthJob } from './assisted';
 import { heartbeatJob } from './heartbeat';
 import { partitionsJob, requestLogPruneJob } from './maintenance';
 import { backupJob, restoreTestJob, schedulerTickJob, sourceRunJob } from './recorder';
@@ -23,4 +24,5 @@ export const jobs: JobDefinition<any>[] = [
   opsAlertJob,
   opsHeartbeatJob,
   opsSloCheckJob,
+  assistedHealthJob,
 ];

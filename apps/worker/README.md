@@ -23,3 +23,17 @@ pg-boss workers: ingest, crawl, match, rollup, alerts, index, maintenance.
 - Page caches: `WEB_INTERNAL_URL` may list several web replicas; every replica gets each revalidation.
 - The image (`infra/docker/worker.Dockerfile`) runs `node --import tsx src/index.ts` as the `node`
   user under tini (`init: true`); the same image runs the one-shot `migrate` service.
+
+## Assisted-access channel (M05B)
+
+- `src/fetch/assisted.ts` builds the channel from `ASSISTED_VENDOR` (`none` by default: no channel, so
+  the fetch layer refuses every assisted host); `src/fetch/assisted-ledger.ts` is the `access_costs`
+  ledger (one upsert per vendor call, cost recomputed from the counters).
+- The policy resolver and `checkGates` keep an assisted shop closed unless it is designated
+  (`@pretoscop/config` `ASSISTED_DESIGNATED_SHOPS`), the flag `assisted.enabled` is on, a vendor is
+  configured and the month is under `ASSISTED_MONTHLY_CAP_EUR`.
+- `assisted.health` (09:15 daily) auto-pauses a shop below 80% success on each of the last 7 days
+  (kill switches + audit row + alert); the hourly SLO check alerts at 80%/100% of the cap and when
+  yesterday's success was under 90%; `/metrics` exports `pretoscop_assisted_*`.
+- `pnpm assisted:record <shop> <name> <url>` records an extractor fixture through the channel.
+- Procedure for the founders: `infra/runbooks/assisted-access.md`.

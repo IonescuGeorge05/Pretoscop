@@ -7,11 +7,13 @@ import { type Db, latestFxRate } from '@pretoscop/db';
 import { createFetcher } from '@pretoscop/fetch';
 import { createMailer, type Mailer } from '@pretoscop/mailer';
 import { createBlobStore } from '@pretoscop/storage';
+import { createAssistedChannelFromEnv } from './fetch/assisted';
 import { createPolicyResolver } from './fetch/policy';
 import { PgDomainStateStore } from './fetch/pg-state';
 import { PgRequestLogSink } from './fetch/request-log';
 import type { Services } from './jobs/types';
 import { createOpsAlert } from './ops/alert';
+import { assistedMetricFamilies, assistedSloAlerts } from './ops/assisted';
 import { createRevalidator } from './ops/revalidate';
 import type { NormalizeFn } from './recorder/types';
 
@@ -98,10 +100,15 @@ function opsMailer(env: Env, log: Logger): Mailer | undefined {
 /** Long-lived collaborators of the worker: blob store, the polite fetcher, normalizer, ops alerts. */
 export function createServices(env: Env, db: Db, log: Logger): Services & { close: () => Promise<void> } {
   const requestLog = new PgRequestLogSink(db, log);
+  // Assisted-access channel (M05B): only with a configured vendor; otherwise the fetch layer
+  // refuses every assisted host (`assisted_unavailable`).
+  const assisted = createAssistedChannelFromEnv(env, db, log);
+  log.info({ assisted: assisted.channel ? 'on' : 'off', detail: assisted.reason }, 'assisted-access channel');
   const fetcher = createFetcher({
     policyFor: createPolicyResolver(db),
     stateStore: new PgDomainStateStore(db),
     requestLog,
+    ...(assisted.channel ? { assisted: assisted.channel } : {}),
     crawlEnabled: env.CRAWL_ENABLED,
     botInfoUrl: env.BOT_INFO_URL,
     defaultTimeoutMs: env.FETCH_TIMEOUT_MS,
@@ -129,6 +136,8 @@ export function createServices(env: Env, db: Db, log: Logger): Services & { clos
     alert: createOpsAlert(env, log, opsMailer(env, log)),
     revalidate: createRevalidator(env, log),
     startedAt: new Date(),
+    sloExtra: () => assistedSloAlerts(db, env),
+    metricsExtra: () => assistedMetricFamilies(db, env),
     async close() {
       await requestLog.flush();
       await fetcher.close?.();

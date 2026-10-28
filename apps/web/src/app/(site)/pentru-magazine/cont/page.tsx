@@ -12,7 +12,8 @@ import { Button } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import { cn } from '@/lib/cn';
 import { formatDateTime, formatLei, formatRelative } from '@/lib/format';
-import { merchantDashboard, merchantOf, portalOpen, requirePortalUser, type Merchant } from '@/lib/merchant';
+import { merchantDashboard, merchantOf, portalOpen, requirePortalUser, uploadFreshnessHours, type Merchant } from '@/lib/merchant';
+import { listingReportProblem } from '@pretoscop/db';
 import { dashboardHints, FORMAT_LABELS, STATUS_LABELS } from '@/lib/merchant-hints';
 import { checkDomain, pullNow, recheckFeed, saveCompany, saveFeedUrl, saveSettings, submitForReview } from './actions';
 
@@ -49,6 +50,12 @@ const ERR: Record<string, string> = {
   incomplet: 'Completează toți pașii: datele firmei, domeniul verificat și un feed verificat, cu cel puțin un produs care poate fi afișat.',
   fisier: 'Fișierul nu a putut fi citit. Încarcă un fișier XML sau CSV (poate fi arhivat .gz).',
   fisier_mare: 'Fișierul depășește 15 MB.',
+  gazda:
+    'Adresa feed-ului este pe site-ul unui magazin pe care îl urmărim deja. Dacă este magazinul tău, verifică mai întâi domeniul lui (pasul 2); altfel folosește o adresă de pe domeniul tău sau încarcă fișierul.',
+  limita: 'Ai făcut multe verificări în ultimele 24 de ore. Încearcă din nou mai târziu sau scrie-ne.',
+  verificare_in_curs: 'Verificarea feed-ului nu s-a terminat încă. Așteaptă rezultatul, apoi trimite cererea.',
+  raport_vechi: 'Ultima verificare a fost făcută pentru alt feed sau alt domeniu. Verifică din nou feed-ul, apoi trimite cererea.',
+  in_afara_domeniului: 'Niciun produs din feed nu are adresa pe domeniul verificat. Afișăm doar produse de pe domeniul tău.',
 };
 const METHOD: Record<string, string> = { email: 'prin adresa de email', dns: 'prin înregistrarea DNS', file: 'prin fișierul de verificare', admin: 'manual, de echipa Pretoscop' };
 
@@ -121,7 +128,8 @@ function DomainStep({ m, email }: { m: Merchant; email: string }) {
     );
   }
   const value = `pretoscop-verificare=${m.verificationToken}`;
-  const check = m.domainCheck;
+  // A result for another domain (the merchant changed it meanwhile) is never shown.
+  const check = m.domainCheck && (!m.domainCheck.domain || m.domainCheck.domain === m.domain) ? m.domainCheck : null;
   return (
     <>
       <p>
@@ -151,7 +159,16 @@ function DomainStep({ m, email }: { m: Merchant; email: string }) {
         {check?.status === 'done' && (
           <span className="text-sm" role="status">
             Ultima verificare ({formatDateTime(check.finishedAt ?? check.requestedAt)}): DNS {check.dns === 'found' ? 'găsit' : 'negăsit'}
-            {check.file ? `, fișier ${check.file === 'found' ? 'găsit' : check.file === 'blocked' ? 'inaccesibil (robots.txt sau protecție anti-bot)' : 'negăsit'}` : ''}.
+            {check.file && check.file !== 'skipped'
+              ? `, fișier ${check.file === 'found' ? 'găsit' : check.file === 'blocked' ? 'inaccesibil (robots.txt sau protecție anti-bot)' : 'negăsit'}`
+              : ''}
+            .
+          </span>
+        )}
+        {check?.status === 'done' && check.file === 'skipped' && (
+          <span className="text-sm" data-testid="file-skipped">
+            Pe acest domeniu urmărim deja un magazin, așa că nu citim fișiere de verificare de pe el: folosește înregistrarea DNS sau o adresă de email pe
+            domeniu.
           </span>
         )}
         {(check?.status === 'queued' || check?.status === 'running') && (
@@ -164,7 +181,7 @@ function DomainStep({ m, email }: { m: Merchant; email: string }) {
   );
 }
 
-function FeedForms({ m }: { m: Merchant }) {
+function FeedForms({ m, uploadHours }: { m: Merchant; uploadHours: number }) {
   const select = (
     <select name="feedFormat" defaultValue={m.feedFormat ?? 'auto'} aria-label="Formatul feed-ului" className={cn(input, 'sm:w-56')}>
       <option value="auto">Detectează automat</option>
@@ -188,7 +205,7 @@ function FeedForms({ m }: { m: Merchant }) {
         <summary className="cursor-pointer text-sm font-semibold text-ink">Nu ai o adresă? Încarcă fișierul</summary>
         <form action="/api/merchant/feed-upload" method="post" encType="multipart/form-data" className="mt-3 space-y-3">
           <p className="text-sm">
-            Un fișier încărcat nu se actualizează singur: prețurile lui apar ca „verificate” la momentul încărcării și devin gri după trei zile. Recomandăm o adresă.
+            Un fișier încărcat nu se actualizează singur: prețurile lui apar ca „verificate” la momentul încărcării și devin gri după {uploadHours >= 48 ? `${uploadHours / 24} zile` : `${uploadHours} ore`}. Recomandăm o adresă.
           </p>
           <label id="feedFile-label" htmlFor="feedFile" className={label}>
             Fișierul feed-ului (XML sau CSV, cel mult 15 MB)
@@ -257,12 +274,13 @@ function SettingsForm({ m }: { m: Merchant }) {
   );
 }
 
-function Onboarding({ m, email, open }: { m: Merchant | null; email: string; open: boolean }) {
-  const report = m?.validation?.status === 'done' ? m.validation.report : undefined;
+function Onboarding({ m, email, open, uploadHours }: { m: Merchant | null; email: string; open: boolean; uploadHours: number }) {
+  const problem = m ? listingReportProblem(m) : 'not_checked';
   const companyDone = Boolean(m?.shopName && m.companyName && m.cui && m.domain);
   const domainDone = Boolean(m?.domainVerifiedAt);
-  const feedDone = Boolean(report && report.normalization.accepted > 0);
-  const settingsDone = Boolean(report && !report.priceFormat.needsChoice);
+  // Done only for a finished check of the current feed and domain with listable offers on that domain.
+  const feedDone = problem === null || problem === 'price_format';
+  const settingsDone = problem === null;
   const terms = currentConsentText('merchantTerms');
   return (
     <div className="space-y-6">
@@ -275,7 +293,7 @@ function Onboarding({ m, email, open }: { m: Merchant | null; email: string; ope
       <Step id="pas-3" n={3} title="Feed-ul de produse" done={feedDone}>
         {m ? (
           <>
-            <FeedForms m={m} />
+            <FeedForms m={m} uploadHours={uploadHours} />
             {(m.feedUrl || m.feedUploadKey) && (
               <form action={recheckFeed}>
                 <Button type="submit" variant="ghost" size="sm">
@@ -333,7 +351,7 @@ async function Dashboard({ m }: { m: Merchant }) {
     ['Potrivite cu produse', `${matchedPct}%`, `${d.matched} oferte`],
     ['Clicuri (30 de zile)', new Intl.NumberFormat('ro-RO').format(d.clicks30)],
     ['Ultima citire reușită', d.source?.last_success_at ? formatRelative(d.source.last_success_at) : '—', d.source?.health === 'ok' ? 'fără probleme' : d.source ? `stare: ${d.source.health}` : undefined],
-    ['Oferte proaspete', `${freshPct}%`, 'confirmate de feed în ultimele 12 ore'],
+    ['Oferte proaspete', `${freshPct}%`, `confirmate de feed în ultimele ${d.freshnessHours} ore`],
   ];
   return (
     <section id="panou" aria-labelledby="panou-titlu" className="space-y-6">
@@ -402,6 +420,7 @@ async function Dashboard({ m }: { m: Merchant }) {
 export default async function MerchantPortalPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const user = await requirePortalUser();
   const [m, open, params] = await Promise.all([merchantOf(user.id), portalOpen(), searchParams]);
+  const uploadHours = await uploadFreshnessHours(m);
   const ok = typeof params.ok === 'string' ? OK[params.ok] : undefined;
   const err = typeof params.eroare === 'string' ? ERR[params.eroare] : undefined;
   const checking = [m?.validation?.status, m?.domainCheck?.status].some((s) => s === 'queued' || s === 'running');
@@ -448,7 +467,8 @@ export default async function MerchantPortalPage({ searchParams }: { searchParam
           <Callout tone="neutral" title="Listarea este suspendată">
             <p data-testid="status-reason">{m.statusReason}</p>
             <p>
-              Nu mai citim feed-ul până la reluare. După ce ai corectat problema, <Link href="/contact?subiect=merchant">scrie-ne</Link>.
+              Ofertele tale nu mai apar pe Pretoscop și nu mai citim feed-ul până la reluare. După ce ai corectat problema sau dacă vrei să contești
+              decizia, <Link href="/contact?subiect=merchant">scrie-ne</Link>.
             </p>
           </Callout>
         )}
@@ -461,7 +481,7 @@ export default async function MerchantPortalPage({ searchParams }: { searchParam
             <FeedReportView validation={m.validation} />
           </section>
         )}
-        {editable && <Onboarding m={m} email={user.email} open={open} />}
+        {editable && <Onboarding m={m} email={user.email} open={open} uploadHours={uploadHours} />}
         {m && (m.status === 'approved' || m.status === 'suspended') && (
           <>
             {m.status === 'approved' && <Dashboard m={m} />}
@@ -469,7 +489,7 @@ export default async function MerchantPortalPage({ searchParams }: { searchParam
               <h2 id="feed-titlu" className="text-lg font-semibold text-ink">
                 Feed-ul
               </h2>
-              <FeedForms m={m} />
+              <FeedForms m={m} uploadHours={uploadHours} />
               <FeedReportView validation={m.validation} />
             </section>
             <section className="space-y-4 rounded-[var(--radius-card)] bg-canvas p-5 ring-1 ring-line sm:p-6" id="pas-4" aria-labelledby="setari-titlu">

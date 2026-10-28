@@ -149,6 +149,41 @@ export default function PrivacyPage() {
                 ]}
               />
               <InfoCard
+                id="notificari"
+                title="Notificări de preț în browser (după lansare)"
+                items={[
+                  [
+                    'Ce date',
+                    'Adresa tehnică de notificare a browserului tău (furnizată de serviciul de notificări al browserului), cheile ei de criptare, un nume al dispozitivului (de exemplu „Chrome · Android”, nu informațiile complete ale browserului), data acordului și versiunea textului acceptat.',
+                  ],
+                  ['De ce', 'Ca să îți trimitem pe acest dispozitiv alertele de preț alese.'],
+                  [
+                    'Temeiul legal',
+                    'Consimțământul tău (art. 6 alin. (1) lit. a) GDPR și art. 4 alin. (5) din Legea nr. 506/2004): bifa de lângă buton și permisiunea dată browserului. Le oprești oricând din pagina Alertele mele sau din setările browserului.',
+                  ],
+                  [
+                    'Cât timp',
+                    'Până oprești notificările sau până când serviciul browserului ne spune că adresa nu mai este valabilă. Conținutul notificării este criptat: serviciul browserului (Google, Mozilla, Apple sau Microsoft, după browser) îl transmite fără să-l poată citi.',
+                  ],
+                ]}
+              />
+              <InfoCard
+                id="telegram"
+                title="Alerte de preț pe Telegram (după lansare)"
+                items={[
+                  [
+                    'Ce date',
+                    'Identificatorul conversației tale cu robotul Pretoscop (un număr dat de Telegram, nu numărul de telefon), data conectării, versiunea textului acceptat și alertele pe care le urmărești acolo.',
+                  ],
+                  ['De ce', 'Ca să îți trimitem pe Telegram alertele alese și să răspundem comenzilor robotului (/urmareste, /alertele, /oprire).'],
+                  [
+                    'Temeiul legal',
+                    'Consimțământul tău (art. 6 alin. (1) lit. a) GDPR), dat pe site și confirmat când apeși „Start” în Telegram. Telegram Messenger Inc. este un operator separat, cu propria politică de confidențialitate; datele utilizatorilor din Spațiul Economic European sunt păstrate de Telegram în Țările de Jos.',
+                  ],
+                  ['Cât timp', 'Până trimiți /oprire sau deconectezi Telegram din pagina Alertele mele. Dovada acordului se păstrează încă 3 ani după retragerea lui.'],
+                ]}
+              />
+              <InfoCard
                 id="conturi"
                 title="Conturile de administrare"
                 items={[
@@ -202,6 +237,12 @@ export default function PrivacyPage() {
                     'Rețea globală; companie din SUA',
                   ],
                   ['Resend', 'Trimite emailurile: autentificare, alerte, notificări din formularul de contact', 'Adresa destinatarului și conținutul emailului', 'SUA'],
+                  [
+                    'Serviciul de notificări al browserului tău (Google, Mozilla, Apple sau Microsoft)',
+                    'Transmite notificările de preț, dacă le-ai activat',
+                    'Adresa tehnică de notificare; conținutul este criptat și nu poate fi citit de serviciu',
+                    'În funcție de browser; companii din SUA',
+                  ],
                   ['Sentry', 'Raportează erorile tehnice ale site-ului', 'Detalii tehnice despre erori, fără adresa IP', 'SUA sau UE'],
                   ['Anthropic', 'Ajută la recunoașterea automată a produselor din titlurile ofertelor', 'Doar titluri și caracteristici de produse, fără date personale', 'SUA'],
                   ['Furnizorul căsuțelor de email (în curs de alegere)', 'Primește mesajele trimise la adresele noastre', 'Adresa ta și mesajul', 'Va fi precizat aici'],
@@ -210,6 +251,10 @@ export default function PrivacyPage() {
               <p>
                 Plausible Community Edition este un program open-source pe care îl rulăm pe serverul nostru: datele de statistică nu ajung la compania care îl
                 dezvoltă. Putem dezvălui date autorităților doar când legea ne obligă.
+              </p>
+              <p>
+                Dacă alegi alertele pe Telegram, Telegram Messenger Inc. primește mesajele ca operator separat (nu în numele nostru), conform politicii sale de
+                confidențialitate.
               </p>
             </>
           ),

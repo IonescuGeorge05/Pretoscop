@@ -1,7 +1,8 @@
-import { consentTextByKey } from '@pretoscop/config/legal-texts';
+import { consentTextByKey, currentConsentText } from '@pretoscop/config/legal-texts';
 import { userAlerts, type AlertView } from '@pretoscop/db';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { ChannelsSection } from '@/components/alerts/channels-section';
 import { Notice } from '@/components/alerts/notice';
 import { PageHeader } from '@/components/legal/legal-page';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import { describeAlert } from '@/lib/alert-form';
 import { getSession } from '@/lib/auth';
+import { userChannels, type UserChannels } from '@/lib/channels';
 import { db } from '@/lib/db';
 import { formatDateTime, formatLei } from '@/lib/format';
 import { confirmPendingAction, deleteAccountAction, deleteAlertAction, requestLoginLink, signOutAction, stopAllAction, updateAlertAction } from './actions';
@@ -35,7 +37,13 @@ const ERRORS: Record<string, string> = {
   'prag-too_high': 'Pragul este prea mare.',
   'prag-not_below_current': 'Prețul total de acum este deja sub acest prag. Alege un prag mai mic.',
   confirmare: 'Bifează caseta de confirmare ca să ștergem contul.',
+  canal: 'Canalul ales nu este pregătit: activează-l mai întâi în „Canale de notificare”.',
+  'acord-email': 'Ca să primești alerta pe email, bifează acordul pentru email din formular.',
+  'acord-telegram': 'Bifează acordul pentru Telegram ca să conectăm contul.',
+  telegram: 'Alertele pe Telegram nu sunt încă disponibile.',
 };
+
+const CHANNEL_LABEL = { email: 'pe email', push: 'în browser', telegram: 'pe Telegram' } as const;
 
 const inputClass =
   'block w-full rounded-lg border border-line bg-white px-3 text-[15px] text-ink placeholder:text-muted focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-200';
@@ -47,7 +55,7 @@ function StatusBadge({ a }: { a: AlertView }) {
   return <Badge tone="high">Oprită: {why}</Badge>;
 }
 
-function AlertCard({ a, highlight }: { a: AlertView; highlight: boolean }) {
+function AlertCard({ a, highlight, usable, emailConsent }: { a: AlertView; highlight: boolean; usable: UserChannels['usable']; emailConsent: string }) {
   const consent = consentTextByKey(a.consentTextVersion);
   const target = a.targetBani === null ? '' : (a.targetBani / 100).toFixed(2).replace('.', ',');
   return (
@@ -58,7 +66,7 @@ function AlertCard({ a, highlight }: { a: AlertView; highlight: boolean }) {
         </Link>
         <StatusBadge a={a} />
       </div>
-      <p className="mt-1 text-sm text-ink-soft">{describeAlert(a.kind, a.targetBani === null ? null : formatLei(a.targetBani), a.anyVariant)} · pe email</p>
+      <p className="mt-1 text-sm text-ink-soft">{describeAlert(a.kind, a.targetBani === null ? null : formatLei(a.targetBani), a.anyVariant)} · {CHANNEL_LABEL[a.channel]}</p>
       <p className="mt-1 text-sm text-muted">
         {a.lastNotifiedAt && a.lastNotifiedBani !== null
           ? `Ultima alertă: ${formatDateTime(a.lastNotifiedAt)}, la ${formatLei(a.lastNotifiedBani)}.`
@@ -104,6 +112,32 @@ function AlertCard({ a, highlight }: { a: AlertView; highlight: boolean }) {
                 <label id={`kind-drop-${a.id}-label`} htmlFor={`kind-drop-${a.id}`}>La orice scădere de cel puțin 1%</label>
               </div>
             </fieldset>
+            <div className="space-y-1 text-sm">
+              <label id={`channel-${a.id}-label`} htmlFor={`channel-${a.id}`} className="block font-semibold text-ink">
+                Unde te anunțăm
+              </label>
+              <select id={`channel-${a.id}`} aria-labelledby={`channel-${a.id}-label`} name="channel" defaultValue={a.channel} className={`${inputClass} h-9 w-auto`}>
+                <option value="email">Pe email</option>
+                {(usable.push || a.channel === 'push') && (
+                  <option value="push" disabled={!usable.push}>
+                    În browser (notificări)
+                  </option>
+                )}
+                {(usable.telegram || a.channel === 'telegram') && (
+                  <option value="telegram" disabled={!usable.telegram}>
+                    Pe Telegram
+                  </option>
+                )}
+              </select>
+            </div>
+            {a.channel !== 'email' && (
+              <div className="flex items-start gap-2.5">
+                <input id={`email-consent-${a.id}`} aria-labelledby={`email-consent-${a.id}-label`} name="emailConsent" type="checkbox" className="mt-1 size-4 shrink-0 accent-brand-600" />
+                <label id={`email-consent-${a.id}-label`} htmlFor={`email-consent-${a.id}`} className="text-[13px] leading-snug text-ink-soft">
+                  Doar dacă alegi emailul: {emailConsent}
+                </label>
+              </div>
+            )}
             <Button type="submit" size="sm">
               Salvează
             </Button>
@@ -183,7 +217,7 @@ export default async function AlertsPage({ searchParams }: Props) {
     );
   }
 
-  const alerts = await userAlerts(db(), session.user.id);
+  const [alerts, ch] = await Promise.all([userAlerts(db(), session.user.id), userChannels(session.user.id)]);
   const changed = Number(one(p.modificat) || one(p.confirmat));
   const notice =
     one(p.modificat) !== ''
@@ -194,7 +228,11 @@ export default async function AlertsPage({ searchParams }: Props) {
           ? 'Alerta a fost ștearsă.'
           : one(p.oprite) === '1'
             ? 'Toate alertele au fost oprite.'
-            : null;
+            : one(p.canal) === 'telegram-oprit'
+              ? 'Telegram este deconectat. Alertele de pe Telegram sunt oprite până îl conectezi din nou.'
+              : one(p.canal) === 'notificari-oprite'
+                ? 'Notificările pe acel dispozitiv sunt oprite.'
+                : null;
 
   return (
     <>
@@ -228,7 +266,7 @@ export default async function AlertsPage({ searchParams }: Props) {
           ) : (
             <ul className="space-y-3">
               {alerts.map((a) => (
-                <AlertCard key={a.id} a={a} highlight={a.id === changed} />
+                <AlertCard key={a.id} a={a} highlight={a.id === changed} usable={ch.usable} emailConsent={currentConsentText('alertConsent').text} />
               ))}
             </ul>
           )}
@@ -241,9 +279,17 @@ export default async function AlertsPage({ searchParams }: Props) {
           )}
           <p className="text-sm text-muted">
             Îți scriem cel mult o dată pe zi pentru fiecare alertă, doar când prețul total (preț + livrare) scade la un magazin care vinde direct, verificat
-            recent. Fiecare email are linkul de dezabonare.
+            recent. Fiecare email are linkul de dezabonare. Notificările în browser și pe Telegram așteaptă dimineața (8:00–22:00).
           </p>
         </section>
+
+        <ChannelsSection
+          email={session.user.email}
+          ch={ch}
+          telegramToken={one(p.tg) || null}
+          pushConsent={currentConsentText('pushConsent')}
+          telegramConsent={currentConsentText('telegramConsent')}
+        />
 
         <section id="date" aria-labelledby="date-titlu" className="space-y-3 rounded-[var(--radius-card)] bg-surface p-4 ring-1 ring-line sm:p-5">
           <h2 id="date-titlu" className="text-lg font-semibold">

@@ -1,10 +1,25 @@
 'use server';
 
+import { randomBytes } from 'node:crypto';
 import { ALERT_CONFIRM_TTL_DAYS, isPlausibleEmail, normalizeEmail, parseTargetPrice } from '@pretoscop/core';
-import { bestAlertOffer, confirmAlert, deleteAlert, deleteAllAlerts, deleteUserData, getAlert, updateAlert, type AlertKind } from '@pretoscop/db';
+import { currentConsentText } from '@pretoscop/config/legal-texts';
+import {
+  bestAlertOffer,
+  confirmAlert,
+  createTelegramLinkToken,
+  deleteAlert,
+  deleteAllAlerts,
+  deleteUserData,
+  getAlert,
+  unlinkTelegram,
+  updateAlert,
+  type AlertChannel,
+  type AlertKind,
+} from '@pretoscop/db';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { hashEmail, logAlert } from '@/lib/alerts';
+import { userChannels } from '@/lib/channels';
 import { auth, getSession } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { clientIp, hashWithDailySalt } from '@/lib/privacy';
@@ -43,7 +58,7 @@ export async function signOutAction(): Promise<void> {
   redirect('/alerte');
 }
 
-/** Changes what an alert watches (kind and target). A target must be under today's best total. */
+/** Changes what an alert watches (kind, target, channel). A target must be under today's best total. */
 export async function updateAlertAction(form: FormData): Promise<void> {
   const user = await currentUser();
   const id = Number(form.get('alertId'));
@@ -58,8 +73,41 @@ export async function updateAlertAction(form: FormData): Promise<void> {
     if (!t.ok) back(`eroare=prag-${t.error}&a=${id}`);
     else targetBani = t.bani;
   }
-  await updateAlert(db(), id, user.id, { kind, targetBani });
+  // M27: the channel. Push and Telegram need the channel set up (with its own consent); moving an
+  // alert to email from another channel needs the email consent box ticked in this form.
+  const requested = String(form.get('channel') ?? alert.channel) as AlertChannel;
+  if (requested !== 'email' && requested !== 'push' && requested !== 'telegram') back(`eroare=canal&a=${id}`);
+  const ch = await userChannels(user.id);
+  if (!ch.usable[requested]) back(`eroare=canal&a=${id}`);
+  let consent: { textVersion: string; ipHash: string | null; emailHash: string | null } | undefined;
+  if (requested === 'email' && alert.channel !== 'email') {
+    if (form.get('emailConsent') !== 'on') back(`eroare=acord-email&a=${id}#alerta-${id}`);
+    const h = await headers();
+    consent = { textVersion: currentConsentText('alertConsent').key, ipHash: hashWithDailySalt('ip', clientIp(h)), emailHash: hashEmail(user.email) };
+  }
+  await updateAlert(db(), id, user.id, { kind, targetBani, channel: requested, ...(consent ? { consent } : {}) });
   back(`modificat=${id}#alerta-${id}`);
+}
+
+/**
+ * M27: "Conectează Telegram" with the Telegram consent box ticked. A one-time token (15 minutes,
+ * stored as a hash) goes into the t.me deep link; the bot links the chat on /start <token>.
+ */
+export async function startTelegramLinkAction(form: FormData): Promise<void> {
+  const user = await currentUser();
+  if (form.get('telegramConsent') !== 'on') back('eroare=acord-telegram#canale');
+  const ch = await userChannels(user.id);
+  if (!ch.telegramBot) back('eroare=telegram#canale');
+  const token = randomBytes(24).toString('base64url');
+  await createTelegramLinkToken(db(), user.id, token, currentConsentText('telegramConsent').key);
+  back(`tg=${token}#canale`);
+}
+
+/** M27: disconnects Telegram; alerts on Telegram pause until the chat is linked again. */
+export async function unlinkTelegramAction(): Promise<void> {
+  const user = await currentUser();
+  await unlinkTelegram(db(), user.id, 'account');
+  back('canal=telegram-oprit#canale');
 }
 
 export async function deleteAlertAction(form: FormData): Promise<void> {

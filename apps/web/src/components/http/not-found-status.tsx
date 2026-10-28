@@ -15,6 +15,10 @@ function RaiseNotFound(): never {
  * the Suspense boundary still sets the 404 status and the `noindex` robots tag, while the content
  * outside the boundary stays in the HTML. With JavaScript, the boundary hands over to the nearest
  * `not-found.tsx`, which shows the same content (keep the two in sync by rendering the same component).
+ *
+ * Only for prerendered routes (ISR, `revalidate` + `generateStaticParams`): Next.js 16 takes the 404
+ * status from an error inside a Suspense boundary only while prerendering. On a dynamic route (or under
+ * `next dev`) the answer would be 200 with `noindex` (a soft 404): there, call `notFound()` as usual.
  */
 export function NotFoundResponse({ children }: { children: ReactNode }) {
   return (

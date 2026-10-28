@@ -3,6 +3,7 @@ import { legalDocuments } from '@pretoscop/config/legal-texts';
 import { urlsetXml } from '@pretoscop/core';
 import { getDeals, sql } from '@pretoscop/db';
 import { createBlobStore } from '@pretoscop/storage';
+import { unstable_cache } from 'next/cache';
 import { PUBLISHED } from '@/content/reports';
 import { db, serverEnv } from './db';
 import { newestLastmod, pagesSitemapEntries } from './sitemap-pages';
@@ -40,18 +41,32 @@ export async function readSitemapFile(name: string): Promise<string | null> {
   return raw ? Buffer.from(raw).toString('utf8') : null;
 }
 
+/**
+ * The database facts behind `pages.xml`, cached for 15 minutes like /reduceri (ISR 15 min): the deals
+ * computation is the costliest query of the site and /sitemap.xml is public, so a request never
+ * runs it by itself.
+ */
+const pagesSitemapData = unstable_cache(
+  async (): Promise<{ latest: string | null; dealRoots: string[] | null }> => {
+    const latest = await db()
+      .execute<{ t: Date | string | null }>(sql`SELECT max(price_changed_at) AS t FROM offers WHERE active`)
+      .then((r) => (r.rows[0]?.t ? new Date(r.rows[0].t).toISOString() : null))
+      .catch(() => null);
+    // The same deals as /reduceri (7 days, every category): its tabs are indexable only with drops.
+    const deals = await getDeals(db(), { windowDays: 7, limit: Infinity, lowsLimit: 0 }).catch(() => null);
+    return { latest, dealRoots: deals ? [...new Set(deals.drops.map((d) => d.rootSlug).filter((s): s is string => !!s))] : null };
+  },
+  ['sitemap-pages'],
+  { revalidate: 900, tags: ['sitemaps'] },
+);
+
 /** `pages.xml`: the pages only the web app knows (rules in ./sitemap-pages), with their newest lastmod. */
 export async function pagesSitemap(): Promise<{ xml: string; lastmod: string | null }> {
-  const latest = await db()
-    .execute<{ t: Date | string | null }>(sql`SELECT max(price_changed_at) AS t FROM offers WHERE active`)
-    .then((r) => r.rows[0]?.t ?? null)
-    .catch(() => null);
-  // The same deals as /reduceri (7 days, every category): its tabs are indexable only with drops.
-  const deals = await getDeals(db(), { windowDays: 7, limit: Infinity, lowsLimit: 0 }).catch(() => null);
+  const { latest, dealRoots } = await pagesSitemapData();
   const urls = pagesSitemapEntries({
     base: baseUrl(),
     latestPriceChange: latest,
-    dealRoots: deals ? deals.drops.map((d) => d.rootSlug).filter((s): s is string => !!s) : null,
+    dealRoots,
     documents: Object.values(legalDocuments),
     reports: PUBLISHED,
   });

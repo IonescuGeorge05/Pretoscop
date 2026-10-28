@@ -66,28 +66,27 @@ function crumbs(p: ProductPageData): BreadcrumbItem[] {
 function structuredData(p: ProductPageData) {
   const base = serverEnv().PUBLIC_BASE_URL;
   const image = p.imageKey ? `${MEDIA_BASE}/${p.imageKey.replace(/(\.[a-z]+)$/i, '_800$1')}` : null;
-  return [
-    productJsonLd(base, {
-      path: `/p/${p.slug}`,
-      title: p.title,
-      brand: p.brand?.name ?? null,
-      mpn: p.mpn,
-      gtins: p.gtins,
-      category: p.category?.name ?? null,
-      images: image ? [image] : [],
-      offers: p.offers.map((o) => ({
-        price: o.price,
-        total: o.total,
-        shippingCost: o.shippingCost,
-        availability: o.availability,
-        condition: o.condition,
-        url: o.url,
-        seller: o.sellerName && o.sellerType === 'marketplace' ? o.sellerName : o.shopName,
-        stale: o.stale,
-      })),
-    }),
-    breadcrumbList(base, crumbs(p)),
-  ];
+  const product = productJsonLd(base, {
+    path: `/p/${p.slug}`,
+    title: p.title,
+    brand: p.brand?.name ?? null,
+    mpn: p.mpn,
+    gtins: p.gtins,
+    category: p.category?.name ?? null,
+    images: image ? [image] : [],
+    offers: p.offers.map((o) => ({
+      price: o.price,
+      total: o.total,
+      shippingCost: o.shippingCost,
+      availability: o.availability,
+      condition: o.condition,
+      url: o.url,
+      // A marketplace offer names its seller; when it does not, we do not name the marketplace operator.
+      seller: o.sellerType === 'marketplace' ? o.sellerName : o.shopName,
+      stale: o.stale,
+    })),
+  });
+  return [...(product ? [product] : []), breadcrumbList(base, crumbs(p))];
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {

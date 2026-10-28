@@ -77,7 +77,8 @@ export interface ProductLdOffer {
   condition: 'new' | 'refurbished' | 'used';
   /** The shop's product page. */
   url: string;
-  seller: string;
+  /** The shop, or the marketplace seller; null when a marketplace offer does not name its seller. */
+  seller: string | null;
   stale: boolean;
 }
 
@@ -92,11 +93,12 @@ export interface ProductLdInput {
   offers: ProductLdOffer[];
 }
 
-const AVAILABILITY: Record<ProductLdOffer['availability'], string> = {
+/** Unknown availability is left out: we never state what we did not observe. */
+const AVAILABILITY: Record<ProductLdOffer['availability'], string | null> = {
   in_stock: 'https://schema.org/InStock',
   out_of_stock: 'https://schema.org/OutOfStock',
   preorder: 'https://schema.org/PreOrder',
-  unknown: 'https://schema.org/LimitedAvailability',
+  unknown: null,
 };
 const CONDITION: Record<ProductLdOffer['condition'], string> = {
   new: 'https://schema.org/NewCondition',
@@ -124,23 +126,28 @@ const money = (s: string) => {
 
 /**
  * Product page (variant) JSON-LD: brand, GTIN/MPN, licensed images, and the live offers as one
- * AggregateOffer (low/high of in-stock item prices, offer count) with up to 10 Offers carrying
- * seller, availability, condition and the known delivery cost. `priceValidUntil` is omitted: our
- * prices are observations, not promises. Stale offers are left out.
+ * AggregateOffer with up to 10 Offers carrying seller, availability, condition and the known
+ * delivery cost. The offers described are the in-stock ones when there are any, otherwise every
+ * live offer (out of stock, pre-order, unknown), so the low/high prices, the offer count and the
+ * listed offers always describe the same set. `priceValidUntil` is omitted: our prices are
+ * observations, not promises. Stale offers are left out; without a live offer there is no Product
+ * markup at all (null), because Google requires offers on it (and such pages are not indexable).
  */
 export function productJsonLd(base: string, p: ProductLdInput) {
   const url = absoluteUrl(base, p.path);
-  const live = p.offers.filter((o) => !o.stale).sort((a, b) => cents(a.total) - cents(b.total));
-  const priced = live.filter((o) => o.availability === 'in_stock');
+  const live = p.offers.filter((o) => !o.stale && !Number.isNaN(cents(o.price))).sort((a, b) => cents(a.total) - cents(b.total));
+  const inStock = live.filter((o) => o.availability === 'in_stock');
+  const described = inStock.length ? inStock : live;
+  if (described.length === 0) return null;
   const gtin = p.gtins.map(gtinProperty).find((g) => Object.keys(g).length) ?? {};
-  const offers = live.slice(0, 10).map((o) => ({
+  const offers = described.slice(0, 10).map((o) => ({
     '@type': 'Offer',
     price: money(o.price),
     priceCurrency: 'RON',
-    availability: AVAILABILITY[o.availability],
+    ...(AVAILABILITY[o.availability] ? { availability: AVAILABILITY[o.availability] } : {}),
     itemCondition: CONDITION[o.condition],
     url: o.url,
-    seller: { '@type': 'Organization', name: o.seller },
+    ...(o.seller ? { seller: { '@type': 'Organization', name: o.seller } } : {}),
     ...(o.shippingCost !== null
       ? {
           shippingDetails: {
@@ -151,7 +158,7 @@ export function productJsonLd(base: string, p: ProductLdInput) {
         }
       : {}),
   }));
-  const prices = priced.map((o) => cents(o.price)).filter((c) => !Number.isNaN(c));
+  const prices = described.map((o) => cents(o.price));
   const fmt = (c: number) => `${Math.floor(c / 100)}.${String(c % 100).padStart(2, '0')}`;
   return {
     '@context': CTX,
@@ -164,18 +171,14 @@ export function productJsonLd(base: string, p: ProductLdInput) {
     ...gtin,
     ...(p.category ? { category: p.category } : {}),
     ...(p.images.length ? { image: p.images.map((i) => absoluteUrl(base, i)) } : {}),
-    ...(prices.length
-      ? {
-          offers: {
-            '@type': 'AggregateOffer',
-            priceCurrency: 'RON',
-            lowPrice: fmt(Math.min(...prices)),
-            highPrice: fmt(Math.max(...prices)),
-            offerCount: live.length,
-            offers,
-          },
-        }
-      : {}),
+    offers: {
+      '@type': 'AggregateOffer',
+      priceCurrency: 'RON',
+      lowPrice: fmt(Math.min(...prices)),
+      highPrice: fmt(Math.max(...prices)),
+      offerCount: described.length,
+      offers,
+    },
   };
 }
 
@@ -202,6 +205,7 @@ export function validateStructuredData(input: unknown): string[] {
         if (d[k] !== undefined && !new RegExp(`^\\d{${k.slice(4)}}$`).test(String(d[k]))) issues.push(`Product: ${k} must have ${k.slice(4)} digits`);
       }
       if (d.image !== undefined && !(Array.isArray(d.image) && d.image.every(isAbs))) issues.push('Product: image must be absolute URLs');
+      if (d.offers === undefined && d.review === undefined && d.aggregateRating === undefined) issues.push('Product: offers, review or aggregateRating required');
       if (d.offers !== undefined) {
         const a = d.offers as Json;
         if (a['@type'] !== 'AggregateOffer') issues.push('Product: offers must be an AggregateOffer');
@@ -214,10 +218,10 @@ export function validateStructuredData(input: unknown): string[] {
         for (const o of offers ?? []) {
           if (o['@type'] !== 'Offer') issues.push('Offer: wrong @type');
           if (!isMoney(o.price) || o.priceCurrency !== 'RON') issues.push('Offer: price/priceCurrency');
-          if (typeof o.availability !== 'string' || !o.availability.startsWith('https://schema.org/')) issues.push('Offer: availability');
+          if (o.availability !== undefined && (typeof o.availability !== 'string' || !o.availability.startsWith('https://schema.org/'))) issues.push('Offer: availability');
           if (typeof o.itemCondition !== 'string' || !o.itemCondition.startsWith('https://schema.org/')) issues.push('Offer: itemCondition');
           if (!isAbs(o.url)) issues.push('Offer: url must be absolute');
-          if (typeof (o.seller as Json | undefined)?.name !== 'string') issues.push('Offer: seller name missing');
+          if (o.seller !== undefined && typeof (o.seller as Json).name !== 'string') issues.push('Offer: seller without a name');
           if (o.priceValidUntil !== undefined) issues.push('Offer: priceValidUntil must be omitted');
           const ship = o.shippingDetails as Json | undefined;
           if (ship && (!isMoney((ship.shippingRate as Json)?.value) || (ship.shippingDestination as Json)?.addressCountry !== 'RO')) issues.push('Offer: shippingDetails');

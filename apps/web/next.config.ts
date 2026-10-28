@@ -76,6 +76,12 @@ const nextConfig: NextConfig = {
   agentRules: false,
   transpilePackages: ['@pretoscop/config', '@pretoscop/core', '@pretoscop/db', '@pretoscop/icecat', '@pretoscop/mailer', '@pretoscop/notify', '@pretoscop/report', '@pretoscop/search', '@pretoscop/storage'],
   serverExternalPackages: ['pg', '@aws-sdk/client-s3'],
+  // What prerendered pages bake in (root metadata: robots and absolute URLs), inlined at build time;
+  // src/instrumentation.ts compares them with the running server's environment (M16).
+  env: {
+    PRETOSCOP_BUILD_SITE_INDEXABLE: process.env.SITE_INDEXABLE ?? 'false',
+    PRETOSCOP_BUILD_PUBLIC_BASE_URL: process.env.PUBLIC_BASE_URL ?? 'http://localhost:3000',
+  },
   async redirects() {
     // `/c` alone has no page: the category index lives at /categorii.
     return [{ source: '/c', destination: '/categorii', permanent: true }];

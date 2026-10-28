@@ -16,7 +16,7 @@ describe('robots.txt (M16)', () => {
     }
   });
 
-  it('opens the site to search engines except click-outs, admin, APIs and search results', () => {
+  it('opens the site to search engines except click-outs, admin and APIs (search pages carry noindex instead)', () => {
     const txt = robotsTxt({ indexable: true, baseUrl: 'https://pretoscop.ro/' });
     const star = txt.slice(txt.indexOf('User-agent: *'));
     for (const p of DISALLOWED_PATHS) expect(star).toContain(`Disallow: ${p}\n`);
@@ -24,10 +24,10 @@ describe('robots.txt (M16)', () => {
     expect(txt).toContain('Sitemap: https://pretoscop.ro/sitemap.xml');
     expect(txt).not.toContain('Disallow: /p/');
     for (const agent of ['Googlebot', 'Bingbot', 'DuckDuckBot', 'YandexBot', 'Applebot']) {
-      for (const path of ['/', '/p/televizor-samsung-55-12', '/c/tv-audio/televizoare', '/b/samsung', '/magazin/emag', '/reduceri', '/rapoarte/black-friday-2026', '/sitemaps/products-1.xml', '/_next/static/chunks/a.js']) {
+      for (const path of ['/', '/p/televizor-samsung-55-12', '/c/tv-audio/televizoare', '/b/samsung', '/magazin/emag', '/reduceri', '/rapoarte/black-friday-2026', '/sitemaps/products-1.xml', '/_next/static/chunks/a.js', '/cauta?q=televizor']) {
         expect(allowed(txt, agent, path), `${agent} ${path}`).toBe(true);
       }
-      for (const path of ['/out/123?p=offers_table', '/admin', '/admin/produse', '/api/suggest?q=tv', '/cauta?q=televizor']) {
+      for (const path of ['/out/123?p=offers_table', '/admin', '/admin/produse', '/api/suggest?q=tv']) {
         expect(allowed(txt, agent, path), `${agent} ${path}`).toBe(false);
       }
     }

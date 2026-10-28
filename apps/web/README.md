@@ -96,15 +96,18 @@ Next.js 16 (App Router): public site, admin, API routes and click-out. Romanian 
 
 - **Closed until launch**: `SITE_INDEXABLE=false` (prototype, staging) makes every page `noindex, nofollow` (root layout
   and `robotsFor`) and `/robots.txt` a plain `User-agent: *` / `Disallow: /`. `SITE_INDEXABLE=true` (launch only) lets each
-  page decide with `robotsFor(indexable)`: indexable pages `index, follow`, the others `noindex, follow`. Both are read at
-  request time, so one build serves staging and production.
+  page decide with `robotsFor(indexable)`: indexable pages `index, follow`, the others `noindex, follow`. Pages rendered
+  per request or by ISR read both values at request time, but pages prerendered by `next build` (trust and legal pages,
+  the home page until it revalidates) bake in the build's `SITE_INDEXABLE` and `PUBLIC_BASE_URL` (robots, canonical,
+  Open Graph URLs): **build with the target environment's values**, like the `NEXT_PUBLIC_*` ones. `src/instrumentation.ts`
+  compares the build's values with the server's at start and stops a staging or production server on a mismatch.
 - **Index policy** (docs/03 §6.6): one function, `productIndexDecision` / `isProductIndexable` in `@pretoscop/core`, used
   by the product page, the search documents (`indexable`), the ItemList markup and `sitemap.build`: active, not
   provisional, at least one live offer, and two live offers or 14 observed days. Search and facet pages (`/cauta`) are
   always `noindex, follow`; category and brand pages need one indexable product, brand × category pages three; shop pages
   need the shop to be covered; `/reduceri` needs a verified drop. 404s and redirects are never indexed.
 - **robots.txt** (`src/lib/robots.ts`, pure, tested with our own RFC 9309 parser): search engines everywhere except
-  `/out/`, `/admin`, `/api/`, `/cauta`; AI training, dataset and answer-engine crawlers refused site-wide (our list plus
+  `/out/`, `/admin`, `/api/` (`/cauta` stays crawlable so its `noindex, follow` is seen); AI training, dataset and answer-engine crawlers refused site-wide (our list plus
   `ICECAT_ROBOTS_DISALLOW_AGENTS` from `@pretoscop/icecat/attribution`, which the Open Icecat licence requires on pages with
   Icecat content); the TDM reservation is repeated in `/.well-known/tdmrep.json`, the `tdm-reservation` header and meta tag.
   Add a crawler to the list when a new AI crawler appears; never add a search engine.
@@ -118,18 +121,19 @@ Next.js 16 (App Router): public site, admin, API routes and click-out. Romanian 
   `gtin8/12/13/14`), MPN, licensed image, `AggregateOffer` over live offers (low/high of in-stock item prices, offer count)
   with up to 10 `Offer` (seller = shop or marketplace seller, availability, condition, known delivery as
   `shippingDetails`; never `priceValidUntil`: our prices are observations); `BreadcrumbList` on product and browse pages;
-  `ItemList` (indexable products only) on category, brand and deals pages; `Organization` and `WebSite` + `SearchAction`
+  `ItemList` on category and brand pages (indexable products only) and on /reduceri (the verified deals listed); `Organization` and `WebSite` + `SearchAction`
   on the home page. Variants are product pages with their own `AggregateOffer`; there are no family pages. The test
   validator (`validateStructuredData`) checks the properties Google requires; run Google's Rich Results Test by hand.
 - **Metadata**: titles `"{product} – prețuri de la {min} la {n} magazine | Pretoscop"`, category and brand titles with
   counts; canonical and `hreflang="ro-RO"` alternates on every page (absolute through `metadataBase`); a wrong product
   slug or a merged product is a permanent redirect (308) to the canonical URL; `pageOpenGraph()` keeps the static
   Open Graph image (`app/opengraph-image.tsx`) on pages that set their own Open Graph title.
-- **404s are server-rendered**: never call `notFound()` while a page renders; return the page's not-found content inside
+- **404s are server-rendered** on the prerendered (ISR) routes: never call `notFound()` while such a page renders; return the page's not-found content inside
   `NotFoundResponse` (`src/components/http/not-found-status.tsx`), which raises `notFound()` inside a Suspense boundary
   (status 404, `noindex`) and keeps the message in the HTML (`pageOrNotFound()` turns a loader's `notFound()` into
   `null`). A plain `notFound()` during render makes Next.js send an empty `<html id="__next_error__">` that only
-  JavaScript fills. Use `forMetadata()` in `generateMetadata` (404 and redirect signals → `unresolvedMetadata()`).
+  JavaScript fills. The 404 status comes only from prerendering: on a dynamic route (and under `next dev`) keep a plain
+  `notFound()`. Use `forMetadata()` in `generateMetadata` (404 and redirect signals → `unresolvedMetadata()`).
 - **Performance budget** (docs/03 §7.3): LCP < 2.5 s on a throttled phone, checked by `e2e/seo.spec.ts` (DevTools
   throttling: 4× CPU, 150 ms RTT, 1.6 Mbit/s). JavaScript: the shared shell is ~150 kB compressed (React 19 + Next.js 16),
   so the product page is held to a budget over the shell (< 20 kB of its own): uPlot loads when the chart nears the

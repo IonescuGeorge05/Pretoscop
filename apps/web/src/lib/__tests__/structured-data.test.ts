@@ -41,17 +41,17 @@ const FIXTURES: Array<[string, ProductLdInput]> = [
   ['several shops, sorted, low/high from item prices', product({ offers: [offer({ price: '2249.99', total: '2249.99', shippingCost: '0.00' }), offer({ price: '2179.00', total: '2179.00', shippingCost: null, seller: 'IT Galaxy', url: 'https://www.itgalaxy.ro/x' }), offer()] })],
   ['marketplace seller named as seller', product({ offers: [offer({ seller: 'Gadget Store SRL' })] })],
   ['refurbished and used conditions', product({ offers: [offer({ condition: 'refurbished' }), offer({ condition: 'used', price: '1500.00', total: '1500.00' })] })],
-  ['out-of-stock offer listed, prices from in-stock only', product({ offers: [offer(), offer({ availability: 'out_of_stock', price: '1999.00', total: '1999.00' })] })],
+  ['out-of-stock offer left out while one is in stock', product({ offers: [offer(), offer({ availability: 'out_of_stock', price: '1999.00', total: '1999.00' })] })],
   ['stale offers left out', product({ offers: [offer(), offer({ stale: true, price: '999.00', total: '999.00' })] })],
   ['no brand, no MPN, no GTIN', product({ brand: null, mpn: null, gtins: [] })],
   ['UPC (GTIN-12) and licensed image', product({ gtins: ['00012345678905'], images: ['/media/images/p/12_800.jpg'] })],
   ['more than ten offers capped at ten', product({ offers: Array.from({ length: 14 }, (_, i) => offer({ price: `${2000 + i}.00`, total: `${2000 + i}.00`, url: `https://shop${i}.ro/p` })) })],
-  ['pre-order only: no AggregateOffer (no in-stock price)', product({ offers: [offer({ availability: 'preorder' })] })],
+  ['pre-order only: the AggregateOffer describes it as PreOrder', product({ offers: [offer({ availability: 'preorder' })] })],
 ];
 
 describe('productJsonLd (10 fixtures)', () => {
   it.each(FIXTURES)('%s: valid', (_name, input) => {
-    const ld = productJsonLd(BASE, input);
+    const ld = productJsonLd(BASE, input)!;
     expect(validateStructuredData(ld)).toEqual([]);
   });
 
@@ -62,11 +62,33 @@ describe('productJsonLd (10 fixtures)', () => {
     expect(ld.offers.offers[1]!.shippingDetails).toBeUndefined();
   });
 
-  it('omits stale offers, caps at ten, and has no offers without an in-stock price', () => {
-    expect((productJsonLd(BASE, FIXTURES[5]![1]) as unknown as { offers: { offerCount: number; lowPrice: string } }).offers).toMatchObject({ offerCount: 1, lowPrice: '2149.00' });
-    expect((productJsonLd(BASE, FIXTURES[8]![1]) as unknown as { offers: { offers: unknown[]; offerCount: number } }).offers).toMatchObject({ offerCount: 14 });
-    expect((productJsonLd(BASE, FIXTURES[8]![1]) as unknown as { offers: { offers: unknown[] } }).offers.offers).toHaveLength(10);
-    expect('offers' in productJsonLd(BASE, FIXTURES[9]![1])).toBe(false);
+  type Agg = { offers: { lowPrice: string; highPrice: string; offerCount: number; offers: Array<{ price: string; availability?: string; seller?: { name: string } }> } };
+  const agg = (input: ProductLdInput) => (productJsonLd(BASE, input) as unknown as Agg).offers;
+
+  it('omits stale offers, caps at ten, and describes one set: in-stock offers when there are any', () => {
+    // An in-stock offer at 2149 and an out-of-stock one at 1999: only the in-stock one is described.
+    expect(agg(FIXTURES[4]![1])).toMatchObject({ offerCount: 1, lowPrice: '2149.00', highPrice: '2149.00' });
+    expect(agg(FIXTURES[4]![1]).offers.map((o) => o.price)).toEqual(['2149.00']);
+    expect(agg(FIXTURES[5]![1])).toMatchObject({ offerCount: 1, lowPrice: '2149.00' });
+    expect(agg(FIXTURES[8]![1])).toMatchObject({ offerCount: 14 });
+    expect(agg(FIXTURES[8]![1]).offers).toHaveLength(10);
+    expect(agg(FIXTURES[9]![1])).toMatchObject({ offerCount: 1, offers: [{ availability: 'https://schema.org/PreOrder' }] });
+  });
+
+  it('without an in-stock offer, every live offer is described; without a live offer there is no Product', () => {
+    const outOfStock = product({ offers: [offer({ availability: 'out_of_stock', price: '1999.00', total: '1999.00' }), offer({ availability: 'out_of_stock' })] });
+    expect(validateStructuredData(productJsonLd(BASE, outOfStock))).toEqual([]);
+    expect(agg(outOfStock)).toMatchObject({ offerCount: 2, lowPrice: '1999.00', highPrice: '2149.00' });
+    expect(agg(outOfStock).offers.every((o) => o.availability === 'https://schema.org/OutOfStock')).toBe(true);
+    expect(productJsonLd(BASE, product({ offers: [offer({ stale: true })] }))).toBeNull();
+    expect(productJsonLd(BASE, product({ offers: [] }))).toBeNull();
+  });
+
+  it('states only what we observed: no availability when unknown, no seller when a marketplace offer names none', () => {
+    const o = agg(product({ offers: [offer({ availability: 'unknown', seller: null })] })).offers[0]!;
+    expect(o.availability).toBeUndefined();
+    expect(o.seller).toBeUndefined();
+    expect(validateStructuredData(productJsonLd(BASE, product({ offers: [offer({ availability: 'unknown', seller: null })] })))).toEqual([]);
   });
 
   it('uses the most specific GTIN property and absolute URLs', () => {
@@ -75,6 +97,7 @@ describe('productJsonLd (10 fixtures)', () => {
     expect(gtinProperty('00000040170725')).toEqual({ gtin8: '40170725' });
     expect(gtinProperty('18806095530000')).toEqual({ gtin14: '18806095530000' });
     const ld = productJsonLd(BASE, FIXTURES[7]![1]) as unknown as { url: string; image: string[] };
+    expect(ld).not.toBeNull();
     expect(ld.url).toBe('https://pretoscop.ro/p/telefon-samsung-galaxy-a57-12');
     expect(ld.image).toEqual(['https://pretoscop.ro/media/images/p/12_800.jpg']);
   });
@@ -84,6 +107,9 @@ describe('productJsonLd (10 fixtures)', () => {
     expect(validateStructuredData(bad)).toEqual(
       expect.arrayContaining(['AggregateOffer: priceCurrency must be RON', 'AggregateOffer: lowPrice/highPrice must be prices with two decimals', 'AggregateOffer: offerCount must be a positive integer']),
     );
+    const noOffers: Record<string, unknown> = { ...productJsonLd(BASE, product())! };
+    delete noOffers.offers;
+    expect(validateStructuredData(noOffers)).toContain('Product: offers, review or aggregateRating required');
   });
 });
 

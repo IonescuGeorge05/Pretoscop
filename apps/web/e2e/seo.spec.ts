@@ -1,3 +1,7 @@
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { gzipSync } from 'node:zlib';
 import { devices, expect, test, type Browser, type Page } from '@playwright/test';
 import { validateSitemapXml } from '../../../packages/core/src/sitemap';
 import { validateStructuredData } from '../src/lib/structured-data';
@@ -148,19 +152,30 @@ test('with JavaScript the 404 stays the same page', async ({ page }) => {
   expect(errors).toEqual([]);
 });
 
+// Client chunks of the current build (apps/web/.next), by what they contain.
+const CHUNKS_DIR = fileURLToPath(new URL('../.next/static/chunks/', import.meta.url));
+function chunksContaining(marker: string): Array<{ name: string; gzip: number }> {
+  return readdirSync(CHUNKS_DIR)
+    .filter((n) => n.endsWith('.js'))
+    .map((name) => ({ name, body: readFileSync(join(CHUNKS_DIR, name)) }))
+    .filter((c) => c.body.includes(marker))
+    .map((c) => ({ name: c.name, gzip: gzipSync(c.body).length }));
+}
+
 /** Compressed bytes of every script a fresh phone visit downloads until the network is idle. */
-async function scriptBytes(browser: Browser, baseURL: string, path: string): Promise<{ bytes: number; files: number }> {
+async function scripts(browser: Browser, baseURL: string, path: string): Promise<Map<string, number>> {
   const ctx = await browser.newContext({ ...devices['Pixel 7'], baseURL, locale: 'ro-RO' });
   const page = await ctx.newPage();
-  const sizes: Array<Promise<number>> = [];
+  const sizes: Array<Promise<[string, number]>> = [];
   page.on('response', (r) => {
-    if (r.request().resourceType() === 'script') sizes.push(r.request().sizes().then((s) => s.responseBodySize));
+    if (r.request().resourceType() === 'script') sizes.push(r.request().sizes().then((s) => [new URL(r.url()).pathname.split('/').pop()!, s.responseBodySize]));
   });
   await page.goto(path, { waitUntil: 'networkidle' });
-  const bytes = (await Promise.all(sizes)).reduce((a, b) => a + b, 0);
+  const out = new Map(await Promise.all(sizes));
   await ctx.close();
-  return { bytes, files: sizes.length };
+  return out;
 }
+const total = (m: Map<string, number>) => [...m.values()].reduce((a, b) => a + b, 0);
 
 test('performance budget on a product page: LCP under 2.5 s on a throttled phone; its own JavaScript small', async ({ page, request, browser }) => {
   test.skip(test.info().project.name !== 'mobile', 'Lighthouse-style mobile budget (docs/03 §7.3)');
@@ -172,13 +187,23 @@ test('performance budget on a product page: LCP under 2.5 s on a throttled phone
 
   // JavaScript: the product page against the site shell (a static page with only the layout's
   // client components). The shell alone is ~150 kB compressed (React 19 + Next.js 16 runtime, M12
-  // risk note), so docs/03's "JS < 150 kB on product pages" cannot hold literally; what the product
-  // page adds is kept small (uPlot loads only when the chart nears the viewport, the alert form only
-  // where alerts are enabled). Deviation recorded in the M16 report.
-  const shell = await scriptBytes(browser, baseURL, '/despre');
-  const product = await scriptBytes(browser, baseURL, path);
-  const kb = (n: number) => Math.round(n / 1024);
-  const own = product.bytes - shell.bytes;
+  // risk note), so docs/03's "JS < 150 kB on product pages" cannot hold literally (deviation in the
+  // M16 report); what the product page adds is held under 20 kB:
+  // - the chart library (uPlot) loads only when the chart nears the viewport; on a short page it is
+  //   on screen at once, so it is reported but not counted;
+  // - the alert form renders only while alerts are on (off in development, on at launch), so its
+  //   chunk is always counted.
+  const uplot = chunksContaining('u-cursor-x');
+  const alertForm = chunksContaining('currentBestBani');
+  expect(uplot.length, 'uPlot chunk in the build').toBeGreaterThan(0);
+  expect(alertForm.length, 'alert form chunk in the build').toBeGreaterThan(0);
+  const shell = await scripts(browser, baseURL, '/despre');
+  const product = await scripts(browser, baseURL, path);
+  const uplotLoaded = uplot.reduce((s, c) => s + (product.get(c.name) ?? 0), 0);
+  const alertMissing = alertForm.reduce((s, c) => s + (product.has(c.name) ? 0 : c.gzip), 0);
+  const own = total(product) - total(shell) - uplotLoaded + alertMissing;
+  // uPlot never loads on a page without a chart.
+  expect(uplot.some((c) => shell.has(c.name))).toBe(false);
 
   // LCP with Lighthouse's mobile conditions applied by DevTools (stricter than its simulation): 4×
   // CPU slowdown, 150 ms RTT, 1.6 Mbit/s down, 750 kbit/s up.
@@ -196,11 +221,13 @@ test('performance budget on a product page: LCP under 2.5 s on a throttled phone
         }).observe({ type: 'largest-contentful-paint', buffered: true });
       }),
   );
-  const summary = `LCP ${Math.round(lcp)} ms; JavaScript ${kb(product.bytes)} kB compressed (${product.files} files), shell ${kb(shell.bytes)} kB, product page's own ${kb(own)} kB`;
+  const kb = (n: number) => Math.round(n / 1024);
+  const summary =
+    `LCP ${Math.round(lcp)} ms; JavaScript: shell ${kb(total(shell))} kB, product page ${kb(total(product) - uplotLoaded + alertMissing)} kB ` +
+    `with the alert form and without uPlot (own ${kb(own)} kB), uPlot ${kb(uplot.reduce((s, c) => s + c.gzip, 0))} kB when the chart is reached` +
+    `${uplotLoaded ? ' (on screen at once on this page)' : ''}; compressed`;
   test.info().annotations.push({ type: 'budget', description: summary });
   console.log(`M16 budget: ${summary}`);
   expect(lcp).toBeLessThan(2500);
-  // What the product page adds to the shell (the chart library is not part of a phone's first load:
-  // the chart is below the fold).
   expect(own).toBeLessThan(20 * 1024);
 });

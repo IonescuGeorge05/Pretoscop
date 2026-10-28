@@ -4,9 +4,9 @@ import { ICECAT_ROBOTS_DISALLOW_AGENTS } from '@pretoscop/icecat/attribution';
  * robots.txt policy (M16, docs/03 §6.6, docs/07 §1.8). Pure, so it can be unit-tested.
  *
  * - While the site is not indexable (prototype, staging): everything is disallowed.
- * - Search engines may crawl everything except the click-out redirect, the admin, the APIs and the
- *   search results (`/cauta` is noindex and its facet links form an endless URL space; every product
- *   is reachable through category, brand and shop pages and the sitemaps).
+ * - Search engines may crawl everything except the click-out redirect, the admin and the APIs. Search
+ *   results (`/cauta`) stay crawlable on purpose: they are `noindex, follow` (docs/03 §6.6), which a
+ *   crawler can only see if it may fetch them; their facet, sort and page links are `nofollow`.
  * - AI crawlers (model training, datasets and AI answer engines) are refused site-wide: the terms
  *   (/termeni#baza-de-date) reserve text and data mining rights under art. 36² of Law 8/1996 and
  *   art. 4(3) of Directive (EU) 2019/790, and the Open Icecat licence forbids AI training and content
@@ -14,7 +14,7 @@ import { ICECAT_ROBOTS_DISALLOW_AGENTS } from '@pretoscop/icecat/attribution';
  *   refuse them everywhere). The same reservation is published machine-readably in
  *   /.well-known/tdmrep.json and the `tdm-reservation` header.
  */
-export const DISALLOWED_PATHS = ['/out/', '/admin', '/api/', '/cauta'] as const;
+export const DISALLOWED_PATHS = ['/out/', '/admin', '/api/'] as const;
 
 /** Product tokens of crawlers that collect content for AI models or AI answers (2026-10). */
 const OWN_AI_CRAWLERS = [

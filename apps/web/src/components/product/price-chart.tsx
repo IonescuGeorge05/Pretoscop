@@ -47,7 +47,8 @@ export function PriceChart({ productId }: { productId: number }) {
     const load = () => {
       if (done) return;
       done = true;
-      void import('uplot').then((m) => setUPlot(() => m.default));
+      // A chunk that fails to load (network) shows the same message as a failed history request.
+      import('uplot').then((m) => setUPlot(() => m.default), () => setError(true));
     };
     if (typeof IntersectionObserver === 'undefined') {
       load();

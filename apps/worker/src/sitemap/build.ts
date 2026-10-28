@@ -98,13 +98,14 @@ export async function buildSitemaps(deps: BuildSitemapsDeps): Promise<SitemapMan
   const shops = await coveredShops(deps.db);
   if (shops.length) await write('shops.xml', shops.map((s) => ({ loc: `${base}/magazin/${s.slug}`, lastmod: s.lastmod ? w3cDate(s.lastmod) : null })));
 
-  // Remove files of an earlier, larger build (e.g. a products-3.xml that is no longer needed).
+  // Publish the new manifest first, then remove files of an earlier, larger build (e.g. a
+  // products-3.xml no longer needed), so the live manifest never lists a deleted file.
+  const manifest: SitemapManifest = { generatedAt: new Date().toISOString(), baseUrl: base, files };
+  await deps.blob.put(`${SITEMAP_PREFIX}manifest.json`, JSON.stringify(manifest, null, 2), 'application/json');
   const keep = new Set(files.map((f) => `${SITEMAP_PREFIX}${f.name}`));
   for (const old of await deps.blob.list(SITEMAP_PREFIX)) {
     if (old.key.endsWith('.xml') && !keep.has(old.key)) await deps.blob.delete(old.key);
   }
-  const manifest: SitemapManifest = { generatedAt: new Date().toISOString(), baseUrl: base, files };
-  await deps.blob.put(`${SITEMAP_PREFIX}manifest.json`, JSON.stringify(manifest, null, 2), 'application/json');
   deps.log?.info({ files: files.length, products: files.filter((f) => f.name.startsWith('products-')).reduce((s, f) => s + f.urls, 0) }, 'sitemaps built');
   return manifest;
 }

@@ -42,13 +42,20 @@ openssl rand -base64 48   # → PGBACKREST_REPO1_CIPHER_PASS in .env.backup (als
 ```
 
 Fill in `.env`: `APP_ENV=prod`, `DEPLOY_ENV=prod`, `PUBLIC_BASE_URL=https://pretoscop.ro`,
-`IMAGE_REGISTRY=ghcr.io/OWNER`, R2 (`BLOB_DRIVER=s3`, `S3_ENDPOINT=https://<account>.r2.cloudflarestorage.com`,
-`S3_BUCKET=pretoscop-prod`, keys), Resend (`MAIL_DRIVER=resend`, `RESEND_API_KEY`, and `RESEND_WEBHOOK_SECRET` for M19 bounces), `ADMIN_EMAILS`,
-`OPS_ALERT_*`, the four heartbeat URLs (`infra/monitoring/README.md`), Plausible if wanted
-(`COMPOSE_PROFILES=analytics`, `PLAUSIBLE_DB_PASSWORD`, `PLAUSIBLE_SECRET_KEY_BASE`; register the two founders at
-`https://stats.pretoscop.ro`, then registration stays invite-only), `CRAWL_ENABLED` (true only when
-the recorder moves here; see §5), `BOT_EGRESS_IPS` (M17), and the Deployment section as documented.
+`IMAGE_REGISTRY=ghcr.io/OWNER`, R2 (`BLOB_DRIVER=s3`,
+`S3_ENDPOINT=https://<account>.r2.cloudflarestorage.com`, `S3_BUCKET=pretoscop-prod`, keys), Resend
+(`MAIL_DRIVER=resend`, `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`: B2), the sender identity printed in
+every email (`COMPANY_LEGAL_NAME`, `COMPANY_POSTAL_ADDRESS`: the SRL's legal name and full postal
+address, B4), `ADMIN_EMAILS`, `OPS_ALERT_*`, the four heartbeat URLs (`infra/monitoring/README.md`),
+Plausible if wanted (`COMPOSE_PROFILES=analytics`, `PLAUSIBLE_DB_PASSWORD`, `PLAUSIBLE_SECRET_KEY_BASE`;
+register the two founders at `https://stats.pretoscop.ro`, then registration stays invite-only),
+`CRAWL_ENABLED` (true only when the recorder moves here; see §5), `BOT_EGRESS_IPS` (M17), and the
+Deployment section as documented.
 `.env.backup`: the `pretoscop-backups` R2 bucket and its own token.
+
+With `APP_ENV=prod` the apps refuse to start (and `deploy.sh` stops at the migration step, before any
+replica is touched) while `COMPANY_LEGAL_NAME`/`COMPANY_POSTAL_ADDRESS` are the dev placeholders, or with
+`MAIL_DRIVER=resend` and no `RESEND_WEBHOOK_SECRET` (M19). Staging only logs a warning for these.
 
 `/srv/pretoscop/staging/.env`: the same file with `infra/env/staging.env.example` applied (own secrets,
 `CRAWL_ENABLED=false`, `MAIL_DRIVER=log`, `PG_ARCHIVE_MODE=off`, `BACKUPS_ENABLED=false`).

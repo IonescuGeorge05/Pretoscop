@@ -16,6 +16,9 @@ domain or accounts yet; see `docs/09-external-setup-checklist.md`).
 ## Legal
 
 - [ ] SRL registered (B4)
+- [ ] Sender identity in the production `.env`: `COMPANY_LEGAL_NAME` and `COMPANY_POSTAL_ADDRESS` of the SRL
+      (printed in every email), and the Resend bounce/complaint webhook `RESEND_WEBHOOK_SECRET` (B2):
+      production refuses to start without them (M19)
 - [ ] Terms, privacy, cookie policy, ranking page, money page, bot page live (M17)
 - [ ] Consent banner: equal Accept/Reject; no third-party request before a choice (M12/M17 e2e)
 - [ ] Alert consent flow tested, if alerts ship at launch (M19)

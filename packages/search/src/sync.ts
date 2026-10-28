@@ -9,10 +9,12 @@ import { BRAND_SETTINGS, CATEGORY_SETTINGS, PRODUCT_SETTINGS, type IndexNames } 
  * - `rebuildAll`: blue/green full rebuild (fill `<index>_next`, swap, drop the old one); nightly and
  *   whenever the document schema or the settings change;
  * - `syncChanged`: every minute, re-indexes products changed since the last watermark (products,
- *   offers, stats, merges, images, GTINs) and removes the ones no longer active;
+ *   offers, stats, merges, images, GTINs, offers that went past their shop's freshness SLO, and every
+ *   product of a shop whose status or SLO changed) and removes the ones no longer active;
  * - `indexProductIds`: the same for an explicit list (CLI, tests).
  * The watermark lives in the `<prefix>pretoscop_sync` index, next to the data it describes: an empty
- * Meilisearch (new server, lost volume) has no watermark and gets a full rebuild.
+ * Meilisearch (new server, lost volume) has no watermark and gets a full rebuild. Rebuilds and syncs
+ * of one index set never overlap (PostgreSQL advisory lock, `withIndexLock`).
  */
 
 /** Bump DOC_VERSION when `buildProductDocument` changes shape; settings changes are detected by hash. */
@@ -37,12 +39,18 @@ export interface SyncDeps {
 export interface SyncMeta {
   id: 'products';
   schema: string;
-  /** Incremented by every full rebuild; a sync that saw another generation does not move the watermark. */
+  /** Incremented by every full rebuild (diagnostics; writers are serialized by the index lock). */
   generation: number;
   /** Database time up to which changes are indexed (ISO). */
   watermark: string;
   last_full_at: string;
   documents: number;
+  /**
+   * State of every shop when the watermark was written (`status|freshness SLO hours`, by shop id):
+   * a shop that is paused, blocked or removed, or whose SLO changes, touches no product row, so the
+   * sync compares these and re-indexes that shop's products.
+   */
+  shops?: Record<string, string>;
 }
 
 const BATCH = 500;
@@ -266,11 +274,43 @@ async function rebuildSmallIndexes(deps: SyncDeps): Promise<{ categories: number
 // ---------------------------------------------------------------------------------------------
 // Entry points
 
-/** Blue/green rebuild of the products index (and the category and brand indexes). */
+/**
+ * One writer per index set at a time: the nightly rebuild, a rebuild started by the minute sync, the
+ * CLI and the sync itself would otherwise interleave (two rebuilds sharing `<index>_next`, or a sync
+ * writing an old watermark over a rebuild's). A transaction-scoped PostgreSQL advisory lock keyed on
+ * the products index name, so it holds across worker processes and is released if one dies. With
+ * `wait: false` the function is skipped (null) while another writer holds the lock.
+ */
+async function withIndexLock<T>(db: Db, names: IndexNames, wait: boolean, fn: () => Promise<T>): Promise<T | null> {
+  const key = `pretoscop.search:${names.products}`;
+  return db.transaction(async (tx) => {
+    if (wait) await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${key}))`);
+    else {
+      const r = await tx.execute<{ ok: boolean }>(sql`SELECT pg_try_advisory_xact_lock(hashtext(${key})) AS ok`);
+      if (!r.rows[0]?.ok) return null;
+    }
+    // The work itself runs on other pool connections; this transaction only holds the lock.
+    return fn();
+  });
+}
+
+/** `status|SLO hours` per shop id (see `SyncMeta.shops`). */
+async function shopStates(db: Db): Promise<Record<string, string>> {
+  const r = await db.execute<{ id: string; state: string }>(sql`
+    SELECT id::text, status || '|' || coalesce((crawl_policy->>'freshness_slo_hours')::int, 26)::text AS state FROM shops`);
+  return Object.fromEntries(r.rows.map((x) => [x.id, x.state]));
+}
+
+/** Blue/green rebuild of the products index (and the category and brand indexes). Waits for a running sync or rebuild. */
 export async function rebuildAll(deps: SyncDeps): Promise<{ documents: number; categories: number; brands: number; ms: number }> {
+  return (await withIndexLock(deps.db, deps.names, true, () => rebuildLocked(deps)))!;
+}
+
+async function rebuildLocked(deps: SyncDeps): Promise<{ documents: number; categories: number; brands: number; ms: number }> {
   const { db, meili, names, log } = deps;
   const started = Date.now();
   const startedAt = await dbNow(db);
+  const shops = await shopStates(db);
   const previous = await readMeta(meili, names);
   const next = `${names.products}_next`;
   await freshIndex(meili, next, PRODUCT_SETTINGS);
@@ -295,6 +335,7 @@ export async function rebuildAll(deps: SyncDeps): Promise<{ documents: number; c
     watermark: startedAt.toISOString(),
     last_full_at: new Date().toISOString(),
     documents,
+    shops,
   });
   const ms = Date.now() - started;
   log?.info({ documents, ...small, duration_ms: ms }, 'search index rebuilt');
@@ -321,11 +362,19 @@ export async function indexProductIds(deps: SyncDeps, ids: number[]): Promise<{ 
   return { indexed, removed };
 }
 
-/** Products touched since `since`: their row, an offer, the stats, a merge, an image or a GTIN changed. */
+/**
+ * Products touched since `since`: their row, an offer, the stats, a merge, an image or a GTIN changed,
+ * or one of their offers passed its shop's freshness SLO since then (it leaves the live offers, which
+ * changes the indexed price, offer count and shops without touching any row).
+ */
 export async function changedProductIds(db: Db, since: Date): Promise<number[]> {
   const s = since.toISOString();
   const res = await db.execute<{ id: string }>(sql`
     SELECT id::text FROM products WHERE updated_at > ${s}::timestamptz
+    UNION SELECT o.product_id::text FROM offers o JOIN shops sh ON sh.id = o.shop_id
+      WHERE o.product_id IS NOT NULL AND o.active
+        AND o.last_checked_at + make_interval(hours => coalesce((sh.crawl_policy->>'freshness_slo_hours')::int, 26)) > ${s}::timestamptz
+        AND o.last_checked_at + make_interval(hours => coalesce((sh.crawl_policy->>'freshness_slo_hours')::int, 26)) <= now()
     UNION SELECT product_id::text FROM offers WHERE updated_at > ${s}::timestamptz AND product_id IS NOT NULL
     UNION SELECT product_id::text FROM product_stats WHERE updated_at > ${s}::timestamptz
     UNION SELECT from_product_id::text FROM product_merges WHERE created_at > ${s}::timestamptz OR undone_at > ${s}::timestamptz
@@ -336,24 +385,47 @@ export async function changedProductIds(db: Db, since: Date): Promise<number[]> 
   return res.rows.map((r) => Number(r.id));
 }
 
+/** Products with an offer at one of these shops (their shop's state changed). */
+async function productsOfShops(db: Db, shopIds: number[]): Promise<number[]> {
+  if (shopIds.length === 0) return [];
+  const r = await db.execute<{ id: string }>(sql`
+    SELECT DISTINCT product_id::text AS id FROM offers WHERE shop_id = ANY(${sql.param(shopIds)}::bigint[]) AND product_id IS NOT NULL`);
+  return r.rows.map((x) => Number(x.id));
+}
+
+export type SyncOutcome = { mode: 'full' | 'incremental'; indexed: number; removed: number } | { mode: 'skipped'; indexed: 0; removed: 0 };
+
 /**
  * Incremental sync (every minute). Without a watermark or with an outdated schema, it rebuilds.
- * The watermark only moves when no full rebuild ran in between (generation check).
+ * Skipped while another writer (a rebuild, another sync) holds the index lock; the next run catches
+ * up from the unchanged watermark.
  */
-export async function syncChanged(deps: SyncDeps): Promise<{ mode: 'full' | 'incremental'; indexed: number; removed: number }> {
+export async function syncChanged(deps: SyncDeps): Promise<SyncOutcome> {
+  const out = await withIndexLock(deps.db, deps.names, false, () => syncLocked(deps));
+  return out ?? { mode: 'skipped', indexed: 0, removed: 0 };
+}
+
+async function syncLocked(deps: SyncDeps): Promise<SyncOutcome> {
   const { db, meili, names, log } = deps;
   const meta = await readMeta(meili, names);
   if (!meta || meta.schema !== SCHEMA_VERSION || !(await indexExists(meili, names.products))) {
     log?.info({ reason: meta ? 'schema changed' : 'no watermark' }, 'search sync: full rebuild');
-    const r = await rebuildAll(deps);
+    const r = await rebuildLocked(deps);
     return { mode: 'full', indexed: r.documents, removed: 0 };
   }
   const startedAt = await dbNow(db);
-  const ids = await changedProductIds(db, new Date(Date.parse(meta.watermark) - OVERLAP_MS));
+  const shops = await shopStates(db);
+  // Shops whose state changed since the last watermark (none on the first run after an upgrade).
+  const before = meta.shops;
+  const changedShops = before
+    ? [...new Set([...Object.keys(shops), ...Object.keys(before)])].filter((id) => shops[id] !== before[id]).map(Number)
+    : [];
+  const since = new Date(Date.parse(meta.watermark) - OVERLAP_MS);
+  const ids = [...new Set([...(await changedProductIds(db, since)), ...(await productsOfShops(db, changedShops))])];
   const r = await indexProductIds(deps, ids);
-  const now = await readMeta(meili, names);
-  if (now && now.generation === meta.generation) await writeMeta(meili, names, { ...now, watermark: startedAt.toISOString() });
-  if (ids.length) log?.info({ changed: ids.length, ...r }, 'search sync done');
+  // Only this writer runs while the lock is held, so the meta read above is still current.
+  await writeMeta(meili, names, { ...meta, watermark: startedAt.toISOString(), shops });
+  if (ids.length) log?.info({ changed: ids.length, shops_changed: changedShops.length, ...r }, 'search sync done');
   return { mode: 'incremental', ...r };
 }
 

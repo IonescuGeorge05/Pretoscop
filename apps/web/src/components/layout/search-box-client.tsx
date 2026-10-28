@@ -23,8 +23,9 @@ const emptyQuery = () => '';
 
 /**
  * Search form with autocomplete (M14). Without JavaScript it is a plain GET form to /cauta. With
- * JavaScript it is an ARIA 1.2 combobox: suggestions from /api/suggest after a short pause, arrow
- * keys move through them, Enter opens the highlighted one (or searches), Escape closes the list.
+ * JavaScript it is an ARIA 1.2 combobox: suggestions from /api/suggest after a short pause, grouped
+ * (products, categories, brands), arrow keys move through them, Enter opens the highlighted one (or
+ * searches), Escape or leaving the box closes the list. Focus stays in the input throughout.
  */
 export function SearchBoxClient({ className, defaultValue, placeholder, buttonLabel }: { className?: string; defaultValue?: string; placeholder: string; buttonLabel: string }) {
   const id = useId();
@@ -93,6 +94,9 @@ export function SearchBoxClient({ className, defaultValue, placeholder, buttonLa
   }
 
   const expanded = open && items.length > 0;
+  const groups = (['product', 'category', 'brand'] as const)
+    .map((kind) => ({ kind, entries: items.map((o, i) => ({ o, i })).filter((x) => x.o.kind === kind) }))
+    .filter((g) => g.entries.length > 0);
   return (
     <form ref={root} action="/cauta" method="get" role="search" className={cn('relative flex w-full', className)}>
       <label htmlFor={inputId} className="sr-only">
@@ -109,6 +113,12 @@ export function SearchBoxClient({ className, defaultValue, placeholder, buttonLa
         }}
         onKeyDown={onKeyDown}
         onFocus={() => items.length > 0 && setOpen(true)}
+        // Leaving the input (Tab to the button or beyond) closes the list; clicks on an option keep
+        // the focus here (mousedown is prevented), so they still land.
+        onBlur={() => {
+          setOpen(false);
+          setActive(-1);
+        }}
         role="combobox"
         aria-label={placeholder}
         aria-expanded={expanded}
@@ -132,17 +142,28 @@ export function SearchBoxClient({ className, defaultValue, placeholder, buttonLa
         hidden={!expanded}
         className="absolute left-0 right-0 top-12 z-40 max-h-[70vh] overflow-y-auto rounded-lg bg-white py-1 shadow-lg ring-1 ring-line"
       >
-        {items.map((o, i) => (
-          <div key={`${o.kind}-${o.href}`} id={`${listId}-${i}`} role="option" aria-selected={i === active} className={cn('text-sm', i === active && 'bg-brand-50')}>
-            {(i === 0 || items[i - 1]!.kind !== o.kind) && (
-              <span className="block px-3 pb-0.5 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted" aria-hidden>
-                {GROUP[o.kind]}
-              </span>
-            )}
-            <a href={o.href} tabIndex={-1} className="flex items-baseline justify-between gap-3 px-3 py-2 hover:bg-brand-50">
-              <span className="line-clamp-2 text-ink">{o.label}</span>
-              {o.detail && <span className="shrink-0 text-xs tabular text-muted">{o.detail}</span>}
-            </a>
+        {groups.map((g) => (
+          <div key={g.kind} role="group" aria-labelledby={`${listId}-g-${g.kind}`}>
+            <div id={`${listId}-g-${g.kind}`} role="presentation" className="px-3 pb-0.5 pt-2 text-[11px] font-semibold uppercase tracking-wide text-muted">
+              {GROUP[g.kind]}
+            </div>
+            {g.entries.map(({ o, i }) => (
+              // The option is the link itself (no interactive element inside an option); mousedown
+              // keeps the focus in the input, so the list does not close before the click lands.
+              <a
+                key={`${o.kind}-${o.href}`}
+                id={`${listId}-${i}`}
+                role="option"
+                aria-selected={i === active}
+                href={o.href}
+                tabIndex={-1}
+                onMouseDown={(e) => e.preventDefault()}
+                className={cn('flex items-baseline justify-between gap-3 px-3 py-2 text-sm hover:bg-brand-50', i === active && 'bg-brand-50')}
+              >
+                <span className="line-clamp-2 text-ink">{o.label}</span>
+                {o.detail && <span className="shrink-0 text-xs tabular text-muted">{o.detail}</span>}
+              </a>
+            ))}
           </div>
         ))}
       </div>

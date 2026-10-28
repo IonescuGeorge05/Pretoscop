@@ -101,6 +101,13 @@ export function jsonAfter(s: string, marker: string): unknown {
   }
 }
 
+/** "Homepage > TV si Electronice > Televizoare" → "TV si Electronice > Televizoare". */
+export function withoutHomeCrumb(path: string | undefined): string | undefined {
+  if (!path) return undefined;
+  const parts = path.split(' > ').filter((p, i) => !(i === 0 && /^(home(page)?|acas[aă]|prima pagin[aă]|carrefour|dedeman)$/i.test(p.trim())));
+  return parts.length > 0 ? parts.join(' > ') : undefined;
+}
+
 /** Parses JSON that shops sometimes serve slightly broken (raw newlines, trailing commas). */
 export function lenientJsonParse(text: string): unknown {
   try {
@@ -117,6 +124,26 @@ export function lenientJsonParse(text: string): unknown {
       return undefined;
     }
   }
+}
+
+const NAMED_ENTITIES: Record<string, string> = { quot: '"', amp: '&', apos: "'", lt: '<', gt: '>', nbsp: ' ' };
+
+/**
+ * Decodes the HTML entities some shops leave inside JSON-LD strings (forit writes `32&quot;`):
+ * a script's text is not HTML-decoded, so the literal entity would end up in the title.
+ */
+export function decodeEntities(text: string): string {
+  if (!text.includes('&')) return text;
+  return text.replace(/&(#x[0-9a-f]{1,6}|#\d{1,7}|[a-z]{2,6});/gi, (m, code: string) => {
+    const c = code.toLowerCase();
+    if (c.startsWith('#x')) return safeCodePoint(Number.parseInt(c.slice(2), 16)) ?? m;
+    if (c.startsWith('#')) return safeCodePoint(Number.parseInt(c.slice(1), 10)) ?? m;
+    return NAMED_ENTITIES[c] ?? m;
+  });
+}
+
+function safeCodePoint(n: number): string | undefined {
+  return Number.isInteger(n) && n > 0 && n <= 0x10ffff ? String.fromCodePoint(n) : undefined;
 }
 
 export function str(v: unknown): string | undefined {

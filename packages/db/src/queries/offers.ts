@@ -68,6 +68,8 @@ export interface RecordResult {
   gap: boolean;
   /** The identity hash changed: the offer must be (re)matched. */
   needsMatch: boolean;
+  /** The product the offer is matched to (M19: a price event re-rolls it up and evaluates its alerts). */
+  productId?: number | null;
 }
 
 type UpsertRow = {
@@ -241,7 +243,7 @@ export async function recordObservation(
       row.product_id === null ||
       (row.new_identity !== null && row.old_identity !== row.new_identity);
 
-    return { offerId, inserted: row.inserted, changed, eventKind, stale: false, gap, needsMatch };
+    return { offerId, inserted: row.inserted, changed, eventKind, stale: false, gap, needsMatch, productId: row.product_id === null ? null : Number(row.product_id) };
   });
 }
 

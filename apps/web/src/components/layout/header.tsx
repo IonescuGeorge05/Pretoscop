@@ -17,6 +17,9 @@ export function Header() {
           <Link href="/categorii" className="hidden hover:text-brand-700 sm:inline">
             {t('nav.categories')}
           </Link>
+          <Link href="/alerte" className="hover:text-brand-700">
+            {t('nav.alerts')}
+          </Link>
         </nav>
       </Container>
     </header>

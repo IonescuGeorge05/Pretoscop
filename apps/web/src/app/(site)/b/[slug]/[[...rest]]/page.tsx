@@ -52,7 +52,8 @@ const load = cache(async (slug: string, rest: string[]): Promise<BrandPage> => {
   const category = parts[0] ? (tree.bySlug.get(parts[0]) ?? notFound()) : null;
   const base = `/b/${brand.slug}${category ? `/${category.slug}` : ''}`;
   const href = (n: number) => (n > 1 ? `${base}/${n}` : base);
-  if (rest.length && page === 1 && /^\d+$/.test(rest.at(-1)!)) permanentRedirect(href(1));
+  // `/b/samsung/1` and `/b/samsung/0` → the canonical first page.
+  if (rest.length && page <= 1 && /^\d+$/.test(rest.at(-1)!)) permanentRedirect(href(1));
   const list = await listProducts(meili(), names(), {
     filter: [`brand_slug = ${q(brand.slug)}`, ...(category ? [`category_slugs = ${q(category.slug)}`] : [])],
     sort: ['popularity:desc', 'min_total_bani:asc'],

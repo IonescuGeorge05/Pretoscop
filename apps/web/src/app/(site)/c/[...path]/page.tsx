@@ -11,7 +11,7 @@ import { JsonLd } from '@/components/seo/json-ld';
 import { Container } from '@/components/ui/container';
 import { categoryHref, getBrands, getCategoryTree, type CategoryNode } from '@/lib/catalog';
 import { serverEnv } from '@/lib/db';
-import { plural } from '@/lib/format';
+import { inSentence, plural } from '@/lib/format';
 import { meili, names, q } from '@/lib/search';
 import { robotsFor } from '@/lib/seo';
 import { breadcrumbList, itemList } from '@/lib/structured-data';
@@ -46,7 +46,7 @@ const load = cache(async (segments: string[]): Promise<CategoryPage> => {
     if (bySlug) permanentRedirect(categoryHref(bySlug, page));
     notFound();
   }
-  if (page === 1 && segments.length > node.path.split('/').length) permanentRedirect(categoryHref(node));
+  if (page <= 1 && segments.length > node.path.split('/').length) permanentRedirect(categoryHref(node));
   const list = await listProducts(meili(), names(), {
     filter: [`category_slugs = ${q(node.slug)}`],
     sort: ['popularity:desc', 'min_total_bani:asc'],
@@ -181,7 +181,7 @@ async function EmptyCategory({ node, roots }: { node: CategoryNode; roots: Categ
   const rootsWithProducts = roots.filter((r) => r.slug !== node.slug && (counts[r.slug] ?? 0) > 0);
   return (
     <div className="mt-4 max-w-2xl rounded-[var(--radius-card)] bg-surface p-5 ring-1 ring-line" data-testid="empty-category">
-      <p className="font-semibold text-ink">Încă nu avem prețuri pentru {node.name.toLowerCase()}.</p>
+      <p className="font-semibold text-ink">Încă nu avem prețuri pentru {inSentence(node.name)}.</p>
       <p className="mt-1 text-sm text-ink-soft">
         Adăugăm magazine și categorii treptat și afișăm doar prețuri pe care le-am verificat noi. Vezi{' '}
         <Link href="/magazine" className="text-brand-700 underline">

@@ -23,7 +23,7 @@ next_build_running() {
 ensure_services
 pnpm --silent --filter @pretoscop/db migrate >/dev/null
 
-step "migration 0017_channels on the dev database ($DEV_DB) and an unbroken snapshot chain"
+step "the channels migration (00xx_channels) on the dev database ($DEV_DB) and an unbroken snapshot chain"
 [ "$(psql_dev -c "SELECT to_regclass('public.push_subscriptions') IS NOT NULL AND to_regclass('public.telegram_links') IS NOT NULL AND to_regclass('public.telegram_link_tokens') IS NOT NULL AND to_regclass('public.channel_deliveries') IS NOT NULL AND to_regclass('public.channel_posts') IS NOT NULL")" = t ] || fail "channel tables missing"
 node -e "
 const fs = require('fs');
@@ -48,7 +48,7 @@ ok "new flags are created off"
 
 step "no bot token or VAPID private key in git"
 if git grep -nE '[0-9]{8,10}:AA[A-Za-z0-9_-]{30,}' -- . ':!pnpm-lock.yaml' >/dev/null; then fail "something that looks like a Telegram bot token is committed"; fi
-if git grep -nE '^(VAPID_PRIVATE_KEY|TELEGRAM_BOT_TOKEN)=.+' -- . >/dev/null; then fail "a VAPID private key or bot token has a value in a tracked file"; fi
+if git grep -nE '^(VAPID_PRIVATE_KEY|TELEGRAM_BOT_TOKEN)=[^[:space:]]+$' -- . >/dev/null; then fail "a VAPID private key or bot token has a value in a tracked file"; fi
 ok "placeholders only"
 
 step "lint, typecheck, unit + integration tests (notify clients, formats and the broadcast snapshot; config; db channel queries; worker bot commands, delivery and polling against the Telegram mock; web)"

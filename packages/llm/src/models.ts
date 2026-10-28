@@ -1,5 +1,5 @@
 /**
- * Models we call and their list prices (ADR-011, ADR-022). Costs are integers in nano-US-dollars
+ * Models we call and their list prices (ADR-011, ADR-024). Costs are integers in nano-US-dollars
  * (1 USD = 1e9 n$) so a ledger of many sub-cent calls sums exactly; prices are n$ per 1,000
  * tokens so the batch discount and cache multipliers stay integers too.
  *

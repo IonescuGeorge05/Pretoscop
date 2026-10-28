@@ -1,5 +1,5 @@
 /**
- * What may leave Pretoscop for the Anthropic API (CLAUDE.md, ADR-016, ADR-022). Prompts are built
+ * What may leave Pretoscop for the Anthropic API (CLAUDE.md, ADR-016, ADR-024). Prompts are built
  * only from these whitelisted fields of offers and catalogue products:
  *   - never Icecat content (`product_specs` / `product_images` rows with source 'icecat': licence
  *     forbids AI use and export) — inputs carrying Icecat data are refused;

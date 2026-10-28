@@ -1,7 +1,7 @@
 import { REJECT_AT, type PairScore } from './matching';
 
 /**
- * Gray-zone policy with LLM verification (M22, docs/03 §6.3, ADR-022). Pure.
+ * Gray-zone policy with LLM verification (M22, docs/03 §6.3, ADR-024). Pure.
  *
  * The rules (M07) leave an offer in the review queue when its best candidate scores between 0.30
  * and 0.97 without a hard conflict. The LLM checks each such viable candidate; then:

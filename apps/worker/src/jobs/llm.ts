@@ -6,7 +6,7 @@ import { defineJob } from './types';
 export const LLM_MATCH = 'llm.match';
 
 /**
- * LLM verification of the matching gray zone (M22, ADR-022), every 15 minutes: collect ended
+ * LLM verification of the matching gray zone (M22, ADR-024), every 15 minutes: collect ended
  * batches, decide what is answered, send the rest as one Message Batch within the monthly cap.
  * Runs only with ANTHROPIC_API_KEY (setup A9) and the flag `llm.matching.enabled` (off). Switching
  * the flag off is the kill switch: batches in flight are canceled (unprocessed requests are not

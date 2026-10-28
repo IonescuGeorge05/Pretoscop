@@ -1,4 +1,4 @@
-// Anthropic client wrapper of Pretoscop (M22, ADR-011, ADR-022): versioned prompts, Message
+// Anthropic client wrapper of Pretoscop (M22, ADR-011, ADR-024): versioned prompts, Message
 // Batches with the prompt prefix cached for an hour, a cost ledger and a hard monthly cap.
 export { budgetStatusOf, type BudgetStatus, LlmBudget, LlmBudgetExceededError, monthStartBucharest, WARN_RATIO } from './budget';
 export {

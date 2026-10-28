@@ -186,7 +186,7 @@ export const EnvSchema = z
     OPS_HEARTBEAT_URL: optionalString,
     DUMP_HEARTBEAT_URL: optionalString,
 
-    // LLM (M22, ADR-011, ADR-022). Without a key nothing is sent; the job also needs the flag
+    // LLM (M22, ADR-011, ADR-024). Without a key nothing is sent; the job also needs the flag
     // `llm.matching.enabled` (off). The cap covers spend plus calls in flight (hard stop at 100 %).
     ANTHROPIC_API_KEY: optionalString,
     // Only for local stand-ins of the API (tests, `--mock` runs); unset in every real environment.

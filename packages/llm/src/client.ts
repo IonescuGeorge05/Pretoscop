@@ -119,7 +119,7 @@ export function classifyFailure(e: unknown): { kind: FailureKind; status: number
 }
 
 /**
- * Anthropic client of Pretoscop (M22, ADR-011, ADR-022). Every call goes through the ledger:
+ * Anthropic client of Pretoscop (M22, ADR-011, ADR-024). Every call goes through the ledger:
  * reserve the worst case under the monthly cap → send → settle at the billed cost. Synchronous calls
  * use the Messages API; bulk work uses Message Batches (half price, prompt prefix cached for an hour).
  * The SDK's own retries are off: each retry here reserves again, so retries cannot overrun the cap.

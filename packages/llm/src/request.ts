@@ -6,7 +6,7 @@ import { InvalidOutputError, type PromptDef } from './prompts/types';
 /** Body of one Messages API request (also one Message Batch item). */
 export type MessageParams = Anthropic.MessageCreateParamsNonStreaming;
 
-/** Model, effort and output budget of one kind of call (ADR-022 model routing). */
+/** Model, effort and output budget of one kind of call (ADR-024 model routing). */
 export interface Route {
   model: string;
   effort: 'low' | 'medium' | 'high';

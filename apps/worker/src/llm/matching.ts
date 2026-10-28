@@ -43,7 +43,7 @@ import {
 import type { LlmSettings } from './factory';
 
 /**
- * LLM verification of the matching gray zone (M22, ADR-022), as one idempotent pass:
+ * LLM verification of the matching gray zone (M22, ADR-024), as one idempotent pass:
  *   1. collect: ended Message Batches are read; every answer is stored (`llm_results`) and its
  *      ledger row settled;
  *   2. decide: each review-queue item whose candidates all have answers gets the policy's verdict

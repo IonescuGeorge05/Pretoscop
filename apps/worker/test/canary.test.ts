@@ -1,11 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { MockAgent } from 'undici';
 import { getEnv } from '@pretoscop/config/env';
 import { createLogger } from '@pretoscop/config/logger';
 import type { RawOffer } from '@pretoscop/core';
 import { setFlag, sql } from '@pretoscop/db';
 import { createTestDatabase, type TestDatabase } from '@pretoscop/db/testing';
+import { createFetcher } from '@pretoscop/fetch';
+import { PgDomainStateStore } from '../src/fetch/pg-state';
+import { createPolicyResolver } from '../src/fetch/policy';
 import { CANARY_FLAG, evaluateDrift, fieldStats, isoWeekKey, runExtractorCanary, selectCanaryTargets } from '../src/ops/canary';
 import type { FetchLike } from '../src/recorder/types';
 
@@ -163,7 +167,8 @@ describe('extractor canary', () => {
     await setFlag(t.db, CANARY_FLAG, true);
     pages[LISTING_URL] = 'blocked';
     const summary = await runExtractorCanary(deps(), { runKey: '2026-W51' });
-    expect(summary).toMatchObject({ checked: 1, failed: 1, alerts: 0 });
+    expect(summary).toMatchObject({ checked: 1, failed: 1, alerts: 1 });
+    expect(alert).toHaveBeenCalledWith('Extractor canary blocked: canary-emag', expect.objectContaining({ url: LISTING_URL, status: 403 }));
     expect(requested).toEqual([LISTING_URL]);
     const row = (await t.db.execute<{ status: string; detail: string; http_status: number }>(sql`SELECT status, detail, http_status FROM extractor_canaries WHERE run_key = '2026-W51'`)).rows[0];
     expect(row).toEqual({ status: 'fetch_failed', detail: 'blocked: http_403', http_status: 403 });
@@ -176,5 +181,75 @@ describe('extractor canary', () => {
     await setFlag(t.db, 'crawl.enabled', true);
     expect(summary).toMatchObject({ ran: true, shops: 0, checked: 0 });
     expect(requested).toEqual([]);
+  });
+});
+
+describe('extractor canary through the real polite fetcher (no network: undici MockAgent)', () => {
+  let agent: MockAgent;
+  let sent: Array<{ url: string; ua: string }>;
+  const realDeps = () => {
+    const fetcher = createFetcher({
+      dispatcher: agent,
+      stateStore: new PgDomainStateStore(t.db),
+      policyFor: createPolicyResolver(t.db, 0),
+      crawlEnabled: true,
+      retry: { maxRetries: 0 },
+      sleep: async () => undefined,
+      signer: null,
+    });
+    return { db: t.db, env, fetcher, alert, log, now: () => new Date('2026-10-28T03:30:00Z') };
+  };
+  const answer = (body: string) => (o: { origin?: unknown; path: string; headers?: unknown }) => {
+    sent.push({ url: `https://www.emag.ro${o.path}`, ua: String((o.headers as Record<string, string>)['user-agent'] ?? '') });
+    return body;
+  };
+
+  beforeEach(async () => {
+    sent = [];
+    agent = new MockAgent();
+    agent.disableNetConnect();
+    await setFlag(t.db, CANARY_FLAG, true);
+    await t.db.execute(sql`DELETE FROM fetch_domain_state`);
+    await t.db.execute(sql`DELETE FROM fetch_robots_cache`);
+    await t.db.execute(sql`DELETE FROM fetch_domain_daily`);
+  });
+
+  afterEach(async () => {
+    await agent.close();
+  });
+
+  it('reads robots.txt first, identifies itself as PretoscopBot and parses the live pages', async () => {
+    const shop = agent.get('https://www.emag.ro');
+    shop.intercept({ path: '/robots.txt' }).reply(200, answer(fixture('emag/robots_2026-10-27.txt')), { headers: { 'content-type': 'text/plain' } });
+    shop.intercept({ path: new URL(LISTING_URL).pathname }).reply(200, answer(fixture('emag/listing_2026-10-27.html')), { headers: { 'content-type': 'text/html' } });
+    shop.intercept({ path: new URL(PRODUCT_URL).pathname }).reply(200, answer(fixture('emag/product_2026-10-27.html')), { headers: { 'content-type': 'text/html' } });
+
+    const summary = await runExtractorCanary(realDeps(), { runKey: 'real-1' });
+    expect(summary).toMatchObject({ ran: true, shops: 1, checked: 2, ok: 2, failed: 0 });
+    expect(sent.map((s) => s.url)).toEqual(['https://www.emag.ro/robots.txt', LISTING_URL, PRODUCT_URL]);
+    for (const s of sent) expect(s.ua).toMatch(/^Mozilla\/5\.0 \(compatible; PretoscopBot\/1\.0; \+https:\/\//);
+  });
+
+  it('stops at a block and leaves the host paused for every other job', async () => {
+    const shop = agent.get('https://www.emag.ro');
+    shop.intercept({ path: '/robots.txt' }).reply(200, answer(fixture('emag/robots_2026-10-27.txt')), { headers: { 'content-type': 'text/plain' } });
+    shop.intercept({ path: new URL(LISTING_URL).pathname }).reply(403, answer('<html><body>Access denied</body></html>'), { headers: { 'content-type': 'text/html' } });
+
+    const summary = await runExtractorCanary(realDeps(), { runKey: 'real-2' });
+    expect(summary).toMatchObject({ checked: 1, failed: 1 });
+    expect(sent.map((s) => s.url)).toEqual(['https://www.emag.ro/robots.txt', LISTING_URL]);
+    const pause = (await t.db.execute<{ paused: boolean }>(sql`SELECT paused_until > now() AS paused FROM fetch_domain_state WHERE host = 'www.emag.ro'`)).rows[0];
+    expect(pause?.paused).toBe(true);
+
+    // Next week, while the pause lasts: nothing is sent at all.
+    sent.length = 0;
+    expect(await runExtractorCanary(realDeps(), { runKey: 'real-3' })).toMatchObject({ checked: 1, skipped: 1 });
+    expect(sent).toEqual([]);
+  });
+
+  it('sends nothing while CRAWL_ENABLED is false, even with its flag on', async () => {
+    const summary = await runExtractorCanary({ ...realDeps(), env: { ...env, CRAWL_ENABLED: false } }, { runKey: 'real-4' });
+    expect(summary).toMatchObject({ ran: true, shops: 0, checked: 0 });
+    expect(sent).toEqual([]);
   });
 });

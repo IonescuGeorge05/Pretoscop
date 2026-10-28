@@ -267,6 +267,8 @@ interface CheckedRow {
   fields: CanaryFieldStats | null;
   detail: string | null;
   stop: boolean;
+  /** The shop refused us (403, 429, challenge): the fetch layer paused the host. */
+  blocked?: boolean;
 }
 
 async function checkTarget(deps: CanaryDeps, t: CanaryTarget): Promise<CheckedRow> {
@@ -275,7 +277,9 @@ async function checkTarget(deps: CanaryDeps, t: CanaryTarget): Promise<CheckedRo
     // robots.txt changed, the host is paused, the budget is spent: nothing to compare, and no point going on (except robots).
     return { status: 'skipped', httpStatus: null, offers: 0, fields: null, detail: `skipped: ${res.skipped}`, stop: res.skipped !== 'robots_disallowed' };
   }
-  if (res.blocked) return { status: 'fetch_failed', httpStatus: res.status, offers: 0, fields: null, detail: `blocked: ${res.blockReason ?? 'blocked'}`, stop: true };
+  if (res.blocked) {
+    return { status: 'fetch_failed', httpStatus: res.status, offers: 0, fields: null, detail: `blocked: ${res.blockReason ?? 'blocked'}`, stop: true, blocked: true };
+  }
   if (!res.ok || res.body === null) {
     return { status: 'fetch_failed', httpStatus: res.status, offers: 0, fields: null, detail: `HTTP ${res.status}${res.error ? ` (${res.error})` : ''}`, stop: false };
   }
@@ -359,7 +363,7 @@ export async function runExtractorCanary(deps: CanaryDeps, opts: { shopSlugs?: s
   for (const entry of await selectCanaryTargets(deps.db, opts)) {
     const gate = await checkGates(deps.db, deps.env, { shop: entry.shop, source: entry.source });
     if (!gate.ok) {
-      deps.log.info({ shop: entry.shop.slug, reason: gate.reason }, 'canary: shop gated off');
+      deps.log.info({ shop: entry.shop.slug, run_id: runKey, reason: gate.reason }, 'canary: shop gated off');
       continue;
     }
     summary.shops++;
@@ -383,6 +387,11 @@ export async function runExtractorCanary(deps: CanaryDeps, opts: { shopSlugs?: s
       summary.checked++;
       if (r.status === 'fetch_failed') summary.failed++;
       if (r.status === 'skipped') summary.skipped++;
+      if (r.blocked) {
+        // Source runs treat an existing pause as already alerted, so the canary must say it caused one.
+        summary.alerts++;
+        await deps.alert(`Extractor canary blocked: ${t.shopSlug}`, { shop: t.shopSlug, url: t.url, run: runKey, detail: r.detail, status: r.httpStatus });
+      }
       if (r.stop) break;
     }
     const e = await evaluateShop(deps, entry.shop, runKey);
@@ -395,6 +404,6 @@ export async function runExtractorCanary(deps: CanaryDeps, opts: { shopSlugs?: s
     if (c.status === 'ok') summary.ok = Number(c.n);
     if (c.status === 'drift') summary.drift = Number(c.n);
   }
-  deps.log.info({ ...summary }, 'extractor canary done');
+  deps.log.info({ ...summary, run_id: runKey }, 'extractor canary done');
   return summary;
 }

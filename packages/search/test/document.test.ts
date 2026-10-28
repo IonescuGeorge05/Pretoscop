@@ -28,6 +28,7 @@ function row(over: Partial<ProductRow> = {}): ProductRow {
     image: null,
     gtins: ['08806095530000'],
     observationsDays: 3,
+    currentShopBani: 189_999,
     verdict: 'insufficient_data',
     historyStartedAt: '2026-10-25',
     offerCount: 2,

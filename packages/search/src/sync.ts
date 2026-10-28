@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { sql, type Db } from '@pretoscop/db';
+import { priceFactsFor, sql, type Db } from '@pretoscop/db';
 import { MeiliError, type EnqueuedTask, type Meili } from './client';
 import { buildProductDocument, type ProductDocument, type ProductRow } from './document';
 import { BRAND_SETTINGS, CATEGORY_SETTINGS, PRODUCT_SETTINGS, type IndexNames } from './settings';
@@ -16,7 +16,7 @@ import { BRAND_SETTINGS, CATEGORY_SETTINGS, PRODUCT_SETTINGS, type IndexNames } 
  */
 
 /** Bump DOC_VERSION when `buildProductDocument` changes shape; settings changes are detected by hash. */
-export const DOC_VERSION = 2;
+export const DOC_VERSION = 3;
 export const SCHEMA_VERSION = createHash('sha256')
   .update(JSON.stringify({ DOC_VERSION, PRODUCT_SETTINGS, CATEGORY_SETTINGS, BRAND_SETTINGS }))
   .digest('hex')
@@ -58,7 +58,7 @@ type RawRow = {
   brand: string | null; brand_slug: string | null; brand_aliases: string[] | null;
   cat_slug: string | null; cat_name: string | null; cat_path: string | null; parent_slug: string | null; parent_name: string | null;
   family: string | null; family_id: string | null; image: string | null; gtins: string[] | null;
-  observations_days: number | null; verdict: ProductRow['verdict']; history_started_at: string | null;
+  observations_days: number | null; verdict: ProductRow['verdict']; history_started_at: string | null; cur_shop: string | null;
   offer_count: string | null; shop_count: string | null; shop_slugs: string[] | null; min_price: string | null; min_total: string | null;
   min_shop: string | null; in_stock_count: string | null; last_change: Date | string | null; updated_at: Date | string;
 };
@@ -86,7 +86,7 @@ export async function loadProductRows(db: Db, opts: { ids?: number[]; afterId?: 
       c.slug AS cat_slug, c.name_ro AS cat_name, c.path AS cat_path, pc.slug AS parent_slug, pc.name_ro AS parent_name,
       f.title AS family, p.family_id::text, img.storage_key AS image,
       (SELECT array_agg(g.gtin14 ORDER BY g.gtin14) FROM product_gtins g WHERE g.product_id = p.id) AS gtins,
-      ps.observations_days, ps.verdict, ps.history_started_at::text,
+      ps.observations_days, ps.verdict, ps.history_started_at::text, ps.current_min_total::text AS cur_shop,
       live.offer_count::text, live.shop_count::text, live.shop_slugs, live.min_price::text, live.min_total::text, live.min_shop,
       live.in_stock_count::text, live.last_change, p.updated_at
     FROM products p
@@ -136,6 +136,7 @@ export async function loadProductRows(db: Db, opts: { ids?: number[]; afterId?: 
     image: r.image,
     gtins: r.gtins ?? [],
     observationsDays: Number(r.observations_days ?? 0),
+    currentShopBani: bani(r.cur_shop),
     verdict: r.verdict ?? null,
     historyStartedAt: r.history_started_at,
     offerCount: Number(r.offer_count ?? 0),
@@ -151,18 +152,19 @@ export async function loadProductRows(db: Db, opts: { ids?: number[]; afterId?: 
 }
 
 /**
- * Hook for document enrichment that needs more than one row at a time (M15 adds the verified drop
- * from the daily series). Receives the documents of one batch and may mutate them.
+ * Documents for one batch, with the verified-drop facts of M15 (two queries per batch over the
+ * daily series; the rules are @pretoscop/core `verifiedDrop` and `newAllTimeLow`).
  */
-export type DocumentEnricher = (db: Db, docs: ProductDocument[]) => Promise<void>;
-const enrichers: DocumentEnricher[] = [];
-export function registerDocumentEnricher(e: DocumentEnricher): void {
-  if (!enrichers.includes(e)) enrichers.push(e);
-}
-
 async function buildDocuments(db: Db, rows: ProductRow[]): Promise<ProductDocument[]> {
   const docs = rows.map(buildProductDocument);
-  for (const e of enrichers) await e(db, docs);
+  const facts = await priceFactsFor(db, new Map(rows.map((r) => [r.id, r.currentShopBani])));
+  for (const d of docs) {
+    const f = facts.get(d.id);
+    d.drop_pct = f?.drop ? Math.round(f.drop.pct * 10_000) / 10_000 : null;
+    d.drop_ref_bani = f?.drop?.referenceBani ?? null;
+    d.drop_since = f?.drop?.since ?? null;
+    d.all_time_low = !!f?.allTimeLow;
+  }
   return docs;
 }
 

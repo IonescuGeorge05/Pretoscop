@@ -1,6 +1,7 @@
 import { searchOffers } from '@pretoscop/db';
 import Link from 'next/link';
 import { Section, Table, Td } from '@/components/admin/ui';
+import { requireAdmin } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { formatDateTime, formatLeiNumeric } from '@/lib/format';
 import { blacklistOfferAction, unlinkOfferAction } from '../../catalog-actions';
@@ -8,6 +9,8 @@ import { blacklistOfferAction, unlinkOfferAction } from '../../catalog-actions';
 export const dynamic = 'force-dynamic';
 
 export default async function OffersPage({ searchParams }: { searchParams: Promise<{ q?: string; bl?: string }> }) {
+  // Each admin page checks the session itself: the layout guard does not stop a segment from rendering.
+  await requireAdmin();
   const { q = '', bl } = await searchParams;
   const rows = await searchOffers(db(), q, { blacklisted: bl === '1' });
   return (

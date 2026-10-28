@@ -1,6 +1,7 @@
 import { invoiceTotals, revenueSummary, sql, type RevenueRow } from '@pretoscop/db';
 import Link from 'next/link';
 import { Section, Stat, Table, Td } from '@/components/admin/ui';
+import { requireAdmin } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { formatLei, formatPercent } from '@/lib/format';
 
@@ -29,6 +30,8 @@ function Rows({ rows }: { rows: RevenueRow[] }) {
 }
 
 export default async function RevenuePage({ searchParams }: { searchParams: Promise<{ luna?: string }> }) {
+  // Each admin page checks the session itself: the layout guard does not stop a segment from rendering.
+  await requireAdmin();
   const { luna } = await searchParams;
   const month = luna && /^\d{4}-\d{2}$/.test(luna) ? luna : new Date().toISOString().slice(0, 7);
   const [summary, invoice, programs] = await Promise.all([

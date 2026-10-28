@@ -104,15 +104,30 @@ checked later while the stored value reveals nothing. Links are signed with ALER
   approved (dashboard), rejected and suspended views), `/pentru-magazine/termeni` (merchant terms, `merchantTerms.v1`).
   Forms are server actions with redirect-after-post, so they work without JavaScript; `AutoRefresh` only reloads while a
   worker check runs.
-- **Domain proof** (the abuse guard against listing someone else's feed): an email address on the shop's domain, a DNS TXT
-  record `pretoscop-verificare=<token>` on the apex, or the token in `/.well-known/pretoscop-verificare.txt`; an admin can
-  also verify manually. Approval requires it, and the worker drops feed offers whose URL is not on that domain.
-- **Checks run in the worker** (`merchant.validate`, `merchant.verify_domain`): feed fetches go through `@pretoscop/fetch`
-  as `PretoscopBot-Feed` (robots.txt, 5 s spacing, public addresses only). The web app only enqueues and shows results.
-- **Upload**: `POST /api/merchant/feed-upload` (multipart, same-site, ≤ `FETCH_MAX_BODY_BYTES`) stores the file in the blob
-  store; an approved upload source is observed at upload time and never scheduled.
-- **Admin**: `/admin/comercianti` (queue and detail): approve (creates or attaches the shop and the
-  `<slug>:feed:merchant` source, every 4 hours), reject / suspend with a statement of reasons (category + facts, emailed;
-  P2B art. 4), reinstate, manual domain verification, re-check, run now. Every decision is in `audit_log`.
-- **Development only**: with `FETCH_ALLOW_PRIVATE_HOSTS=true` (refused in staging and production) a feed URL may point to a
+- **Domain proof** (the abuse guard against listing someone else's feed): an email address on the shop's domain (or on a
+  parent domain when the shop is on a subdomain; never a mailbox on a subdomain, webmail or a public suffix such as
+  `com.ro`), a DNS TXT record `pretoscop-verificare=<token>` on the apex, or exactly the token as the content of
+  `/.well-known/pretoscop-verificare.txt` (never requested from a shop we already crawl); an admin can also verify
+  manually. A check verifies only the domain it looked at: changing the domain while it runs verifies nothing. Approval
+  requires it, and the worker drops feed offers whose URL is not on that domain.
+- **Checks run in the worker** (`merchant.feed_check`, `merchant.domain_check`, pg-boss `stately` queues: one waiting and
+  one running per merchant): fetches go through the merchant-scoped fetcher (`ScopedDomainStateStore`: shared 5 s
+  spacing and robots.txt rules, but its own pauses and budget, so a merchant URL can never pause the crawler) as
+  `PretoscopBot-Feed`, public addresses only, never to the host of another shop we crawl. A result is stored only for the
+  feed and domain it checked; submission and approval need a finished check of the current feed and domain with at least
+  one listable offer on that domain (`listingReportProblem`). The web app only enqueues and shows results.
+- **Limits**: one check per 30 s and one upload per minute per merchant whatever the address, and per 24 h at most 30 feed
+  checks, 10 uploads and 30 domain checks (counted in `audit_log`).
+- **Upload**: `POST /api/merchant/feed-upload` (multipart, same-site) reads at most `FETCH_MAX_BODY_BYTES` + 64 KiB of
+  body (chunked bodies included) and stores the file in the blob store, deleting the one it replaces; the worker gunzips it
+  under the same cap. An approved upload source is observed at upload time, never scheduled, and its offers turn grey after
+  72 h (`crawl_policy.freshness_slo_hours` of a portal-created shop; a feed address gets 12 h).
+- **Admin**: `/admin/comercianti` (queue and detail): approve (creates the shop, or attaches to an existing one only after
+  the admin ticks the confirmation under the warning that lists its sources; refused while another merchant of the domain
+  is suspended), reject / suspend with a statement of reasons (category + facts, emailed; P2B art. 4: the offers are hidden
+  at once and a portal-created shop is paused), reinstate (the feed read brings the offers back), manual domain
+  verification, re-check, run now. Every decision is in `audit_log`. Admin pages call `requireAdmin()` themselves (the
+  layout check alone does not stop a page segment from rendering).
+- **Development only**: with `FETCH_ALLOW_PRIVATE_HOSTS=true` (or the narrower `FETCH_PRIVATE_ALLOWLIST=127.0.0.1:3399`;
+  both refused in staging and production) a feed URL may point to a
   local IP and port, which the e2e flow uses.

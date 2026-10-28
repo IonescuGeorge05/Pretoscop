@@ -73,6 +73,21 @@ describe('getEnv', () => {
     expect(() => getEnv({ BOT_EGRESS_IPS: '2001:db8::/129' })).toThrow(/BOT_EGRESS_IPS/);
     expect(() => getEnv({ BOT_EGRESS_IPS: '256.1.1.1' })).toThrow(/BOT_EGRESS_IPS/);
   });
+
+  it('parses the e2e fixture allowlist of the SSRF guard, and refuses it (and the open switch) outside development', () => {
+    expect(getEnv({}).FETCH_PRIVATE_ALLOWLIST).toEqual([]);
+    expect(getEnv({ FETCH_PRIVATE_ALLOWLIST: ' 127.0.0.1:3399 ,' }).FETCH_PRIVATE_ALLOWLIST).toEqual(['127.0.0.1:3399']);
+    expect(() => getEnv({ FETCH_PRIVATE_ALLOWLIST: 'localhost:3399' })).toThrow(/FETCH_PRIVATE_ALLOWLIST/);
+    const prod = {
+      APP_ENV: 'prod',
+      BETTER_AUTH_SECRET: 'a'.repeat(32),
+      REVALIDATE_TOKEN: 'b'.repeat(32),
+      HASH_SALT_SECRET: 'c'.repeat(32),
+      ALERTS_SECRET: 'd'.repeat(32),
+    };
+    expect(() => getEnv({ ...prod, FETCH_PRIVATE_ALLOWLIST: '127.0.0.1:3399' })).toThrow(/FETCH_PRIVATE_ALLOWLIST is for local development only/);
+    expect(() => getEnv({ ...prod, FETCH_ALLOW_PRIVATE_HOSTS: 'true' })).toThrow(/FETCH_ALLOW_PRIVATE_HOSTS is for local development only/);
+  });
 });
 
 describe('isIpOrCidr', () => {

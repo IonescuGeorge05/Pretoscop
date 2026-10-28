@@ -3,7 +3,7 @@ import type { Logger } from '@pretoscop/config/logger';
 import { normalizeOffer } from '@pretoscop/core';
 import { contentHash } from '@pretoscop/core/hash';
 import { type Db, latestFxRate } from '@pretoscop/db';
-import { createFetcher, createGuardedDispatcher } from '@pretoscop/fetch';
+import { createFetcher, createGuardedDispatcher, type DomainStateStore, type Fetcher, type FetcherDeps, ScopedDomainStateStore } from '@pretoscop/fetch';
 import { createMailer, type Mailer } from '@pretoscop/mailer';
 import { alertLinks } from '@pretoscop/notify';
 import { createBlobStore } from '@pretoscop/storage';
@@ -104,22 +104,49 @@ export function createAlertServices(env: Env, db: Db, log: Logger): AlertService
   };
 }
 
-/** Long-lived collaborators of the worker: blob store, the polite fetcher, normalizer, ops alerts. */
-export function createServices(env: Env, db: Db, log: Logger): Services & { close: () => Promise<void> } {
-  const requestLog = new PgRequestLogSink(db, log);
-  // Only public internet addresses (M20: merchants type feed URLs); local fixtures need FETCH_ALLOW_PRIVATE_HOSTS.
-  const dispatcher = createGuardedDispatcher({ allowPrivate: env.FETCH_ALLOW_PRIVATE_HOSTS, timeoutMs: env.FETCH_TIMEOUT_MS });
-  const fetcher = createFetcher({
-    dispatcher,
+function fetcherDeps(env: Env, db: Db, log: Logger, deps: Pick<FetcherDeps, 'dispatcher' | 'requestLog' | 'stateStore'>): FetcherDeps {
+  return {
+    ...deps,
     policyFor: createPolicyResolver(db),
-    stateStore: new PgDomainStateStore(db),
-    requestLog,
     crawlEnabled: env.CRAWL_ENABLED,
     botInfoUrl: env.BOT_INFO_URL,
     defaultTimeoutMs: env.FETCH_TIMEOUT_MS,
     defaultMaxBytes: env.FETCH_MAX_BODY_BYTES,
     logger: log,
+  };
+}
+
+/**
+ * The fetcher for requests a merchant asks for (M20: feed checks, verification files and the pulls
+ * of merchant feeds). Same identity, robots.txt rules, per-host start slots and SSRF guard as the
+ * crawler's, but whatever those requests provoke (pauses, failure streaks, the daily count, a
+ * robots.txt result) is kept under `merchant:` keys (ScopedDomainStateStore), so a stranger's URL can
+ * never pause, slow down or use up the crawler's access to a shop.
+ */
+export function createMerchantFetcher(
+  env: Env,
+  db: Db,
+  log: Logger,
+  deps: Pick<FetcherDeps, 'dispatcher' | 'requestLog'> & { stateStore: DomainStateStore },
+  /** Test hooks only (`sleep`, `now`). */
+  overrides: Pick<FetcherDeps, 'sleep' | 'now'> = {},
+): Fetcher {
+  return createFetcher({ ...fetcherDeps(env, db, log, { ...deps, stateStore: new ScopedDomainStateStore(deps.stateStore, 'merchant') }), ...overrides });
+}
+
+/** Long-lived collaborators of the worker: blob store, the polite fetcher, normalizer, ops alerts. */
+export function createServices(env: Env, db: Db, log: Logger): Services & { close: () => Promise<void> } {
+  const requestLog = new PgRequestLogSink(db, log);
+  // Only public internet addresses (M20: merchants type feed URLs); local fixtures need FETCH_ALLOW_PRIVATE_HOSTS
+  // (everything) or FETCH_PRIVATE_ALLOWLIST (exact ip:port pairs).
+  const dispatcher = createGuardedDispatcher({
+    allowPrivate: env.FETCH_ALLOW_PRIVATE_HOSTS,
+    allowTargets: env.FETCH_PRIVATE_ALLOWLIST,
+    timeoutMs: env.FETCH_TIMEOUT_MS,
   });
+  const state = new PgDomainStateStore(db);
+  const fetcher = createFetcher(fetcherDeps(env, db, log, { dispatcher, requestLog, stateStore: state }));
+  const merchantFetcher = createMerchantFetcher(env, db, log, { dispatcher, requestLog, stateStore: state });
   let eur: { rate: number | null; at: number } = { rate: null, at: 0 };
   const refreshEur = () => {
     if (Date.now() - eur.at < 3600_000) return;
@@ -134,6 +161,7 @@ export function createServices(env: Env, db: Db, log: Logger): Services & { clos
   return {
     blob: createBlobStore(env),
     fetcher,
+    merchantFetcher,
     normalize: createNormalize(() => {
       refreshEur();
       return eur.rate;
@@ -145,6 +173,7 @@ export function createServices(env: Env, db: Db, log: Logger): Services & { clos
     async close() {
       await requestLog.flush();
       await fetcher.close?.();
+      await merchantFetcher.close?.();
       await dispatcher.close();
     },
   };

@@ -1,4 +1,15 @@
 import type { MerchantFeedReport, MerchantStatus } from '@pretoscop/db/schema';
+import { plural } from './format';
+
+/** Why a feed check cannot support a submission or an approval (`listingReportProblem` in @pretoscop/db). */
+export const REPORT_PROBLEM_LABELS = {
+  not_checked: 'verificarea feed-ului nu s-a terminat.',
+  stale: 'ultima verificare a fost făcută pentru alt feed sau alt domeniu.',
+  failed: 'ultima verificare a feed-ului a eșuat.',
+  off_domain_only: 'niciun produs din feed nu are adresa pe domeniul verificat.',
+  nothing_listable: 'niciun produs din feed nu poate fi afișat.',
+  price_format: 'formatul prețurilor nu este ales.',
+} as const;
 
 /**
  * Romanian findings for the merchant portal (M20), from the worker's feed report and from the
@@ -46,6 +57,7 @@ const REJECT_LABELS: Record<string, string> = {
   price_too_low: 'preț sub 1 leu',
   price_currency: 'monedă neacceptată',
   fx_rate_missing: 'preț în euro fără curs de schimb',
+  off_domain: 'adresă în afara domeniului verificat',
 };
 
 export function rejectLabel(reason: string): string {
@@ -69,7 +81,9 @@ export function feedReportHints(r: MerchantFeedReport): Hint[] {
       .join(', ');
     out.push({ level: 'warn', text: `${r.normalization.rejected} produse nu pot fi afișate: ${reasons}.` });
   }
-  if (r.domain.expected && r.domain.offDomain > 0) {
+  if (r.domain.expected && r.offers > 0 && r.domain.onDomain === 0) {
+    out.push({ level: 'error', text: `Niciun produs nu are adresa pe domeniul ${r.domain.expected}: feed-ul nu poate fi trimis spre aprobare.` });
+  } else if (r.domain.expected && r.domain.offDomain > 0) {
     out.push({
       level: 'error',
       text: `${r.domain.offDomain} produse au adresa în afara domeniului ${r.domain.expected} (de exemplu, ${r.domain.offDomainExamples[0] ?? '—'}). Afișăm doar produse de pe domeniul verificat.`,
@@ -105,6 +119,8 @@ export function feedReportHints(r: MerchantFeedReport): Hint[] {
 
 /** "Fix my feed" for an approved merchant, from live offers and the last run. */
 export function dashboardHints(s: {
+  /** Hours after which an offer counts as not recently confirmed (the shop's freshness SLO). */
+  freshnessHours: number;
   activeOffers: number;
   withGtin: number;
   matched: number;
@@ -136,7 +152,7 @@ export function dashboardHints(s: {
   if (s.activeOffers > 0 && s.withGtin < s.activeOffers) {
     out.push({ level: 'info', text: `Adaugă codul EAN la ${s.activeOffers - s.withGtin} oferte.` });
   }
-  if (s.stale > 0) out.push({ level: 'warn', text: `${s.stale} oferte nu au mai fost confirmate de feed recent și apar cu gri.` });
+  if (s.stale > 0) out.push({ level: 'warn', text: `${s.stale} oferte nu au mai fost confirmate de feed în ultimele ${plural(s.freshnessHours, 'oră', 'ore')} și apar cu gri.` });
   if (s.shippingUnknown > 0) out.push({ level: 'info', text: `La ${s.shippingUnknown} oferte nu știm costul livrării: adaugă-l în feed sau completează regulile de livrare.` });
   return out;
 }

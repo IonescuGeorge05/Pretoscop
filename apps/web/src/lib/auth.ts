@@ -7,6 +7,7 @@ import { nextCookies } from 'better-auth/next-js';
 import { magicLink } from 'better-auth/plugins/magic-link';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { cache } from 'react';
 import { db, serverEnv } from './db';
 import { allowLoginEmail, resetLoginEmails } from './login-limits';
 
@@ -85,9 +86,11 @@ export function auth(): Auth {
   return g.__pretoscopAuth;
 }
 
-export async function getSession() {
-  return auth().api.getSession({ headers: await headers() });
-}
+/**
+ * The session of this request. Memoized per request (React `cache`): the admin layout and each admin
+ * page both check it (a layout check alone does not stop a page segment from rendering).
+ */
+export const getSession = cache(async () => auth().api.getSession({ headers: await headers() }));
 
 /**
  * Admin gate for /admin pages and actions: a session, role `admin`, and the email still in

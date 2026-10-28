@@ -23,6 +23,8 @@ export interface AlertServices {
 export interface Services {
   blob: BlobStore;
   fetcher: FetchLike;
+  /** Requests made for merchants (M20): merchant-scoped pauses, budget and robots.txt cache. */
+  merchantFetcher?: FetchLike;
   normalize: NormalizeFn;
   alert: OpsAlert;
   /** Marks cached web pages stale by tag (best effort; returns how many tags were accepted). */

@@ -1,12 +1,15 @@
 import { merchants, sql } from '@pretoscop/db';
 import Link from 'next/link';
 import { Section, Table, Td } from '@/components/admin/ui';
+import { requireAdmin } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { formatDateTime } from '@/lib/format';
 import { STATUS_LABELS } from '@/lib/merchant-hints';
 
 /** Merchant portal (M20): approval queue first, then everyone else. */
 export default async function MerchantsAdminPage() {
+  // Each admin page checks the session itself: the layout guard does not stop a segment from rendering.
+  await requireAdmin();
   const rows = await db()
     .select()
     .from(merchants)

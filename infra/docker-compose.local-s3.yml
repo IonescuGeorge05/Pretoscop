@@ -1,0 +1,82 @@
+# Local stand-in for Cloudflare R2 (M18): MinIO with TLS (pgBackRest only speaks HTTPS to S3),
+# layered on top of infra/docker-compose.prod.yml for prod-like dress rehearsals on a laptop and
+# for `make verify M=18`. Never used on the server.
+#   COMPOSE_EXTRA_FILES=infra/docker-compose.local-s3.yml infra/scripts/deploy.sh prod <tag>
+# Needs LOCAL_S3_CERTS_DIR with ca.crt, public.crt and private.key (server certificate for "minio";
+# scripts/verify/M18-stack.sh generates them) and S3_ACCESS_KEY_ID / S3_SECRET_ACCESS_KEY in .env.
+services:
+  minio:
+    image: bitnamilegacy/minio:2025.7.23-debian-12-r5
+    restart: unless-stopped
+    init: true
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:?set S3_ACCESS_KEY_ID}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:?set S3_SECRET_ACCESS_KEY}
+      MINIO_SCHEME: https
+      # The image's own bucket setup cannot trust the throwaway CA; `minio-buckets` does it.
+      MINIO_SKIP_CLIENT: 'yes'
+    volumes:
+      - ${LOCAL_S3_CERTS_DIR:?set LOCAL_S3_CERTS_DIR}:/certs:ro
+      - miniodata:/bitnami/minio/data
+    healthcheck:
+      test: ['CMD', 'curl', '-fsk', 'https://localhost:9000/minio/health/live']
+      interval: 3s
+      timeout: 10s
+      retries: 40
+      start_period: 10s
+
+  # One-shot, run once before the first deploy: `... run --rm minio-buckets` creates the buckets
+  # R2 would have (pretoscop-blobs for the app, pretoscop-backups for pgBackRest).
+  minio-buckets:
+    image: bitnamilegacy/minio:2025.7.23-debian-12-r5
+    profiles: [setup]
+    restart: 'no'
+    init: true
+    entrypoint: ['/bin/bash', '-c']
+    command:
+      - >-
+        mc --config-dir /tmp/mc alias set local https://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD" --insecure >/dev/null &&
+        mc --config-dir /tmp/mc mb --insecure --ignore-existing local/pretoscop-blobs local/pretoscop-backups
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY}
+    depends_on:
+      minio:
+        condition: service_healthy
+
+  postgres:
+    environment:
+      PGBACKREST_REPO1_STORAGE_CA_FILE: /etc/ssl/local-s3/ca.crt
+    volumes:
+      - ${LOCAL_S3_CERTS_DIR}:/etc/ssl/local-s3:ro
+    depends_on:
+      minio:
+        condition: service_healthy
+
+  pgbackrest:
+    environment:
+      PGBACKREST_REPO1_STORAGE_CA_FILE: /etc/ssl/local-s3/ca.crt
+    volumes:
+      - ${LOCAL_S3_CERTS_DIR}:/etc/ssl/local-s3:ro
+
+  worker:
+    environment:
+      NODE_EXTRA_CA_CERTS: /etc/ssl/local-s3/ca.crt
+    volumes:
+      - ${LOCAL_S3_CERTS_DIR}:/etc/ssl/local-s3:ro
+
+  # The web replicas read licensed images from the blob store when MEDIA_BASE_URL is unset (/media).
+  web-1:
+    environment:
+      NODE_EXTRA_CA_CERTS: /etc/ssl/local-s3/ca.crt
+    volumes:
+      - ${LOCAL_S3_CERTS_DIR}:/etc/ssl/local-s3:ro
+
+  web-2:
+    environment:
+      NODE_EXTRA_CA_CERTS: /etc/ssl/local-s3/ca.crt
+    volumes:
+      - ${LOCAL_S3_CERTS_DIR}:/etc/ssl/local-s3:ro
+
+volumes:
+  miniodata:

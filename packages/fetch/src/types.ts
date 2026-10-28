@@ -59,6 +59,8 @@ export type FetchErrorCode =
   | 'assisted_error'
   /** A tool's own request cap (M21 `shops:probe`): the request was never sent. */
   | 'request_cap'
+  /** The guarded dispatcher refused a private, loopback or otherwise non-public address (SSRF guard, M20). */
+  | 'non_public_address'
   /** A transport error that surfaced long after the request's own timeout: this process was suspended (the machine slept), not refused. */
   | 'local_suspend';
 

@@ -138,7 +138,7 @@ export const legalDocuments = {
   privacy: { path: '/confidentialitate', kind: 'legal', version: '0.2', updatedAt: '2026-10-27', reviewed: false },
   cookies: { path: '/cookies', kind: 'legal', version: '0.2', updatedAt: '2026-10-27', reviewed: false },
   accessibility: { path: '/accesibilitate', kind: 'legal', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
-  merchantTerms: { path: '/pentru-magazine/termeni', kind: 'legal', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
+  merchantTerms: { path: '/pentru-magazine/termeni', kind: 'legal', version: '0.2', updatedAt: '2026-10-28', reviewed: false },
 } as const satisfies Record<string, LegalDocumentVersion>;
 
 export type LegalDocumentName = keyof typeof legalDocuments;

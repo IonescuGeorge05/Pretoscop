@@ -54,7 +54,7 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 | M15 | Deals page and discount verdict UI | in progress | `mod/M15-deals` (unmerged) | | Implemented by an agent, not yet reviewed |
 | M16 | SEO: structured data, sitemaps, performance | in progress | `mod/M16-seo` (WIP) | | Stopped mid-work for the machine move |
 | M17 | Legal and trust pages, consent, analytics, bot page | review | `mod/M17-legal` (merged into the chain) | | Lawyer review pending (B5) |
-| M18 | Production deployment, backups, monitoring, staging | in progress | `mod/M18-deploy` (unmerged) | | Implemented by an agent; PITR rehearsal was running when stopped |
+| M18 | Production deployment, backups, monitoring, staging | review | `mod/M18-deploy` (merged into `daniel`) | | Full rehearsal passes on the laptop (PITR, disaster recovery, rolling deploy, rollback, k6); needs the server and accounts (A1, A3, A4, B2–B4, B8–B12) |
 
 **Gate G2** — staging reviewed by founders; launch checklist complete (`04-plan-normal.md` §9); SRL exists; lawyer review done. Launch date: ____ ANCOM DSA notification due: launch + 45 days.
 
@@ -63,7 +63,7 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 | Module | Name | Status | Branch / PR | Verified by founder | Notes |
 |---|---|---|---|---|---|
 | M19 | Accounts and price alerts | review | `mod/M19-alerts` (merged into `daniel`) | | Independently reviewed; all high/medium findings fixed; flag `alerts.email.enabled` off until B2/B4/B5 |
-| M20 | Merchant self-serve feed portal (free listing) | in progress | `mod/M20-merchants` (merged into `daniel`) | | Verify passes; migration regenerated as 0015_merchants. An independent review found 3 high issues (a domain-verification race; feed checks able to pause our crawler on any shop; suspension not hiding offers), being fixed; keep `merchants.portal.enabled` off until then |
+| M20 | Merchant self-serve feed portal (free listing) | review | `mod/M20-merchants` (merged into `daniel`) | | Independently reviewed; all high/medium findings fixed; migration 0015_merchants; `merchants.portal.enabled` off until B5 and the founders open it |
 | M21 | Bot legitimacy program and source adapters batch 2 | in progress | `mod/M21-bot-legitimacy` (WIP) | | Stopped mid-work for the machine move |
 | M22 | LLM-assisted matching and attribute extraction | todo | `mod/M22-llm-matching` (empty) | | Brief in docs/HANDOFF.md §7 |
 | M23 | Black Friday / fake-discount report tooling | review | `mod/M23-reports` (merged locally into `daniel`) | | Generator deterministic, reconciled with SQL; BF 2026 page waits for approved data |
@@ -406,3 +406,121 @@ Founder checklist: `scripts/verify/M19.checklist.md` (simulation now `pnpm alert
 Human tasks needed: B2 (Resend domain, `RESEND_WEBHOOK_SECRET`), B4 (SRL: the legal name and postal address in every email; production will not start without them), B5 (lawyer: `alertConsent.v1`, including the logged-in path wording).
 Risks / open questions: per-IP limits trust `cf-connecting-ip`/`x-forwarded-for`, so the production proxy must overwrite them (M18); in-memory limiters are per process (the per-address caps are in the database); retried delivery groups that gain rows get a new idempotency key.
 Next module: M27 (Telegram and web push, on top of these fixes).
+
+### M18 — Production deployment, backups, monitoring, staging — 2026-10-28
+(Built by a delegated Opus agent on the Mac on 27–28 Oct and stopped during its restore rehearsal; a second Opus agent merged `daniel` four times, finished and verified it on the Windows laptop; merged by the lead.)
+Scope delivered:
+- Images (`infra/docker/`): web (Next.js standalone, built per environment because prerendered pages carry PUBLIC_BASE_URL, SITE_INDEXABLE and NEXT_PUBLIC_*), worker (one image for every environment and the one-shot `migrate`; PostgreSQL 18 client; non-root `node` user), PostgreSQL 18 + pgvector + pgBackRest 2.60 tuned for the 64 GB server.
+- `infra/docker-compose.prod.yml` (projects pretoscop-prod and pretoscop-staging): PostgreSQL with WAL archiving, the `pgbackrest` sidecar, Meilisearch, `migrate` under an advisory lock, two web replicas, the worker; profiles `monitoring` (Grafana Alloy) and `analytics` (Plausible CE, production only); init processes, exec-form health checks, memory limits, rotated logs; web replicas never receive worker-only credentials.
+- Edge (ADR-019): one Caddy for production, staging (noindex) and stats; TLS from a Cloudflare Origin CA certificate, Let's Encrypt or an internal CA; client IP trusted only from Cloudflare's ranges; privacy-filtered access log; active checks on the new `/api/ready`.
+- Backups (ADR-018): continuous WAL archiving (5-minute RPO), weekly full and nightly differential backups in their own R2 bucket, encrypted client-side (AES-256-CBC), two full cycles kept; a weekly restore test into a scratch copy that compares row counts and the newest price event; `restore-scratch`; the M05 nightly `pg_dump` kept as a second backup, now streamed to S3.
+- Scripts: `deploy.sh` (refuses unsafe configurations, never restarts data services, runs migrations once, drains and replaces each web replica with automatic revert, checks `/api/health`, records the release), `rollback.sh`, `restore-pitr.sh` (a time, a backup set or the latest; new-server mode), `compose.sh`; `bootstrap.sh` for the server; release workflow (tag → GHCR images → staging → founder approval → production).
+- Monitoring (ADR-020): worker `/health` and `/metrics`, heartbeats, an hourly SLO check with deduplicated Telegram/email alerts, an ops-alert test CLI; web `/api/health` and `/api/ready`; Alloy config, Grafana dashboard, 13 alert rules with promtool unit tests, the Better Stack monitor list; 10 runbooks, `infra/launch-checklist.md`, env templates, the Deployment section of `.env.example`.
+- Production bugs found and fixed while finishing:
+  - the weekly restore test could never start (scratch `max_connections` below the primary's);
+  - two alert rules could never fire (scrapers overwrote the `job` label);
+  - rules matching `on ()` would break once staging and production both report;
+  - every deploy would have restarted PostgreSQL (each tag rebuilt the database image);
+  - a rolling deploy dropped a request (replicas are now drained first);
+  - runbook commands failed on the server;
+  - the bootstrap could lock everyone out;
+  - GHCR image names were not lower-case;
+  - the `handoff/` dump was inside the image build context.
+Out of scope / deferred: Sentry (until the account exists; errors are JSON logs plus a 5xx-rate alert); the rehearsal renders but does not start a staging stack; per-URL Cloudflare purge (needs a token); worker processes per queue group; an uncached product-page k6 scenario.
+Deviations from plan: ADR-018 to ADR-021:
+- pgBackRest instead of a generic backup sidecar;
+- one shared Caddy edge;
+- no self-hosted Prometheus;
+- web images per environment and a single worker process;
+- data services kept running across releases, and replicas drained before replacement;
+- Plausible only under its profile.
+Verification: `make verify M=18` on the laptop (≈ 25 min, 31 OK steps):
+- Static checks: lint/typecheck/tests (worker, db, storage, config, web); compose renders for every environment and profile; shellcheck, actionlint, promtool (13 rules with unit tests), caddy validate.
+- Rehearsal, with MinIO standing in for R2:
+  - deploy refusals; HTTPS with HSTS; noindex staging; licensed images only under `/media`;
+  - an encrypted backup repository;
+  - PITR after deleting all price events (all counts and the newest event back);
+  - disaster recovery into an empty volume;
+  - the weekly restore test (15 s, counts equal); retention;
+  - pg_dump to S3 and its restore test;
+  - a second deploy with 0 of 154 probe requests failed and PostgreSQL untouched, then a rollback;
+  - a release with an invalid production `.env` refused at the migration step while the old one keeps serving;
+  - k6: 21,106 requests, 0 % failed (cached product page p95 8.09 ms, uncached history API p95 19.21 ms).
+- The lead re-ran the full suite on `daniel` after the merge: 39/39 tasks.
+Founder checklist: `scripts/verify/M18.checklist.md`. Step 1 is done by the agent; steps 2–3 need the founders (read the runbooks, store the backup passphrase); steps 4–6 need the accounts.
+Human tasks needed:
+- A1: domain.
+- A3/B10: Cloudflare; three R2 buckets with one token each; Origin CA certificate; cache and WAF rules; Access on staging and /admin; a `stats` record.
+- A4: Hetzner server.
+- A5/B11: GitHub environments, DEPLOY_* secrets, a GHCR storage plan (≈ 2.5 GB per release).
+- B8: run the bootstrap.
+- B9: secrets, and PGBACKREST_REPO1_CIPHER_PASS in both password managers. Without it the physical backups cannot be restored.
+- B12: Telegram ops bot.
+- B3: Better Stack first.
+- B2 + B4: the Resend webhook secret, and the SRL's legal name and address. Production refuses to start without them.
+- Decide when the recorder moves to the server.
+Risks / open questions:
+- Real R2 is not exercised yet: watch the first backup.
+- Staging and production share one server.
+- Plausible data is not backed up.
+- The weekly restore test needs free disk about the size of the database.
+- `/cum-functioneaza` shows its fallback text for up to an hour after a deploy (prerendered without a database, ISR).
+- The dev recorder runs as a non-root user after its next rebuild (tested against the Windows bind mount).
+Next module: M05B (its branch sits on M18), then the founders' production setup toward Gate G2.
+
+### M20 — Merchant self-serve feed portal (free listing) — 2026-10-28
+(Implemented by a delegated Opus agent before the machine move; merged by the lead with its migration regenerated; independently reviewed by a second Opus agent, which also implemented the fixes; the lead reviewed the fix diff, in particular the fetch-layer change, and re-verified. The original agent's report was lost in the move; this one is rebuilt from the branch.)
+Scope delivered:
+- `/pentru-magazine` flow (role `merchant`, magic link):
+  - company and CUI (checksum);
+  - domain proof: an email on the shop's domain, a DNS TXT record or a token file;
+  - feed URL (Google Shopping XML, compari.ro XML, CSV) or upload; price format and delivery rules;
+  - terms (`merchantTerms`, now v0.2) and submission;
+  - pending, approved, rejected and suspended views;
+  - the merchant dashboard: offers, matched share, clicks over 30 days, freshness, last runs, "Ce poți îmbunătăți".
+- Worker jobs for feed checks and domain checks, now the stately queues `merchant.feed_check` / `merchant.domain_check`:
+  - feed inspection and a 20-offer preview through the real normalizer;
+  - DNS/file verification;
+  - approval creates or attaches the shop (`feed_only`, trust tier 2) and a `<slug>:feed:merchant` source, read every 4 hours through the normal pipeline (parser registry, normalization, kill switches);
+  - `shops:sync` never disables portal sources.
+- Admin `/admin/comercianti`: queue and detail; approve, reject or suspend with a statement of reasons (category + facts, emailed; P2B art. 4); reinstate; manual domain verification; re-check; run now. Every decision is audited.
+- Migration `merchants` (now `0015_merchants`); flag `merchants.portal.enabled` (off).
+Independent review (28 Oct) and fixes: 3 high, 4 medium and 9 low findings. All high and medium ones and most low ones were fixed, with regression tests.
+- High:
+  - **Domain-verification race:** a merchant could get a domain they do not own marked verified. Checks are now bound to the domain and feed they checked; attaching a feed to an existing shop needs explicit admin confirmation; the token file must match exactly.
+  - **Crawler pause through merchant URLs:** a merchant-supplied URL could pause our crawler on any shop for 24 h through the shared per-host state. Merchant requests now use their own `merchant:` namespace (`ScopedDomainStateStore` in `@pretoscop/fetch`), still sharing the 5-second per-host spacing and obeying the crawler's pauses. Feed URLs on another registered shop's host are refused.
+  - **Suspension did not hide offers:** suspension and rejection now deactivate the source's offers, pause portal-created shops and refresh the cached pages.
+- Medium:
+  - capped gunzip and streamed, capped uploads (no gzip bomb, no unbounded bodies);
+  - a real single pending check per merchant, cooldowns regardless of URL, and daily caps;
+  - email proof only for the exact domain or a parent, with public suffixes refused (a curated list: there is no PSL package in the lockfile);
+  - validation reports stamped and required to match at submit and approve; off-domain offers counted as rejected; at least one on-domain offer required.
+- Low, also fixed:
+  - the detected format is propagated to the live source;
+  - approval is blocked while another merchant of the same domain is suspended;
+  - consistent freshness SLOs: 12 h for feed URLs, 72 h for uploads;
+  - affiliate links from merchant feeds are dropped;
+  - `requireAdmin()` in every admin page, since a layout check does not protect a page segment;
+  - only known message codes are rendered.
+Out of scope / deferred: payments (M25). Recorded without code:
+- domains are never re-verified and tokens never rotated;
+- the shop logo upload in the contract was not implemented (deviation);
+- there is no retention/closure job for merchant accounts yet, although the privacy page promises "3 years after closure".
+Deviations from plan: logo upload missing (see above); the public-suffix check uses a curated list.
+Verification: `make verify M=20` on `daniel` after the fixes:
+- lint/typecheck and tests green (fetch 227, core 785, db 80, worker 93, web 59);
+- production build;
+- the worker against its own database, with every registry source killed;
+- Playwright 1/1: register → domain proof → feed check and preview → submit → admin approval → the offer visible on a public product page → suspension hides it;
+- admin e2e (`make verify M=09`) 4/4, with audit rows;
+- full suite on `daniel`: 39/39 tasks.
+Founder checklist: `scripts/verify/M20.checklist.md`.
+Human tasks needed:
+- B5: lawyer review of merchant terms v0.2 and the statement-of-reasons texts.
+- C3: the outreach list.
+- Decide when to open the portal (the flag) and who answers the approval queue (one business day is promised).
+Risks / open questions:
+- Once M20 runs anywhere, rebuild the recorder and the web app together: the web enqueues on the new queue names. The old empty queues `merchant.validate` / `merchant.verify_domain` can then be deleted.
+- Merchants still pending from before the fixes must be re-checked before approval.
+- Merchants verified through a subdomain mailbox before the fix stay verified, since domains are never re-verified.
+Next module: M21 (built on M20), then M25 and M28 (merchant accounts).

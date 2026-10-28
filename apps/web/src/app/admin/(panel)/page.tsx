@@ -1,9 +1,12 @@
 import { sql } from '@pretoscop/db';
 import { Health, Section, Stat, Table, Td } from '@/components/admin/ui';
+import { requireAdmin } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { formatDateTime, formatRelative } from '@/lib/format';
 
 export default async function Dashboard() {
+  // Each admin page checks the session itself: the layout guard does not stop a segment from rendering.
+  await requireAdmin();
   const d = db();
   const [totals, sources, queues, assisted] = await Promise.all([
     d.execute<Record<string, string>>(sql`

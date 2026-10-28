@@ -205,9 +205,13 @@ else if (res.blocked) markSourceBlocked(res.blockReason, res.blockDetail);
 | `now`, `sleep`, `random`, `dispatcher`, `userAgent` | test hooks (fake clock, undici `MockAgent`/`H2CClient`) |
 | `botInfoUrl`, `defaultTimeoutMs`, `defaultMaxBytes`, `connectTimeoutMs`, `retry` | defaults: env `BOT_INFO_URL`, 30 000, 15 MiB, 10 000, `{ maxRetries: 2, baseDelayMs: 10 000 }` |
 
-`createGuardedDispatcher({ allowPrivate, connectTimeoutMs, timeoutMs })` (M20) returns an undici `Agent` whose connector
+`createGuardedDispatcher({ allowPrivate, allowTargets, connectTimeoutMs, timeoutMs })` (M20) returns an undici `Agent` whose connector
 refuses non-public addresses after DNS resolution (private, loopback, link-local, CGNAT, documentation, multicast, IPv4-mapped
-variants): pass it as `dispatcher` wherever the URL comes from outside (merchant feeds). `isNonPublicAddress(ip)` is exported.
+variants): pass it as `dispatcher` wherever the URL comes from outside (merchant feeds). A refusal surfaces as
+`errorCode: 'non_public_address'`: never retried, never a failure or a block of the host. `allowTargets` (development and
+e2e only) opens exact `ip:port` pairs written as IP literals (a local fixture server) while the guard stays on for every
+other address. `isNonPublicAddress(ip)` is exported. `gunzipFile(bytes, maxBytes)` (the capped `.gz` decoder the fetcher
+uses) is exported for feed files that do not come through `fetchPolite` (uploads).
 
 ### `Fetcher`
 
@@ -240,7 +244,7 @@ pause set while the request waited for its slot); `attempts` then counts the att
 `network_unreachable`, `protocol_error`, `network`, `body_too_large`, `decode_error`,
 `too_many_redirects`, `cross_site_redirect`, `invalid_redirect`, `redirect_disallowed`,
 `channel_change`, `robots_unavailable`, `invalid_policy`, `invalid_request`, `crawl_disabled`,
-`assisted_error`, `request_cap` (M21: a tool's own `CappedDispatcher` limit; nothing was sent).
+`assisted_error`, `non_public_address`, `local_suspend`, `request_cap` (M21: a tool's own `CappedDispatcher` limit; nothing was sent).
 
 Pure helpers are exported too: `detectBlock`, `classifyTransportError`, `detectChallengeRedirect`,
 `parseRetryAfter`, `parseRobotsTxt`, `selectRobotsGroups`, `evaluateRobots`, `normalizeRobotsPath`,
@@ -308,6 +312,27 @@ still keep the interval; the 100 ms slot margin absorbs differences in round-tri
 1 per host is enforced inside a process; across processes only the interval is (run one crawl
 worker per host, e.g. pg-boss singleton keys per host). The fetcher calls `getPause` and `policyFor`
 again for every request (before and after the slot wait), so keep both cheap.
+
+#### `ScopedDomainStateStore` (requests made on someone else's behalf, M20)
+
+`new ScopedDomainStateStore(shared, 'merchant')` wraps the crawler's store for a second fetcher whose
+URLs come from outside (the merchant portal's feed checks and domain probes). It keeps the politeness
+and nothing else:
+
+| Method | Goes to |
+|---|---|
+| `reserveSlot(host)` | the shared store, real host: the minimum interval holds across **all** our requests to a host |
+| `getPause(host)` | both; the later of the crawler's pause and the scoped one (crawler pauses are obeyed) |
+| `setPause`, `clearPause`, `recordFailure`, `resetFailures`, `getFailures` | `merchant:<host>` |
+| `consumeDailyRequest`, `getDailyCount` | `merchant:<host>` (the shop's daily budget is never spent) |
+| `getRobots(origin)` | the fresher of the crawler's entry and `merchant:<origin>` |
+| `setRobots(origin)` | `merchant:<origin>` |
+
+So a 403, 429, challenge or timeout provoked through a merchant-supplied URL pauses that host for
+merchant checks only: the crawler's pause, failure streak, budget and robots.txt cache are untouched.
+The crawler keeps using the shared store directly; its behaviour does not change. Within one process
+both fetchers also share the per-host lock (`processHostLocks`). Namespaced rows live in the same
+tables (`fetch_domain_state.host = 'merchant:www.shop.ro'`), like the `icecat:<LANG>` budget rows.
 
 ### Assisted channel (M05B)
 

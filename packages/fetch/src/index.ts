@@ -108,7 +108,7 @@ export {
 } from './robots';
 
 export { BUCHAREST_TZ, bucharestDay, bucharestTime, isWithinAllowedHours, parseHHMM } from './time';
-export { decodeText, detectCharset } from './decode';
+export { decodeText, detectCharset, gunzipFile, isGzipMagic } from './decode';
 export { FetchError } from './errors';
 
 export type {
@@ -121,6 +121,7 @@ export type {
 } from './state/types';
 export { MemoryDomainStateStore } from './state/memory';
 export { FileDomainStateStore, type FileDomainStateStoreOptions } from './state/file';
+export { ScopedDomainStateStore } from './state/scoped';
 export { CappedDispatcher, RequestCapError } from './capped';
 // Web Bot Auth (M21). Also importable alone as `@pretoscop/fetch/signing` (no undici).
 export {

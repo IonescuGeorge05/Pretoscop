@@ -12,6 +12,18 @@ export M20_FEED_PORT="${M20_FEED_PORT:-3399}"
 export ADMIN_EMAILS="${ADMIN_EMAILS:-admin@pretoscop.test}"
 psql_m20() { $COMPOSE exec -T postgres psql -U pretoscop -d "$DB_NAME" -v ON_ERROR_STOP=1 -At "$@"; }
 
+# Whether another `next build` runs on this machine (8 GB of RAM: one build at a time). Git Bash's
+# pgrep cannot see native Windows processes, so there the command lines come from CIM.
+next_build_running() {
+  if is_windows; then
+    local n
+    n="$(powershell.exe -NoProfile -NonInteractive -Command "@(Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | Where-Object { \$_.CommandLine -like '*next*build*' }).Count" 2>/dev/null | tr -d '\r')"
+    [[ -n "$n" && "$n" != "0" ]]
+  else
+    pgrep -f 'next build' >/dev/null
+  fi
+}
+
 # Shared services are only started when missing and never recreated: a compose file that differs from
 # the running containers' (another branch) must not restart PostgreSQL under the other agents.
 step "services (postgres, meilisearch, mailpit): started if missing, never recreated"
@@ -45,7 +57,7 @@ pnpm turbo run test "${PACKAGES[@]}" --concurrency=2 --output-logs=errors-only -
 ok "green"
 
 step "production build (waits while another Next build runs on this machine: 8 GB of RAM)"
-for ((i = 0; i < 120; i++)); do pgrep -f 'next build' >/dev/null || break; sleep 5; done
+for ((i = 0; i < 120; i++)); do next_build_running || break; sleep 5; done
 (cd apps/web && pnpm exec next build >/dev/null)
 ok "next build"
 
@@ -56,8 +68,10 @@ LOG_DIR="$(mktemp -d)"
 WORKER_LOG="$LOG_DIR/worker.log"
 (
   cd apps/worker
-  export CRAWL_ENABLED=true FETCH_ALLOW_PRIVATE_HOSTS=true METRICS_PORT="${M20_METRICS_PORT:-9465}" \
-    WEB_INTERNAL_URL="http://localhost:${E2E_PORT}" LOG_LEVEL=info
+  # The SSRF guard stays ON in the worker: only the fixture feed server's exact ip:port is let through
+  # (the e2e proves another private port is refused).
+  export CRAWL_ENABLED=true FETCH_ALLOW_PRIVATE_HOSTS=false FETCH_PRIVATE_ALLOWLIST="127.0.0.1:${M20_FEED_PORT}" \
+    METRICS_PORT="${M20_METRICS_PORT:-9465}" WEB_INTERNAL_URL="http://localhost:${E2E_PORT}" LOG_LEVEL=info
   exec ../../node_modules/.bin/tsx src/index.ts
 ) >"$WORKER_LOG" 2>&1 &
 WORKER_PID=$!
@@ -66,7 +80,7 @@ trap 'kill "$WORKER_PID" 2>/dev/null || true; stop_port "${M20_METRICS_PORT:-946
 wait_for_log "$WORKER_LOG" 'worker started' 90 || { tail -40 "$WORKER_LOG"; fail "worker did not start"; }
 ok "worker running (pid $WORKER_PID, log $WORKER_LOG)"
 
-step "Playwright: register → domain → feed check and preview → submit → admin approval → offers on the dashboard"
+step "Playwright: register → domain → guard refuses a private feed → feed check and preview → submit → approval → dashboard → product page → suspension hides it"
 (cd apps/web && FETCH_ALLOW_PRIVATE_HOSTS=true pnpm exec playwright test e2e/merchant.spec.ts --project=desktop --reporter=line) || {
   tail -60 "$WORKER_LOG"
   fail "merchant e2e failed"

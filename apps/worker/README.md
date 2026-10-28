@@ -43,14 +43,26 @@ pg-boss workers: ingest, crawl, match, rollup, alerts, index, maintenance.
 
 ## Merchant feeds (M20)
 
-- `merchant.validate` fetches a merchant's feed (as `PretoscopBot-Feed`, purpose `feed`) or reads the uploaded file,
-  inspects it (`inspectFeed`), normalizes a preview of 20 offers and stores the report in `merchants.validation`.
-- `merchant.verify_domain` looks for the DNS TXT record on the apex, then for the token file on the domain and on `www.`.
+- `merchant.feed_check` fetches a merchant's feed (as `PretoscopBot-Feed`, purpose `feed`) or reads the uploaded file
+  (gunzipped under `FETCH_MAX_BODY_BYTES`), inspects it (`inspectFeed`), normalizes a preview of 20 offers (offers off the
+  shop domain count as rejected: `off_domain`) and stores the report in `merchants.validation`, stamped with the feed and
+  domain it checked, unless the merchant changed them or asked for a newer check meanwhile. A listed merchant who chose
+  "detect automatically" gets the detected parser on the live source.
+- `merchant.domain_check` looks for the DNS TXT record on the apex, then for the token file on the domain and on `www.`
+  (not for shops we already crawl), and verifies only the domain it checked.
+- Both queues are pg-boss `stately` (singleton key = merchant id). They were renamed from `merchant.validate` /
+  `merchant.verify_domain` because a queue's policy cannot change after creation; the old queues can be deleted.
+- Merchant requests (these checks and the pulls of merchant feeds) use `services.merchantFetcher`
+  (`createMerchantFetcher`): same guard, identity, robots.txt and per-host slots as the crawler, but pauses, failure
+  streaks, daily counts and robots.txt results under `merchant:<host>` keys, so they never pause or spend the crawler's
+  access. They never go to the host of a registered shop other than the merchant's own (`foreignShopForHost`).
 - Approved merchants get a source `<slug>:feed:merchant` (`config.origin = 'merchant'`, `requireDomain`, `priceFormat`,
-  `uploadedAt` for uploads). `runSource` applies the chosen price format and drops offers off the merchant's domain;
-  `shops:sync` never disables these sources (they are owned by the portal, not by the YAML registry).
+  `uploadedAt` for uploads). `runSource` applies the chosen price format, drops offers off the merchant's domain and the
+  merchant's own affiliate links; `shops:sync` never disables these sources (they are owned by the portal, not by the
+  YAML registry).
 - The fetcher's dispatcher refuses non-public addresses at connect time (`createGuardedDispatcher`), so a feed URL
-  cannot reach the internal network; `FETCH_ALLOW_PRIVATE_HOSTS=true` lifts that in development only.
+  cannot reach the internal network; `FETCH_ALLOW_PRIVATE_HOSTS=true` (everything) or `FETCH_PRIVATE_ALLOWLIST` (exact
+  `ip:port` fixtures, what `make verify M=20` uses) lift that in development only.
 
 ## Re-normalization after a rule change
 
@@ -68,6 +80,22 @@ still clear the accept bar against it), so re-matching never duplicates a produc
 price events are never touched; an offer updated by the recorder meanwhile is skipped (`raced`).
 It prints a before/after summary; run `--dry-run` first, then `match:run` (or wait for
 `match.pending`) to re-match the re-queued offers.
+
+## Operations (M18)
+
+- HTTP on `METRICS_PORT` (9464, never published): `GET /health` → 200 when the database answers
+  (503 otherwise; Docker health check), `GET /metrics` → Prometheus text (`src/ops/metrics.ts`:
+  source freshness vs SLO, failures, runs, offer freshness, events/24 h, queues, review queue, last
+  success of scheduled jobs, WAL archiving, database size, disk, process).
+- `ops.heartbeat` (every 5 min) pings `OPS_HEARTBEAT_URL`; `backup.nightly` pings `DUMP_HEARTBEAT_URL`
+  (`/fail` on failure). A missing ping is what alerts (Better Stack).
+- `ops.slo_check` (hourly) evaluates the SLOs of `docs/03-architecture.md` §9 (`src/ops/slo.ts`) and
+  sends deduplicated `ops.alert` jobs (pg-boss throttling per key: once a day for most problems).
+- `ops.alert` delivers through Telegram (`OPS_ALERT_TELEGRAM_*`) and email (`OPS_ALERT_EMAIL`), and
+  always logs; `pnpm ops:alert-test` sends a test alert.
+- Page caches: `WEB_INTERNAL_URL` may list several web replicas; every replica gets each revalidation.
+- The image (`infra/docker/worker.Dockerfile`) runs `node --import tsx src/index.ts` as the `node`
+  user under tini (`init: true`); the same image runs the one-shot `migrate` service.
 
 ## Bot legitimacy (M21)
 

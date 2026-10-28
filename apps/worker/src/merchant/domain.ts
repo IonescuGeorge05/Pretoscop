@@ -1,5 +1,5 @@
 import { resolveTxt } from 'node:dns/promises';
-import { type MerchantDomainCheck, merchants } from '@pretoscop/db';
+import { type MerchantDomainCheck, merchants, saveMerchantDomainCheck, shopsCoveringHost, sql } from '@pretoscop/db';
 import { eq } from 'drizzle-orm';
 import type { MerchantCheckDeps } from './validate';
 
@@ -27,7 +27,7 @@ async function fileHasToken(deps: MerchantCheckDeps, merchantId: number, domain:
   let outcome: 'missing' | 'blocked' | 'error' = 'missing';
   for (const host of [domain, `www.${domain}`]) {
     const res = await deps.fetcher.fetchPolite(`https://${host}${VERIFICATION_FILE_PATH}`, { shopSlug: `merchant-${merchantId}`, purpose: 'probe' });
-    if (res.ok && res.body !== null && res.body.includes(verificationValue(token))) return 'found';
+    if (res.ok && res.body !== null && res.body.trim() === verificationValue(token)) return 'found';
     if (res.blocked || res.skipped === 'robots_disallowed' || res.skipped === 'paused') outcome = 'blocked';
     else if (res.status === 0 && outcome !== 'blocked') outcome = 'error';
   }
@@ -35,9 +35,13 @@ async function fileHasToken(deps: MerchantCheckDeps, merchantId: number, domain:
 }
 
 /**
- * Worker job `merchant.verify_domain`: looks for `pretoscop-verificare=<token>` as a TXT record on the
- * shop's domain (works even when the site blocks bots) or in the file
- * `/.well-known/pretoscop-verificare.txt` (fetched politely as PretoscopBot). Either one verifies.
+ * Worker job `merchant.domain_check`: looks for `pretoscop-verificare=<token>` as a TXT record on the
+ * shop's domain (works even when the site blocks bots) or as the content of the file
+ * `/.well-known/pretoscop-verificare.txt` (fetched politely as PretoscopBot, merchant-scoped state).
+ * Either one verifies, and only the domain that was checked: the result is stored, and the domain
+ * marked verified, only while the merchant still claims that domain. The file is never requested
+ * from a shop we already crawl (another party's claim must not send our bot there): such domains
+ * are proven by DNS, an email address on the domain, or the admin.
  */
 export async function verifyMerchantDomain(deps: MerchantCheckDeps & { resolveTxt?: TxtResolver }, merchantId: number): Promise<MerchantDomainCheck> {
   const [m] = await deps.db.select().from(merchants).where(eq(merchants.id, merchantId));
@@ -45,21 +49,32 @@ export async function verifyMerchantDomain(deps: MerchantCheckDeps & { resolveTx
   const requestedAt = m.domainCheck?.requestedAt ?? new Date().toISOString();
   if (!m.domain) {
     const check: MerchantDomainCheck = { status: 'done', requestedAt, finishedAt: new Date().toISOString(), detail: 'no domain' };
-    await deps.db.update(merchants).set({ domainCheck: check }).where(eq(merchants.id, m.id));
+    await deps.db.update(merchants).set({ domainCheck: check }).where(sql`${merchants.id} = ${m.id} AND ${merchants.domain} IS NULL`);
     return check;
   }
-  await deps.db.update(merchants).set({ domainCheck: { status: 'running', requestedAt } }).where(eq(merchants.id, m.id));
-  const dns = await dnsHasToken(deps.resolveTxt ?? resolveTxt, m.domain, m.verificationToken);
-  const file = dns === 'found' ? undefined : await fileHasToken(deps, m.id, m.domain, m.verificationToken);
-  const check: MerchantDomainCheck = { status: 'done', requestedAt, finishedAt: new Date().toISOString(), dns, ...(file ? { file } : {}) };
-  const method = dns === 'found' ? 'dns' : file === 'found' ? 'file' : null;
+  const domain = m.domain;
   await deps.db
     .update(merchants)
-    .set({
-      domainCheck: check,
-      ...(method && !m.domainVerifiedAt ? { domainVerifiedAt: deps.now?.() ?? new Date(), verificationMethod: method } : {}),
-    })
-    .where(eq(merchants.id, m.id));
-  deps.log.info({ merchant_id: m.id, dns, file: file ?? null, verified: Boolean(method) }, 'merchant domain checked');
+    .set({ domainCheck: { status: 'running', requestedAt, domain } })
+    .where(sql`${merchants.id} = ${m.id} AND ${merchants.domain} = ${domain}`);
+  const dns = await dnsHasToken(deps.resolveTxt ?? resolveTxt, domain, m.verificationToken);
+  let file: MerchantDomainCheck['file'];
+  let detail: string | undefined;
+  if (dns !== 'found') {
+    const crawled = (await shopsCoveringHost(deps.db, domain)).concat(await shopsCoveringHost(deps.db, `www.${domain}`)).find((s) => s.legalBasisRef !== `merchant:${m.id}`);
+    if (crawled) {
+      file = 'skipped';
+      detail = `${domain} belongs to the registered shop ${crawled.slug}: no file request`;
+    } else {
+      file = await fileHasToken(deps, m.id, domain, m.verificationToken);
+    }
+  }
+  const check = { status: 'done', requestedAt, finishedAt: new Date().toISOString(), domain, dns, ...(file ? { file } : {}), ...(detail ? { detail } : {}) } satisfies MerchantDomainCheck;
+  const method = dns === 'found' ? 'dns' : file === 'found' ? 'file' : null;
+  const stored = await saveMerchantDomainCheck(deps.db, m.id, check, method, deps.now?.() ?? new Date());
+  deps.log.info(
+    { merchant_id: m.id, domain, dns, file: file ?? null, verified: Boolean(method) && stored, stored },
+    stored ? 'merchant domain checked' : 'merchant domain changed during the check: result dropped',
+  );
   return check;
 }

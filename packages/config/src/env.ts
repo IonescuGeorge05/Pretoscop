@@ -105,6 +105,17 @@ export const EnvSchema = z
      */
     WEB_BOT_AUTH_PRIVATE_KEY: optionalString,
 
+    /** Exact private `ip:port` targets the guard lets through (e2e fixture servers) while it stays on for the rest. Never in production. */
+    FETCH_PRIVATE_ALLOWLIST: z
+      .string()
+      .default('')
+      .transform((v) =>
+        v
+          .split(',')
+          .map((e) => e.trim())
+          .filter(Boolean),
+      )
+      .pipe(z.array(z.string().regex(/^\d{1,3}(\.\d{1,3}){3}:\d{1,5}$/, 'expected ip:port, e.g. 127.0.0.1:3399'))),
     // Assisted-access channel (M05B, ADR-015)
     ASSISTED_VENDOR: z.enum(['none', 'zyte', 'oxylabs']).default('none'),
     ZYTE_API_KEY: optionalString,
@@ -150,10 +161,13 @@ export const EnvSchema = z
     // Resend webhook signing secret (`whsec_…`) for bounces and complaints; unset = endpoint off.
     RESEND_WEBHOOK_SECRET: optionalString,
 
-    // Operations alerts (two consecutive source failures, backups, caps)
+    // Operations alerts (two consecutive source failures, backups, caps, SLO breaches)
     OPS_ALERT_TELEGRAM_BOT_TOKEN: optionalString,
     OPS_ALERT_TELEGRAM_CHAT_ID: optionalString,
     OPS_ALERT_EMAIL: optionalString,
+    // Dead-man's-switch heartbeats (M18): worker alive every 5 min; nightly logical dump.
+    OPS_HEARTBEAT_URL: optionalString,
+    DUMP_HEARTBEAT_URL: optionalString,
 
     // LLM (M22, ADR-011)
     ANTHROPIC_API_KEY: optionalString,
@@ -219,6 +233,9 @@ export const EnvSchema = z
       }
       if (env.FETCH_ALLOW_PRIVATE_HOSTS) {
         ctx.addIssue({ code: 'custom', path: ['FETCH_ALLOW_PRIVATE_HOSTS'], message: 'FETCH_ALLOW_PRIVATE_HOSTS is for local development only' });
+      }
+      if (env.FETCH_PRIVATE_ALLOWLIST.length > 0) {
+        ctx.addIssue({ code: 'custom', path: ['FETCH_PRIVATE_ALLOWLIST'], message: 'FETCH_PRIVATE_ALLOWLIST is for local development only' });
       }
     }
     // Production refuses to start without a real sender identity in every email (Law 506/2004

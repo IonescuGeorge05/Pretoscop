@@ -53,7 +53,7 @@ const env = getEnv();
 const log = createLogger('shops-probe', { level: env.LOG_LEVEL === 'info' ? 'warn' : env.LOG_LEVEL });
 const pool = createPool(env.DATABASE_URL, 2);
 const db = createDb(pool);
-const dispatcher = createGuardedDispatcher({ allowPrivate: env.FETCH_ALLOW_PRIVATE_HOSTS, timeoutMs: env.FETCH_TIMEOUT_MS });
+const dispatcher = createGuardedDispatcher({ allowPrivate: env.FETCH_ALLOW_PRIVATE_HOSTS, allowTargets: env.FETCH_PRIVATE_ALLOWLIST, timeoutMs: env.FETCH_TIMEOUT_MS });
 let exitCode = 0;
 try {
   const out = await runProbe(

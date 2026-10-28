@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readBodyCapped, readTextCapped } from '@/lib/body';
+import { readBodyCapped, readStreamCapped, readTextCapped } from '@/lib/body';
 
 /** A chunked body (no Content-Length) that would grow forever if read without a limit. */
 function endless(chunk: number): { req: Request; pulled: () => number } {
@@ -12,6 +12,21 @@ function endless(chunk: number): { req: Request; pulled: () => number } {
   });
   const req = new Request('http://x.test/', { method: 'POST', body: stream, duplex: 'half' } as RequestInit);
   return { req, pulled: () => pulled };
+}
+
+/** A chunked body with no length: what a stranger streaming an endless upload sends. */
+function stream(chunks: number, size: number) {
+  let sent = 0;
+  let pulled = 0;
+  const body = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      pulled++;
+      if (sent >= chunks) return controller.close();
+      sent++;
+      controller.enqueue(new Uint8Array(size).fill(0x41));
+    },
+  });
+  return { body, pulled: () => pulled };
 }
 
 describe('readBodyCapped', () => {
@@ -45,5 +60,22 @@ describe('readBodyCapped', () => {
   it('refuses a malformed Content-Length', async () => {
     const req = new Request('http://x.test/', { method: 'POST', body: 'x', headers: { 'content-length': '-1' } });
     expect(await readBodyCapped(req, 10)).toBeNull();
+  });
+});
+
+describe('readStreamCapped', () => {
+  it('returns the whole body under the limit', async () => {
+    const { body } = stream(3, 1000);
+    expect((await readStreamCapped(body, 3000))?.byteLength).toBe(3000);
+  });
+
+  it('stops reading and cancels as soon as the limit is passed (no Content-Length needed)', async () => {
+    const { body, pulled } = stream(1_000_000, 64 * 1024);
+    expect(await readStreamCapped(body, 1024 * 1024)).toBeNull();
+    expect(pulled()).toBeLessThan(20);
+  });
+
+  it('treats a missing body as empty', async () => {
+    expect((await readStreamCapped(null, 10))?.byteLength).toBe(0);
   });
 });

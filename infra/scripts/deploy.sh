@@ -2,14 +2,16 @@
 # Deploys one release to one environment on this server (M18). Run it from the environment's
 # checkout, e.g. /srv/pretoscop/prod, as the deploy user (member of the docker group):
 #   infra/scripts/deploy.sh prod v2026.11.03-1        (or: make deploy ENVIRONMENT=prod TAG=v2026.11.03-1)
-# Steps: preflight → pull images → data services up → migrations (one-shot, advisory lock) → web-1
-# then web-2 (each must turn healthy before the next; Caddy sends traffic to the other meanwhile) →
-# worker → smoke check → history line. If a web replica fails its health check, the replicas
-# already switched go back to the previous release and the script exits non-zero.
+# Steps: preflight → pull images → data services up (kept running: a release never restarts the
+# database) → migrations (one-shot, advisory lock) → web-1 then web-2 (each must turn healthy before
+# the next; Caddy sends traffic to the other meanwhile) → worker → smoke check → history line. If a
+# web replica fails its health check, the replicas already switched go back to the previous release
+# and the script exits non-zero.
 #
 # Overrides: see infra/scripts/lib.sh (ENV_FILE, COMPOSE_PROJECT, COMPOSE_EXTRA_FILES), plus
 # NO_PULL=1 (use local images), SMOKE_URL (e.g. https://pretoscop.ro/api/health), SMOKE_CURL_OPTS,
-# DEPLOY_HEALTH_TIMEOUT (seconds), DEPLOY_HISTORY (file).
+# DEPLOY_HEALTH_TIMEOUT (seconds), DEPLOY_HISTORY (file), RECREATE_DATA_SERVICES=1 (also apply a new
+# database/search image or changed settings for them: restarts PostgreSQL; runbooks/deploy.md).
 set -Eeuo pipefail
 
 SCRIPT_NAME=deploy
@@ -67,9 +69,40 @@ if [[ "${NO_PULL:-0}" != "1" ]]; then
 fi
 
 # ---------------------------------------------------------------- data services and migrations
-say "database, backups sidecar and search"
-compose up -d --wait --wait-timeout "$HEALTH_TIMEOUT" postgres meilisearch || failed "postgres/meilisearch not healthy"
-compose up -d --no-deps pgbackrest || failed "pgbackrest sidecar did not start"
+# PostgreSQL, its backup sidecar and Meilisearch keep running across releases: a release never
+# restarts the database. A new image (every tag rebuilds pretoscop-postgres:18) or a changed setting
+# for them is applied only on request, in a quiet minute: RECREATE_DATA_SERVICES=1 (runbooks/deploy.md).
+DATA_SERVICES=(postgres pgbackrest meilisearch)
+
+# True when the running container of a service differs from what compose would create now: its
+# definition changed (config hash) or its image tag points at a different image.
+outdated() {
+  local cid want have
+  cid="$(compose ps -q "$1" 2>/dev/null | head -n 1)"
+  [[ -n "$cid" ]] || return 1
+  want="$(compose config --hash "$1" 2>/dev/null | awk '{ print $2 }')"
+  have="$(docker inspect -f '{{ index .Config.Labels "com.docker.compose.config-hash" }}' "$cid" 2>/dev/null || true)"
+  [[ -n "$want" && "$want" != "$have" ]] && return 0
+  want="$(docker image inspect -f '{{ .Id }}' "$(docker inspect -f '{{ .Config.Image }}' "$cid")" 2>/dev/null || true)"
+  have="$(docker inspect -f '{{ .Image }}' "$cid" 2>/dev/null || true)"
+  [[ -n "$want" && "$want" != "$have" ]]
+}
+
+if [[ "${RECREATE_DATA_SERVICES:-0}" == "1" ]]; then
+  say "database, backups sidecar and search: applying new images and settings (the database restarts)"
+  compose up -d --wait --wait-timeout "$HEALTH_TIMEOUT" postgres meilisearch || failed "postgres/meilisearch not healthy"
+  compose up -d --no-deps pgbackrest || failed "pgbackrest sidecar did not start"
+else
+  say "database, backups sidecar and search (kept running)"
+  for svc in "${DATA_SERVICES[@]}"; do
+    if outdated "$svc"; then
+      say "NOTE: ${svc} has a new image or new settings; it keeps running as it is. Apply them in a quiet minute:"
+      say "      RECREATE_DATA_SERVICES=1 infra/scripts/deploy.sh ${ENV_NAME} ${TAG}"
+    fi
+  done
+  compose up -d --wait --wait-timeout "$HEALTH_TIMEOUT" --no-recreate postgres meilisearch || failed "postgres/meilisearch not healthy"
+  compose up -d --no-deps --no-recreate pgbackrest || failed "pgbackrest sidecar did not start"
+fi
 
 say "migrations (previous release: ${PREV:-none})"
 compose run --rm --no-deps migrate || failed "migrations failed; nothing else was restarted (the old release still serves)"

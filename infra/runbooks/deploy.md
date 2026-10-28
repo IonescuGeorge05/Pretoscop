@@ -25,7 +25,8 @@ infra/scripts/deploy.sh prod v2026.11.10-1               # or: make deploy ENVIR
 
 What `deploy.sh` does, in order (stops at the first failure, old release keeps serving):
 preflight (env file matches the environment, staging cannot crawl, archive_mode needs backups,
-compose config valid) → pull images → PostgreSQL and Meilisearch up → **migrations once** (one-shot
+compose config valid) → pull images → PostgreSQL, its backup sidecar and Meilisearch up **but never
+restarted** (see "Database image" below) → **migrations once** (one-shot
 `migrate` service, advisory lock) → `web-1` recreated and healthy → `web-2` recreated and healthy
 (Caddy routes to the healthy one meanwhile: no downtime) → worker → optional Alloy → smoke check
 (`SMOKE_URL`) → line in `.deploy-history`. If a web replica does not become healthy, the replicas
@@ -60,9 +61,21 @@ Changes to `infra/caddy/Caddyfile` or the certificate: in `/srv/pretoscop/prod`,
 Caddy only when its definition changed) or `... exec caddy caddy reload --config /etc/caddy/Caddyfile`
 (no dropped connections). App deploys never touch the edge stack.
 
-## Database image
+## Database image and database settings
 
-`pretoscop-postgres:18` changes rarely (PostgreSQL minor versions, pgBackRest). A changed image
-recreates the database container (seconds of downtime for web and worker; they reconnect). Do it
-in a quiet hour, after a backup: `... exec pgbackrest pgbackrest-sidecar backup diff`, then deploy.
-Major versions (18 → 19) are a separate project: `pg_upgrade` or dump/restore, tested on staging.
+A release never restarts PostgreSQL, its `pgbackrest` sidecar or Meilisearch. Every tag rebuilds
+`pretoscop-postgres:18` (PostgreSQL minor versions, pgBackRest, the sidecar script), and changes to
+`PG_*`, `BACKUP_*`, `.env.backup` or `MEILI_MASTER_KEY` also need those containers recreated, so
+`deploy.sh` prints a `NOTE: postgres has a new image or new settings` line and leaves them running.
+Apply them in a quiet hour (seconds of downtime for web and worker; they reconnect), after a backup:
+
+```bash
+cd /srv/pretoscop/prod
+C="docker compose -p pretoscop-prod -f infra/docker-compose.prod.yml --env-file .env"
+$C exec pgbackrest pgbackrest-sidecar backup diff
+RECREATE_DATA_SERVICES=1 infra/scripts/deploy.sh prod <current tag>
+$C exec pgbackrest pgbackrest-sidecar check        # WAL archiving works with the new container
+```
+
+Staging first. Major versions (18 → 19) are a separate project: `pg_upgrade` or dump/restore,
+tested on staging.

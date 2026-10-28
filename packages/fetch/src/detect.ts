@@ -100,6 +100,9 @@ function errorChain(error: unknown): ErrorLike[] {
   return chain;
 }
 
+/** `code` of the error `CappedDispatcher` throws when a tool's request cap is reached. */
+export const REQUEST_CAP_ERROR_CODE = 'ERR_PRETOSCOP_REQUEST_CAP';
+
 /** Classifies an error thrown while connecting, sending or reading a response. */
 export function classifyTransportError(error: unknown): TransportErrorClass {
   const chain = errorChain(error);
@@ -140,6 +143,8 @@ export function classifyTransportError(error: unknown): TransportErrorClass {
     if (own === 'aborted' || own === 'body_too_large' || own === 'decode_error') return neutral(own);
     return failure(own, true);
   }
+  // A tool's own request cap (`CappedDispatcher`, M21 shops:probe): nothing was sent.
+  if (has(REQUEST_CAP_ERROR_CODE)) return neutral('request_cap');
   // A request we could not even build (bad header value): our fault, not the shop's.
   if (has('UND_ERR_INVALID_ARG', 'ERR_INVALID_CHAR', 'ERR_INVALID_HTTP_TOKEN')) return neutral('invalid_request');
   if (codes.some((c) => CERT_ERROR_CODES.has(c))) return neutral('tls_certificate');

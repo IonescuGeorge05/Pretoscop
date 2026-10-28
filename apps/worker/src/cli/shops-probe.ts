@@ -3,21 +3,31 @@
  *
  *   pnpm --filter @pretoscop/worker shops:probe <slug> --vantage "Hetzner FSN1, production IP" [--url <page>] [--write]
  *
- * At most three requests with the honest PretoscopBot identity, 5 s apart (or the shop's crawl
- * delay): robots.txt, the home page and one public page from the registry (or --url). robots.txt is
- * obeyed and a block or challenge stops the probe; nothing is solved, retried around or stored.
- * Prints the `probes:` entry for packages/config/shops/<slug>.yaml; --write adds it to the file.
- * Works without a database (state in data/probe-state.json), so it can run from any vantage point.
- * eMAG is refused unless --allow-emag (ADR-013: eMAG requests are a founder decision).
+ * At most three requests (robots.txt, the home page, one public page from the registry or --url),
+ * at least 5 s apart, with the honest PretoscopBot identity, through the polite fetcher: robots.txt
+ * is obeyed, a block or challenge stops the probe and pauses the host like any crawl, nothing is
+ * solved, retried around or stored. Prints the `probes:` entry for packages/config/shops/<slug>.yaml;
+ * --write adds it to the file. Every probe leaves an audit row.
+ *
+ * Off by default: needs env CRAWL_ENABLED=true and the flags `crawl.enabled` and
+ * `shops.probe.enabled` (switch the latter on in /admin/flaguri for a probe session, then off);
+ * eMAG also needs `source.emag.enabled` (ADR-013). Shops removed from Pretoscop or read only
+ * through their feed are refused. Needs the database (gates, kill switches, shared pauses): from
+ * a second vantage point, run it with DATABASE_URL pointing at production (e.g. over WireGuard).
+ * Exit codes: 0 probed, 2 refused (nothing sent), 64 usage.
  */
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
-import { findRepoRoot, loadRootEnvFile } from '@pretoscop/config/env';
-import { getDomainPolicy, loadShops, SHOPS_DIR } from '@pretoscop/config/shops';
-import { hostOnDomain } from '@pretoscop/extractors';
-import { createFetcher, createGuardedDispatcher, FileDomainStateStore } from '@pretoscop/fetch';
-import { addProbeToYaml, probeTargets, probeYaml, summarizeProbe, type ProbeFetch } from '../registry/probe';
+import { getEnv, loadRootEnvFile } from '@pretoscop/config/env';
+import { createLogger } from '@pretoscop/config/logger';
+import { loadShops, SHOPS_DIR } from '@pretoscop/config/shops';
+import { createDb, createPool } from '@pretoscop/db';
+import { createGuardedDispatcher } from '@pretoscop/fetch';
+import { PgDomainStateStore } from '../fetch/pg-state';
+import { PgRequestLogSink } from '../fetch/request-log';
+import { addProbeToYaml, probeYaml } from '../registry/probe';
+import { runProbe } from '../registry/probe-run';
 
 loadRootEnvFile();
 const { values, positionals } = parseArgs({
@@ -26,69 +36,45 @@ const { values, positionals } = parseArgs({
     vantage: { type: 'string' },
     url: { type: 'string' },
     write: { type: 'boolean', default: false },
-    'allow-emag': { type: 'boolean', default: false },
   },
 });
 const slug = positionals[0];
-if (!slug || !values.vantage) {
+if (!slug || !values.vantage?.trim()) {
   process.stderr.write('usage: shops:probe <slug> --vantage "<where this runs>" [--url <page>] [--write]\n');
   process.exit(64);
 }
-const shops = loadShops();
-const shop = shops.find((s) => s.slug === slug);
+const shop = loadShops().find((s) => s.slug === slug);
 if (!shop) {
   process.stderr.write(`unknown shop ${slug} (packages/config/shops/*.yaml)\n`);
   process.exit(64);
 }
-if (slug === 'emag' && !values['allow-emag']) {
-  process.stderr.write('eMAG is isolated (ADR-013): pass --allow-emag only after a founder decision.\n');
-  process.exit(64);
-}
 
-const statePath = join(findRepoRoot(), 'data', 'probe-state.json');
-const dispatcher = createGuardedDispatcher({ allowPrivate: false });
-// The probe checks reachability whatever the registry's access mode says (that is what it is for),
-// with the shop's politeness settings; it never goes through the assisted channel.
-const fetcher = createFetcher({
-  stateStore: new FileDomainStateStore(statePath),
-  policyFor: (host) => ({ ...getDomainPolicy(host, shops), accessMode: 'direct' }),
-  crawlEnabled: true,
-  dispatcher,
-  retry: { maxRetries: 0 },
-});
-
-const fetches: ProbeFetch[] = [];
+const env = getEnv();
+const log = createLogger('shops-probe', { level: env.LOG_LEVEL === 'info' ? 'warn' : env.LOG_LEVEL });
+const pool = createPool(env.DATABASE_URL, 2);
+const db = createDb(pool);
+const dispatcher = createGuardedDispatcher({ allowPrivate: env.FETCH_ALLOW_PRIVATE_HOSTS, timeoutMs: env.FETCH_TIMEOUT_MS });
+let exitCode = 0;
 try {
-  for (const t of probeTargets(shop, values.url)) {
-    if (!hostOnDomain(t.url, shop.domain)) {
-      process.stderr.write(`skipping ${t.url}: not on ${shop.domain}\n`);
-      continue;
+  const out = await runProbe(
+    { db, env, log, dispatcher, stateStore: new PgDomainStateStore(db), requestLog: new PgRequestLogSink(db, log) },
+    shop,
+    { vantage: values.vantage.trim(), url: values.url },
+  );
+  if (out.status === 'refused') {
+    process.stdout.write(`${shop.name}: refused, nothing sent: ${out.reason}\n`);
+    exitCode = 2;
+  } else {
+    const entry = { date: out.date, vantage: values.vantage.trim(), result: out.result, note: out.note };
+    process.stdout.write(`${shop.name}: ${out.result} (${out.requests} request(s))\n\nprobes:\n${probeYaml(entry)}\n`);
+    if (values.write) {
+      const file = join(SHOPS_DIR, `${shop.slug}.yaml`);
+      writeFileSync(file, addProbeToYaml(readFileSync(file, 'utf8'), entry, `${shop.slug}.yaml`));
+      process.stdout.write(`\nadded to ${file}; review the diff, commit it and run shops:sync.\n`);
     }
-    const r = await fetcher.fetchPolite(t.url, { purpose: t.purpose, shopSlug: shop.slug });
-    fetches.push({
-      url: t.url,
-      status: r.status,
-      ok: r.ok,
-      blocked: r.blocked,
-      blockReason: r.blockReason,
-      skipped: r.skipped,
-      errorCode: r.errorCode,
-      error: r.error,
-      contentType: r.contentType,
-      bytes: r.body?.length,
-    });
-    if (r.blocked || r.skipped) break; // never push past a refusal
   }
 } finally {
-  await fetcher.close();
   await dispatcher.close();
+  await pool.end();
 }
-
-const { result, note } = summarizeProbe(fetches);
-const entry = { date: new Date().toISOString().slice(0, 10), vantage: values.vantage, result, note };
-process.stdout.write(`${shop.name}: ${result}\n\nprobes:\n${probeYaml(entry)}\n`);
-if (values.write) {
-  const file = join(SHOPS_DIR, `${shop.slug}.yaml`);
-  writeFileSync(file, addProbeToYaml(readFileSync(file, 'utf8'), entry, `${shop.slug}.yaml`));
-  process.stdout.write(`\nadded to ${file}; review the diff and run shops:sync.\n`);
-}
+process.exitCode = exitCode;

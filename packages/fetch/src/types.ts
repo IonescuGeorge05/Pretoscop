@@ -57,6 +57,8 @@ export type FetchErrorCode =
   | 'invalid_request'
   | 'crawl_disabled'
   | 'assisted_error'
+  /** A tool's own request cap (M21 `shops:probe`): the request was never sent. */
+  | 'request_cap'
   /** A transport error that surfaced long after the request's own timeout: this process was suspended (the machine slept), not refused. */
   | 'local_suspend';
 

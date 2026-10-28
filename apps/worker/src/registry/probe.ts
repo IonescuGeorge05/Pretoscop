@@ -2,11 +2,21 @@ import { parseShopYaml, type ShopConfig } from '@pretoscop/config/shops';
 
 /**
  * Re-probe of a shop (M21; docs/12 §2 layer 1): at most three polite requests (robots.txt, the
- * home page, one public listing or product page from the registry), 5 s apart, with the honest
- * PretoscopBot identity, from the vantage point where the command runs. Run it from the
+ * home page, one public listing or product page from the registry), at least 5 s apart, with the
+ * honest PretoscopBot identity, from the vantage point where the command runs. Run it from the
  * production IP and from a Romanian IP before a shop is classified as blocked; the outcome goes
  * into the shop's `probes:` list in the registry YAML.
+ *
+ * Off by default like everything that touches a shop: env CRAWL_ENABLED, the flags `crawl.enabled`
+ * and `shops.probe.enabled`, eMAG's ADR-013 flag; shops removed from Pretoscop or read only through
+ * their feed are never probed; robots.txt, domain pauses, allowed hours and daily budgets apply.
  */
+
+export const PROBE_FLAG = 'shops.probe.enabled';
+/** Network requests per probe, robots.txt and redirect hops included. */
+export const PROBE_MAX_REQUESTS = 3;
+/** Minimum time between the starts of two probe requests, whatever the host. */
+export const PROBE_MIN_GAP_MS = 5000;
 
 export type ProbeResult = 'served' | 'blocked' | 'challenge' | 'timeout' | 'robots_disallow' | 'error';
 
@@ -58,15 +68,53 @@ export function summarizeProbe(fetches: readonly ProbeFetch[]): { result: ProbeR
   return { result, note: fetches.map(describe).join('; ') };
 }
 
-/** Public pages to probe: the home page, then the first listing / sitemap / product source URL (never internal search). */
-export function probeTargets(shop: ShopConfig, extraUrl?: string): Array<{ url: string; purpose: 'probe' | 'listing' | 'sitemap' | 'product' }> {
+export interface ProbeGates {
+  /** env CRAWL_ENABLED */
+  crawlEnv: boolean;
+  /** flag `crawl.enabled` */
+  crawlFlag: boolean;
+  /** flag `shops.probe.enabled` */
+  probeFlag: boolean;
+  /** flag `source.emag.enabled` (ADR-013) */
+  emagFlag: boolean;
+}
+
+/**
+ * Why a shop must not be probed now, or null. The probe exists to re-test blocked shops, so a
+ * `blocked` status or `access_mode: off` is no reason to refuse; a shop removed from Pretoscop
+ * (a stop request or out of scope) or read only through its feed is.
+ */
+export function probeRefusal(shop: { slug: string; status: string; accessMode: string }, gates: ProbeGates): string | null {
+  if (!gates.crawlEnv) return 'env CRAWL_ENABLED is false (no request to any shop)';
+  if (!gates.crawlFlag) return 'flag crawl.enabled is off';
+  if (!gates.probeFlag) return `flag ${PROBE_FLAG} is off (a founder switches it on in /admin/flaguri for a probe session)`;
+  if (shop.status === 'removed') return 'the shop is removed from Pretoscop (stop request or out of scope): never probed';
+  if (shop.accessMode === 'feed_only') return 'the shop is read only through its feed (access_mode feed_only): its pages are never requested';
+  if (shop.slug === 'emag' && !gates.emagFlag) return 'eMAG requests need the flag source.emag.enabled (ADR-013)';
+  return null;
+}
+
+/**
+ * Public pages to probe: the home page, then one registry page (a listing, sitemap or product
+ * source that is not kill-switched), preferring one on the home page's host so robots.txt is read
+ * once; never the shop's internal search. `extraUrl` replaces the registry page.
+ */
+export function probeTargets(
+  shop: ShopConfig,
+  extraUrl?: string,
+  killedSourceKeys: ReadonlySet<string> = new Set(),
+): Array<{ url: string; purpose: 'probe' | 'listing' | 'sitemap' | 'product' }> {
   const targets: Array<{ url: string; purpose: 'probe' | 'listing' | 'sitemap' | 'product' }> = [{ url: shop.website_url, purpose: 'probe' }];
   if (extraUrl) {
     targets.push({ url: extraUrl, purpose: 'probe' });
     return targets;
   }
-  const src = shop.sources.find((s) => s.kind === 'listing' || s.kind === 'sitemap' || s.kind === 'product_page');
-  if (src) targets.push({ url: src.url, purpose: src.kind === 'product_page' ? 'product' : src.kind === 'sitemap' ? 'sitemap' : 'listing' });
+  const homeHost = new URL(shop.website_url).host;
+  const candidates = shop.sources.filter((s) => (s.kind === 'listing' || s.kind === 'sitemap' || s.kind === 'product_page') && !killedSourceKeys.has(s.key));
+  const src = candidates.find((s) => new URL(s.url).host === homeHost) ?? candidates[0];
+  if (src && src.url !== shop.website_url) {
+    targets.push({ url: src.url, purpose: src.kind === 'product_page' ? 'product' : src.kind === 'sitemap' ? 'sitemap' : 'listing' });
+  }
   return targets;
 }
 

@@ -1456,6 +1456,9 @@ class PoliteFetcher implements Fetcher {
       };
     }
     if (result.errorCode === 'too_many_redirects') return failed('too_many_redirects', result.error ?? 'too many redirects');
+    // A tool's own request cap stopped it (M21 shops:probe): nothing reached the site, so nothing is
+    // remembered in the shared state (a cached "unreachable" would stop the recorder on that host).
+    if (result.errorCode === 'request_cap') return null;
     const status = result.status;
     if (status === 0) return failed('unreachable', result.error ?? 'no response');
     if (status >= 200 && status < 300) {

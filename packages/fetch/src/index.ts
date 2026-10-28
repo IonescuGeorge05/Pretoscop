@@ -121,6 +121,7 @@ export type {
 } from './state/types';
 export { MemoryDomainStateStore } from './state/memory';
 export { FileDomainStateStore, type FileDomainStateStoreOptions } from './state/file';
+export { CappedDispatcher, RequestCapError } from './capped';
 // Web Bot Auth (M21). Also importable alone as `@pretoscop/fetch/signing` (no undici).
 export {
   contentDigest,

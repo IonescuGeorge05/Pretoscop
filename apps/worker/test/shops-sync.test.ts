@@ -24,18 +24,18 @@ describe('shops:sync', () => {
   });
 
   it('never turns a database kill switch off, disables sources removed from the YAML', async () => {
-    await t.db.execute(sql`UPDATE shop_sources SET kill_switch = true WHERE key = 'itgalaxy:sitemap:produse'`);
+    await t.db.execute(sql`UPDATE shop_sources SET kill_switch = true WHERE key = 'flip:sitemap:produse'`);
     const registry = loadShops().map((s) =>
       s.slug === 'emag' ? { ...s, sources: s.sources.filter((x) => x.key !== 'emag:listing:tablete') } : s,
     );
     const r = await syncShops(t.db, registry);
     expect(r.sources.disabled).toBe(1);
     const rows = await t.db.execute<{ key: string; enabled: boolean; kill_switch: boolean }>(
-      sql`SELECT key, enabled, kill_switch FROM shop_sources WHERE key IN ('itgalaxy:sitemap:produse','emag:listing:tablete') ORDER BY key`,
+      sql`SELECT key, enabled, kill_switch FROM shop_sources WHERE key IN ('flip:sitemap:produse','emag:listing:tablete') ORDER BY key`,
     );
     expect(rows.rows).toEqual([
       { key: 'emag:listing:tablete', enabled: false, kill_switch: false },
-      { key: 'itgalaxy:sitemap:produse', enabled: true, kill_switch: true },
+      { key: 'flip:sitemap:produse', enabled: true, kill_switch: true },
     ]);
   });
 

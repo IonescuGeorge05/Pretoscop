@@ -42,6 +42,10 @@ export interface ProductPageData {
   gtins: string[];
   attributes: Record<string, unknown>;
   imageKey: string | null;
+  /** Licensed source of the shown image (`feed`, `icecat`, `manual`, `merchant`). */
+  imageSource: string | null;
+  /** Icecat specs are stored for the product (the page must then credit Icecat, M11). */
+  icecatSpecs: boolean;
   stats: {
     currentMinTotal: string | null;
     min30d: string | null;
@@ -71,18 +75,19 @@ async function load(id: number): Promise<ProductPageData | null> {
   const p = await d.execute<{
     id: string; slug: string; title: string; status: string; merged_slug: string | null; provisional: boolean; brand: string | null; brand_slug: string | null;
     cat_slug: string | null; cat_name: string | null; parent_slug: string | null; parent_name: string | null; mpn: string | null;
-    attributes: Record<string, unknown>; family_id: string | null; image_key: string | null; gtins: string[] | null;
+    attributes: Record<string, unknown>; family_id: string | null; image_key: string | null; image_source: string | null; icecat_specs: boolean; gtins: string[] | null;
   }>(sql`
     SELECT p.id::text, p.slug, p.title, p.status, m.slug AS merged_slug, p.provisional, b.name AS brand, b.slug AS brand_slug,
       c.slug AS cat_slug, c.name_ro AS cat_name, pc.slug AS parent_slug, pc.name_ro AS parent_name, p.mpn, p.attributes,
-      p.family_id::text, img.storage_key AS image_key,
+      p.family_id::text, img.storage_key AS image_key, img.source AS image_source,
+      EXISTS (SELECT 1 FROM product_specs s WHERE s.product_id = p.id AND s.source = 'icecat') AS icecat_specs,
       (SELECT array_agg(gtin14) FROM product_gtins g WHERE g.product_id = p.id) AS gtins
     FROM products p
     LEFT JOIN products m ON m.id = p.merged_into_id
     LEFT JOIN brands b ON b.id = p.brand_id
     LEFT JOIN categories c ON c.id = p.category_id
     LEFT JOIN categories pc ON pc.id = c.parent_id
-    LEFT JOIN LATERAL (SELECT storage_key FROM product_images i WHERE i.product_id = p.id ORDER BY is_primary DESC, id LIMIT 1) img ON true
+    LEFT JOIN LATERAL (SELECT storage_key, source FROM product_images i WHERE i.product_id = p.id ORDER BY is_primary DESC, id LIMIT 1) img ON true
     WHERE p.id = ${id}
   `);
   const row = p.rows[0];
@@ -167,6 +172,8 @@ async function load(id: number): Promise<ProductPageData | null> {
     gtins: row.gtins ?? [],
     attributes: row.attributes ?? {},
     imageKey: row.image_key,
+    imageSource: row.image_source,
+    icecatSpecs: row.icecat_specs === true,
     stats: (stats.rows[0] as ProductPageData['stats']) ?? null,
     offers: mapped,
     variants: variants.rows.map((v) => ({ id: Number(v.id), slug: v.slug, title: v.title, attributes: v.attributes ?? {}, minTotal: v.min_total, current: Number(v.id) === id })),

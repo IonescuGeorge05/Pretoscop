@@ -76,6 +76,12 @@ authoritative. Additions beyond §5: `shops.shipping_verified`, `shops.vat_inclu
   `maintenance.request_log` (daily 03:40).
 - Tests: `import { createTestDatabase } from '@pretoscop/db/testing'` creates and migrates a
   throwaway database; call `drop()` in `afterAll`.
+- Icecat (M11, `queries/icecat.ts`): `icecatCandidates`, `saveIcecatSpecs` / `saveIcecatMiss`
+  (`product_specs` with `source = 'icecat'` / `'icecat-miss'`), `icecatImagesOf`,
+  `insertIcecatImage`, `deleteIcecatImages`, `setPrimaryImageIfMissing`,
+  `confirmProvisionalByIcecat`, `reserveIcecatUsage` / `icecatUsage` (monthly datasheet counter,
+  interim rows of `fetch_domain_daily` keyed `icecat:<LANG>`), `icecatCoverage`. Icecat content never
+  enters `products` or `product_gtins` (ADR-016); readers of `product_specs` filter on `source`.
 
 ## Price alerts (M19)
 

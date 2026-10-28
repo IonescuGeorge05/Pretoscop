@@ -15,7 +15,9 @@
     "check": "turbo run lint typecheck test",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "alerts:simulate": "pnpm --filter @pretoscop/worker alerts:simulate"
+    "alerts:simulate": "pnpm --filter @pretoscop/worker alerts:simulate",
+    "icecat:lookup": "pnpm --silent --filter @pretoscop/worker icecat:lookup",
+    "icecat:coverage": "pnpm --silent --filter @pretoscop/worker icecat:coverage"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",

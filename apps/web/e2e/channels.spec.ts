@@ -361,3 +361,18 @@ test('push endpoints outside the known push services are refused', async ({ page
   expect((await page.request.post('/api/push/subscribe', { data: { subscription: ok, consent: true, consentVersion: 'pushConsent.v0' } })).status()).toBe(400);
   expect(cli<State>('channels-state', email).devices).toEqual([]);
 });
+
+test('the service worker is never cached and handles no fetches; the manifest allows a Home Screen install', async ({ request }) => {
+  const sw = await request.get('/sw.js');
+  expect(sw.status()).toBe(200);
+  expect(sw.headers()['content-type']).toMatch(/javascript/);
+  expect(sw.headers()['cache-control']).toContain('no-cache');
+  const code = await sw.text();
+  expect(code).toContain("addEventListener('push'");
+  expect(code).toContain("addEventListener('notificationclick'");
+  expect(code).not.toContain("addEventListener('fetch'"); // never serves pages: nothing can go stale
+  const manifest = (await (await request.get('/manifest.webmanifest')).json()) as Record<string, unknown>;
+  expect(manifest).toMatchObject({ lang: 'ro', start_url: '/alerte', display: 'standalone', short_name: 'Pretoscop' });
+  const icon = await request.get('/apple-icon');
+  expect(icon.headers()['content-type']).toBe('image/png');
+});

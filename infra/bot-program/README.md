@@ -36,7 +36,10 @@ step makes the crawler easier to identify, never harder.
 5. **Re-probe before calling a shop blocked**: switch `shops.probe.enabled` on in `/admin/flaguri`, run
    `shops:probe <slug> --vantage "…"` from the production IP and from a Romanian IP (with `DATABASE_URL` pointing at
    production, so pauses are shared), `--write` to record both outcomes in `packages/config/shops/<slug>.yaml`,
-   then switch the flag off again. Shops removed from Pretoscop or read only through their feed are refused.
+   then switch the flag off again. Shops that asked us to stop or said no (paused or removed, every source
+   kill-switched, latest outreach declined) and feed-only shops are refused. Once `BOT_EGRESS_IPS` is
+   published, probe only from one of those addresses (the bot page says other addresses are not ours) and
+   confirm it with `--from-published-ip`.
 
 ## Application status (update by hand)
 

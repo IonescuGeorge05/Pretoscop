@@ -8,8 +8,10 @@ import { parseShopYaml, type ShopConfig } from '@pretoscop/config/shops';
  * into the shop's `probes:` list in the registry YAML.
  *
  * Off by default like everything that touches a shop: env CRAWL_ENABLED, the flags `crawl.enabled`
- * and `shops.probe.enabled`, eMAG's ADR-013 flag; shops removed from Pretoscop or read only through
- * their feed are never probed; robots.txt, domain pauses, allowed hours and daily budgets apply.
+ * and `shops.probe.enabled`, eMAG's ADR-013 flag. A shop that asked us to stop or said no is never
+ * probed (status `paused` or `removed`, every source kill-switched, the latest outreach declined),
+ * nor one read only through its feed; once egress IPs are published, only from one of them.
+ * robots.txt, domain pauses, allowed hours and daily budgets apply.
  */
 
 export const PROBE_FLAG = 'shops.probe.enabled';
@@ -79,18 +81,43 @@ export interface ProbeGates {
   emagFlag: boolean;
 }
 
+/** What the shop told us, from the database. */
+export interface ProbeShopState {
+  slug: string;
+  status: string;
+  accessMode: string;
+  /** The shop has sources and every one of them is kill-switched (how a stop request is recorded). */
+  allSourcesKilled: boolean;
+  /** The latest outreach entry for the shop is a refusal. */
+  declined: boolean;
+}
+
+/** BOT_EGRESS_IPS is published, and whether the operator confirmed the probe runs from one of them. */
+export interface ProbeEgress {
+  published: boolean;
+  confirmed: boolean;
+}
+
 /**
  * Why a shop must not be probed now, or null. The probe exists to re-test blocked shops, so a
- * `blocked` status or `access_mode: off` is no reason to refuse; a shop removed from Pretoscop
- * (a stop request or out of scope) or read only through its feed is.
+ * `blocked` status or `access_mode: off` is no reason to refuse. A shop that asked us to stop
+ * (the runbooks record it as status `paused` with every source killed, or `removed`), that
+ * declined our request, or that we read only through its feed is; so is a probe from an address
+ * the bot page does not list, once the list is published (/bot says other addresses are not ours).
  */
-export function probeRefusal(shop: { slug: string; status: string; accessMode: string }, gates: ProbeGates): string | null {
+export function probeRefusal(shop: ProbeShopState, gates: ProbeGates, egress: ProbeEgress = { published: false, confirmed: false }): string | null {
   if (!gates.crawlEnv) return 'env CRAWL_ENABLED is false (no request to any shop)';
   if (!gates.crawlFlag) return 'flag crawl.enabled is off';
   if (!gates.probeFlag) return `flag ${PROBE_FLAG} is off (a founder switches it on in /admin/flaguri for a probe session)`;
   if (shop.status === 'removed') return 'the shop is removed from Pretoscop (stop request or out of scope): never probed';
+  if (shop.status === 'paused') return 'the shop is paused (a stop request or our own pause): not probed until it is active or blocked again';
+  if (shop.allSourcesKilled) return 'every source of the shop is kill-switched (how a stop request is recorded): not probed';
+  if (shop.declined) return 'the shop declined our request (latest entry in /admin/contactari): not probed';
   if (shop.accessMode === 'feed_only') return 'the shop is read only through its feed (access_mode feed_only): its pages are never requested';
   if (shop.slug === 'emag' && !gates.emagFlag) return 'eMAG requests need the flag source.emag.enabled (ADR-013)';
+  if (egress.published && !egress.confirmed) {
+    return 'BOT_EGRESS_IPS is published: probe only from one of those addresses, and confirm it with --from-published-ip';
+  }
   return null;
 }
 

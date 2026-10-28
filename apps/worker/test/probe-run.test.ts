@@ -5,10 +5,10 @@ import { createLogger } from '@pretoscop/config/logger';
 import { ShopSchema, type ShopConfig } from '@pretoscop/config/shops';
 import { setFlag, sql } from '@pretoscop/db';
 import { createTestDatabase, type TestDatabase } from '@pretoscop/db/testing';
-import type { RequestLogEntry } from '@pretoscop/fetch';
+import { MemoryDomainStateStore, type RequestLogEntry } from '@pretoscop/fetch';
 import { PgDomainStateStore } from '../src/fetch/pg-state';
 import { PROBE_FLAG } from '../src/registry/probe';
-import { runProbe, type ProbeRunDeps } from '../src/registry/probe-run';
+import { runProbe, spacedStateStore, type ProbeRunDeps } from '../src/registry/probe-run';
 
 /**
  * shops:probe end to end without a network: the real polite fetcher, the database state store
@@ -58,10 +58,26 @@ beforeAll(async () => {
       ('proba', 'Proba', 'proba.ro', 'https://www.proba.ro', 'blocked', 'off'),
       ('scos', 'Scos', 'scos.ro', 'https://www.scos.ro', 'removed', 'off'),
       ('doarfeed', 'Doar feed', 'doarfeed.ro', 'https://www.doarfeed.ro', 'active', 'feed_only'),
-      ('emag', 'eMAG', 'emag.ro', 'https://www.emag.ro', 'active', 'direct')`);
+      ('emag', 'eMAG', 'emag.ro', 'https://www.emag.ro', 'active', 'direct'),
+      ('pauzat', 'Pauzat', 'pauzat.ro', 'https://www.pauzat.ro', 'paused', 'off'),
+      ('oprit', 'Oprit', 'oprit.ro', 'https://www.oprit.ro', 'active', 'direct'),
+      ('refuzat', 'Refuzat', 'refuzat.ro', 'https://www.refuzat.ro', 'blocked', 'off')`);
+  // proba: one killed source (skipped as a target) and one that is not.
   await t.db.execute(sql`
     INSERT INTO shop_sources (shop_id, key, kind, url, parser_key, enabled, kill_switch)
-    SELECT id, 'proba:listing:oprita', 'listing', 'https://www.proba.ro/oprita/', 'jsonld-product', false, true FROM shops WHERE slug = 'proba'`);
+    SELECT id, 'proba:listing:oprita', 'listing', 'https://www.proba.ro/oprita/', 'jsonld-product', false, true FROM shops WHERE slug = 'proba'
+    UNION ALL SELECT id, 'proba:listing:laptopuri', 'listing', 'https://www.proba.ro/laptopuri/', 'jsonld-product', false, false FROM shops WHERE slug = 'proba'`);
+  // How the runbooks record a stop request: every source kill-switched. And a shop that said no.
+  await t.db.execute(sql`
+    INSERT INTO shop_sources (shop_id, key, kind, url, parser_key, enabled, kill_switch)
+    SELECT id, 'oprit:listing:a', 'listing', 'https://www.oprit.ro/a/', 'jsonld-product', false, true FROM shops WHERE slug = 'oprit'
+    UNION ALL SELECT id, 'oprit:listing:b', 'listing', 'https://www.oprit.ro/b/', 'jsonld-product', false, true FROM shops WHERE slug = 'oprit'`);
+  await t.db.execute(sql`
+    INSERT INTO outreach (shop_id, purpose, channel, status, created_by, created_at)
+    SELECT id, 'allowlist', 'email', 'sent', 'human:test', now() - interval '20 days' FROM shops WHERE slug = 'refuzat'
+    UNION ALL SELECT id, 'allowlist', 'email', 'declined', 'human:test', now() - interval '5 days' FROM shops WHERE slug = 'refuzat'
+    UNION ALL SELECT id, 'feed', 'email', 'declined', 'human:test', now() - interval '9 days' FROM shops WHERE slug = 'proba'
+    UNION ALL SELECT id, 'feed', 'email', 'replied', 'human:test', now() - interval '2 days' FROM shops WHERE slug = 'proba'`);
   await setFlag(t.db, 'crawl.enabled', true);
 }, 180_000);
 
@@ -108,6 +124,16 @@ describe('shops:probe gates', () => {
     expect(await runProbe(deps(), as('doarfeed', 'doarfeed.ro'), { vantage: 'test' })).toMatchObject({ status: 'refused', reason: expect.stringContaining('feed_only') });
     expect(await runProbe(deps(), as('emag', 'emag.ro'), { vantage: 'test' })).toMatchObject({ status: 'refused', reason: expect.stringContaining('ADR-013') });
     expect(await runProbe(deps(), as('necunoscut', 'necunoscut.ro'), { vantage: 'test' })).toMatchObject({ status: 'refused', reason: expect.stringContaining('shops:sync') });
+    // A shop that asked us to stop or said no: paused, every source killed, latest outreach declined.
+    expect(await runProbe(deps(), as('pauzat', 'pauzat.ro'), { vantage: 'test' })).toMatchObject({ status: 'refused', reason: expect.stringContaining('paused') });
+    expect(await runProbe(deps(), as('oprit', 'oprit.ro'), { vantage: 'test' })).toMatchObject({ status: 'refused', reason: expect.stringContaining('kill-switched') });
+    expect(await runProbe(deps(), as('refuzat', 'refuzat.ro'), { vantage: 'test' })).toMatchObject({ status: 'refused', reason: expect.stringContaining('declined') });
+    // Once the egress IPs are published, only from one of them, confirmed by the operator.
+    const published = { ...ON, BOT_EGRESS_IPS: ['203.0.113.10'] };
+    expect(await runProbe(deps({ env: published }), shopConfig(), { vantage: 'test' })).toMatchObject({
+      status: 'refused',
+      reason: expect.stringContaining('--from-published-ip'),
+    });
     expect(await runProbe(deps(), shopConfig(), { vantage: 'test', url: 'https://alt-site.ro/p' })).toMatchObject({ status: 'refused', reason: expect.stringContaining('proba.ro') });
     expect(logged).toEqual([]);
   });
@@ -183,5 +209,25 @@ describe('shops:probe requests', () => {
     // The cap is ours, not the shop's: no pause, no cached "robots.txt unreachable".
     const state = (await t.db.execute<{ host: string; paused: boolean | null }>(sql`SELECT host, paused_until > now() AS paused FROM fetch_domain_state`)).rows;
     expect(state.filter((s) => s.paused)).toEqual([]);
+  });
+});
+
+describe('spacing before the shared slot is reserved', () => {
+  it('waits the gap between any two requests, whatever the host, before reserving the next slot', async () => {
+    let clock = Date.parse('2026-10-28T10:00:00Z');
+    const sleeps: number[] = [];
+    const now = () => clock;
+    const sleep = async (ms: number) => {
+      sleeps.push(ms);
+      clock += ms;
+    };
+    const store = spacedStateStore(new MemoryDomainStateStore({ now }), { gapMs: 5000, now, sleep });
+    const a = await store.reserveSlot('www.proba.ro', 5000);
+    const b = await store.reserveSlot('proba.ro', 5000); // another host: its own slot is free
+    expect(a.waitMs).toBe(0);
+    expect(sleeps).toEqual([5000]);
+    expect(b.startAt - a.startAt).toBeGreaterThanOrEqual(5000);
+    // Everything else passes through untouched.
+    expect(await store.getPause('proba.ro')).toBeNull();
   });
 });

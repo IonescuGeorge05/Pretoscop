@@ -60,7 +60,7 @@ grep -Eq '^WEB_BOT_AUTH_PRIVATE_KEY=[A-Za-z0-9_-]{43}$' <<<"$KEYGEN" || fail "ke
 grep -Eq '^keyid: [A-Za-z0-9_-]{43}$' <<<"$KEYGEN" || fail "keygen did not print the keyid"
 grep -Eq '^jwk:   \{"kty":"OKP","crv":"Ed25519","x":"[A-Za-z0-9_-]{43}"\}$' <<<"$KEYGEN" || fail "keygen did not print the public JWK"
 unset KEYGEN
-if git grep -nE "WEB_BOT_AUTH_PRIVATE_KEY=[A-Za-z0-9_-]{43}|BEGIN (ED25519 )?PRIVATE KEY" -- ':!scripts/verify/M21.sh' ':!packages/fetch/test' ':!**/*.md' >/dev/null; then
+if git grep -nE "WEB_BOT_AUTH_PRIVATE_KEY *[=:] *[\"']?[A-Za-z0-9_-]{43}|BEGIN (ED25519 )?PRIVATE KEY" -- ':!scripts/verify/M21.sh' ':!packages/fetch/test' >/dev/null; then
   fail "a private key is committed"
 fi
 ok "keygen fine, no key in git (the RFC 9421 test key appears only in tests)"

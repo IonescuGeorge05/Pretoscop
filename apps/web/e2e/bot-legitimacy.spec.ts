@@ -130,6 +130,9 @@ test.describe('bot legitimacy', () => {
     );
     try {
       await login(page);
+      // Messages are looked up by own key only: a prototype name renders the generic error, not a crash.
+      await page.goto('/admin/contactari?ok=__proto__&eroare=constructor');
+      await ui(page.getByRole('alert').filter({ hasText: 'Ceva nu a mers.' })).toBeVisible();
       await page.goto('/admin/contactari');
       const before = Number(await page.getByTestId('outreach-contacted').innerText());
       const form = page.getByTestId('outreach-form');

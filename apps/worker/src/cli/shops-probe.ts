@@ -1,7 +1,7 @@
 /**
  * Re-probe one shop from where this runs (M21; docs/12 §2 layer 1):
  *
- *   pnpm --filter @pretoscop/worker shops:probe <slug> --vantage "Hetzner FSN1, production IP" [--url <page>] [--write]
+ *   pnpm --filter @pretoscop/worker shops:probe <slug> --vantage "Hetzner FSN1, production IP" [--url <page>] [--write] [--from-published-ip]
  *
  * At most three requests (robots.txt, the home page, one public page from the registry or --url),
  * at least 5 s apart, with the honest PretoscopBot identity, through the polite fetcher: robots.txt
@@ -11,8 +11,10 @@
  *
  * Off by default: needs env CRAWL_ENABLED=true and the flags `crawl.enabled` and
  * `shops.probe.enabled` (switch the latter on in /admin/flaguri for a probe session, then off);
- * eMAG also needs `source.emag.enabled` (ADR-013). Shops removed from Pretoscop or read only
- * through their feed are refused. Needs the database (gates, kill switches, shared pauses): from
+ * eMAG also needs `source.emag.enabled` (ADR-013). A shop that asked us to stop or said no (status
+ * paused or removed, every source kill-switched, latest outreach declined) or that is read only
+ * through its feed is refused. Once BOT_EGRESS_IPS is published, /bot says other addresses are not
+ * ours: run it only from a published address and pass --from-published-ip. Needs the database (gates, kill switches, shared pauses): from
  * a second vantage point, run it with DATABASE_URL pointing at production (e.g. over WireGuard).
  * Exit codes: 0 probed, 2 refused (nothing sent), 64 usage.
  */
@@ -36,11 +38,12 @@ const { values, positionals } = parseArgs({
     vantage: { type: 'string' },
     url: { type: 'string' },
     write: { type: 'boolean', default: false },
+    'from-published-ip': { type: 'boolean', default: false },
   },
 });
 const slug = positionals[0];
 if (!slug || !values.vantage?.trim()) {
-  process.stderr.write('usage: shops:probe <slug> --vantage "<where this runs>" [--url <page>] [--write]\n');
+  process.stderr.write('usage: shops:probe <slug> --vantage "<where this runs>" [--url <page>] [--write] [--from-published-ip]\n');
   process.exit(64);
 }
 const shop = loadShops().find((s) => s.slug === slug);
@@ -59,7 +62,7 @@ try {
   const out = await runProbe(
     { db, env, log, dispatcher, stateStore: new PgDomainStateStore(db), requestLog: new PgRequestLogSink(db, log) },
     shop,
-    { vantage: values.vantage.trim(), url: values.url },
+    { vantage: values.vantage.trim(), url: values.url, fromPublishedIp: values['from-published-ip'] },
   );
   if (out.status === 'refused') {
     process.stdout.write(`${shop.name}: refused, nothing sent: ${out.reason}\n`);

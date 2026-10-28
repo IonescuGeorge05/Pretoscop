@@ -384,7 +384,9 @@ and rotation: `infra/bot-program/web-bot-auth.md`.
 
 `new CappedDispatcher(dispatcher, { maxRequests, minGapMs })` wraps the transport so a tool cannot send
 more than `maxRequests` requests (robots.txt, redirect hops and retries included) and starts any two at
-least `minGapMs` apart, whatever the host. `shops:probe` uses it (3 requests, 5 s). Over the cap it throws
+least `minGapMs` apart, whatever the host. Its gap is a delay after the fetcher reserved the host's slot, so
+with a shared state store prefer spacing before the reservation: `shops:probe` uses the dispatcher for its
+3-request cap only (`minGapMs: 0`) and spaces requests in a state-store wrapper (`spacedStateStore`). Over the cap it throws
 `RequestCapError` before anything is sent; the fetch layer reports `errorCode: 'request_cap'`, which is
 neutral: no pause, no failure count, and no robots.txt outcome is cached in the shared state.
 

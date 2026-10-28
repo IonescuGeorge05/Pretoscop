@@ -3,7 +3,7 @@ import { createOutreachAction, deleteOutreachAction, updateOutreachAction } from
 import { Section, Stat, Table, Td } from '@/components/admin/ui';
 import { db } from '@/lib/db';
 import { formatDate, formatPercent } from '@/lib/format';
-import { isContacted, OUTREACH_CHANNELS, OUTREACH_PURPOSES, OUTREACH_STATUSES, OUTREACH_TEMPLATES } from '@/lib/outreach';
+import { isContacted, isOwnKey, OUTREACH_CHANNELS, OUTREACH_PURPOSES, OUTREACH_STATUSES, OUTREACH_TEMPLATES } from '@/lib/outreach';
 
 const btn = 'h-9 rounded-lg px-3 text-sm font-semibold';
 const field = 'h-9 w-full rounded-lg border border-line bg-white px-2 text-sm';
@@ -59,6 +59,9 @@ export default async function OutreachAdminPage({ searchParams }: { searchParams
   const now = new Date();
   const due = rows.filter((r) => r.o.nextStepAt && r.o.nextStepAt <= now && !['agreed', 'declined'].includes(r.o.status));
   const today = now.toISOString().slice(0, 10);
+  // Own keys only: `?ok=__proto__` must not reach the prototype.
+  const flash = q.ok && isOwnKey(FLASH, q.ok) ? FLASH[q.ok] : null;
+  const error = q.eroare ? (isOwnKey(ERRORS, q.eroare) ? ERRORS[q.eroare] : 'Ceva nu a mers.') : null;
 
   return (
     <div>
@@ -67,14 +70,14 @@ export default async function OutreachAdminPage({ searchParams }: { searchParams
         Cereri de feed sau de acces pentru PretoscopBot (șabloane în <code>infra/bot-program/outreach-templates.md</code>). Emailurile le trimit fondatorii; aici
         notăm ce s-a trimis și ce au răspuns magazinele. Păstrăm doar canale de afaceri (adrese de rol, formulare, centrale), nu date despre persoane.
       </p>
-      {q.ok && FLASH[q.ok] && (
+      {flash && (
         <p role="status" className="mb-4 rounded-lg bg-good-bg px-3 py-2 text-sm text-good">
-          {FLASH[q.ok]}
+          {flash}
         </p>
       )}
-      {q.eroare && (
+      {error && (
         <p role="alert" className="mb-4 rounded-lg bg-high-bg px-3 py-2 text-sm text-high">
-          {ERRORS[q.eroare] ?? 'Ceva nu a mers.'}
+          {error}
         </p>
       )}
       <div className="mb-6 grid gap-3 sm:grid-cols-3">

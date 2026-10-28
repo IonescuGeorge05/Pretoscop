@@ -25,7 +25,7 @@ export interface ProbeRunDeps {
   /** Shared per-host state (production: the database's), so pauses and intervals are the recorder's. */
   stateStore: DomainStateStore;
   requestLog?: RequestLogSink & { flush?: () => Promise<void> };
-  /** Tests only: a shorter gap between requests, and a sleep that does not wait for the per-host slot. */
+  /** Tests only: a shorter gap between any two requests (real time), and a sleep that skips the per-host wait. */
   minGapMs?: number;
   sleep?: FetcherDeps['sleep'];
   now?: () => Date;
@@ -50,6 +50,36 @@ interface ShopRow extends Record<string, unknown> {
 }
 
 /**
+ * Spaces every probe request, whatever its host, by `gapMs` *before* its per-host slot is reserved
+ * in the shared state, so the slot the recorder sees is the time the request really leaves (a delay
+ * after the reservation would let a recorder request to that host follow sooner than 5 s).
+ */
+export function spacedStateStore(
+  inner: DomainStateStore,
+  opts: { gapMs: number; now?: () => number; sleep?: (ms: number) => Promise<void> },
+): DomainStateStore {
+  const now = opts.now ?? Date.now;
+  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  let nextAt = Number.NEGATIVE_INFINITY;
+  return new Proxy(inner, {
+    get(target, prop) {
+      if (prop === 'reserveSlot') {
+        return async (host: string, intervalMs: number) => {
+          const wait = nextAt - now();
+          if (wait > 0) await sleep(wait);
+          const slot = await target.reserveSlot(host, intervalMs);
+          // The request leaves when its own slot comes (the fetcher waits `waitMs`); the next one a gap later.
+          nextAt = now() + slot.waitMs + opts.gapMs;
+          return slot;
+        };
+      }
+      const value: unknown = Reflect.get(target, prop, target);
+      return typeof value === 'function' ? (value as (...a: unknown[]) => unknown).bind(target) : value;
+    },
+  });
+}
+
+/**
  * One probe of one shop (M21; `shops:probe`): the gates of `probeRefusal`, then at most
  * `PROBE_MAX_REQUESTS` requests through the polite fetcher (identified User-Agent, Web Bot Auth
  * when on, robots.txt, ≥ 5 s per host and between any two requests, the shop's allowed hours and
@@ -57,21 +87,38 @@ interface ShopRow extends Record<string, unknown> {
  * shop's runtime state (status, access mode, kill switches, policy) comes from the database; the
  * pages to try come from the registry YAML. Every probe leaves an audit row.
  */
-export async function runProbe(deps: ProbeRunDeps, shop: ShopConfig, opts: { vantage: string; url?: string }): Promise<ProbeRunOutcome> {
+export async function runProbe(
+  deps: ProbeRunDeps,
+  shop: ShopConfig,
+  opts: { vantage: string; url?: string; fromPublishedIp?: boolean },
+): Promise<ProbeRunOutcome> {
   const { db, env, log } = deps;
   const row = (
     await db.execute<ShopRow>(sql`SELECT id, slug, domain, status, access_mode, crawl_policy FROM shops WHERE slug = ${shop.slug}`)
   ).rows[0];
   if (!row) return { status: 'refused', reason: `shop ${shop.slug} is not in the database (run shops:sync first)`, requests: 0 };
 
+  const facts = (
+    await db.execute<{ sources: number; killed: number; declined: boolean }>(sql`
+      SELECT (SELECT count(*) FROM shop_sources WHERE shop_id = ${row.id})::int AS sources,
+             (SELECT count(*) FROM shop_sources WHERE shop_id = ${row.id} AND kill_switch)::int AS killed,
+             coalesce((SELECT status = 'declined' FROM outreach WHERE shop_id = ${row.id} ORDER BY created_at DESC, id DESC LIMIT 1), false) AS declined`)
+  ).rows[0]!;
   const reason = probeRefusal(
-    { slug: row.slug, status: row.status, accessMode: row.access_mode },
+    {
+      slug: row.slug,
+      status: row.status,
+      accessMode: row.access_mode,
+      allSourcesKilled: facts.sources > 0 && facts.killed === facts.sources,
+      declined: facts.declined,
+    },
     {
       crawlEnv: env.CRAWL_ENABLED,
       crawlFlag: await isFlagEnabled(db, 'crawl.enabled'),
       probeFlag: await isFlagEnabled(db, PROBE_FLAG),
       emagFlag: await isFlagEnabled(db, 'source.emag.enabled'),
     },
+    { published: env.BOT_EGRESS_IPS.length > 0, confirmed: opts.fromPublishedIp === true },
   );
   if (reason) return { status: 'refused', reason, requests: 0 };
   if (opts.url !== undefined && (!/^https?:\/\//i.test(opts.url) || !hostOnDomain(opts.url, row.domain))) {
@@ -97,10 +144,11 @@ export async function runProbe(deps: ProbeRunDeps, shop: ShopConfig, opts: { van
         })
       : defaultDomainPolicy(host, { accessMode: 'off' });
 
-  const capped = new CappedDispatcher(deps.dispatcher, { maxRequests: PROBE_MAX_REQUESTS, minGapMs: deps.minGapMs ?? PROBE_MIN_GAP_MS });
+  // The cap holds at the transport; the 5 s spacing happens before each slot reservation.
+  const capped = new CappedDispatcher(deps.dispatcher, { maxRequests: PROBE_MAX_REQUESTS, minGapMs: 0 });
   const fetcher = createFetcher({
     dispatcher: capped,
-    stateStore: deps.stateStore,
+    stateStore: spacedStateStore(deps.stateStore, { gapMs: deps.minGapMs ?? PROBE_MIN_GAP_MS, sleep: deps.sleep ? (ms) => deps.sleep!(ms) : undefined }),
     requestLog: deps.requestLog,
     policyFor,
     crawlEnabled: env.CRAWL_ENABLED,

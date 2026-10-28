@@ -112,12 +112,16 @@ It prints a before/after summary; run `--dry-run` first, then `match:run` (or wa
   `BOT_EGRESS_IPS` address, `/bot/ips.json`, the key directory (served without a redirect, Content-Digest, one
   possession proof per key, our key in it); prints the headers a signed request would carry. Contacts DNS and our own
   site only.
-- **`pnpm --filter @pretoscop/worker shops:probe <slug> --vantage "…" [--url <page>] [--write]`**: re-probe of one shop
-  (docs/12 §2 layer 1). Off by default: needs `CRAWL_ENABLED=true`, the flags `crawl.enabled` and `shops.probe.enabled`
-  (switch it on for a probe session, then off) and, for eMAG, `source.emag.enabled`; shops with status `removed` or
-  access mode `feed_only` are refused. At most three requests (robots.txt, home page, one registry page from a source that
-  is not kill-switched, or `--url` on the shop's domain), at least 5 s apart (`CappedDispatcher`), no retries, through the
-  polite fetcher with the database's state (pauses shared with the recorder) and request log; stops at the first refusal.
-  Prints (or with `--write` adds) the registry `probes:` entry and leaves an `audit_log` row (`shops.probe`). Exit 2 when
-  refused (nothing sent). Needs the database: from a second vantage point run it with `DATABASE_URL` pointing at
-  production (e.g. over WireGuard).
+- **`pnpm --filter @pretoscop/worker shops:probe <slug> --vantage "…" [--url <page>] [--write] [--from-published-ip]`**:
+  re-probe of one shop (docs/12 §2 layer 1).
+  - Off by default: needs `CRAWL_ENABLED=true`, the flags `crawl.enabled` and `shops.probe.enabled` (switch it on for a
+    probe session, then off) and, for eMAG, `source.emag.enabled`.
+  - Refused (exit 2, nothing sent): shops that asked us to stop or said no (status `paused` or `removed`, every source
+    kill-switched, latest outreach `declined`), feed-only shops, and, once `BOT_EGRESS_IPS` is published, any run
+    without `--from-published-ip` (the bot page says other addresses are not ours).
+  - At most three requests (robots.txt, home page, one registry page from a source that is not kill-switched, or `--url`
+    on the shop's domain), at least 5 s apart (spaced before each shared slot reservation; the cap is enforced at the
+    transport by `CappedDispatcher`), no retries, through the polite fetcher with the database's state (pauses shared with
+    the recorder) and request log; stops at the first refusal.
+  - Prints (or with `--write` adds) the registry `probes:` entry and leaves an `audit_log` row (`shops.probe`). Needs the
+    database: from a second vantage point run it with `DATABASE_URL` pointing at production (e.g. over WireGuard).

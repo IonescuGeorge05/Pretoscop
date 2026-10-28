@@ -50,7 +50,7 @@ Only public members are served; the private key never leaves the environment.
 | Variable | Where | Value |
 |---|---|---|
 | `WEB_BOT_AUTH_PRIVATE_KEY` | web **and** worker | secret: the base64url Ed25519 seed printed by the keygen (or a PKCS#8 PEM, `\n` allowed) |
-| `WEB_BOT_AUTH` | worker (web reads it for `/bot`) | `false` until the key is registered, then `true` |
+| `WEB_BOT_AUTH` | worker **and** web (the web app reads it for the status on `/bot`: keep both equal) | `false` until the key is registered, then `true` |
 | `BOT_INFO_URL` | both | `https://pretoscop.ro/bot`; its origin is the `Signature-Agent` (https required when signing) |
 
 `getEnv()` refuses `WEB_BOT_AUTH=true` without a key, a malformed key, a plain-http `BOT_INFO_URL` and, in

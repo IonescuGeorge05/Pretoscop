@@ -1,9 +1,12 @@
 import { asc, featureFlags } from '@pretoscop/db';
 import { Section, Table, Td } from '@/components/admin/ui';
+import { requireAdmin } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { setFlagAction } from '../../actions';
 
 export default async function FlagsPage() {
+  // Each admin page checks the session itself: the layout guard does not stop a segment from rendering.
+  await requireAdmin();
   const flags = await db().select().from(featureFlags).orderBy(asc(featureFlags.key));
   return (
     <div>

@@ -1,10 +1,13 @@
 import { sql } from '@pretoscop/db';
 import { Health, Section, Table, Td } from '@/components/admin/ui';
+import { requireAdmin } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { formatRelative } from '@/lib/format';
 import { runSourceNow, setKillSwitch, setShopKill } from '../../actions';
 
 export default async function SourcesPage() {
+  // Each admin page checks the session itself: the layout guard does not stop a segment from rendering.
+  await requireAdmin();
   const res = await db().execute<{
     id: string; shop_id: string; key: string; shop: string; status: string; access: string; kind: string; parser: string;
     schedule: string | null; enabled: boolean; kill_switch: boolean; health: string; last_run_at: string | null; next_run_at: string | null;

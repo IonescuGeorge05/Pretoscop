@@ -1,9 +1,12 @@
 import { sql } from '@pretoscop/db';
 import { Section, Table, Td } from '@/components/admin/ui';
+import { requireAdmin } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { formatDateTime } from '@/lib/format';
 
 export default async function RunsPage({ searchParams }: { searchParams: Promise<{ source?: string }> }) {
+  // Each admin page checks the session itself: the layout guard does not stop a segment from rendering.
+  await requireAdmin();
   const { source } = await searchParams;
   const res = await db().execute<{
     id: string; key: string; started_at: string; finished_at: string | null; status: string; channel: string; trigger: string;

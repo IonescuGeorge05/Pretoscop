@@ -1,6 +1,7 @@
 import { autoMatchSample, matchMetrics, reviewQueue } from '@pretoscop/db';
 import Link from 'next/link';
 import { Section, Table, Td } from '@/components/admin/ui';
+import { requireAdmin } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { auditMatchAction } from '../../catalog-actions';
 import { ReviewQueue } from './review-queue';
@@ -8,6 +9,8 @@ import { ReviewQueue } from './review-queue';
 export const dynamic = 'force-dynamic';
 
 export default async function MatchesPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  // Each admin page checks the session itself: the layout guard does not stop a segment from rendering.
+  await requireAdmin();
   const { q = '' } = await searchParams;
   const [queue, sample, metrics] = await Promise.all([reviewQueue(db(), 50, { q }), autoMatchSample(db(), 10), matchMetrics(db(), 7)]);
   const bySource = new Map<string, Record<string, number>>();

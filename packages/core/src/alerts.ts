@@ -74,13 +74,24 @@ export type AlertDecision =
   | { action: 'none'; why: AlertQuietReason };
 
 /**
+ * A known total that is itself a probable mismatch (under 30% of the cross-shop median, or of the
+ * best total when there is no median) must not hold an alert: it is ignored.
+ */
+function plausibleKnown(knownFloorBani: number | null | undefined, referenceBani: number | null): number | null {
+  if (knownFloorBani === null || knownFloorBani === undefined) return null;
+  return belowCrossShopFloor(knownFloorBani, referenceBani) ? null : knownFloorBani;
+}
+
+/**
  * The 'any_drop' reference taken when an alert starts (or is edited): the best total, or a lower
- * total still known (an offer briefly stale, out of stock or quarantined), whichever is lower.
+ * total still known (an offer briefly stale, out of stock or quarantined), whichever is lower. No
+ * best total, no reference yet (it is set from the first eligible offer, `set_baseline`); a known
+ * total under 30% of the best is a probable mismatch and ignored.
  */
 export function alertBaselineBani(bestTotalBani: number | null, knownFloorBani: number | null): number | null {
-  if (bestTotalBani === null) return knownFloorBani;
-  if (knownFloorBani === null) return bestTotalBani;
-  return Math.min(bestTotalBani, knownFloorBani);
+  if (bestTotalBani === null) return null;
+  const known = plausibleKnown(knownFloorBani, bestTotalBani);
+  return known === null ? bestTotalBani : Math.min(bestTotalBani, known);
 }
 
 /** `total` is at least `ALERT_MIN_DROP_PERCENT` under `reference` (integer arithmetic). */
@@ -97,7 +108,7 @@ export function decideAlert(state: AlertState, best: BestOfferForAlert | null, n
   if (!best) return { action: 'none', why: 'no_offer' };
   if (belowCrossShopFloor(best.totalBani, best.crossShopMedianBani)) return { action: 'none', why: 'suspicious' };
   const total = best.totalBani;
-  const known = best.knownFloorBani ?? null;
+  const known = plausibleKnown(best.knownFloorBani, best.crossShopMedianBani ?? total);
 
   if (state.kind === 'below') {
     const target = state.targetBani;

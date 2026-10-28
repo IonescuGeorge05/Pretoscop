@@ -127,8 +127,19 @@ describe('decideAlert: a shrinking offer list is not a price change (known price
     expect(decideAlert(anyDrop({ baselineBani: 230_000 }), known(230_000, 230_000), NOW)).toEqual({ action: 'none', why: 'not_met' });
     expect(alertBaselineBani(240_000, 230_000)).toBe(230_000);
     expect(alertBaselineBani(240_000, null)).toBe(240_000);
-    expect(alertBaselineBani(null, 230_000)).toBe(230_000);
+    // No eligible offer yet: no reference (the first eligible total sets it, `set_baseline`).
+    expect(alertBaselineBani(null, 230_000)).toBeNull();
     expect(alertBaselineBani(null, null)).toBeNull();
+  });
+
+  it('a known price that is a probable mismatch (under 30% of the median or best) holds nothing', () => {
+    const notified = below({ armed: false, lastNotifiedAt: hoursAgo(30), lastNotifiedBani: 199_000 });
+    // A stale 50-lei "phone" (an accessory matched by mistake) must not keep the alert from re-arming…
+    expect(decideAlert(notified, { offerId: 7, totalBani: 210_000, crossShopMedianBani: 215_000, knownFloorBani: 5_000 }, NOW)).toEqual({ action: 'rearm' });
+    expect(decideAlert(notified, known(210_000, 5_000), NOW)).toEqual({ action: 'rearm' });
+    // …nor pin an 'any_drop' reference.
+    expect(alertBaselineBani(240_000, 5_000)).toBe(240_000);
+    expect(decideAlert(anyDrop({ baselineBani: null }), known(240_000, 5_000), NOW)).toEqual({ action: 'set_baseline', baselineBani: 240_000 });
   });
 
   it('without a known floor the rules are unchanged', () => {

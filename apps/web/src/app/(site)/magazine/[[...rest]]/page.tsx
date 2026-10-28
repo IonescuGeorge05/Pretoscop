@@ -24,7 +24,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: 'Magazinele comparate',
     description: 'Magazinele online din România ale căror prețuri le compară Pretoscop, cât de proaspete sunt datele și magazinele pe care nu le acoperim încă.',
-    alternates: { canonical: '/magazine' },
+    alternates: { canonical: '/magazine', languages: { 'ro-RO': '/magazine' } },
     robots: robotsFor(true),
   };
 }

@@ -27,7 +27,7 @@ export async function generateMetadata(): Promise<Metadata> {
     title: 'Categorii',
     description:
       'Toate categoriile în care Pretoscop compară prețul total din magazinele online din România: telefoane, laptopuri, televizoare, console și electrocasnice.',
-    alternates: { canonical: '/categorii' },
+    alternates: { canonical: '/categorii', languages: { 'ro-RO': '/categorii' } },
     robots: robotsFor(true),
   };
 }

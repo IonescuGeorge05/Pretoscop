@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: 'Pentru magazine',
   description:
     'Listare gratuită pe Pretoscop cu feed-ul de produse pe care îl ai deja (Google Merchant, compari.ro, CSV): ce afișăm, cum ordonăm ofertele și cum controlezi accesul robotului nostru.',
-  alternates: { canonical: '/pentru-magazine' },
+  alternates: { canonical: '/pentru-magazine', languages: { 'ro-RO': '/pentru-magazine' } },
 };
 
 export default function MerchantsPage() {

@@ -10,7 +10,7 @@ import { CONSENT_KEY } from '@/lib/consent-storage';
 export const metadata: Metadata = {
   title: 'Cookie-uri și stocare pe dispozitiv',
   description: 'Ce stochează Pretoscop pe dispozitivul tău (aproape nimic), când pornesc statisticile Plausible și cum îți schimbi oricând preferințele.',
-  alternates: { canonical: '/cookies' },
+  alternates: { canonical: '/cookies', languages: { 'ro-RO': '/cookies' } },
 };
 
 export default function CookiesPage() {

@@ -165,3 +165,4 @@ export * from './matching';
 export * from './seo';
 export * from './matching-eval';
 export * from './deals';
+export * from './sitemap';

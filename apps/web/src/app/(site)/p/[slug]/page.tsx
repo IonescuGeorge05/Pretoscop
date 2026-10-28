@@ -1,3 +1,4 @@
+import { isProductIndexable } from '@pretoscop/core';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
@@ -7,10 +8,13 @@ import { ProductImage } from '@/components/product/product-image';
 import { keySpecs } from '@/components/product/specs';
 import { SummaryCard } from '@/components/product/summary-card';
 import { ViewBeacon } from '@/components/product/view-beacon';
+import { JsonLd } from '@/components/seo/json-ld';
 import { Container } from '@/components/ui/container';
 import { serverEnv } from '@/lib/db';
 import { formatDate, formatLeiNumeric, plural } from '@/lib/format';
 import { bestOffer, getProductPageData, idFromSlug, type ProductPageData } from '@/lib/product';
+import { robotsFor } from '@/lib/seo';
+import { breadcrumbList, productJsonLd, type BreadcrumbItem } from '@/lib/structured-data';
 
 export const revalidate = 3600;
 export const dynamicParams = true;
@@ -20,60 +24,80 @@ export function generateStaticParams() {
 
 type Props = { params: Promise<{ slug: string }> };
 
-async function resolve(slug: string): Promise<ProductPageData> {
+/** The product to show, or null (missing, hidden, merged without a target). */
+async function find(slug: string): Promise<ProductPageData | null> {
   const id = idFromSlug(slug);
-  if (!id) notFound();
-  const p = await getProductPageData(id);
+  const p = id ? await getProductPageData(id) : null;
+  return p && (p.status === 'active' || (p.status === 'merged' && p.mergedIntoSlug)) ? p : null;
+}
+
+/**
+ * Redirects and 404s are raised by the page, never by generateMetadata: a notFound() thrown while
+ * metadata streams leaves the 404 body empty in the HTML (only the RSC payload carries it).
+ */
+async function resolve(slug: string): Promise<ProductPageData> {
+  const p = await find(slug);
   if (!p) notFound();
   if (p.status === 'merged' && p.mergedIntoSlug) permanentRedirect(`/p/${p.mergedIntoSlug}`);
-  if (p.status !== 'active') notFound();
   if (p.slug !== slug) permanentRedirect(`/p/${p.slug}`);
   return p;
 }
 
-/** Index policy (docs/03 §6.6): ≥ 2 live offers or ≥ 14 days of history, and not provisional. */
+/** Index policy (docs/03 §6.6): the one decision function of @pretoscop/core. */
 function indexable(p: ProductPageData): boolean {
-  const live = p.offers.filter((o) => !o.stale).length;
-  return !p.provisional && (live >= 2 || (p.stats?.observationsDays ?? 0) >= 14);
+  return isProductIndexable({ provisional: p.provisional, liveOffers: p.offers.filter((o) => !o.stale).length, observationsDays: p.stats?.observationsDays ?? 0 });
+}
+
+const MEDIA_BASE = process.env.NEXT_PUBLIC_MEDIA_BASE_URL ?? '/media';
+
+function crumbs(p: ProductPageData): BreadcrumbItem[] {
+  const out: BreadcrumbItem[] = [{ name: 'Pretoscop', href: '/' }];
+  if (p.category?.parent) out.push({ name: p.category.parent.name, href: `/c/${p.category.parent.slug}` });
+  if (p.category) out.push({ name: p.category.name, href: `/c/${p.category.parent ? `${p.category.parent.slug}/` : ''}${p.category.slug}` });
+  out.push({ name: p.title, href: `/p/${p.slug}` });
+  return out;
+}
+
+function structuredData(p: ProductPageData) {
+  const base = serverEnv().PUBLIC_BASE_URL;
+  const image = p.imageKey ? `${MEDIA_BASE}/${p.imageKey.replace(/(\.[a-z]+)$/i, '_800$1')}` : null;
+  return [
+    productJsonLd(base, {
+      path: `/p/${p.slug}`,
+      title: p.title,
+      brand: p.brand?.name ?? null,
+      mpn: p.mpn,
+      gtins: p.gtins,
+      category: p.category?.name ?? null,
+      images: image ? [image] : [],
+      offers: p.offers.map((o) => ({
+        price: o.price,
+        total: o.total,
+        shippingCost: o.shippingCost,
+        availability: o.availability,
+        condition: o.condition,
+        url: o.url,
+        seller: o.sellerName && o.sellerType === 'marketplace' ? o.sellerName : o.shopName,
+        stale: o.stale,
+      })),
+    }),
+    breadcrumbList(base, crumbs(p)),
+  ];
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const p = await resolve(slug);
+  const p = await find(slug);
+  if (!p || p.status !== 'active') return { robots: { index: false, follow: true } };
   const shops = new Set(p.offers.map((o) => o.shopSlug)).size;
   const min = p.stats?.currentMinTotal ?? p.offers[0]?.total ?? null;
   const title = min ? `${p.title} – prețuri de la ${formatLeiNumeric(min)} la ${plural(shops, 'magazin', 'magazine')}` : p.title;
   return {
     title: { absolute: `${title} | Pretoscop` },
     description: `Compară prețul total pentru ${p.title}${shops ? ` la ${plural(shops, 'magazin', 'magazine')}` : ''} și vezi istoricul prețului observat de Pretoscop.`,
-    alternates: { canonical: `/p/${p.slug}` },
-    robots: serverEnv().SITE_INDEXABLE && indexable(p) ? { index: true, follow: true } : { index: false, follow: true },
-    openGraph: { title, type: 'website', url: `/p/${p.slug}` },
-  };
-}
-
-function jsonLd(p: ProductPageData) {
-  const live = p.offers.filter((o) => o.availability === 'in_stock' && !o.stale);
-  const prices = live.map((o) => Number(o.total));
-  const gtin13 = p.gtins.find((g) => g.startsWith('0'))?.slice(1);
-  return {
-    '@context': 'https://schema.org',
-    '@type': 'Product',
-    name: p.title,
-    ...(p.brand ? { brand: { '@type': 'Brand', name: p.brand.name } } : {}),
-    ...(p.mpn ? { mpn: p.mpn } : {}),
-    ...(gtin13 ? { gtin13 } : {}),
-    ...(prices.length
-      ? {
-          offers: {
-            '@type': 'AggregateOffer',
-            priceCurrency: 'RON',
-            lowPrice: Math.min(...prices).toFixed(2),
-            highPrice: Math.max(...prices).toFixed(2),
-            offerCount: live.length,
-          },
-        }
-      : {}),
+    alternates: { canonical: `/p/${p.slug}`, languages: { 'ro-RO': `/p/${p.slug}` } },
+    robots: robotsFor(indexable(p)),
+    openGraph: { title, type: 'website', url: `/p/${p.slug}`, locale: 'ro_RO' },
   };
 }
 
@@ -91,7 +115,7 @@ export default async function ProductPage({ params }: Props) {
   return (
     <Container className="py-6">
       <ViewBeacon productId={p.id} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd(p)).replace(/</g, '\\u003c') }} />
+      <JsonLd data={structuredData(p)} />
       <nav aria-label="Navigare ierarhică" className="mb-3 text-sm text-muted">
         <ol className="flex flex-wrap items-center gap-1">
           <li>

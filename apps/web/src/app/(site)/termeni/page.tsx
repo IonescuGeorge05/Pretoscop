@@ -10,7 +10,7 @@ import { operatorFrom } from '@/lib/legal';
 export const metadata: Metadata = {
   title: 'Termeni și condiții',
   description: 'Condițiile de folosire a site-ului Pretoscop: ce oferim, cum trebuie înțelese prețurile afișate, ce nu este permis și cum ne contactezi.',
-  alternates: { canonical: '/termeni' },
+  alternates: { canonical: '/termeni', languages: { 'ro-RO': '/termeni' } },
 };
 
 export default function TermsPage() {

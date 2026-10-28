@@ -13,7 +13,7 @@ import { categoryHref, getBrands, getCategoryTree, type CategoryNode } from '@/l
 import { serverEnv } from '@/lib/db';
 import { plural } from '@/lib/format';
 import { meili, names, q } from '@/lib/search';
-import { robotsFor } from '@/lib/seo';
+import { forMetadata, robotsFor, UNRESOLVED } from '@/lib/seo';
 import { breadcrumbList, itemList } from '@/lib/structured-data';
 
 // docs/03 §7.1: ISR 1 h. Rendered on first request, never at build time (no database needed to build).
@@ -67,7 +67,10 @@ const load = cache(async (segments: string[]): Promise<CategoryPage> => {
 const indexableCount = (list: ListResult) => list.facets.indexable?.true ?? 0;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { node, page, list } = await load((await params).path);
+  const { path } = await params;
+  const loaded = await forMetadata(() => load(path));
+  if (!loaded) return UNRESOLVED;
+  const { node, page, list } = loaded;
   const n = list.total;
   const title = page > 1 ? `${node.name} – pagina ${page}` : n > 0 ? `${node.name} – compară prețurile la ${plural(n, 'produs', 'produse')}` : node.name;
   return {
@@ -76,7 +79,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       n > 0
         ? `${node.name}: ${plural(n, 'produs', 'produse')} cu prețul total (preț + livrare) din magazinele online din România și istoricul prețului observat de Pretoscop.`
         : `${node.name}: categoria în care Pretoscop va compara prețurile din magazinele online din România.`,
-    alternates: { canonical: categoryHref(node, page) },
+    alternates: { canonical: categoryHref(node, page), languages: { 'ro-RO': categoryHref(node, page) } },
     robots: robotsFor(indexableCount(list) > 0),
     openGraph: { title, url: categoryHref(node, page), type: 'website' },
   };

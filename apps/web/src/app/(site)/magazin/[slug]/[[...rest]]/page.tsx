@@ -14,7 +14,7 @@ import { getCategoryTree, getShop, type ShopFacts } from '@/lib/catalog';
 import { serverEnv } from '@/lib/db';
 import { plural } from '@/lib/format';
 import { meili, names, q } from '@/lib/search';
-import { robotsFor } from '@/lib/seo';
+import { forMetadata, robotsFor, UNRESOLVED } from '@/lib/seo';
 import { breadcrumbList } from '@/lib/structured-data';
 
 // docs/03 §7.1: ISR 1 h, rendered on first request.
@@ -64,7 +64,8 @@ const load = cache(async (slug: string, rest: string[]): Promise<ShopPage> => {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, rest } = await params;
-  const p = await load(slug, rest ?? []);
+  const p = await forMetadata(() => load(slug, rest ?? []));
+  if (!p) return UNRESOLVED;
   const { shop } = p;
   const covered = shopState(shop).covered;
   const title = p.page > 1 ? `${shop.name} – pagina ${p.page}` : covered ? `${shop.name}: prețuri urmărite de Pretoscop la ${plural(shop.products, 'produs', 'produse')}` : `${shop.name} pe Pretoscop`;
@@ -73,7 +74,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: covered
       ? `Ce produse ${shop.name} urmărim, cât de des verificăm prețurile, cum le colectăm și ce știm despre livrare.`
       : `${shop.name}: de ce nu apare încă în comparațiile Pretoscop și cum poate fi inclus.`,
-    alternates: { canonical: p.href(p.page) },
+    alternates: { canonical: p.href(p.page), languages: { 'ro-RO': p.href(p.page) } },
     robots: robotsFor(covered),
   };
 }

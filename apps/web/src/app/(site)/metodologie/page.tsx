@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: 'Metodologie',
   description:
     'De unde vin datele Pretoscop, cum construim istoricul prețurilor fără să completăm golurile, cum stabilim verdictul de preț și cum verificăm reducerile.',
-  alternates: { canonical: '/metodologie' },
+  alternates: { canonical: '/metodologie', languages: { 'ro-RO': '/metodologie' } },
 };
 
 export default function MethodologyPage() {

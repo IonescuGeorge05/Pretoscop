@@ -10,7 +10,7 @@ import { operatorFrom } from '@/lib/legal';
 export const metadata: Metadata = {
   title: 'Politica de confidențialitate',
   description: 'Ce date personale prelucrează Pretoscop, de ce, pe ce temei legal, cât timp le păstrăm, cine ne ajută și ce drepturi ai.',
-  alternates: { canonical: '/confidentialitate' },
+  alternates: { canonical: '/confidentialitate', languages: { 'ro-RO': '/confidentialitate' } },
 };
 
 const GDPR_F = 'art. 6 alin. (1) lit. f) GDPR';

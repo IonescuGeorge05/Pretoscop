@@ -14,7 +14,7 @@ import { categoryHref, getBrands, getCategoryTree, type BrandInfo, type Category
 import { serverEnv } from '@/lib/db';
 import { plural } from '@/lib/format';
 import { meili, names, q } from '@/lib/search';
-import { robotsFor } from '@/lib/seo';
+import { forMetadata, robotsFor, UNRESOLVED } from '@/lib/seo';
 import { breadcrumbList, itemList } from '@/lib/structured-data';
 
 // docs/03 §7.1: ISR 1 h, rendered on first request.
@@ -87,7 +87,8 @@ function pageIndexable(p: BrandPage): boolean {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, rest } = await params;
-  const p = await load(slug, rest ?? []);
+  const p = await forMetadata(() => load(slug, rest ?? []));
+  if (!p) return UNRESOLVED;
   const n = p.list.total;
   const h = heading(p);
   const cats = Object.keys(p.list.facets.category_slug ?? {}).length;
@@ -96,7 +97,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description: `${h}: ${plural(n, 'produs', 'produse')} cu prețul total (preț + livrare) din magazinele online din România și istoricul prețului observat de Pretoscop.`,
-    alternates: { canonical: p.href(p.page) },
+    alternates: { canonical: p.href(p.page), languages: { 'ro-RO': p.href(p.page) } },
     robots: robotsFor(pageIndexable(p)),
     openGraph: { title, url: p.href(p.page), type: 'website' },
   };

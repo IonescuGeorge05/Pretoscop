@@ -24,7 +24,8 @@
     "compare:live": "tsx src/cli/compare-live.ts",
     "report": "tsx src/cli/report.ts",
     "report:approve": "tsx src/cli/report-approve.ts",
-    "deals:show": "tsx src/cli/deals-show.ts"
+    "deals:show": "tsx src/cli/deals-show.ts",
+    "sitemap:build": "tsx src/cli/sitemap-build.ts"
   },
   "devDependencies": {
     "pino-pretty": "^13.2.0"

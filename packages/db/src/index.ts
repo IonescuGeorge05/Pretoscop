@@ -16,3 +16,4 @@ export * from './queries/matching';
 export * from './queries/admin';
 export * from './queries/report';
 export * from './queries/deals';
+export * from './queries/sitemap';

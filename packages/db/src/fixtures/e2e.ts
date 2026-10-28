@@ -59,8 +59,9 @@ const bani = (lei: number) => Math.round(lei * 100);
 
 export async function createE2eFixture(db: Db): Promise<E2eFixture> {
   await dropE2eFixture(db);
-  const shops = await db.execute<{ slug: string; id: string }>(sql`SELECT slug, id::text FROM shops WHERE slug IN ('emag','itgalaxy','forit','flip','elefant','auchan','carrefour')`);
+  const shops = await db.execute<{ slug: string; id: string; domain: string }>(sql`SELECT slug, id::text, domain FROM shops WHERE slug IN ('emag','itgalaxy','forit','flip','elefant','auchan','carrefour')`);
   const shopId = new Map(shops.rows.map((r) => [r.slug, Number(r.id)]));
+  const shopDomain = new Map(shops.rows.map((r) => [r.slug, r.domain]));
   const now = Date.now();
   const ids: Record<string, number> = {};
   for (const o of OFFERS) {
@@ -78,7 +79,8 @@ export async function createE2eFixture(db: Db): Promise<E2eFixture> {
         sourceTier: 1,
         runId: null,
         externalId: `${PREFIX}${o.key}`,
-        url: `https://example.com/e2e/${o.key}`,
+        // On the shop's own domain, like a real offer (affiliate links refuse other hosts); never fetched.
+        url: `https://www.${shopDomain.get(o.shop)}/e2e-fixture/${o.key}`,
         titleRaw: E2E_TITLE,
         titleClean: E2E_TITLE,
         attributes: { kind: 'phone', storageGb: 128, ramGb: 8, color: 'black', colorRo: 'negru', connectivity: ['5g', 'dual_sim'] },
@@ -151,6 +153,37 @@ async function createAdminFixture(db: Db, shopId: Map<string, number>, now: numb
   await db.execute(sql`INSERT INTO match_decisions (offer_id, product_id, decision, decided_by, reason, score) VALUES (${review}, NULL, 'needs_review', 'rule', 'title 0.74 in gray zone', 0.74)`);
   const slug = await db.execute<{ slug: string }>(sql`SELECT slug FROM products WHERE id = ${dupB}`);
   return { dupA, dupB, dupBSlug: slug.rows[0]!.slug, reviewOfferId: review, reviewTitle: ADMIN_OFFERS[2]!.title };
+}
+
+/**
+ * Affiliate e2e (M24): a temporary approved 2Performant program for forit that allows comparators,
+ * with the flag on; `affiliateSyncForbidden` runs the real program sync with forit's permission
+ * set to "no"; `affiliateRestore` removes the program and puts the flag back.
+ */
+export async function affiliateAllow(db: Db): Promise<{ flagWas: boolean }> {
+  const f = await db.execute<{ enabled: boolean }>(sql`SELECT enabled FROM feature_flags WHERE key = 'affiliate.links.enabled'`);
+  await db.execute(sql`
+    INSERT INTO affiliate_programs (shop_id, network, program_external_id, comparator_policy, status, notes)
+    SELECT id, '2performant', 'e2e-unique', 'allowed', 'approved', 'e2e fixture' FROM shops WHERE slug = 'forit'
+    ON CONFLICT (shop_id, network) DO UPDATE SET program_external_id = 'e2e-unique', comparator_policy = 'allowed', status = 'approved', notes = 'e2e fixture'`);
+  await db.execute(sql`INSERT INTO feature_flags (key, enabled) VALUES ('affiliate.links.enabled', true) ON CONFLICT (key) DO UPDATE SET enabled = true`);
+  return { flagWas: f.rows[0]?.enabled ?? false };
+}
+
+export async function affiliateSyncForbidden(db: Db): Promise<number> {
+  const { applyTwoPerformantPrograms } = await import('../queries/affiliate');
+  const res = await applyTwoPerformantPrograms(
+    db,
+    [{ id: 990001, name: 'forit (e2e)', main_url: 'https://www.forit.ro', unique_code: 'e2e-unique', affrequest: { status: 'accepted' }, traffic_sources: [{ name: 'Price Comparison Services', usage: 'no' }] }],
+    'e2e-fixture',
+    new Date().toISOString().slice(0, 10),
+  );
+  return res.changes.length;
+}
+
+export async function affiliateRestore(db: Db, flagWas: boolean): Promise<void> {
+  await db.execute(sql`DELETE FROM affiliate_programs WHERE network = '2performant' AND program_external_id = 'e2e-unique'`);
+  await db.execute(sql`UPDATE feature_flags SET enabled = ${flagWas} WHERE key = 'affiliate.links.enabled'`);
 }
 
 /** Clicks logged for the fixture's offers (the click-out test checks one was written). */

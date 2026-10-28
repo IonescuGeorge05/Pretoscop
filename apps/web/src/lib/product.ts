@@ -1,7 +1,8 @@
 import 'server-only';
 import type { DiscountFact } from '@pretoscop/core';
-import { productOfferFacts, sql } from '@pretoscop/db';
+import { isFlagEnabled, productOfferFacts, programsByShop, sql } from '@pretoscop/db';
 import { unstable_cache } from 'next/cache';
+import { affiliateLinkFor } from './affiliate';
 import { db } from './db';
 
 export interface ProductOffer {
@@ -101,13 +102,13 @@ async function load(id: number): Promise<ProductPageData | null> {
       FROM product_stats WHERE product_id = ${id}
     `),
     d.execute<{
-      id: string; shop_slug: string; shop_name: string; shop_kind: string; seller_name: string | null; seller_type: 'shop' | 'marketplace'; url: string;
-      affiliate: boolean; price: string; old_price: string | null; lowest: string | null; shipping_cost: string | null; shipping_estimated: boolean;
+      id: string; shop_id: string; shop_slug: string; shop_name: string; shop_domain: string; shop_kind: string; seller_name: string | null; seller_type: 'shop' | 'marketplace'; url: string;
+      affiliate_url: string | null; price: string; old_price: string | null; lowest: string | null; shipping_cost: string | null; shipping_estimated: boolean;
       shipping_note: string | null; rules_note: string | null; total: string; availability: ProductOffer['availability']; condition: ProductOffer['condition'];
       last_checked_at: string; slo: number;
     }>(sql`
-      SELECT o.id::text, s.slug AS shop_slug, s.name AS shop_name, s.kind AS shop_kind, o.seller_name, o.seller_type, o.url,
-        (o.affiliate_url IS NOT NULL) AS affiliate, o.price::text, o.old_price::text, o.shop_lowest_30d::text AS lowest,
+      SELECT o.id::text, s.id::text AS shop_id, s.slug AS shop_slug, s.name AS shop_name, s.domain AS shop_domain, s.kind AS shop_kind, o.seller_name, o.seller_type, o.url,
+        o.affiliate_url, o.price::text, o.old_price::text, o.shop_lowest_30d::text AS lowest,
         o.shipping_cost::text, o.shipping_estimated, o.shipping_note, s.shipping_rules->>'notes' AS rules_note, o.total_price::text AS total,
         o.availability, o.condition, o.last_checked_at::text,
         coalesce((s.crawl_policy->>'freshness_slo_hours')::int, 26) AS slo
@@ -125,6 +126,9 @@ async function load(id: number): Promise<ProductPageData | null> {
     productOfferFacts(d, id).catch(() => new Map<number, DiscountFact[]>()),
   ]);
 
+  // Same decision as the click-out route (M24), so the "Link afiliat" label never lies.
+  const affiliateOn = await isFlagEnabled(d, 'affiliate.links.enabled');
+  const programs = affiliateOn ? await programsByShop(d, [...new Set(offers.rows.map((o) => Number(o.shop_id)))]) : new Map();
   const now = Date.now();
   const q = encodeURIComponent([row.brand, row.title.split(',')[0]?.replace(/^(telefon mobil|laptop|televizor|tableta)\s+/i, '')].filter(Boolean).join(' ').slice(0, 80));
   const rank = (o: ProductOffer) => (o.availability === 'in_stock' ? (o.stale ? 1 : 0) : 2);
@@ -138,7 +142,7 @@ async function load(id: number): Promise<ProductPageData | null> {
       sellerName: o.seller_name,
       sellerType: o.seller_type,
       url: o.url,
-      hasAffiliate: o.affiliate,
+      hasAffiliate: affiliateLinkFor(affiliateOn, programs.get(Number(o.shop_id)), { url: o.url, shopSlug: o.shop_slug, shopDomain: o.shop_domain, feedAffiliateUrl: o.affiliate_url }, 'c0') !== null,
       price: o.price,
       oldPrice: o.old_price,
       shopLowest30d: o.lowest,

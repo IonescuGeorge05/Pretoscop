@@ -26,12 +26,16 @@ export const sourceRunJob = defineJob<{ sourceId: number; trigger?: 'schedule' |
     const out = await runSource({ db, env, log, ...services }, job.data.sourceId, { trigger: job.data.trigger ?? 'schedule' });
     // New or changed offers need matching; matching then re-rolls up the products it touched.
     if ((out.touchedOffers?.length ?? 0) > 0) await boss.send('match.pending', {}, { singletonKey: 'match' });
+    // Price or stock changes of matched offers: refresh the products' stats and pages now, which
+    // also evaluates their price alerts (M19), instead of waiting for the nightly rollup.
+    const products = out.touchedProducts ?? [];
+    for (let i = 0; i < products.length; i += 500) await boss.send('rollup.touch', { productIds: products.slice(i, i + 500) });
   },
 });
 
 /**
  * Nightly logical backup to the blob store (R2 in production), 14 days kept. Complements the
- * physical backups and WAL archive of the pgbackrest sidecar (ADR-017): a dump restores into any
+ * physical backups and WAL archive of the pgbackrest sidecar (ADR-018): a dump restores into any
  * PostgreSQL version and table by table. Success and failure ping DUMP_HEARTBEAT_URL.
  */
 export const backupJob = defineJob({

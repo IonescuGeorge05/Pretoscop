@@ -1,6 +1,6 @@
 # Runbook: backups and restore
 
-Price history is the asset (`docs/03-architecture.md` §3). Two independent backups exist (ADR-017):
+Price history is the asset (`docs/03-architecture.md` §3). Two independent backups exist (ADR-018):
 
 | Backup | What | Where | Kept | Tested |
 |---|---|---|---|---|

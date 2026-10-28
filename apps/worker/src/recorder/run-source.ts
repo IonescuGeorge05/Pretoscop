@@ -39,6 +39,8 @@ export interface RunOutcome {
   reason?: string;
   /** Offers recorded in this run that need (re)matching. */
   touchedOffers?: number[];
+  /** Matched products whose offers changed price or stock in this run (rollup.touch → alerts). */
+  touchedProducts?: number[];
 }
 
 interface Ctx {
@@ -51,6 +53,8 @@ interface Ctx {
   snapshot: string[];
   /** Offers that need (re)matching after this run (M07 consumes them). */
   touchedOffers: Set<number>;
+  /** Already-matched products with a price event in this run (re-rolled up; their alerts evaluated). */
+  touchedProducts: Set<number>;
   /** Set when the run-level breaker trips: nothing more is recorded. */
   held?: string;
   errors: string[];
@@ -119,6 +123,7 @@ async function ingest(ctx: Ctx, offers: RawOffer[], observedAt: Date): Promise<v
       if (r.eventKind) ctx.stats.changed++;
       if (r.inserted) ctx.stats.newOffers++;
       if (r.needsMatch && r.offerId !== null) ctx.touchedOffers.add(r.offerId);
+      else if (r.eventKind && r.productId) ctx.touchedProducts.add(r.productId);
     } catch (err) {
       ctx.stats.errors++;
       if (ctx.errors.length < SNAPSHOT_SAMPLE_REJECTS) ctx.errors.push(`record ${o.externalId}: ${(err as Error).message}`);
@@ -321,6 +326,7 @@ export async function runSource(deps: RecorderDeps, sourceId: number, opts: RunO
     stats: { ...emptyStats(), rejected: 0, stale: 0, newOffers: 0, pages: 0, discovered: 0, quarantined: 0 },
     snapshot: [],
     touchedOffers: new Set<number>(),
+    touchedProducts: new Set<number>(),
     errors: [],
     log,
   };
@@ -425,5 +431,5 @@ export async function runSource(deps: RecorderDeps, sourceId: number, opts: RunO
   }
 
   log.info({ status, stats: ctx.stats, snapshot: snapshotKey }, 'source run finished');
-  return { runId: run.id, status, stats: ctx.stats, touchedOffers: [...ctx.touchedOffers] };
+  return { runId: run.id, status, stats: ctx.stats, touchedOffers: [...ctx.touchedOffers], touchedProducts: [...ctx.touchedProducts] };
 }

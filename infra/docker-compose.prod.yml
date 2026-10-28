@@ -109,7 +109,7 @@ services:
       start_period: 30s
     logging: *logging
 
-  # Base backups, archive check and the weekly restore test (ADR-017). WAL itself is pushed by the
+  # Base backups, archive check and the weekly restore test (ADR-018). WAL itself is pushed by the
   # database's archive_command. With BACKUPS_ENABLED=false (staging) it only warns when
   # archive_mode is on without a repository, then idles.
   pgbackrest:

@@ -14,11 +14,12 @@ step "migration 0014 (alerts, alert_sends, consent_records, email_suppressions) 
 ok "tables present"
 
 step "lint, typecheck, unit + integration tests (core rules, notify templates, db queries, worker delivery, web)"
-pnpm turbo run lint typecheck test --filter=@pretoscop/core --filter=@pretoscop/notify --filter=@pretoscop/db --filter=@pretoscop/worker --filter=@pretoscop/web --filter=@pretoscop/config --concurrency=1 --output-logs=errors-only
+pnpm turbo run lint typecheck test --filter=@pretoscop/core --filter=@pretoscop/notify --filter=@pretoscop/db --filter=@pretoscop/worker --filter=@pretoscop/web --filter=@pretoscop/config --filter=@pretoscop/mailer --concurrency=1 --output-logs=errors-only
 ok "green"
 
-step "simulation CLI refuses bad input (it never writes price history)"
+step "simulation CLI refuses bad input and never mails without a named recipient (it never writes price history)"
 if pnpm --silent alerts:simulate 0 0 >/dev/null 2>&1; then fail "alerts:simulate accepted product 0"; fi
+if ADMIN_EMAILS= pnpm --silent alerts:simulate 1 10 >/dev/null 2>&1; then fail "alerts:simulate ran without --email and without ADMIN_EMAILS"; fi
 ok "usage enforced"
 
 step "production build"

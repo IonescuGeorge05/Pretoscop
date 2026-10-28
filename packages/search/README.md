@@ -15,7 +15,7 @@ sync (M14, docs/03 §6.6, ADR-004, ADR-014).
 | `searchProducts(meili, names, params)` | Results page: hits + disjunctive facet counts in one multi-search; every word must match (`matching: 'all'`), else the closest products with `matching: 'last'`. A barcode (GTIN-8/12/13/14 with a valid check digit) becomes a `gtins` filter. |
 | `listProducts(meili, names, { filter, sort, page })` | Browse pages (category, brand, shop). |
 | `facetCounts`, `suggest` | Category tree counts; autocomplete over products, categories and brands. |
-| `@pretoscop/search/sync`: `rebuildAll`, `syncChanged`, `indexProductIds`, `recomputePopularity`, `registerDocumentEnricher` | Worker side (needs `@pretoscop/db`). |
+| `@pretoscop/search/sync`: `rebuildAll`, `syncChanged`, `indexProductIds`, `recomputePopularity`, `loadProductRows` | Worker side (needs `@pretoscop/db`). Documents carry the M15 verified-drop facts (`drop_pct`, `drop_ref_bani`, `drop_since`, `all_time_low`) computed per batch with `priceFactsFor`. |
 
 ## Document (`products` index)
 

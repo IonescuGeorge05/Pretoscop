@@ -182,3 +182,4 @@ export {
   shopSlugFromDomain,
 } from './merchant';
 export * from './affiliate';
+export * from './deals';

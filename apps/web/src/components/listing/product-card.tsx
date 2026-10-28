@@ -1,6 +1,6 @@
 import type { ProductCard as Card } from '@pretoscop/search';
 import { ProductImage } from '@/components/product/product-image';
-import { VerdictBadge } from '@/components/price/badges';
+import { AllTimeLowBadge, ListingDropBadge, VerdictBadge } from '@/components/price/badges';
 import { cn } from '@/lib/cn';
 import { formatLei, plural } from '@/lib/format';
 
@@ -46,7 +46,9 @@ export function ProductCard({ p, priority = false, placement }: { p: Card; prior
         <div className="mt-auto flex flex-wrap items-end justify-between gap-x-3 gap-y-1 pt-2">
           <PriceBlock p={p} />
           <div className="flex flex-wrap gap-1">
-            <VerdictBadge verdict={p.verdict} />
+            {p.drop_pct ? <ListingDropBadge pct={p.drop_pct} referenceBani={p.drop_ref_bani ?? null} since={p.drop_since ?? null} /> : null}
+            {p.all_time_low ? <AllTimeLowBadge /> : null}
+            {!p.drop_pct && <VerdictBadge verdict={p.verdict} />}
           </div>
         </div>
       </div>

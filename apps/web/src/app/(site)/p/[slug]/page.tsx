@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
-import { dropVersus30dMin } from '@pretoscop/core';
 import { AlertForm } from '@/components/alerts/alert-form';
 import { OffersTable } from '@/components/product/offers-table';
 import { PriceChart } from '@/components/product/price-chart';
@@ -86,12 +85,11 @@ export default async function ProductPage({ params }: Props) {
   const p = await resolve(slug);
   const specs = keySpecs(p.attributes);
   const stats = p.stats;
-  // Best = what a buyer pays now (marketplace sellers included); the drop badge compares like with
-  // like: the best shop-sold offer against the shop-sold 30-day minimum of the history series.
+  // Best = what a buyer pays now (marketplace sellers included). The drop badge (M15) compares like
+  // with like (the shop-sold minimum against the shop-sold daily series) and comes from the loader.
   const best = bestOffer(p.offers);
-  const bestShop = bestOffer(p.offers, { shopSoldOnly: true });
-  const current = toBani(bestShop?.total ?? null);
-  const drop = current !== null && stats ? dropVersus30dMin(current, toBani(stats.min30d), stats.observationsDays) : null;
+  // The alert form's starting point: the best shop-sold total now (M19).
+  const current = toBani(bestOffer(p.offers, { shopSoldOnly: true })?.total ?? null);
   const shops = new Set(p.offers.map((o) => o.shopSlug)).size;
   const affiliate = p.offers.some((o) => o.hasAffiliate);
   const alertsOn = await alertsEnabled();
@@ -149,7 +147,7 @@ export default async function ProductPage({ params }: Props) {
           </header>
 
           <div className="lg:hidden">
-            <SummaryCard best={best} stats={stats} drop={drop} placement="summary_mobile" />
+            <SummaryCard best={best} stats={stats} facts={p.priceFacts} placement="summary_mobile" />
           </div>
 
           {p.variants.length > 1 && (
@@ -229,7 +227,7 @@ export default async function ProductPage({ params }: Props) {
 
         <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
           <div className="hidden lg:block">
-            <SummaryCard best={best} stats={stats} drop={drop} placement="summary" />
+            <SummaryCard best={best} stats={stats} facts={p.priceFacts} placement="summary" />
           </div>
           <section aria-labelledby="alerta" className="rounded-[var(--radius-card)] bg-surface p-4 ring-1 ring-line">
             <h2 id="alerta" className="font-semibold text-ink">

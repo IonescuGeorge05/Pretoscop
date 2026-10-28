@@ -70,6 +70,7 @@ export function catalogueRows(): ProductRow[] {
       image: null,
       gtins: id === 24 ? [normalizeGtin(GTIN_24)!] : [],
       observationsDays: 0,
+      currentShopBani: bani,
       verdict: 'insufficient_data',
       historyStartedAt: null,
       offerCount: 1,

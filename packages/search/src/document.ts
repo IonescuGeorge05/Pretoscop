@@ -85,6 +85,8 @@ export interface ProductRow {
   image: string | null;
   gtins: string[];
   observationsDays: number;
+  /** Today’s best shop-sold total (product_stats), the price verified drops are measured on. */
+  currentShopBani: number | null;
   verdict: Verdict | null;
   historyStartedAt: string | null;
   offerCount: number;

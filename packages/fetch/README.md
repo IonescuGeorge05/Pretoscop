@@ -320,8 +320,23 @@ differs), the body is dropped unless the target passes those rules (`cross_site_
 (`errorCode: 'timeout'`). The returned body is still scanned: a challenge page or any
 vendor-reported block becomes `blockReason: 'vendor_blocked'` (the vendor's own reason goes into
 `blockDetail`). That does not pause the shop at once, but it counts as a failure, so three in a row
-pause it for 1 h (doubling), on top of M05B's success-rate auto-pause. The vendor's cost ledger and
-cap belong to M05B.
+pause it for 1 h (doubling), on top of M05B's success-rate auto-pause.
+
+#### Implementation (M05B, `@pretoscop/fetch/assisted`)
+
+| Piece | What it does |
+|---|---|
+| `createZyteClient({ apiKey, endpoint? })` | `POST https://api.zyte.com/v1/extract`, Basic auth (key as user name). HTTP tier `{url, httpResponseBody, httpResponseHeaders, followRedirect:false}`; browser tier `{url, browserHtml}`; `geolocation` only when the shop sets `assisted_country`. **Never** headers (no User-Agent of any kind), `ipType`, sessions, cookies or actions. Maps 200 → the shop's response (billed), 520 → `vendor_blocked`, 429/503 → rate limited, 500 `/server/timed-out` → timeout, 401/403/451 → refused, else error (not billed) |
+| `createOxylabsClient()` | Second vendor behind the same `AssistedClient` interface: a stub that fails clearly until a founder picks it |
+| `createAssistedChannel({ client, ledger, monthlyCapCents, shopSettings })` | What `FetcherDeps.assisted` receives. `check()` runs inside the fetcher's gate (before a slot or the daily budget is used): refuses at the monthly cap (`assisted_cap`) or while the vendor refuses our account (1 h) or a shop's domain (24 h) (`assisted_refused`); fails closed when the ledger cannot be read. `fetch()` asks the vendor and records the call. The browser tier is used for pages only (`listing`, `product`, `probe`): robots.txt, sitemaps and feeds always go on the HTTP tier |
+| `AssistedLedger` / `MemoryAssistedLedger` | One entry per vendor call: requests, rendered requests, billable responses; row cost recomputed from the counters (`ledgerRowCostCents`). The worker's `PgAssistedLedger` writes `access_costs` |
+| `zytePricing(tier, eurPerUsd)` | Zyte pay-as-you-go prices per tier (2026-10-27), EUR cents per 1,000, rounded up; unknown tier → 5, the dearest |
+
+`fetchPolite` result for a refusal: `skipped: 'assisted_unavailable'`, `errorCode: 'assisted_cap'` or
+`'assisted_refused'`, `attempts: 0`. Demo with a local stand-in for the vendor (no live call):
+`pnpm --filter @pretoscop/fetch assisted:demo`. Tests: `test/assisted.test.ts` (request shape,
+answer mapping on recorded shapes under `test/fixtures/zyte/`, a mock API server, the cap,
+refusals, the interval, robots.txt through the channel, budgets and windows).
 
 ## Demo CLI
 

@@ -1,0 +1,52 @@
+{
+  "_comment": "Synthetic Zyte API answers (hand-written from docs.zyte.com/zyte-api/usage/http.html and usage/errors.html, read 2026-10-27; no account exists yet, setup A10). Each entry: the vendor HTTP status and JSON body for POST /v1/extract. Replace with recorded answers (dated file name) once the account exists.",
+  "success_200": {
+    "status": 200,
+    "body": {
+      "url": "https://shop.test/televizoare",
+      "statusCode": 200,
+      "httpResponseHeaders": [
+        { "name": "Content-Type", "value": "text/html; charset=utf-8" },
+        { "name": "Cache-Control", "value": "no-cache" },
+        { "name": "Set-Cookie", "value": "a=1" },
+        { "name": "Set-Cookie", "value": "b=2" }
+      ],
+      "httpResponseBody": "PCFkb2N0eXBlIGh0bWw+PGh0bWwgbGFuZz0icm8iPjxoZWFkPjxtZXRhIGNoYXJzZXQ9InV0Zi04Ij48dGl0bGU+VGVsZXZpem9hcmUgfCBNYWdhemluPC90aXRsZT48c2NyaXB0IHR5cGU9ImFwcGxpY2F0aW9uL2xkK2pzb24iPnsiQGNvbnRleHQiOiJodHRwczovL3NjaGVtYS5vcmciLCJAdHlwZSI6IlByb2R1Y3QiLCJuYW1lIjoiVGVsZXZpem9yIFNhbXN1bmcgNTUgaW5jaCwgU21hcnQsIDRLIOKAkyBvyJtlbCBwZXJpYXQiLCJza3UiOiJVRTU1RFU3MTcyIiwib2ZmZXJzIjp7IkB0eXBlIjoiT2ZmZXIiLCJwcmljZSI6IjIxOTkuOTkiLCJwcmljZUN1cnJlbmN5IjoiUk9OIiwiYXZhaWxhYmlsaXR5IjoiaHR0cHM6Ly9zY2hlbWEub3JnL0luU3RvY2sifX08L3NjcmlwdD48L2hlYWQ+PGJvZHk+PGgxPlRlbGV2aXpvciBTYW1zdW5nIDU1IGluY2gg4oCTIG/Im2VsIHBlcmlhdDwvaDE+PHA+Mi4xOTksOTkgbGVpPC9wPjwvYm9keT48L2h0bWw+"
+    }
+  },
+  "redirect_301": {
+    "status": 200,
+    "body": {
+      "url": "https://shop.test/old",
+      "statusCode": 301,
+      "httpResponseHeaders": [{ "name": "Location", "value": "https://shop.test/new" }],
+      "httpResponseBody": ""
+    }
+  },
+  "shop_404": {
+    "status": 200,
+    "body": {
+      "url": "https://shop.test/missing",
+      "statusCode": 404,
+      "httpResponseHeaders": [{ "name": "Content-Type", "value": "text/html" }],
+      "httpResponseBody": "PGgxPk51IGFtIGfEg3NpdDwvaDE+"
+    }
+  },
+  "browser_200": {
+    "status": 200,
+    "body": {
+      "url": "https://shop.test/rendered",
+      "statusCode": 200,
+      "browserHtml": "<html><body><h1>Pagină randată</h1><p>1.234,56 lei</p></body></html>"
+    }
+  },
+  "ban_520": { "status": 520, "body": { "type": "/download/temporary-error", "title": "Temporary Download Error", "status": 520, "detail": "The website could not be downloaded (ban)." } },
+  "internal_521": { "status": 521, "body": { "type": "/download/internal-error", "title": "Internal Download Error", "status": 521 } },
+  "rate_429": { "status": 429, "body": { "type": "/limits/over-user-limit", "title": "User Rate Limit Exceeded", "status": 429 } },
+  "overload_503": { "status": 503, "body": { "type": "/limits/over-global-limit", "title": "Global Rate Limit Exceeded", "status": 503 } },
+  "timeout_500": { "status": 500, "body": { "type": "/server/timed-out", "title": "Timeout", "status": 500 } },
+  "auth_401": { "status": 401, "body": { "type": "/auth/key-not-found", "title": "Authentication Key Not Found", "status": 401 } },
+  "suspended_403": { "status": 403, "body": { "type": "/auth/account-suspended", "title": "Account Suspended", "status": 403 } },
+  "forbidden_451": { "status": 451, "body": { "type": "/download/domain-forbidden", "title": "Domain Forbidden", "status": 451 } },
+  "invalid_400": { "status": 400, "body": { "type": "/request/invalid", "title": "Invalid Request", "status": 400, "detail": "'url' is required" } }
+}

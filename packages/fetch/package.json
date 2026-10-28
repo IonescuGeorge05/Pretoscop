@@ -4,13 +4,15 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./assisted": "./src/assisted/index.ts"
   },
   "scripts": {
     "lint": "eslint src test",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "demo": "tsx src/cli/demo.ts"
+    "demo": "tsx src/cli/demo.ts",
+    "assisted:demo": "tsx src/cli/assisted-demo.ts"
   },
   "dependencies": {
     "@pretoscop/config": "workspace:*",

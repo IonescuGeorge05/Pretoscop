@@ -510,6 +510,13 @@ class PoliteFetcher implements Fetcher {
     }
     const access = this.accessSkip(policy, ctx.purpose);
     if (access) return { skipped: access };
+    // Assisted channel (M05B): money and vendor state are checked before any slot or budget is
+    // used, so a request refused for the monthly cap costs nothing and counts nothing.
+    const assistedHop = ctx.chainChannel === 'assisted' || (ctx.chainChannel === undefined && policy.accessMode === 'assisted');
+    if (assistedHop && this.assisted?.check) {
+      const refusal = await this.assisted.check({ shopSlug: ctx.shopSlug ?? policy.shopSlug, host, purpose: ctx.purpose });
+      if (refusal) return { skipped: 'assisted_unavailable', error: refusal.detail, errorCode: refusal.code };
+    }
     const pause = await this.store.getPause(host);
     if (pause) return { skipped: 'paused', blocked: true, blockReason: 'paused', blockDetail: describePause(pause) };
     if (ctx.checkHours) {

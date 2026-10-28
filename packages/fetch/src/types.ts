@@ -55,7 +55,11 @@ export type FetchErrorCode =
   | 'invalid_policy'
   | 'invalid_request'
   | 'crawl_disabled'
-  | 'assisted_error';
+  | 'assisted_error'
+  /** Assisted channel: the month's vendor spend reached ASSISTED_MONTHLY_CAP_EUR (M05B). */
+  | 'assisted_cap'
+  /** Assisted channel: the vendor refuses our account or this shop's domain (M05B). */
+  | 'assisted_refused';
 
 export interface FetchPoliteOptions {
   /** Shop registry slug, for logs and the request log. Defaults to the policy's `shopSlug`. */
@@ -197,9 +201,15 @@ export interface AssistedFetchResponse {
   bytes?: number;
 }
 
-/** Hook implemented by M05B (`packages/fetch/assisted`). */
+/** Hook implemented by M05B (`packages/fetch/src/assisted`, `createAssistedChannel`). */
 export interface AssistedChannel {
   fetch(url: string, request: AssistedFetchRequest): Promise<AssistedFetchResponse>;
+  /**
+   * Called inside the fetcher's gate for every assisted request, before a slot is reserved or the
+   * daily budget is counted (and again right before sending): a refusal (monthly cap reached,
+   * vendor refusing us) skips the request with `skipped: 'assisted_unavailable'` and its code.
+   */
+  check?(ctx: { shopSlug?: string; host: string; purpose: FetchPurpose }): Promise<{ code: FetchErrorCode; detail: string } | null>;
 }
 
 /** robots.txt decision summary for one origin, as `robotsFor()` returns it. */

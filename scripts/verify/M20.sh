@@ -61,7 +61,8 @@ WORKER_LOG="$LOG_DIR/worker.log"
   exec ../../node_modules/.bin/tsx src/index.ts
 ) >"$WORKER_LOG" 2>&1 &
 WORKER_PID=$!
-trap 'kill "$WORKER_PID" 2>/dev/null || true; wait "$WORKER_PID" 2>/dev/null || true' EXIT
+# stop_port as well: on Windows the native node process outlives the killed Git Bash subshell.
+trap 'kill "$WORKER_PID" 2>/dev/null || true; stop_port "${M20_METRICS_PORT:-9465}"; wait "$WORKER_PID" 2>/dev/null || true' EXIT
 wait_for_log "$WORKER_LOG" 'worker started' 90 || { tail -40 "$WORKER_LOG"; fail "worker did not start"; }
 ok "worker running (pid $WORKER_PID, log $WORKER_LOG)"
 

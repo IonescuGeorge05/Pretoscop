@@ -38,6 +38,8 @@ domain or accounts yet; see `docs/09-external-setup-checklist.md`).
       (test: stop the web replicas for 2 minutes)
 - [ ] Ops alerts reach Telegram/email (`node --import tsx src/cli/ops-alert-test.ts` in the worker)
 - [ ] Metrics in Grafana Cloud (optional at launch) or `/metrics` checked by hand
+- [ ] Analytics: Plausible on `stats.pretoscop.ro` (`COMPOSE_PROFILES=analytics`), both founders registered,
+      registration invite-only; the prod web image built with its script URL; loads only after Accept (M17 e2e)
 - [ ] Errors: Sentry set up (B3) or the deferral accepted (5xx alert + JSON logs)
 - [ ] Cloudflare: Full (strict), cache rules, WAF rate limit, Access on `/admin` and staging (`infra/cloudflare/README.md`)
 - [ ] Origin closed to non-Cloudflare traffic (check in `infra/cloudflare/README.md`)

@@ -1,6 +1,7 @@
 # Production and staging application stack (M18). One file, two projects on the same server:
 #   prod:    docker compose -p pretoscop-prod    -f infra/docker-compose.prod.yml --env-file .env up -d
 #   staging: docker compose -p pretoscop-staging -f infra/docker-compose.prod.yml --env-file .env up -d
+# Day to day: infra/scripts/compose.sh <prod|staging> <compose args> (sets the deployed IMAGE_TAG).
 # Each environment lives in its own checkout (/srv/pretoscop/prod, /srv/pretoscop/staging) with its
 # own .env (app settings and secrets, never in git) and, in production, .env.backup (pgBackRest
 # repository credentials). Use infra/scripts/deploy.sh rather than calling compose by hand: it pulls
@@ -271,6 +272,105 @@ services:
           memory: 512m
     logging: *logging
 
+  # Optional, production only: self-hosted Plausible Community Edition v3.2.1 (ADR-010, M17), the web
+  # analytics the site loads only after a visitor clicks "Accept". COMPOSE_PROFILES=analytics in the
+  # production .env (with monitoring: "monitoring,analytics"), PLAUSIBLE_* set; the edge serves it on
+  # PLAUSIBLE_DOMAIN (stats.pretoscop.ro). Settings mirror infra/docker-compose.dev.yml. Its data is
+  # visitor statistics only: not in the pgBackRest backups, and lost with the server.
+  plausible_db:
+    profiles: [analytics]
+    image: postgres:16-alpine
+    restart: unless-stopped
+    init: true
+    environment:
+      POSTGRES_PASSWORD: ${PLAUSIBLE_DB_PASSWORD:-}
+    volumes:
+      - plausible_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD', 'pg_isready', '-U', 'postgres']
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 512m
+    logging: *logging
+
+  plausible_events_db:
+    profiles: [analytics]
+    image: clickhouse/clickhouse-server:24.12-alpine
+    restart: unless-stopped
+    init: true
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: '1'
+    volumes:
+      - plausible_events:/var/lib/clickhouse
+      - plausible_event_logs:/var/log/clickhouse-server
+      - ./plausible/clickhouse/logs.xml:/etc/clickhouse-server/config.d/logs.xml:ro
+      - ./plausible/clickhouse/ipv4-only.xml:/etc/clickhouse-server/config.d/ipv4-only.xml:ro
+      - ./plausible/clickhouse/low-resources.xml:/etc/clickhouse-server/config.d/low-resources.xml:ro
+      - ./plausible/clickhouse/default-profile-low-resources-overrides.xml:/etc/clickhouse-server/users.d/default-profile-low-resources-overrides.xml:ro
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '-O', '/dev/null', 'http://127.0.0.1:8123/ping']
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 2g
+    logging: *logging
+
+  plausible:
+    profiles: [analytics]
+    image: ghcr.io/plausible/community-edition:v3.2.1
+    restart: unless-stopped
+    init: true
+    command: ['sh', '-c', '/entrypoint.sh db createdb && /entrypoint.sh db migrate && /entrypoint.sh run']
+    depends_on:
+      plausible_db:
+        condition: service_healthy
+      plausible_events_db:
+        condition: service_healthy
+    environment:
+      TMPDIR: /var/lib/plausible/tmp
+      BASE_URL: https://${PLAUSIBLE_DOMAIN:-stats.pretoscop.ro}
+      # `openssl rand -base64 48` (at least 64 characters); Plausible refuses to start without it.
+      SECRET_KEY_BASE: ${PLAUSIBLE_SECRET_KEY_BASE:-}
+      # The founders register first, then nobody else can (invites only).
+      DISABLE_REGISTRATION: ${PLAUSIBLE_DISABLE_REGISTRATION:-invite_only}
+      HTTP_PORT: '8000'
+      DATABASE_URL: postgres://postgres:${PLAUSIBLE_DB_PASSWORD:-}@plausible_db:5432/plausible_db
+      CLICKHOUSE_DATABASE_URL: http://plausible_events_db:8123/plausible_events_db
+    volumes:
+      - plausible_data:/var/lib/plausible
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    healthcheck:
+      test: ['CMD', 'wget', '--no-verbose', '--tries=1', '-O', '/dev/null', 'http://127.0.0.1:8000/api/health']
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
+    networks:
+      default: {}
+      edge:
+        aliases: ['${DEPLOY_ENV:-prod}-plausible']
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    logging: *logging
+
 networks:
   default: {}
   edge:
@@ -283,3 +383,7 @@ volumes:
   meilidata:
   workerdata:
   alloydata:
+  plausible_db:
+  plausible_events:
+  plausible_event_logs:
+  plausible_data:

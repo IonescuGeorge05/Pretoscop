@@ -91,6 +91,20 @@ www.{$SITE_DOMAIN:pretoscop.ro} {
 	}
 }
 
+# Plausible web analytics (production; compose profile `analytics` of docker-compose.prod.yml).
+# Public on purpose: the script and the event endpoint must be reachable by visitors who accepted
+# analytics; the dashboard has its own login (registration by invitation only).
+{$PLAUSIBLE_DOMAIN:stats.pretoscop.ro} {
+	tls {$CADDY_TLS:internal}
+	import app_defaults
+	reverse_proxy {$PLAUSIBLE_UPSTREAM:prod-plausible:8000} {
+		import upstream_defaults
+		# Plausible counts unique visitors with a daily-salted hash of address and User-Agent and
+		# never stores the address; it reads it from this header.
+		header_up X-Plausible-IP {client_ip}
+	}
+}
+
 # Prometheus metrics for Grafana Alloy (reachable on the edge network only; never published).
 :9180 {
 	metrics

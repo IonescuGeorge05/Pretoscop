@@ -37,6 +37,8 @@ services:
         2803:f800::/32 2405:b500::/32 2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32}
       PROD_UPSTREAMS: ${PROD_UPSTREAMS:-prod-web-1:3000 prod-web-2:3000}
       STAGING_UPSTREAMS: ${STAGING_UPSTREAMS:-staging-web-1:3000 staging-web-2:3000}
+      PLAUSIBLE_DOMAIN: ${PLAUSIBLE_DOMAIN:-stats.pretoscop.ro}
+      PLAUSIBLE_UPSTREAM: ${PLAUSIBLE_UPSTREAM:-prod-plausible:8000}
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       # Cloudflare Origin CA certificate and key (never in git; see infra/cloudflare/README.md).

@@ -137,6 +137,12 @@ compose up -d --no-deps --wait --wait-timeout "$HEALTH_TIMEOUT" worker || {
 if [[ ",$(env_value COMPOSE_PROFILES)," == *",monitoring,"* ]]; then
   compose --profile monitoring up -d --no-deps alloy || say "alloy did not start (monitoring only)"
 fi
+if [[ ",$(env_value COMPOSE_PROFILES)," == *",analytics,"* ]]; then
+  # Plausible and its two databases: kept running like the other data services.
+  keep=(--no-recreate)
+  [[ "${RECREATE_DATA_SERVICES:-0}" == "1" ]] && keep=()
+  compose --profile analytics up -d "${keep[@]}" plausible || say "plausible did not start (analytics only)"
+fi
 
 # ---------------------------------------------------------------- smoke check
 if [[ -n "${SMOKE_URL:-}" ]]; then

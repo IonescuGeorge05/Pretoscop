@@ -9,6 +9,9 @@ export const KNOWN_FLAGS: Record<string, string> = {
   'assisted.enabled': 'Assisted-access channel for designated shops (ADR-015)',
   'llm.matching.enabled': 'LLM gray-zone verification in matching (M22)',
   'alerts.email.enabled': 'Price alert emails (M19)',
+  'alerts.push.enabled': 'Price alerts as browser notifications (M27; needs VAPID keys)',
+  'alerts.telegram.enabled': 'Price alerts on Telegram and the bot commands (M27; needs TELEGRAM_BOT_TOKEN)',
+  'telegram.deals.enabled': 'Daily verified-deals post in the Telegram channel (M27; needs TELEGRAM_DEALS_CHAT_ID)',
   'affiliate.links.enabled': 'Use affiliate links in click-outs when the program allows (M24)',
   'promoted.enabled': 'Promoted placements (M25)',
 };

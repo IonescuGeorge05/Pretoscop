@@ -127,6 +127,18 @@ export const EnvSchema = z
     // Resend webhook signing secret (`whsec_…`) for bounces and complaints; unset = endpoint off.
     RESEND_WEBHOOK_SECRET: optionalString,
 
+    // Web Push (M27): VAPID key pair (`pnpm --filter @pretoscop/notify vapid:keys`); unset = off.
+    VAPID_PUBLIC_KEY: optionalString,
+    VAPID_PRIVATE_KEY: optionalString,
+    VAPID_SUBJECT: z.string().default('mailto:alerte@pretoscop.ro'),
+
+    // Telegram bot (M27, BotFather token; setup D2); unset = the bot does not run.
+    TELEGRAM_BOT_TOKEN: optionalString,
+    TELEGRAM_BOT_USERNAME: optionalString,
+    TELEGRAM_API_BASE: z.string().default('https://api.telegram.org'),
+    // Channel for the daily verified-deals post (`@pretoscop_reduceri` or a -100… id); unset = no post.
+    TELEGRAM_DEALS_CHAT_ID: optionalString,
+
     // Operations alerts (two consecutive source failures, backups, caps)
     OPS_ALERT_TELEGRAM_BOT_TOKEN: optionalString,
     OPS_ALERT_TELEGRAM_CHAT_ID: optionalString,
@@ -158,6 +170,12 @@ export const EnvSchema = z
     METRICS_PORT: int(9464),
   })
   .superRefine((env, ctx) => {
+    if ((env.VAPID_PUBLIC_KEY === undefined) !== (env.VAPID_PRIVATE_KEY === undefined)) {
+      ctx.addIssue({ code: 'custom', path: ['VAPID_PRIVATE_KEY'], message: 'set both VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY, or neither' });
+    }
+    if (env.TELEGRAM_BOT_TOKEN && !env.TELEGRAM_BOT_USERNAME) {
+      ctx.addIssue({ code: 'custom', path: ['TELEGRAM_BOT_USERNAME'], message: 'TELEGRAM_BOT_USERNAME is needed for the t.me link when TELEGRAM_BOT_TOKEN is set' });
+    }
     if (env.APP_ENV === 'staging' || env.APP_ENV === 'prod') {
       for (const key of ['BETTER_AUTH_SECRET', 'REVALIDATE_TOKEN', 'HASH_SALT_SECRET', 'ALERTS_SECRET'] as const) {
         if (env[key] === DEV_SECRET) {

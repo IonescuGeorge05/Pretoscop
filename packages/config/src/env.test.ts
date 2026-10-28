@@ -30,6 +30,13 @@ describe('getEnv', () => {
     expect(getEnv({ APP_ENV: 'prod', ...others, ALERTS_SECRET: 'd'.repeat(32) }).RESEND_WEBHOOK_SECRET).toBeUndefined();
   });
 
+  it('push and Telegram settings come in pairs (M27)', () => {
+    expect(getEnv({}).VAPID_SUBJECT).toBe('mailto:alerte@pretoscop.ro');
+    expect(() => getEnv({ VAPID_PUBLIC_KEY: 'abc' })).toThrow(/VAPID_PRIVATE_KEY/);
+    expect(() => getEnv({ TELEGRAM_BOT_TOKEN: '1:x' })).toThrow(/TELEGRAM_BOT_USERNAME/);
+    expect(getEnv({ TELEGRAM_BOT_TOKEN: '1:x', TELEGRAM_BOT_USERNAME: 'PretoscopBot' }).TELEGRAM_API_BASE).toBe('https://api.telegram.org');
+  });
+
   it('reports invalid enums readably', () => {
     expect(() => getEnv({ APP_ENV: 'qa' })).toThrow(/APP_ENV/);
   });

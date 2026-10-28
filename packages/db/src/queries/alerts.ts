@@ -315,8 +315,12 @@ export async function suppressionReason(db: Exec, emailHash: string): Promise<Su
   return r.rows[0]?.reason ?? null;
 }
 
-/** An account (alias `u`) with nothing left that could notify its owner. */
-const NOTHING_LEFT = sql.raw(`NOT EXISTS (SELECT 1 FROM alerts a WHERE a.user_id = u.id)`);
+/** An account (alias `u`) with nothing left that could notify its owner (alerts, M27 channels). */
+const NOTHING_LEFT = sql.raw(
+  `NOT EXISTS (SELECT 1 FROM alerts a WHERE a.user_id = u.id)
+   AND NOT EXISTS (SELECT 1 FROM push_subscriptions ps WHERE ps.user_id = u.id)
+   AND NOT EXISTS (SELECT 1 FROM telegram_links tl WHERE tl.user_id = u.id)`,
+);
 
 /** Deletes a 'user' account that has nothing left: no alerts and no other channel. */
 async function deleteIfEmpty(tx: Exec, userId: string): Promise<boolean> {
@@ -732,12 +736,18 @@ export async function exportUserData(db: Exec, userId: string, emailHash: string
     SELECT id, purpose, alert_id, product_id, text_version, given_at, given_ip_hash, confirmed_at, confirm_ip_hash, confirm_method, withdrawn_at, withdraw_method
     FROM consent_records WHERE user_id = ${userId} OR (${emailHash}::text IS NOT NULL AND email_hash = ${emailHash}) ORDER BY id`);
   const sessions = await db.execute<Record<string, unknown>>(sql`SELECT created_at, expires_at FROM sessions WHERE user_id = ${userId} ORDER BY created_at`);
+  const push = await db.execute<Record<string, unknown>>(sql`
+    SELECT endpoint, device_label, consent_at, consent_text_version, created_at, last_success_at FROM push_subscriptions WHERE user_id = ${userId} ORDER BY id`);
+  const telegram = await db.execute<Record<string, unknown>>(sql`
+    SELECT chat_id::text, status, consent_at, consent_text_version, linked_at FROM telegram_links WHERE user_id = ${userId}`);
   return {
     user: u.rows[0],
     alerts: alertsRows.rows,
     alertSends: sends.rows,
     consentRecords: consents.rows,
     sessions: sessions.rows,
+    pushSubscriptions: push.rows,
+    telegram: telegram.rows[0] ?? null,
   };
 }
 

@@ -11,7 +11,7 @@
  *   "Document provizoriu, în curs de revizuire juridică" for legal documents until then.
  */
 
-export type ConsentName = 'alertConsent' | 'analyticsConsent';
+export type ConsentName = 'alertConsent' | 'analyticsConsent' | 'pushConsent' | 'telegramConsent';
 export type ConsentTextKey = `${ConsentName}.v${number}`;
 
 export interface ConsentText {
@@ -65,16 +65,53 @@ const analyticsConsentV1: ConsentText = {
   link: { href: '/cookies', label: 'Detalii' },
 };
 
+/**
+ * Web Push consent (M27): the box next to "Activează notificările pe acest dispozitiv" on /alerte,
+ * before the browser's own permission prompt (Law 506/2004 art. 4(5): the subscription is stored
+ * on the device). Withdrawn by turning notifications off there or in the browser.
+ */
+const pushConsentV1: ConsentText = {
+  key: 'pushConsent.v1',
+  version: 1,
+  effectiveFrom: '2026-10-28',
+  reviewed: false,
+  title: 'Acord pentru notificări de preț în browser',
+  text:
+    'Vreau să primesc pe acest dispozitiv notificări de la Pretoscop cu alertele mele de preț. ' +
+    'Înțeleg că notificările trec prin serviciul de notificări al browserului și că le pot opri oricând, din pagina Alertele mele sau din setările browserului.',
+  link: { href: '/confidentialitate#notificari', label: 'Cum funcționează notificările' },
+};
+
+/**
+ * Telegram consent (M27): the box next to "Conectează Telegram" on /alerte; it travels with the
+ * one-time link token and is stored when the chat sends /start. Withdrawn with /oprire or on /alerte.
+ */
+const telegramConsentV1: ConsentText = {
+  key: 'telegramConsent.v1',
+  version: 1,
+  effectiveFrom: '2026-10-28',
+  reviewed: false,
+  title: 'Acord pentru alerte de preț pe Telegram',
+  text:
+    'Vreau să primesc pe Telegram, de la robotul Pretoscop, alertele mele de preț. ' +
+    'Înțeleg că Telegram este un serviciu separat, cu propria politică de confidențialitate, și că pot opri oricând alertele cu comanda /oprire sau din pagina Alertele mele.',
+  link: { href: '/confidentialitate#telegram', label: 'Ce date ajung la Telegram' },
+};
+
 /** Every published version, by name. Never remove an entry. */
 export const legalTexts = {
   alertConsent: { v1: alertConsentV1 },
   analyticsConsent: { v1: analyticsConsentV1 },
+  pushConsent: { v1: pushConsentV1 },
+  telegramConsent: { v1: telegramConsentV1 },
 } as const satisfies Record<ConsentName, Record<`v${number}`, ConsentText>>;
 
 /** The version shown today for each consent. */
 export const currentVersion = {
   alertConsent: 'alertConsent.v1',
   analyticsConsent: 'analyticsConsent.v1',
+  pushConsent: 'pushConsent.v1',
+  telegramConsent: 'telegramConsent.v1',
 } as const satisfies Record<ConsentName, ConsentTextKey>;
 
 /** All published consent texts (every version). */

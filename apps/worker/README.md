@@ -146,3 +146,23 @@ It prints a before/after summary; run `--dry-run` first, then `match:run` (or wa
     the recorder) and request log; stops at the first refusal.
   - Prints (or with `--write` adds) the registry `probes:` entry and leaves an `audit_log` row (`shops.probe`). Needs the
     database: from a second vantage point run it with `DATABASE_URL` pointing at production (e.g. over WireGuard).
+
+## LLM matching (M22)
+
+Job `llm.match` (every 15 minutes, singleton) verifies the matching gray zone with Claude: it
+collects ended Message Batches, applies the gray-zone policy (`packages/core/MATCHING.md`) and sends
+the missing questions as one batch within `LLM_MONTHLY_CAP_EUR`. It does nothing without
+`ANTHROPIC_API_KEY` (A9) and the flag `llm.matching.enabled`; switching the flag off cancels batches in
+flight. The hourly SLO check alerts at 80 % and 100 % of the cap and on batches in flight > 26 h.
+
+```bash
+pnpm --filter @pretoscop/worker llm:spend                    # month to date: cap, billed, in flight, by model, cache share
+pnpm --filter @pretoscop/worker llm:match --dry-run          # what would be asked, worst case and estimated cost (no call)
+pnpm --filter @pretoscop/worker llm:match --mock             # whole flow against a local stand-in; prints decisions, writes nothing
+pnpm --filter @pretoscop/worker llm:match [--sync]           # a real pass (key + flag): one batch, or calls now
+pnpm --filter @pretoscop/worker match:eval:llm [--mask]      # eval against the labelled pairs (see MATCHING.md)
+pnpm --filter @pretoscop/worker llm:attributes --mock        # attribute extraction for titles missing a hard attribute
+pnpm --filter @pretoscop/worker llm:categories --mock        # category suggestions for unmapped shop categories
+```
+
+Real (non-mock) CLI calls need the key and the flag, like the job. Every call is in `llm_usage`.

@@ -46,9 +46,9 @@ export function Health({ value }: { value: string }) {
   return <span className={cn('rounded px-1.5 py-0.5 text-xs font-semibold', HEALTH[value] ?? HEALTH.unknown)}>{value}</span>;
 }
 
-export function Stat({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
+export function Stat({ label, value, hint, testId }: { label: string; value: ReactNode; hint?: string; testId?: string }) {
   return (
-    <div className="rounded-lg bg-white p-4 ring-1 ring-line">
+    <div className="rounded-lg bg-white p-4 ring-1 ring-line" data-testid={testId}>
       <div className="text-xs uppercase tracking-wide text-muted">{label}</div>
       <div className="mt-1 text-2xl font-bold tabular">{value}</div>
       {hint && <div className="mt-0.5 text-xs text-muted">{hint}</div>}

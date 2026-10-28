@@ -6,6 +6,7 @@ import { heartbeatJob } from './heartbeat';
 import { partitionsJob, requestLogPruneJob } from './maintenance';
 import { backupJob, restoreTestJob, schedulerTickJob, sourceRunJob } from './recorder';
 import { icecatSyncJob } from './icecat';
+import { llmMatchJob } from './llm';
 import { matchPendingJob } from './matching';
 import { opsAlertJob, opsHeartbeatJob, opsSloCheckJob } from './ops';
 import { merchantValidateJob, merchantVerifyDomainJob } from './merchants';
@@ -44,4 +45,5 @@ export const jobs: JobDefinition<any>[] = [
   sitemapBuildJob,
   assistedHealthJob,
   extractorCanaryJob,
+  llmMatchJob,
 ];

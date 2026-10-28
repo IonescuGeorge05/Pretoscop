@@ -220,6 +220,8 @@ export async function dropE2eFixture(db: Db): Promise<number> {
   await db.execute(sql`DELETE FROM clicks WHERE offer_id IN (SELECT id FROM offers WHERE external_id LIKE ${like})`);
   await db.execute(sql`DELETE FROM offer_aliases WHERE external_id LIKE ${like}`);
   await db.execute(sql`DELETE FROM offers WHERE external_id LIKE ${like}`);
+  // LLM ledger rows of the M22 flow (their results went with the offers).
+  await db.execute(sql`DELETE FROM llm_usage WHERE subject->>'e2e' = 'true'`);
   // Throwaway shops of the admin e2e flows (M21 outreach): never crawled, no offers; cascades remove their rows.
   await db.execute(sql`DELETE FROM shops WHERE slug LIKE ${like} AND NOT EXISTS (SELECT 1 FROM offers o WHERE o.shop_id = shops.id)`);
   if (productIds.length) {
@@ -524,4 +526,66 @@ export async function dropAlertsFixture(db: Db, opts: { emailHashes: string[]; r
   if (productIds.length) await db.execute(sql`DELETE FROM products WHERE id = ANY(${sql.param(productIds)}::bigint[])`);
   if (opts.restoreFlag !== undefined) await db.execute(sql`UPDATE feature_flags SET enabled = ${opts.restoreFlag}, updated_at = now() WHERE key = 'alerts.email.enabled'`);
   return productIds.length;
+}
+
+// ---------------------------------------------------------------------------------------------
+// LLM matching (M22): a review item the LLM accepted, its opinion and a ledger row
+
+export const E2E_LLM_TITLE = `Telefon Testoscop Y2 256GB albastru (verificat LLM) ${MARK}`;
+
+/**
+ * A gray-zone offer whose candidate is `productId` (the admin fixture's dupA), accepted by the LLM
+ * the way `llm.match` does it, with the LLM's opinion and one billed `llm_usage` row (subject
+ * `{e2e: true}`, removed by `dropE2eFixture`). The admin e2e then checks the spend card, the LLM
+ * decisions list and the undo back to the review queue.
+ */
+export async function createLlmFixture(db: Db, productId: number): Promise<{ offerId: number; title: string; usageId: number }> {
+  const { applyLlmAccept, llmStoreResult } = await import('../queries/llm');
+  const shop = await db.execute<{ id: string }>(sql`SELECT id::text FROM shops WHERE slug = 'elefant'`);
+  const r = await recordObservation(db, {
+    shopId: Number(shop.rows[0]!.id),
+    sourceId: null,
+    sourceTier: 1,
+    runId: null,
+    externalId: `${PREFIX}llm-y2`,
+    url: 'https://example.com/e2e/llm-y2',
+    titleRaw: E2E_LLM_TITLE,
+    titleClean: E2E_LLM_TITLE,
+    attributes: { kind: 'phone', storageGb: 256, color: 'blue' },
+    priceBani: bani(1509),
+    shippingBani: 0,
+    totalBani: bani(1509),
+    availability: 'in_stock',
+    condition: 'new',
+    contentHash: createHash('sha256').update('llm-y2|1509').digest('hex'),
+    observedAt: new Date(Date.now() - 3600_000),
+  });
+  const offerId = r.offerId!;
+  await db.execute(sql`UPDATE offers SET match_status = 'pending', matched_at = now(), match_score = 0.81, match_reason = 'title 0.81 in gray zone' WHERE id = ${offerId}`);
+  await db.execute(sql`DELETE FROM match_candidates WHERE offer_id = ${offerId}`);
+  await db.execute(sql`INSERT INTO match_candidates (offer_id, product_id, score, features, generator) VALUES (${offerId}, ${productId}, 0.81, '{"conflicts":[],"via":"title"}'::jsonb, 'title')`);
+  await db.execute(sql`INSERT INTO match_decisions (offer_id, product_id, decision, decided_by, reason, score) VALUES (${offerId}, NULL, 'needs_review', 'rule', 'title 0.81 in gray zone', 0.81)`);
+  const u = await db.execute<{ id: string }>(sql`
+    INSERT INTO llm_usage (purpose, model, prompt_id, prompt_version, mode, status, input_hash, subject, input_tokens, output_tokens, cache_read_tokens,
+      eur_per_usd, reserved_usd_nanos, reserved_eur_nanos, cost_usd_nanos, cost_eur_nanos, settled_at)
+    VALUES ('match.verify', 'claude-haiku-5-5', 'pair_verify', '1', 'batch', 'billed', ${`e2e-${offerId}`}, '{"e2e": true}'::jsonb, 210, 60, 1890,
+      0.92, 50000000, 46000000, 13369565, 12300000, now())
+    RETURNING id::text`);
+  const usageId = Number(u.rows[0]!.id);
+  await llmStoreResult(db, {
+    kind: 'pair',
+    inputHash: `e2e-${offerId}`,
+    promptId: 'pair_verify',
+    promptVersion: '1',
+    model: 'claude-haiku-5-5',
+    offerId,
+    productId,
+    ok: true,
+    output: { same: true, confidence: 0.95, reason: 'e2e: same model, storage and colour', conflictingAttributes: [] },
+    usageId,
+  });
+  if (!(await applyLlmAccept(db, offerId, productId, { model: 'claude-haiku-5-5', confidence: 0.95, reason: 'e2e: same model, storage and colour' }))) {
+    throw new Error('e2e llm fixture: accept not applied');
+  }
+  return { offerId, title: E2E_LLM_TITLE, usageId };
 }

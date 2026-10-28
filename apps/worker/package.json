@@ -37,7 +37,12 @@
     "sitemap:build": "tsx src/cli/sitemap-build.ts",
     "assisted:record": "tsx src/cli/assisted-record.ts",
     "bot:check": "tsx src/cli/bot-check.ts",
-    "shops:probe": "tsx src/cli/shops-probe.ts"
+    "shops:probe": "tsx src/cli/shops-probe.ts",
+    "llm:match": "tsx src/cli/llm-match.ts",
+    "llm:spend": "tsx src/cli/llm-spend.ts",
+    "llm:attributes": "tsx src/cli/llm-attributes.ts",
+    "llm:categories": "tsx src/cli/llm-categories.ts",
+    "match:eval:llm": "tsx src/cli/match-eval-llm.ts"
   },
   "devDependencies": {
     "pino-pretty": "^13.2.0",
@@ -50,6 +55,7 @@
     "@pretoscop/extractors": "workspace:*",
     "@pretoscop/fetch": "workspace:*",
     "@pretoscop/icecat": "workspace:*",
+    "@pretoscop/llm": "workspace:*",
     "@pretoscop/mailer": "workspace:*",
     "@pretoscop/notify": "workspace:*",
     "@pretoscop/report": "workspace:*",

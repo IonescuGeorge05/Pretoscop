@@ -83,7 +83,8 @@ type FixtureCommand =
   | 'clicks'
   | 'affiliate-allow'
   | 'affiliate-sync-forbidden'
-  | 'affiliate-restore';
+  | 'affiliate-restore'
+  | 'llm-decision';
 
 export function fixtureCli(cmd: FixtureCommand, ...args: string[]): unknown {
   const out = runTsx(DB_DIR, ['src/cli/e2e-fixture.ts', cmd, ...args]);

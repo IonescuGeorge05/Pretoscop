@@ -1,9 +1,10 @@
-import { autoMatchSample, matchMetrics, reviewQueue } from '@pretoscop/db';
+import { autoMatchSample, bucharestMonthStart, llmRecentDecisions, llmSpendSummary, matchMetrics, reviewQueue } from '@pretoscop/db';
 import Link from 'next/link';
 import { Section, Table, Td } from '@/components/admin/ui';
 import { requireAdmin } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { auditMatchAction } from '../../catalog-actions';
+import { db, serverEnv } from '@/lib/db';
+import { formatDateTime, formatEur } from '@/lib/format';
+import { auditMatchAction, llmRevertAction } from '../../catalog-actions';
 import { ReviewQueue } from './review-queue';
 
 export const dynamic = 'force-dynamic';
@@ -12,7 +13,14 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
   // Each admin page checks the session itself: the layout guard does not stop a segment from rendering.
   await requireAdmin();
   const { q = '' } = await searchParams;
-  const [queue, sample, metrics] = await Promise.all([reviewQueue(db(), 50, { q }), autoMatchSample(db(), 10), matchMetrics(db(), 7)]);
+  const [queue, sample, metrics, llmDecisions, llmSpend] = await Promise.all([
+    reviewQueue(db(), 50, { q }),
+    autoMatchSample(db(), 10),
+    matchMetrics(db(), 7),
+    llmRecentDecisions(db(), { days: 30, limit: 40 }),
+    bucharestMonthStart(db()).then((m) => llmSpendSummary(db(), m)),
+  ]);
+  const llmCap = serverEnv().LLM_MONTHLY_CAP_EUR;
   const bySource = new Map<string, Record<string, number>>();
   for (const m of metrics) bySource.set(m.source, { ...(bySource.get(m.source) ?? {}), [m.decision]: m.n });
   return (
@@ -30,6 +38,75 @@ export default async function MatchesPage({ searchParams }: { searchParams: Prom
         <div className="p-3">
           <ReviewQueue items={queue.items} />
         </div>
+      </Section>
+
+      <Section
+        title="Decizii LLM (ultimele 30 de zile)"
+        right={
+          <span className="text-xs text-muted" data-testid="llm-spend-line">
+            LLM luna aceasta: {formatEur((llmSpend.spentEurNanos + llmSpend.reservedEurNanos) / 1e9)} din {formatEur(llmCap, 0)} · {llmSpend.decisions.accept} acceptate, {llmSpend.decisions.reject} respinse
+          </span>
+        }
+      >
+        <p className="border-b border-line px-3 py-2 text-xs text-ink-soft">
+          Modelul verifică perechile din zona gri (flag <code>llm.matching.enabled</code>): acceptă doar la încredere ≥ {serverEnv().LLM_ACCEPT_CONFIDENCE} fără
+          conflicte de atribute; restul rămâne în coadă. Orice decizie se poate trimite înapoi la verificare umană; după aceea modelul nu mai decide
+          pentru oferta respectivă.
+        </p>
+        <Table head={['Ofertă', 'Decizie LLM', 'Model / încredere', 'Motiv', '']}>
+          {llmDecisions.length === 0 && (
+            <tr>
+              <Td className="text-muted">Nicio decizie LLM încă.</Td>
+            </tr>
+          )}
+          {llmDecisions.map((d) => (
+            <tr key={d.decisionId} data-testid="llm-decision-row">
+              <Td>
+                <div className="text-xs text-muted">
+                  {d.shop} · {formatDateTime(d.createdAt)}
+                </div>
+                {d.offerTitle}
+              </Td>
+              <Td>
+                {d.decision === 'accept' ? (
+                  d.productSlug ? (
+                    <a href={`/p/${d.productSlug}`} target="_blank" rel="noreferrer" className="text-brand-700 hover:underline">
+                      acceptată → {d.productTitle}
+                    </a>
+                  ) : (
+                    'acceptată'
+                  )
+                ) : (
+                  <span>respinsă{d.productTitle ? ` (nu este ${d.productTitle})` : ''}</span>
+                )}
+              </Td>
+              <Td className="text-xs">
+                {d.decidedBy.replace(/^llm:/, '')} · {d.score?.toFixed(2) ?? '—'}
+              </Td>
+              <Td className="max-w-[28rem] text-xs">{d.reason}</Td>
+              <Td>
+                {d.current ? (
+                  <div className="flex gap-2">
+                    {d.decision === 'accept' && d.productId && (
+                      <form action={auditMatchAction}>
+                        <input type="hidden" name="offerId" value={d.offerId} />
+                        <input type="hidden" name="productId" value={d.productId} />
+                        <input type="hidden" name="verdict" value="correct" />
+                        <button className="rounded bg-good-bg px-2 py-1 text-xs font-semibold text-good">Corect</button>
+                      </form>
+                    )}
+                    <form action={llmRevertAction}>
+                      <input type="hidden" name="offerId" value={d.offerId} />
+                      <button className="rounded bg-high-bg px-2 py-1 text-xs font-semibold text-high">Înapoi la verificare</button>
+                    </form>
+                  </div>
+                ) : (
+                  <span className="text-xs text-muted">înlocuită ({d.matchStatus})</span>
+                )}
+              </Td>
+            </tr>
+          ))}
+        </Table>
       </Section>
 
       <Section title="Verificare aleatorie: 10 potriviri automate" right={<Link href="/admin/potriviri" className="text-xs text-brand-700">alt eșantion</Link>}>

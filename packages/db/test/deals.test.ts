@@ -22,8 +22,10 @@ async function product(key: string, category: string, runs: Array<[number, numbe
       days++;
     }
   }
-  await t.db.execute(sql`INSERT INTO product_stats (product_id, current_min_total, observations_days, verdict)
-    VALUES (${id}, ${currentLei.toFixed(2)}, ${days}, 'usual')`);
+  // Like the rollup: history_started_at is the first observed day of the series.
+  const first = addDaysIso(today, -Math.max(...runs.map(([from]) => from)));
+  await t.db.execute(sql`INSERT INTO product_stats (product_id, current_min_total, observations_days, verdict, history_started_at)
+    VALUES (${id}, ${currentLei.toFixed(2)}, ${days}, 'usual', ${first}::date)`);
   ids[key] = id;
 }
 

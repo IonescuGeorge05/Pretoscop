@@ -45,6 +45,18 @@ test('arrow keys pick a suggestion and Enter opens it', async ({ page }) => {
   await expect(page).toHaveURL(new RegExp(`/p/${f.search.deal.slug}$`));
 });
 
+test('suggestions are grouped and close when focus leaves the box', async ({ page }) => {
+  await page.goto('/');
+  const box = page.getByRole('combobox').first();
+  await box.fill('testoscop');
+  const list = page.getByRole('listbox', { name: 'Sugestii' }).first();
+  await expect(list.getByRole('group', { name: 'Produse' })).toBeVisible();
+  await expect(list.getByRole('group', { name: 'Mărci' }).getByRole('option')).toContainText('Testoscop');
+  await box.press('Tab');
+  await expect(list).toBeHidden();
+  await expect(box).toHaveAttribute('aria-expanded', 'false');
+});
+
 test('search → product → click-out logs a click', async ({ page, request }) => {
   test.skip(test.info().project.name !== 'desktop', 'one click-out is enough');
   const f = fixture();
@@ -110,6 +122,15 @@ test('category pages: canonical path, breadcrumbs, brand chips, empty categories
   const res = await request.get('/c/televizoare', { maxRedirects: 0 });
   expect([301, 308]).toContain(res.status());
   expect(res.headers().location).toContain('/c/tv-audio/televizoare');
+  // Page 0 and page 1 are the canonical first page.
+  for (const n of [0, 1]) {
+    const r = await request.get(`/c/tv-audio/televizoare/${n}`, { maxRedirects: 0 });
+    expect([301, 308]).toContain(r.status());
+    expect(r.headers().location).toMatch(/\/c\/tv-audio\/televizoare$/);
+    const b = await request.get(`/b/testoscop/${n}`, { maxRedirects: 0 });
+    expect([301, 308]).toContain(b.status());
+    expect(b.headers().location).toMatch(/\/b\/testoscop$/);
+  }
 
   await page.goto('/c/tv-audio/televizoare');
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Televizoare');

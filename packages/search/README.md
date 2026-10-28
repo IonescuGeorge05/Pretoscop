@@ -8,7 +8,7 @@ sync (M14, docs/03 §6.6, ADR-004, ADR-014).
 | Export | Use |
 |---|---|
 | `createMeili({ url, apiKey })` | Minimal REST client on `node:http` (never the global `fetch`: inside Next.js it would turn ISR pages dynamic). `request`, `waitForTask`, `healthy`. |
-| `indexNames(prefix)` | `{ products, categories, brands, meta }`; the prefix (`MEILI_INDEX_PREFIX`, `e2e_` in the e2e suite) separates environments sharing one server. |
+| `indexNames(prefix)` | `{ products, categories, brands, meta }`; the prefix (`MEILI_INDEX_PREFIX`; the e2e suite appends `e2e_` to it) separates environments sharing one server. |
 | `PRODUCT_SETTINGS`, `CATEGORY_SETTINGS`, `BRAND_SETTINGS` | Index settings (below). |
 | `ProductDocument`, `buildProductDocument(row)` | The document shape; pure. |
 | `parseSearchParams(urlParams)`, `toQueryString(p, change)` | `/cauta` URL parameters (`q`, `categorie`, `marca` (repeatable), `magazin`, `pret_min`, `pret_max` (whole lei; `3.000` = 3000), `stoc=1`, `istoric=1`, `ordine`, `pagina`). |
@@ -51,10 +51,14 @@ popularity, provisional, indexable, last_change_at, updated_at` (+ `drop_pct, dr
   settings change): fills `<index>_next`, swaps it in atomically, drops the old data; the `categories` and `brands`
   indexes are rebuilt the same way with product counts.
 - **Incremental** (`search.sync`, every minute): products whose row, offers, stats, merges, images or GTINs changed since
-  the watermark (with a 2-minute overlap) are re-indexed; products no longer active are removed. The watermark document
-  lives in the `<prefix>pretoscop_sync` index, so a wiped Meilisearch triggers a rebuild by itself. A sync that sees a
-  rebuild happen meanwhile does not move the watermark. Writers must bump `updated_at` (Drizzle's `$onUpdate` does it).
-  Deleted rows (only the e2e fixture deletes products) disappear at the next rebuild.
+  the watermark (with a 2-minute overlap) are re-indexed, as are products with an offer that went past its shop's
+  freshness SLO since then and every product of a shop whose status or SLO changed (the meta document keeps each shop's
+  `status|SLO`); products no longer active are removed. The watermark document lives in the `<prefix>pretoscop_sync`
+  index, so a wiped Meilisearch triggers a rebuild by itself. Writers must bump `updated_at` (Drizzle's `$onUpdate` does
+  it). Deleted rows (only the e2e fixture deletes products) disappear at the next rebuild.
+- **One writer at a time**: rebuilds and syncs of one index set hold a PostgreSQL advisory lock (transaction-scoped,
+  keyed on the products index name, so it works across worker processes). A rebuild waits for it; a sync that finds it
+  taken is skipped (`mode: 'skipped'`) and the next one catches up from the unchanged watermark.
 - `SCHEMA_VERSION` = hash of `DOC_VERSION` + settings: bump `DOC_VERSION` when the document shape changes.
 - **Popularity** (nightly, before the rebuild): `3 × click-outs + 1 × product views` (90 days, half-life 14 days)
   `+ 2 × shops with a live offer`; written to `products.popularity` without touching `updated_at`.
@@ -63,7 +67,7 @@ popularity, provisional, indexable, last_change_at, updated_at` (+ `drop_pct, dr
 ## Tests
 
 `pnpm --filter @pretoscop/search test`: unit tests (query parsing, filters, document builder, synonyms) and integration
-tests against the dev Meilisearch with throwaway `test_<random>_` indexes and a throwaway database: the M14 acceptance
+tests against the dev Meilisearch with throwaway `<MEILI_INDEX_PREFIX>test_<random>_` indexes and a throwaway database: the M14 acceptance
 queries ("televizor samsung 55", "frigider", "ps5", "laptop asus 16gb", diacritics, the "televzor" typo, barcodes,
-facets, sorting) and the sync (first rebuild, rename, price change, hide/unhide). They are skipped when Meilisearch is
+facets, sorting) and the sync (first rebuild, rename, price change, hide/unhide, an offer going stale, a paused shop, the writer lock). They are skipped when Meilisearch is
 down, unless `SEARCH_INTEGRATION=1` (set by `make verify M=14`).

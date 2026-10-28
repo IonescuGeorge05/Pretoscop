@@ -3,6 +3,7 @@ import { Check, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { BrandInfo, CategoryTree } from '@/lib/catalog';
 import { cn } from '@/lib/cn';
+import { plural } from '@/lib/format';
 
 const href = (p: SearchParams, change: Partial<SearchParams>) => {
   const qs = toQueryString(p, { page: 1, ...change });
@@ -92,7 +93,7 @@ export function Facets({ p, r, tree, brands, idPrefix }: { p: SearchParams; r: S
           </ul>
           {moreBrands.length > 0 && (
             <details className="mt-1">
-              <summary className="cursor-pointer px-2 py-1 text-brand-700">Încă {moreBrands.length} mărci</summary>
+              <summary className="cursor-pointer px-2 py-1 text-brand-700">Încă {plural(moreBrands.length, 'marcă', 'mărci')}</summary>
               <ul>
                 {moreBrands.map((b) => (
                   <li key={b.value}>

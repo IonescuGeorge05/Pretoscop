@@ -20,7 +20,8 @@ const meili = createMeili({ url: env.MEILI_URL, apiKey: env.MEILI_MASTER_KEY });
 const reachable = await meili.healthy();
 if (!reachable && process.env.SEARCH_INTEGRATION === '1') throw new Error(`Meilisearch is not reachable at ${env.MEILI_URL}`);
 
-const prefix = `test_${randomBytes(3).toString('hex')}_`;
+// Under this checkout's MEILI_INDEX_PREFIX, so parallel checkouts sharing one Meilisearch never collide.
+const prefix = `${env.MEILI_INDEX_PREFIX}test_${randomBytes(3).toString('hex')}_`;
 const names = indexNames(prefix);
 
 async function dropAll() {
@@ -207,6 +208,41 @@ describe.skipIf(!reachable)('database → index sync', () => {
     await t.db.execute(sql`UPDATE products SET status = 'active' WHERE id = ${productIds[1]!}`);
     expect(await indexProductIds(deps(), [productIds[1]!])).toEqual({ indexed: 1, removed: 0 });
     expect(ids(await search('playstation'))).toEqual([productIds[1]]);
+  });
+
+  it('an offer that goes past its shop freshness SLO leaves the live offers at the next sync', async () => {
+    // No row changes: only time passes (the offer was last checked just over the SLO ago).
+    await t.db.execute(sql`
+      UPDATE offers o SET last_checked_at = now() - make_interval(hours => coalesce((s.crawl_policy->>'freshness_slo_hours')::int, 26)) - interval '30 seconds'
+      FROM shops s WHERE s.id = o.shop_id AND o.external_id = 'tv-1'`);
+    await syncChanged(deps());
+    expect((await search('crystal vision')).hits[0]).toMatchObject({ offer_count: 0, min_total_bani: null, in_stock: false });
+    // Checked again by the recorder (which bumps updated_at): live again.
+    await t.db.execute(sql`UPDATE offers SET last_checked_at = now(), updated_at = now() WHERE external_id = 'tv-1'`);
+    await syncChanged(deps());
+    expect((await search('crystal vision')).hits[0]).toMatchObject({ offer_count: 1, min_total_bani: 209_900 });
+  });
+
+  it('a shop that is paused (no product or offer row changes) drops out of its products at the next sync', async () => {
+    await t.db.execute(sql`UPDATE shops SET status = 'paused' WHERE slug = 'emag'`);
+    await syncChanged(deps());
+    expect((await search('crystal vision')).hits[0]).toMatchObject({ offer_count: 0, min_total_bani: null });
+    expect((await search('crystal vision', { magazin: 'emag' })).total).toBe(0);
+    await t.db.execute(sql`UPDATE shops SET status = 'active' WHERE slug = 'emag'`);
+    await syncChanged(deps());
+    expect((await search('crystal vision')).hits[0]).toMatchObject({ offer_count: 1, min_total_bani: 209_900 });
+    expect(ids(await search('crystal vision', { magazin: 'emag' }))).toEqual([productIds[0]]);
+  });
+
+  it('a sync is skipped while another writer holds the index lock, and catches up afterwards', async () => {
+    await t.db.execute(sql`UPDATE offers SET price = 1999, total_price = 1999, updated_at = now() WHERE external_id = 'tv-1'`);
+    await t.db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${`pretoscop.search:${names.products}`}))`);
+      expect(await syncChanged(deps())).toEqual({ mode: 'skipped', indexed: 0, removed: 0 });
+    });
+    expect((await search('crystal vision')).hits[0]!.min_total_bani).toBe(209_900);
+    expect((await syncChanged(deps())).mode).toBe('incremental');
+    expect((await search('crystal vision')).hits[0]!.min_total_bani).toBe(199_900);
   });
 
   it('a full rebuild bumps the generation and keeps every active product', async () => {

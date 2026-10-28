@@ -99,6 +99,8 @@ export default async function SearchPage({ searchParams }: Props) {
 
       {!r ? (
         <SearchUnavailable />
+      ) : r.total === 0 && p.sort === 'reducere' ? (
+        <NoVerifiedDrops p={p} />
       ) : r.total === 0 ? (
         <NoResults p={p} tree={tree} filtered={hasActiveFilters(p)} />
       ) : (
@@ -203,6 +205,27 @@ function NoResults({ p, tree, filtered }: { p: SearchParams; tree: CategoryTree;
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+/** "Cea mai mare scădere verificată" lists only products with a verified drop; say so when there is none. */
+function NoVerifiedDrops({ p }: { p: SearchParams }) {
+  return (
+    <div className="max-w-2xl" data-testid="no-verified-drops">
+      <p className="text-lg font-semibold text-ink">Niciun produs de aici nu are acum o scădere de preț verificată de Pretoscop.</p>
+      <p className="mt-2 text-ink-soft">
+        Numim scădere verificată doar un preț total mai mic decât cel mai mic preț observat de noi în cele 30 de zile dinainte, după cel puțin 14 zile de
+        istoric.{' '}
+        <Link href="/metodologie" className="text-brand-700 underline">
+          Cum verificăm
+        </Link>
+      </p>
+      <p className="mt-3">
+        <a href={`/cauta?${toQueryString({ ...p, sort: p.q ? 'relevanta' : 'populare', page: 1 })}`} rel="nofollow" className="text-brand-700 underline">
+          Vezi toate produsele găsite
+        </a>
+      </p>
     </div>
   );
 }

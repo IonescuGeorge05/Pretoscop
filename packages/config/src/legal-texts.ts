@@ -11,7 +11,7 @@
  *   "Document provizoriu, în curs de revizuire juridică" for legal documents until then.
  */
 
-export type ConsentName = 'alertConsent' | 'analyticsConsent';
+export type ConsentName = 'alertConsent' | 'analyticsConsent' | 'merchantTerms';
 export type ConsentTextKey = `${ConsentName}.v${number}`;
 
 export interface ConsentText {
@@ -65,16 +65,35 @@ const analyticsConsentV1: ConsentText = {
   link: { href: '/cookies', label: 'Detalii' },
 };
 
+/**
+ * Merchant portal (M20): the unticked checkbox before a shop submits its listing. Stored in
+ * `merchants.terms_version` as `merchantTerms.v1@<version of the terms page>`.
+ */
+const merchantTermsV1: ConsentText = {
+  key: 'merchantTerms.v1',
+  version: 1,
+  effectiveFrom: '2026-10-27',
+  reviewed: false,
+  title: 'Acceptarea termenilor pentru magazine',
+  text:
+    'Am citit și accept Termenii pentru magazine. Confirm că am dreptul să reprezint acest magazin și ' +
+    'că datele din feed (prețuri, disponibilitate, livrare) sunt corecte și actualizate.',
+  acceptLabel: 'Trimite spre aprobare',
+  link: { href: '/pentru-magazine/termeni', label: 'Termenii pentru magazine' },
+};
+
 /** Every published version, by name. Never remove an entry. */
 export const legalTexts = {
   alertConsent: { v1: alertConsentV1 },
   analyticsConsent: { v1: analyticsConsentV1 },
+  merchantTerms: { v1: merchantTermsV1 },
 } as const satisfies Record<ConsentName, Record<`v${number}`, ConsentText>>;
 
 /** The version shown today for each consent. */
 export const currentVersion = {
   alertConsent: 'alertConsent.v1',
   analyticsConsent: 'analyticsConsent.v1',
+  merchantTerms: 'merchantTerms.v1',
 } as const satisfies Record<ConsentName, ConsentTextKey>;
 
 /** All published consent texts (every version). */
@@ -112,13 +131,14 @@ export const legalDocuments = {
   ranking: { path: '/cum-functioneaza', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
   money: { path: '/cum-castigam-bani', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
   bot: { path: '/bot', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
-  methodology: { path: '/metodologie', kind: 'trust', version: '0.2', updatedAt: '2026-10-28', reviewed: false },
+  methodology: { path: '/metodologie', kind: 'trust', version: '0.3', updatedAt: '2026-10-28', reviewed: false },
   merchants: { path: '/pentru-magazine', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
   contact: { path: '/contact', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
   terms: { path: '/termeni', kind: 'legal', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
-  privacy: { path: '/confidentialitate', kind: 'legal', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
-  cookies: { path: '/cookies', kind: 'legal', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
+  privacy: { path: '/confidentialitate', kind: 'legal', version: '0.2', updatedAt: '2026-10-27', reviewed: false },
+  cookies: { path: '/cookies', kind: 'legal', version: '0.2', updatedAt: '2026-10-27', reviewed: false },
   accessibility: { path: '/accesibilitate', kind: 'legal', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
+  merchantTerms: { path: '/pentru-magazine/termeni', kind: 'legal', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
 } as const satisfies Record<string, LegalDocumentVersion>;
 
 export type LegalDocumentName = keyof typeof legalDocuments;

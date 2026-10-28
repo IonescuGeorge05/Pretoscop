@@ -9,7 +9,7 @@ PORT="${E2E_PORT:-3210}"
 ensure_services
 pnpm --silent --filter @pretoscop/db migrate >/dev/null
 curl -sf http://localhost:7700/health | grep -q available || fail "Meilisearch is not healthy on :7700"
-if lsof -nP -iTCP:"$PORT" -sTCP:LISTEN >/dev/null 2>&1; then
+if port_in_use "$PORT"; then
   fail "port $PORT is busy: stop the server there (Playwright would reuse it without the e2e search index)"
 fi
 
@@ -37,7 +37,7 @@ ok "next build (browse pages are ISR, rendered on first request: no database or 
 
 step "Playwright e2e (mobile + desktop): autocomplete, results, facets, no-JS, category/brand/shop pages, suggest API"
 (cd apps/web && E2E_PORT="$PORT" pnpm exec playwright test e2e/search.spec.ts --reporter=line)
-ok "e2e green (fixture rows and the e2e_ indexes removed in teardown)"
+ok "e2e green (fixture rows and the e2e search indexes removed in teardown)"
 
 echo
 echo "OK"

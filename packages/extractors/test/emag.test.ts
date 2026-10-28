@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emagPnk, emagSlugMpn, parsePage, parsePageDetailed } from '../src/index';
+import { emagPnk, emagSlugMpn, emagSlugTail, isUrlDerivedMpn, parsePage, parsePageDetailed, urlMpnHint } from '../src/index';
 import { fixture, fixtureMeta, summary } from './helpers';
 
 const LISTING = 'emag/listing_2026-10-27.html';
@@ -30,9 +30,11 @@ describe('eMAG listing', () => {
       price: '3.170,99 Lei',
       priceFormat: 'ro',
       availability: 'https://schema.org/InStock',
-      mpn: 'SM-S741BZVDEUE',
+      mpnHint: 'SM-S741BZVDEUE',
       category: 'Laptop, Tablete & Telefoane > Telefoane mobile & accesorii > Telefoane Mobile',
     });
+    // A listing states no MPN: the slug tail is a low-trust hint, never `mpn`.
+    expect(res.offers[0]?.mpn).toBeUndefined();
     expect(res.offers[0]?.raw).toMatchObject({ pnk: 'DF1MLR2BM', productId: '138231929', rating: 4.2, reviews: 5, sellerUnknown: true });
   });
 
@@ -45,11 +47,12 @@ describe('eMAG listing', () => {
     expect(String(withRrp?.raw.rrp)).toMatch(/Lei$/);
   });
 
-  it('maps eMAG availability ids (3 in stock, 2 limited, 8 pre-order) and recovers MPNs from slugs', () => {
+  it('maps eMAG availability ids (3 in stock, 2 limited, 8 pre-order) and keeps slug codes as hints', () => {
     expect(res.offers.filter((o) => o.availability === 'https://schema.org/LimitedAvailability').length).toBeGreaterThan(0);
     expect(res.offers.filter((o) => o.availability === 'https://schema.org/PreOrder').length).toBeGreaterThan(0);
     expect(res.offers.every((o) => o.availability !== undefined)).toBe(true);
-    expect(res.offers.filter((o) => o.mpn).length).toBeGreaterThanOrEqual(55);
+    expect(res.offers.filter((o) => o.mpnHint).length).toBeGreaterThanOrEqual(55);
+    expect(res.offers.filter((o) => o.mpn)).toEqual([]);
   });
 
   it('parses the vendor-filtered listing too', () => {
@@ -67,7 +70,9 @@ describe('eMAG product page', () => {
 
   it('returns one offer per seller, with sellers named', () => {
     expect(res.offers).toHaveLength(9);
-    expect(res.meta).toMatchObject({ pnk: 'DF1MLR2BM', mpn: 'SM-S741BZVDEUE', offersCount: 9 });
+    // The JSON-LD `mpn` is stated by eMAG (a field); the slug tail stays a hint.
+    expect(res.meta).toMatchObject({ pnk: 'DF1MLR2BM', mpn: 'SM-S741BZVDEUE', mpnHint: 'SM-S741BZVDEUE', offersCount: 9 });
+    for (const o of res.offers) expect(o).toMatchObject({ mpn: 'SM-S741BZVDEUE', mpnHint: 'SM-S741BZVDEUE' });
     const main = res.offers[0]!;
     expect(main).toMatchObject({
       externalId: '421625672',
@@ -116,5 +121,32 @@ describe('eMAG helpers', () => {
       ),
     ).toBe('83QM0034RM');
     expect(emagSlugMpn('https://www.emag.ro/telefon-mobil-apple-iphone-17-pro-max-256gb-5g-silver-mfym4zd-a/pd/D1/', 'Telefon mobil Apple iPhone 17 Pro Max, 256GB, 5G, Silver')).toBe('MFYM4ZD-A');
+  });
+
+  // Slug tails of real offers recorded on 2026-10-27 (titles shortened): [slug, title, hint, structural tail].
+  const SLUGS: Array<[string, string, string | undefined, string]> = [
+    ['telefon-mobil-samsung-galaxy-s26-dual-sim-8gb-ram-256gb-5g-cobalt-violet-sm-s942bzkgeue', 'Telefon mobil Samsung Galaxy S26, Dual SIM, 8GB RAM, 256GB, 5G, Cobalt Violet', 'SM-S942BZKGEUE', 'SM-S942BZKGEUE'],
+    ['televizor-samsung-led-43u8072h-108-cm-smart-4k-ultra-hd-clasa-f-model-2026-ue43u8072huxxh', 'Televizor SAMSUNG LED 43U8072H, 108 cm, Smart, 4K Ultra HD, Clasa F (Model 2026)', 'UE43U8072HUXXH', 'UE43U8072HUXXH'],
+    ['consola-portabila-gaming-valve-steam-deck-256gb-negru-b0bhpq5msm', 'Consola portabila gaming Valve Steam Deck 256GB, Negru', undefined, 'B0BHPQ5MSM'],
+    ['consola-retro-entertainment-system-cu-620-de-jocuri-incluse-4-butoane-620jocuri', 'Consola retro Entertainment System cu 620 de jocuri incluse, 4 butoane', undefined, '620JOCURI'],
+    ['gaming-notebook-16-gb-ram-512-gb-1-tb-ssd-expansiune-erik-ro-b9-grey', 'Gaming Notebook 16 GB RAM 512 GB 1 TB SSD expansiune', undefined, 'ERIK-RO-B9-GREY'],
+    ['laptop-acer-nitro-v15-anv15-41-r948-nh-qsgex-00h-15-6-amd-ryzen-7-7735hs-kxg0214352', 'Laptop Acer Nitro V15 ANV15-41-R948, NH.QSGEX.00H, 15.6", AMD Ryzen 7 7735HS', 'KXG0214352', 'KXG0214352'],
+  ];
+
+  it.each(SLUGS)('emagSlugTail / emagSlugMpn on %s', (slug, title, hint, tail) => {
+    const url = `https://www.emag.ro/${slug}/pd/D1/`;
+    expect(emagSlugTail(url, title)).toBe(tail);
+    expect(emagSlugMpn(url, title)).toBe(hint);
+    expect(urlMpnHint('emag', url, title)).toBe(hint);
+    expect(urlMpnHint('altex', url, title)).toBeUndefined();
+  });
+
+  it('recognizes stored MPN fields that were really slug tails', () => {
+    const [slug, title] = SLUGS[2]!;
+    const url = `https://www.emag.ro/${slug}/pd/D1/`;
+    expect(isUrlDerivedMpn('emag', url, title, 'B0BHPQ5MSM')).toBe(true);
+    expect(isUrlDerivedMpn('emag', url, title, 'SM-S942BZKGEUE')).toBe(false);
+    expect(isUrlDerivedMpn('emag', url, title, null)).toBe(false);
+    expect(isUrlDerivedMpn('altex', url, title, 'B0BHPQ5MSM')).toBe(false);
   });
 });

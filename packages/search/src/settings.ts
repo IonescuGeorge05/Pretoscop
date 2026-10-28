@@ -2,7 +2,7 @@ import { buildSynonyms } from './synonyms';
 
 /**
  * Index names and settings (docs/03 §6.6). One optional prefix (`MEILI_INDEX_PREFIX`) separates
- * environments that share a Meilisearch server (the e2e suite uses `e2e_`).
+ * environments that share a Meilisearch server (the e2e suite appends `e2e_` to it).
  */
 export interface IndexNames {
   products: string;

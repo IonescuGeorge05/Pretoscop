@@ -67,7 +67,7 @@ export default function CookiesPage() {
                       Te menține autentificat în cont. Pe HTTPS se numește <code>__Secure-better-auth.session_token</code>.
                     </span>,
                     '30 de zile',
-                    'Strict necesar; doar dacă te autentifici (în prezent, doar administratorii)',
+                    'Strict necesar; doar dacă te autentifici (administratori și magazine partenere)',
                   ],
                   [
                     'Plausible',

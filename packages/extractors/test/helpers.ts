@@ -21,5 +21,5 @@ export async function collect(it: AsyncIterable<RawOffer>): Promise<RawOffer[]> 
 /** Compact view used in snapshots: the fields a reviewer actually checks. */
 export function summary(o: RawOffer): Record<string, unknown> {
   const { shopSlug, externalId, title, price, priceFormat, oldPrice, availability, mpn, gtin, brand, sellerName, isMarketplaceSeller, condition } = o;
-  return { shopSlug, externalId, title, price, priceFormat, oldPrice, availability, mpn, gtin, brand, sellerName, isMarketplaceSeller, condition };
+  return { shopSlug, externalId, title, price, priceFormat, oldPrice, availability, mpn, ...(o.mpnHint !== undefined && { mpnHint: o.mpnHint }), gtin, brand, sellerName, isMarketplaceSeller, condition };
 }

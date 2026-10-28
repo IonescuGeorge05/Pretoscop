@@ -1,0 +1,11 @@
+{
+  "url": "https://www.itgalaxy.ro/televizoare/",
+  "final_url": "https://www.itgalaxy.ro/televizoare/",
+  "status": 200,
+  "recorded_at": "2026-10-27T21:46:15+00:00",
+  "user_agent": "Mozilla/5.0 (compatible; PretoscopBot/1.0; +https://pretoscop.ro/bot)",
+  "content_type": "text/html; charset=UTF-8",
+  "bytes": 407691,
+  "recorded_with": "@pretoscop/fetch record (robots.txt obeyed, per-host interval, block detection)",
+  "robots_group": "*"
+}

@@ -3,7 +3,7 @@ import type { DealItem } from '@pretoscop/db';
 import { AllTimeLowBadge, DropBadge } from '@/components/price/badges';
 import { ProductImage } from '@/components/product/product-image';
 import { Badge } from '@/components/ui/badge';
-import { formatDayMonth, formatLei } from '@/lib/format';
+import { formatDayMonth, formatLei, plural } from '@/lib/format';
 
 const at = (day: string) => `${day}T12:00:00Z`;
 
@@ -40,13 +40,13 @@ export function DealCard({ d, today, priority = false }: { d: DealItem; today: s
           <div className="mt-auto flex flex-wrap items-end justify-between gap-x-3 gap-y-1 pt-2">
             <p className="leading-tight">
               <span className="text-lg font-bold tabular text-ink">{formatLei(d.currentBani)}</span>
-              {d.shopName && <span className="block text-xs text-ink-soft">la {d.shopName}{d.shopCount > 1 ? ` (din ${d.shopCount} magazine)` : ''}</span>}
+              {d.shopName && <span className="block text-xs text-ink-soft">la {d.shopName}{d.shopCount > 1 ? ` (din ${plural(d.shopCount, 'magazin', 'magazine')})` : ''}</span>}
             </p>
             {d.drop ? (
               <p className="text-right text-xs text-muted">
                 minim 30 de zile înainte: <span className="tabular">{formatLei(d.drop.referenceBani)}</span>
                 <br />
-                scădere din {formatDayMonth(at(d.drop.since))}
+                preț mai mic din {formatDayMonth(at(d.drop.since))}
               </p>
             ) : d.thirtyDayLow ? (
               <p className="text-right text-xs text-muted">

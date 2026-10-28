@@ -2,8 +2,10 @@ import { legalDocuments } from '@pretoscop/config/legal-texts';
 import { PiggyBank } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { partnerShops } from '@pretoscop/db';
 import { LegalPage } from '@/components/legal/legal-page';
 import { Callout } from '@/components/legal/prose';
+import { db } from '@/lib/db';
 
 export const metadata: Metadata = {
   title: 'Cum câștigăm bani',
@@ -12,7 +14,13 @@ export const metadata: Metadata = {
   alternates: { canonical: '/cum-castigam-bani', languages: { 'ro-RO': '/cum-castigam-bani' } },
 };
 
-export default function MoneyPage() {
+// The partner list below is read from affiliate_programs (M24); refreshed hourly.
+export const revalidate = 3600;
+
+const NETWORK: Record<string, string> = { '2performant': '2Performant', profitshare: 'Profitshare', awin: 'Awin', cj: 'CJ', tradedoubler: 'Tradedoubler' };
+
+export default async function MoneyPage() {
+  const partners = await partnerShops(db()).catch(() => []);
   return (
     <LegalPage
       eyebrow="Transparență"
@@ -25,10 +33,17 @@ export default function MoneyPage() {
           title: 'Situația de azi',
           content: (
             <Callout icon={<PiggyBank />}>
-              <p>
-                Pretoscop este în faza de prototip și nu are venituri: nu avem linkuri afiliate active, nu vindem plasări promovate și nu afișăm reclame.
-                Proiectul este finanțat din resursele proprii ale celor doi fondatori.
-              </p>
+              {partners.length === 0 ? (
+                <p>
+                  Pretoscop este în faza de prototip și nu are venituri: nu avem linkuri afiliate active, nu vindem plasări promovate și nu afișăm reclame.
+                  Proiectul este finanțat din resursele proprii ale celor doi fondatori.
+                </p>
+              ) : (
+                <p>
+                  Singura sursă de venit de azi sunt comisioanele de afiliere de la {partners.length === 1 ? 'un magazin partener' : `${partners.length} magazine partenere`}{' '}
+                  (<a href="#parteneri">lista</a>). Nu vindem plasări promovate și nu afișăm reclame.
+                </p>
+              )}
             </Callout>
           ),
         },
@@ -54,6 +69,13 @@ export default function MoneyPage() {
                   Comisioanele nu influențează niciodată ordinea ofertelor (vezi <Link href="/cum-functioneaza">Cum funcționează clasamentul</Link>).
                 </li>
               </ul>
+              <p id="parteneri">
+                <strong>Magazine partenere acum:</strong>{' '}
+                {partners.length === 0
+                  ? 'niciunul — nu folosim încă linkuri afiliate.'
+                  : partners.map((p) => `${p.name} (${NETWORK[p.network] ?? p.network})`).join(', ') + '.'}{' '}
+                Lista se actualizează automat din programele de afiliere aprobate care permit comparatoarele.
+              </p>
             </>
           ),
         },

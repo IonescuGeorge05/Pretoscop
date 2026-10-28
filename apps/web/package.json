@@ -28,6 +28,7 @@
     "@pretoscop/core": "workspace:*",
     "@pretoscop/db": "workspace:*",
     "@pretoscop/mailer": "workspace:*",
+    "@pretoscop/notify": "workspace:*",
     "@pretoscop/report": "workspace:*",
     "@pretoscop/search": "workspace:*",
     "@pretoscop/storage": "workspace:*",

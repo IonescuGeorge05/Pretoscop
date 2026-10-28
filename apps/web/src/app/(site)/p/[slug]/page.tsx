@@ -2,16 +2,19 @@ import { isProductIndexable } from '@pretoscop/core';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
+import { AlertForm } from '@/components/alerts/alert-form';
 import { OffersTable } from '@/components/product/offers-table';
 import { PriceChart } from '@/components/product/price-chart';
 import { ProductImage } from '@/components/product/product-image';
+import { IcecatCredit } from '@/components/product/icecat-credit';
 import { keySpecs } from '@/components/product/specs';
 import { SummaryCard } from '@/components/product/summary-card';
 import { ViewBeacon } from '@/components/product/view-beacon';
 import { JsonLd } from '@/components/seo/json-ld';
 import { Container } from '@/components/ui/container';
+import { alertConsent, alertsEnabled } from '@/lib/alerts';
 import { serverEnv } from '@/lib/db';
-import { formatDate, formatLeiNumeric, plural } from '@/lib/format';
+import { formatDate, formatLeiNumeric, plural, toBani } from '@/lib/format';
 import { bestOffer, getProductPageData, idFromSlug, type ProductPageData } from '@/lib/product';
 import { robotsFor } from '@/lib/seo';
 import { breadcrumbList, productJsonLd, type BreadcrumbItem } from '@/lib/structured-data';
@@ -106,11 +109,15 @@ export default async function ProductPage({ params }: Props) {
   const p = await resolve(slug);
   const specs = keySpecs(p.attributes);
   const stats = p.stats;
-  // Best = what a buyer pays now (marketplace sellers included); the drop badge (M15) compares like with
-  // like: the best shop-sold offer against the shop-sold daily series (computed in the loader).
+  // Best = what a buyer pays now (marketplace sellers included). The drop badge (M15) compares like
+  // with like (the shop-sold minimum against the shop-sold daily series) and comes from the loader.
   const best = bestOffer(p.offers);
+  // The alert form's starting point: the best shop-sold total now (M19).
+  const current = toBani(bestOffer(p.offers, { shopSoldOnly: true })?.total ?? null);
   const shops = new Set(p.offers.map((o) => o.shopSlug)).size;
   const affiliate = p.offers.some((o) => o.hasAffiliate);
+  const alertsOn = await alertsEnabled();
+  const consent = alertConsent();
 
   return (
     <Container className="py-6">
@@ -149,6 +156,7 @@ export default async function ProductPage({ params }: Props) {
                 {p.mpn && <span> · cod producător {p.mpn}</span>}
                 {p.gtins[0] && <span> · EAN {p.gtins[0].replace(/^0+(?=\d{13})/, '')}</span>}
               </p>
+              {(p.imageSource === 'icecat' || p.icecatSpecs) && <IcecatCredit image={p.imageSource === 'icecat'} specs={p.icecatSpecs} />}
               {specs.length > 0 && (
                 <dl className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-sm">
                   {specs.map(([k, v]) => (
@@ -245,10 +253,26 @@ export default async function ProductPage({ params }: Props) {
           <div className="hidden lg:block">
             <SummaryCard best={best} stats={stats} facts={p.priceFacts} placement="summary" />
           </div>
-          <div className="rounded-[var(--radius-card)] bg-surface p-4 text-sm text-ink-soft ring-1 ring-line">
-            <p className="font-semibold text-ink">Alertă de preț</p>
-            <p className="mt-1">În curând: te anunțăm pe email când prețul scade sub pragul ales (cu acordul tău explicit).</p>
-          </div>
+          <section aria-labelledby="alerta" className="rounded-[var(--radius-card)] bg-surface p-4 ring-1 ring-line">
+            <h2 id="alerta" className="font-semibold text-ink">
+              Alertă de preț
+            </h2>
+            {alertsOn ? (
+              <>
+                <p className="mt-1 text-sm text-ink-soft">Te anunțăm pe email când prețul total (preț + livrare) scade.</p>
+                <div className="mt-3">
+                  <AlertForm
+                    productId={p.id}
+                    currentBestBani={current}
+                    hasVariants={p.variants.length > 1}
+                    consent={{ key: consent.key, text: consent.text, link: consent.link }}
+                  />
+                </div>
+              </>
+            ) : (
+              <p className="mt-1 text-sm text-ink-soft">În curând: te anunțăm pe email când prețul scade sub pragul ales (cu acordul tău explicit).</p>
+            )}
+          </section>
           <div className="space-y-2 text-xs leading-relaxed text-muted">
             <p>Prețurile și disponibilitatea sunt preluate automat de pe site-urile magazinelor și pot fi modificate de acestea; prețul final este cel afișat de magazin la plasarea comenzii.</p>
             {affiliate && <p>Unele linkuri sunt linkuri afiliate: Pretoscop poate primi un comision, fără cost pentru tine. Comisionul nu influențează ordinea ofertelor.</p>}

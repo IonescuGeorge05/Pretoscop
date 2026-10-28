@@ -12,12 +12,16 @@ import { VERDICT_MIN_DAYS } from './verdict';
  *    or below today's);
  * 2. S is at most 30 days ago (older reductions are simply today's price, not news);
  * 3. we observed at least 14 of the 30 days before S (the reference window [S−30, S−1]);
- * 4. today's price is at least 3% below the lowest price of that window (the reference).
+ * 4. today's price is at least 3% below the lowest price of that window (the reference);
+ * 5. on no observed day from S to today (today's own daily minimum included) was the price below
+ *    today's: a partial rebound after a lower price, or a price that rose during the day, is not a
+ *    drop, because we observed the lower price ourselves.
  * The badge then reads "−X% față de minimul din 30 de zile" and the explanation names the reference,
- * its window and S. The shop's crossed price never enters this computation.
+ * its window and S (the first day we observed the lower price: the drop itself may have happened on
+ * an unobserved day before it). The shop's crossed price never enters this computation.
  *
  * A new all-time low additionally needs today's price strictly below every price we observed before S,
- * with at least 14 observed days before S.
+ * with at least 14 observed days before S, and rule 5.
  */
 
 export interface DailyMin {
@@ -75,9 +79,15 @@ export function currentLevelStart(today: string, currentBani: number, series: Da
   return days[lastAbove + 1]?.day ?? today;
 }
 
+/** True when we observed a price below `currentBani` on a day from `since` to `today` (rule 5). */
+function lowerSeenSince(series: DailyMin[], since: string, today: string, currentBani: number): boolean {
+  return series.some((d) => d.day >= since && d.day <= today && d.bani < currentBani);
+}
+
 export function verifiedDrop(i: DropInput): PriceDrop | null {
   const since = currentLevelStart(i.today, i.currentBani, i.series);
   if (!since || daysBetween(since, i.today) > DROP_MAX_AGE_DAYS) return null;
+  if (lowerSeenSince(i.series, since, i.today, i.currentBani)) return null;
   const referenceFrom = addDays(since, -DROP_REFERENCE_DAYS);
   const referenceTo = addDays(since, -1);
   const window = i.series.filter((d) => d.day >= referenceFrom && d.day <= referenceTo);
@@ -115,6 +125,7 @@ export interface AllTimeLowInput extends DropInput {
 export function newAllTimeLow(i: AllTimeLowInput): AllTimeLow | null {
   const since = currentLevelStart(i.today, i.currentBani, i.series);
   if (!since || daysBetween(since, i.today) > DROP_MAX_AGE_DAYS) return null;
+  if (lowerSeenSince(i.series, since, i.today, i.currentBani)) return null;
   const before = i.series.filter((d) => d.day < since);
   const olderDays = i.older?.days ?? 0;
   const historyDays = before.length + olderDays;
@@ -127,15 +138,18 @@ export function newAllTimeLow(i: AllTimeLowInput): AllTimeLow | null {
 
 /**
  * At its 30-day low without being a verified drop: today's price is the lowest of the last 30 observed
- * days (≥ 14 of them) while the window also shows a price at least 5% higher, i.e. not a flat line.
+ * days (≥ 14 of them before today; today's own daily minimum counts too, so a price that rose during
+ * the day is not "at its low") while the window also shows a price at least 5% higher, i.e. not a
+ * flat line.
  */
 export function atThirtyDayLow(i: DropInput): { lowBani: number; highBani: number; days: number } | null {
   const from = addDays(i.today, -29);
   const win = i.series.filter((d) => d.day >= from && d.day < i.today);
   if (win.length < VERDICT_MIN_DAYS) return null;
+  const todayRow = i.series.find((d) => d.day === i.today);
   const low = Math.min(...win.map((d) => d.bani));
   const high = Math.max(...win.map((d) => d.bani));
-  if (i.currentBani > low) return null;
+  if (i.currentBani > low || (todayRow && i.currentBani > todayRow.bani)) return null;
   if (high * 100 < i.currentBani * 105) return null;
   return { lowBani: low, highBani: high, days: win.length };
 }
@@ -143,6 +157,8 @@ export function atThirtyDayLow(i: DropInput): { lowBani: number; highBani: numbe
 const pctFmt = new Intl.NumberFormat('ro-RO', { maximumFractionDigits: 0 });
 const lei = (bani: number) =>
   `${new Intl.NumberFormat('ro-RO', { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: 'always' } as Intl.NumberFormatOptions).format(bani / 100)} lei`;
+/** "14 zile", "41 de zile" (Romanian: numbers ending in 20–99 or 00 take "de"). */
+const zile = (n: number) => (n === 1 ? '1 zi' : n % 100 >= 1 && n % 100 <= 19 ? `${n} zile` : `${n} de zile`);
 const roDay = (day: string) => new Intl.DateTimeFormat('ro-RO', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(`${day}T00:00:00Z`));
 
 /** Whole percent, never rounded up past the truth: 0.149 → "14%". */
@@ -157,9 +173,9 @@ export function dropBadgeText(d: Pick<PriceDrop, 'pct'>): string {
 
 /** The factual sentence behind the badge (shown next to it, and as its tooltip). */
 export function dropExplanation(d: PriceDrop): string {
-  return `Prețul total de acum (${lei(d.currentBani)}) este cu ${dropPercentLabel(d.pct)} sub cel mai mic preț observat de Pretoscop în cele 30 de zile dinaintea scăderii (${lei(d.referenceBani)}, între ${roDay(d.referenceFrom)} și ${roDay(d.referenceTo)}). Prețul a scăzut pe ${roDay(d.since)}.`;
+  return `Prețul total de acum (${lei(d.currentBani)}) este cu ${dropPercentLabel(d.pct)} sub cel mai mic preț observat de Pretoscop în cele 30 de zile dinaintea scăderii (${lei(d.referenceBani)}, între ${roDay(d.referenceFrom)} și ${roDay(d.referenceTo)}). Am observat prețul mai mic începând cu ${roDay(d.since)}.`;
 }
 
 export function allTimeLowExplanation(a: AllTimeLow): string {
-  return `Cel mai mic preț total observat de Pretoscop pentru acest produs: înainte de ${roDay(a.since)}, minimul din ${a.historyDays} de zile observate era ${lei(a.previousLowBani)}.`;
+  return `Cel mai mic preț total observat de Pretoscop pentru acest produs: înainte de ${roDay(a.since)}, minimul din ${zile(a.historyDays)} observate era ${lei(a.previousLowBani)}.`;
 }

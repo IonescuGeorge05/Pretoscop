@@ -149,6 +149,22 @@ export default function PrivacyPage() {
                 ]}
               />
               <InfoCard
+                id="magazine-partenere"
+                title="Conturile magazinelor partenere"
+                items={[
+                  [
+                    'Ce date',
+                    'Numele și emailul persoanei de contact, telefonul (opțional), datele firmei (denumire, CUI), adresele site-ului și ale feed-ului, dovada verificării domeniului, acceptarea termenilor și deciziile noastre (aprobare, respingere, suspendare), cu motivele lor.',
+                  ],
+                  ['De ce', 'Ca să listăm ofertele magazinului, să comunicăm cu el și să păstrăm evidența deciziilor.'],
+                  [
+                    'Temeiul legal',
+                    'Executarea contractului de listare (art. 6 alin. (1) lit. b) GDPR) și obligația de a motiva deciziile față de magazine, din Regulamentul (UE) 2019/1150 (art. 6 alin. (1) lit. c) GDPR).',
+                  ],
+                  ['Cât timp', 'Cât timp contul este activ și încă 3 ani după închiderea lui.'],
+                ]}
+              />
+              <InfoCard
                 id="conturi"
                 title="Conturile de administrare"
                 items={[

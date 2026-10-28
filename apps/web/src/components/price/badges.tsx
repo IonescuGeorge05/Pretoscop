@@ -37,7 +37,8 @@ export function DropBadge({ drop }: { drop: PriceDrop }) {
 
 /** Compact variant for listings, from the search document (percentage, reference, start day). */
 export function ListingDropBadge({ pct, referenceBani, since }: { pct: number; referenceBani: number | null; since: string | null }) {
-  const title = `Față de cel mai mic preț total observat de Pretoscop în cele 30 de zile dinaintea scăderii${referenceBani ? ` (${formatLei(referenceBani)})` : ''}${since ? `; preț scăzut din ${formatDate(`${since}T12:00:00Z`)}` : ''}.`;
+  // The listing's price may be a marketplace seller's; the drop is measured on shop-sold offers.
+  const title = `Cel mai mic preț total al ofertelor vândute direct de magazine, față de cel mai mic preț observat de Pretoscop în cele 30 de zile dinaintea scăderii${referenceBani ? ` (${formatLei(referenceBani)})` : ''}${since ? `; prețul mai mic observat începând cu ${formatDate(`${since}T12:00:00Z`)}` : ''}.`;
   return (
     <Badge tone="good" title={title} data-testid="drop-badge">
       {dropBadgeText({ pct })}

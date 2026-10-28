@@ -127,6 +127,7 @@ KNOWN_FAKE_GTINS: Record<shopSlug | '*', string[]>
 normalizeMpn(raw): string | null
 extractMpnCandidates(title, { brand?, productCode? }): { raw; norm; score; source: 'title' | 'product_code' }[]
 isSpecToken(token): boolean             // "67INCH", "175X75CM", "CORTEX-A35", "RK3326": never an MPN
+mpnHintOf(raw): string | null           // a URL hint's MPN, or null when it cannot be one (ASIN, words…)
 
 detectBrand(title, brandField?, categoryHint?):
   { name; slug; confidence; via: 'field' | 'title' | 'alias' | 'product_line'; known: boolean;
@@ -186,8 +187,10 @@ affiliateUrl, observedAt`; money `priceBani` (non-null when accepted), `oldPrice
 `shippingEstimated`, `shippingBasis`, `shopLowest30dBani`, `currency` (observed), `fxRate`,
 `vatGrossedUp`, `priceIsFrom`; identifiers `gtin14` (valid only), `gtinQuality`, `gtinReason`,
 `gtinAlternates`, `gtinRaw`, `brandName`, `brandSlug`, `brandConfidence`, `brandVia`, `brandKnown`,
-`brandGuess` (how an unknown title brand was read, else null), `brandRaw`, `mpnNorm`, `mpnRaw`,
-`mpnSource`, `mpnCandidates`; `attributes`, `productKind`,
+`brandGuess` (how an unknown title brand was read, else null), `brandRaw`, `mpnNorm`, `mpnRaw`
+(the shop's MPN field as seen, never the URL hint), `mpnSource` (`field` | `title`: stated or
+guessed), `mpnOrigin` (`field` | `title` | `url`), `mpnHint` (plausible URL hint, normalized),
+`mpnCandidates`; `attributes`, `productKind`,
 `condition`, `conditionDetail`, `conditionReason`, `isBundle`, `bundleKind`, `bundleReason`,
 `isAccessory`, `accessoryReason`, `availability`; titles `titleRaw`, `titleClean`, `titleAscii`,
 `titleMatch`; `categoryRaw`, `sellerName`, `isMarketplaceSeller`; `contentHash` (non-null when
@@ -195,7 +198,8 @@ accepted).
 
 Warnings include `brand_unknown` (no dictionary brand: an unknown field or a guessed title brand),
 `brand_conflict`, `mpn_looks_like_gtin`, `mpn_looks_like_spec` (an MPN field such as "67INCH" or
-"CORTEXA35" is ignored and the title is used), `gtin_<quality>`, `price_<flag>`, `vat_conflict`,
+"CORTEXA35" is ignored and the title is used), `mpn_from_url`, `mpn_from_url_confirmed_by_title`,
+`mpn_url_hint_rejected`, `gtin_<quality>`, `price_<flag>`, `vat_conflict`,
 `old_price_not_higher`, `old_price_implausible`, `<amount>_unparseable`.
 
 ## Rules in plain English
@@ -385,7 +389,17 @@ Order: missing → malformed → placeholder → check digit → restricted rang
   valid GTIN is ignored (warning `mpn_looks_like_gtin`), and so is one that is a spec or a chip
   (`isSpecToken`: "67INCH", "175X75CM", "CORTEXA35", "RK3326"; warning `mpn_looks_like_spec`);
   otherwise the best title code (`mpnSource: 'title'`). Codes written with spaces ("FFB 8458 BV
-  EE") are not recovered.
+  EE") are not recovered from titles.
+- **URL hints** (`raw.mpnHint`, e.g. eMAG's slug tail): never stated by the shop and as often a
+  marketplace seller's SKU or an Amazon ASIN as a manufacturer code, so they are a last resort and
+  always a guess (`mpnSource: 'title'`, `mpnOrigin: 'url'`, warning `mpn_from_url`). `mpnHintOf`
+  drops hints that cannot be part numbers: placeholders, fewer than 5 or more than 16 characters,
+  digits or letters only, spec and chip tokens, ASINs (`B0` + 8), codes containing product or
+  colour words ("CONSOLA620JOCURI", "ERIKROB9GREY"; warning `mpn_url_hint_rejected`). A stated
+  MPN always wins; a title code wins too ("NH.QSGEX.00H" over the seller SKU "KXG0214352"),
+  unless the hint contains and extends it ("43U8072H" in the title, "UE43U8072HUXXH" in the slug:
+  the hint is kept, warning `mpn_from_url_confirmed_by_title`). `mpnOrigin` says where the MPN
+  came from (`field`, `title`, `url`); `mpnHint` keeps the plausible hint even when unused.
 
 ### Product kind
 
@@ -607,9 +621,9 @@ observe are absent and are never filled in. Money is integer bani; thresholds ar
 | Badge | Rule (`src/verdict.ts`, `src/deals.ts`) | Where |
 |---|---|---|
 | Preț bun / Preț obișnuit / Peste obișnuit | `computeVerdict`: needs ≥ 14 observed days; good ≤ 30-day minimum × 1.01; above ≥ 90-day median × 1.08 | product page, listings |
-| −X% față de minimul din 30 de zile | `verifiedDrop`: S = first observed day after the last day priced above today's total; S at most 30 days ago; ≥ 14 observed days in [S−30, S−1]; today ≤ 97% of that window's minimum. X is rounded **down** | product page (with `dropExplanation`), listings, /reduceri |
-| Minim istoric | `newAllTimeLow`: today strictly below every price observed before S, with ≥ 14 observed days before S | product page, listings, /reduceri |
-| La minimul ultimelor 30 de zile | `atThirtyDayLow`: today ≤ every price of the previous 30 observed days (≥ 14), and the window held a price ≥ 5% higher | /reduceri, second list |
+| −X% față de minimul din 30 de zile | `verifiedDrop`: S = first observed day after the last day priced above today's total; S at most 30 days ago; ≥ 14 observed days in [S−30, S−1]; today ≤ 97% of that window's minimum; no observed day from S to today (today's own minimum included) below today's total. X is rounded **down** | product page (with `dropExplanation`), listings, /reduceri |
+| Minim istoric | `newAllTimeLow`: today strictly below every price observed before S, with ≥ 14 observed days before S, and nothing lower observed since S | product page, listings, /reduceri |
+| La minimul ultimelor 30 de zile | `atThirtyDayLow`: today ≤ every price of the previous 30 observed days (≥ 14) and ≤ today's own minimum, and the window held a price ≥ 5% higher | /reduceri, second list |
 | Shop reference-price facts | `discountFacts` (M08): reference not supported, raise-then-cut, phantom old price, market-irrelevant discount | offers table |
 
 - A stepwise reduction counts from its latest step: 1.000 → 960 → 950 lei is "−1%" today (950 vs 960),
@@ -617,7 +631,27 @@ observe are absent and are never filled in. Money is integer bani; thresholds ar
 - The shop's crossed price never makes a badge: it is shown as "preț de referință afișat de magazin".
 - Texts are factual and reproducible (`dropBadgeText`, `dropExplanation`, `allTimeLowExplanation`), with
   the numbers and dates they rest on; never accusatory (docs/07 §2.9).
+- A partial rebound is no drop: 1.200 lei → 800 lei for 20 days → 1.000 lei today shows nothing, because we
+  observed 800 lei ourselves; the same holds for a price that rose during the day.
+- Provisional products get no drop or all-time-low badge anywhere (listings, product page, /reduceri).
+- The explanation names S as the first day we *observed* the lower price (the change may fall in a gap).
 - `dropVersus30dMin` (M08) is superseded for display: `product_stats.min_30d` includes today's price.
+
+## Price alerts (M19, `src/alerts.ts`, also `@pretoscop/core/alerts`)
+
+- `decideAlert(state, best, now)` → `notify` (reason `below_target`, `lower_below_target` or `drop`,
+  with the reference it rests on) | `set_baseline` | `rearm` | `none` (`no_offer`, `not_met`,
+  `cooldown`, `already_notified`, `suspicious`, `invalid`).
+- 'below': at or under the target; afterwards only a further drop of at least 1% under the last
+  notified total, or a new crossing after the total went back above the target (re-armed). No
+  offer (stale shop, out of stock) never re-arms: a crawler outage is not a price change.
+- 'any_drop': at least 1% (`ALERT_MIN_DROP_PERCENT`) under the last total told to the user, or
+  under the best total at confirmation; a later rise does not move the reference up.
+- At most one notification per alert per 24 hours (`ALERT_COOLDOWN_HOURS`); a total under 30% of
+  the cross-shop median (`belowCrossShopFloor`) is a probable mismatch and never notified.
+- `parseTargetPrice(input, currentBestBani)`: Romanian separators ("1.999", "1999,99", "2.000 lei");
+  refuses targets at or above today's best total. `inQuietHours` (22:00–08:00 Europe/Bucharest),
+  `normalizeEmail`, `isPlausibleEmail`, `ALERT_CONFIRM_TTL_DAYS` (7).
 
 ## Known limitations
 

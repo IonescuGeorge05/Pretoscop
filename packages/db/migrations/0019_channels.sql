@@ -32,6 +32,7 @@ CREATE TABLE "telegram_link_tokens" (
 	"token_hash" text PRIMARY KEY NOT NULL,
 	"user_id" text NOT NULL,
 	"consent_at" timestamp with time zone NOT NULL,
+	"consent_ip_hash" text,
 	"consent_text_version" text NOT NULL,
 	"expires_at" timestamp with time zone NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL

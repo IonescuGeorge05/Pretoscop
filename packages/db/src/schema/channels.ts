@@ -58,6 +58,8 @@ export const telegramLinkTokens = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     consentAt: ts('consent_at').notNull(),
+    /** Daily-salted hash of the IP that ticked the box (consent evidence, as for email and push). */
+    consentIpHash: text('consent_ip_hash'),
     consentTextVersion: text('consent_text_version').notNull(),
     expiresAt: ts('expires_at').notNull(),
     createdAt: ts('created_at').notNull().defaultNow(),

@@ -115,7 +115,8 @@ export async function startTelegramLinkAction(form: FormData): Promise<void> {
   const ch = await userChannels(user.id);
   if (!ch.telegramBot) back('eroare=telegram#canale');
   const token = randomBytes(24).toString('base64url');
-  await createTelegramLinkToken(db(), user.id, token, currentConsentText('telegramConsent').key, TELEGRAM_LINK_MINUTES);
+  const ipHash = hashWithDailySalt('ip', clientIp(await headers()));
+  await createTelegramLinkToken(db(), user.id, token, currentConsentText('telegramConsent').key, TELEGRAM_LINK_MINUTES, ipHash);
   (await cookies()).set(TELEGRAM_LINK_COOKIE, token, {
     httpOnly: true,
     secure: serverEnv().PUBLIC_BASE_URL.startsWith('https://'),

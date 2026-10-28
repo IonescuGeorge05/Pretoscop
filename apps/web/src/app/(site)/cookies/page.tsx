@@ -67,7 +67,21 @@ export default function CookiesPage() {
                       Te menține autentificat în cont. Pe HTTPS se numește <code>__Secure-better-auth.session_token</code>.
                     </span>,
                     '30 de zile',
-                    'Strict necesar; doar dacă te autentifici (administratori și magazine partenere)',
+                    'Strict necesar; doar dacă te autentifici (pagina Alertele mele, administratori și magazine partenere)',
+                  ],
+                  [
+                    <code key="tg">pretoscop_tg_link</code>,
+                    'Cookie',
+                    'Duce linkul de conectare la Telegram, de unică folosință, din formular în pagina Alertele mele, ca să nu apară în adresa paginii.',
+                    '15 minute',
+                    'Strict necesar; doar după ce apeși „Conectează Telegram”',
+                  ],
+                  [
+                    'Notificări în browser',
+                    'Service worker (/sw.js) și abonarea browserului la notificări',
+                    'Afișează pe acest dispozitiv alertele de preț trimise prin serviciul de notificări al browserului. Nu salvează pagini și nu urmărește navigarea.',
+                    'Până oprești notificările în pagina Alertele mele sau în setările browserului',
+                    'Doar cu acordul tău: bifa de lângă „Activează notificările” și permisiunea dată browserului',
                   ],
                   [
                     'Plausible',

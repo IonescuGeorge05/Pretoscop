@@ -177,7 +177,7 @@ Raw observations (every parsed offer of every run, before change detection) are 
 | `email_suppressions` | `email_hash (PK), reason ('unsubscribed','complaint','bounce','deleted'), created_at` | HMAC hashes only, kept indefinitely (M19) |
 | `push_subscriptions` | `id, user_id, endpoint (unique), p256dh, auth, device_label, consent_at, consent_text_version, created_at, last_success_at, failures` | One row per browser (Web Push), at most 10 per account; endpoint only on a known push service; deleted on 404/410 (M27) |
 | `telegram_links` | `user_id (PK), chat_id (unique), status ('active','blocked'), consent_at, consent_text_version, linked_at, last_error` | The linked private chat; no Telegram name, username, phone or messages (M27) |
-| `telegram_link_tokens` | `token_hash (PK), user_id, consent_at, consent_text_version, expires_at` | One-time `/start` tokens: SHA-256 only, 15 minutes (M27) |
+| `telegram_link_tokens` | `token_hash (PK), user_id, consent_at, consent_ip_hash, consent_text_version, expires_at` | One-time `/start` tokens: SHA-256 only, 15 minutes (M27) |
 | `channel_deliveries` | `idempotency_key, target, ref, created_at` (PK key + target) | Push/Telegram idempotency receipts, no personal data, 7 days (M27) |
 | `channel_posts` | `channel, day` (PK), `message_id` | One daily deals post per channel (M27) |
 | `clicks` | `id, offer_id, product_id, shop_id, ts, is_affiliate, placement, referer_type, ua_hash, ip_hash, session_hash` | Hashed with a daily rotating salt; no raw IP |

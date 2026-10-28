@@ -11,6 +11,15 @@ CHANNEL_FLAGS="'alerts.push.enabled','alerts.telegram.enabled','telegram.deals.e
 # Playwright starts (and stops) its own web server; anything left on the port is stopped on exit.
 trap 'stop_port "$PORT"' EXIT
 
+# True while another `next build` runs on this machine (one production build at a time: RAM).
+next_build_running() {
+  if is_windows; then
+    powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File scripts/verify/next-build-running.ps1 >/dev/null 2>&1
+  else
+    pgrep -f 'next build' >/dev/null 2>&1
+  fi
+}
+
 ensure_services
 pnpm --silent --filter @pretoscop/db migrate >/dev/null
 
@@ -58,7 +67,10 @@ set -e
 pnpm --silent --filter @pretoscop/notify vapid:keys | grep -qE '^VAPID_PUBLIC_KEY=[A-Za-z0-9_-]{87}$' || fail "vapid:keys output"
 ok "telegram:poll needs a token; alerts:run --now needs a time; vapid:keys prints a pair (not stored)"
 
-step "production build"
+step "production build (waits while another Next build runs on this machine)"
+# Prerendered pages embed PUBLIC_BASE_URL: build with the URL the e2e server runs on.
+export PUBLIC_BASE_URL="http://localhost:${PORT}"
+for ((i = 0; i < 180; i++)); do next_build_running || break; sleep 5; done
 (cd apps/web && pnpm exec next build >/dev/null)
 ok "next build"
 

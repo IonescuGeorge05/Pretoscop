@@ -197,7 +197,7 @@ test('web push: consent, browser permission, a test notification, an alert moved
   expect(await page.evaluate(() => localStorage.getItem('e2e-push-subscription'))).toBe(VAPID_PUBLIC);
   let s = cli<State>('channels-state', email);
   expect(s.devices).toEqual([expect.objectContaining({ consent_text_version: 'pushConsent.v1', local_endpoint: true })]);
-  expect(s.consents).toContainEqual(expect.objectContaining({ purpose: 'alert_push', per_alert: false, text_version: 'pushConsent.v1', confirm_method: 'session', withdraw_method: null }));
+  expect(s.consents).toContainEqual(expect.objectContaining({ purpose: 'alert_push', per_alert: false, text_version: 'pushConsent.v1', confirm_method: 'session', withdraw_method: null, given_ip_hashed: true }));
 
   // A test notification, sent by the web server, VAPID-signed and encrypted for this browser only.
   const before = push.received.length;
@@ -272,7 +272,7 @@ test('Telegram: one-time link with consent, /start, /urmareste, an alert deliver
   s = cli<State>('channels-state', email);
   expect(s.telegram).toEqual({ chat_id: String(chat), status: 'active', consent_text_version: 'telegramConsent.v1' });
   expect(s.tokens).toBe(0);
-  expect(s.consents).toContainEqual(expect.objectContaining({ purpose: 'alert_telegram', per_alert: false, text_version: 'telegramConsent.v1', confirm_method: 'telegram' }));
+  expect(s.consents).toContainEqual(expect.objectContaining({ purpose: 'alert_telegram', per_alert: false, text_version: 'telegramConsent.v1', confirm_method: 'telegram', given_ip_hashed: true }));
   await page.reload();
   await expect(section).toContainText('Conectat din');
 

@@ -62,7 +62,7 @@ const consents = async (userId: string) =>
 
 async function linkTelegram(userId: string, chatId: number): Promise<void> {
   const token = randomBytes(24).toString('base64url');
-  await createTelegramLinkToken(t.db, userId, token, 'telegramConsent.v1');
+  await createTelegramLinkToken(t.db, userId, token, 'telegramConsent.v1', 15, 'b'.repeat(32));
   expect(await consumeTelegramLinkToken(t.db, telegramTokenHash(token), chatId, () => 'h'.repeat(64))).toMatchObject({ userId });
 }
 
@@ -156,6 +156,9 @@ describe('Telegram links', () => {
     await linkTelegram(b, 7201);
     expect(await telegramLinkByUser(t.db, a)).toBeNull();
     expect(await telegramLinkByUser(t.db, b)).toMatchObject({ chatId: 7201, status: 'active' });
+    const evidence = await t.db.execute<{ given_ip_hash: string | null; confirm_method: string }>(sql`
+      SELECT given_ip_hash, confirm_method FROM consent_records WHERE user_id = ${b} AND purpose = 'alert_telegram'`);
+    expect(evidence.rows).toEqual([{ given_ip_hash: 'b'.repeat(32), confirm_method: 'telegram' }]);
     expect((await t.db.execute<{ status: string }>(sql`SELECT status FROM alerts WHERE user_id = ${a}`)).rows).toEqual([{ status: 'paused' }]);
     expect(await consents(a)).toContainEqual(expect.objectContaining({ purpose: 'alert_telegram', alert_id: null, withdraw_method: 'replaced' }));
   });

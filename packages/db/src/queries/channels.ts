@@ -193,11 +193,18 @@ export async function pruneDeliveryReceipts(db: Exec, days = 7): Promise<number>
 export const telegramTokenHash = (token: string): string => createHash('sha256').update(token).digest('hex');
 
 /** Starts linking: the raw token goes into the t.me deep link; only its hash is stored (15 minutes). */
-export async function createTelegramLinkToken(db: Exec, userId: string, token: string, consentTextVersion: string, ttlMinutes = 15): Promise<void> {
+export async function createTelegramLinkToken(
+  db: Exec,
+  userId: string,
+  token: string,
+  consentTextVersion: string,
+  ttlMinutes = 15,
+  consentIpHash: string | null = null,
+): Promise<void> {
   await db.execute(sql`DELETE FROM telegram_link_tokens WHERE user_id = ${userId} OR expires_at < now()`);
   await db.execute(sql`
-    INSERT INTO telegram_link_tokens (token_hash, user_id, consent_at, consent_text_version, expires_at)
-    VALUES (${telegramTokenHash(token)}, ${userId}, now(), ${consentTextVersion}, now() + make_interval(mins => ${ttlMinutes}::int))`);
+    INSERT INTO telegram_link_tokens (token_hash, user_id, consent_at, consent_ip_hash, consent_text_version, expires_at)
+    VALUES (${telegramTokenHash(token)}, ${userId}, now(), ${consentIpHash}, ${consentTextVersion}, now() + make_interval(mins => ${ttlMinutes}::int))`);
 }
 
 /**
@@ -211,8 +218,8 @@ export async function consumeTelegramLinkToken(
   hashEmail: (email: string) => string,
 ): Promise<{ userId: string; relinked: boolean } | null> {
   return db.transaction(async (tx) => {
-    const t = await tx.execute<{ user_id: string; consent_at: Date; consent_text_version: string; email: string }>(sql`
-      SELECT t.user_id, t.consent_at, t.consent_text_version, u.email
+    const t = await tx.execute<{ user_id: string; consent_at: Date; consent_ip_hash: string | null; consent_text_version: string; email: string }>(sql`
+      SELECT t.user_id, t.consent_at, t.consent_ip_hash, t.consent_text_version, u.email
       FROM telegram_link_tokens t JOIN users u ON u.id = t.user_id
       WHERE t.token_hash = ${tokenHash} AND t.expires_at > now() FOR UPDATE OF t`);
     const row = t.rows[0];
@@ -230,8 +237,8 @@ export async function consumeTelegramLinkToken(
       ON CONFLICT (user_id) DO UPDATE SET chat_id = EXCLUDED.chat_id, status = 'active', consent_at = EXCLUDED.consent_at,
         consent_text_version = EXCLUDED.consent_text_version, linked_at = now(), last_error = NULL`);
     await tx.execute(sql`
-      INSERT INTO consent_records (user_id, email_hash, purpose, text_version, given_at, confirmed_at, confirm_method)
-      VALUES (${row.user_id}, ${hashEmail(row.email)}, 'alert_telegram', ${row.consent_text_version}, ${row.consent_at}, now(), 'telegram')`);
+      INSERT INTO consent_records (user_id, email_hash, purpose, text_version, given_at, given_ip_hash, confirmed_at, confirm_method)
+      VALUES (${row.user_id}, ${hashEmail(row.email)}, 'alert_telegram', ${row.consent_text_version}, ${row.consent_at}, ${row.consent_ip_hash}, now(), 'telegram')`);
     await resumeChannel(tx, row.user_id, 'telegram');
     await tx.execute(sql`UPDATE users SET last_active_at = now(), retention_notice_at = NULL WHERE id = ${row.user_id}`);
     return { userId: row.user_id, relinked: prev.rows.length > 0 };

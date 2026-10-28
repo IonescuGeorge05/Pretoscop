@@ -115,7 +115,9 @@ export async function channelsFixtureState(db: Db, email: string): Promise<Recor
     SELECT count(*)::text AS n, coalesce(bool_and(token_hash ~ '^[0-9a-f]{64}$'), true) AS hashed FROM telegram_link_tokens WHERE user_id = ${userId}`);
   const alerts = await db.execute(sql`SELECT channel, status, paused_reason, kind, target_price::text, consent_text_version, confirm_method FROM alerts WHERE user_id = ${userId} ORDER BY id`);
   const consents = await db.execute(sql`
-    SELECT purpose, alert_id IS NOT NULL AS per_alert, text_version, confirm_method, withdraw_method FROM consent_records WHERE user_id = ${userId} ORDER BY id`);
+    SELECT purpose, alert_id IS NOT NULL AS per_alert, text_version, confirm_method, withdraw_method,
+      coalesce(given_ip_hash ~ '^[0-9a-f]{32}$', false) AS given_ip_hashed
+    FROM consent_records WHERE user_id = ${userId} ORDER BY id`);
   const sends = await db.execute(sql`SELECT channel, status, error FROM alert_sends WHERE user_id = ${userId} ORDER BY id`);
   return {
     sends: sends.rows,

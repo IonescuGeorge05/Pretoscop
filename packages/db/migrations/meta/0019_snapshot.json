@@ -1,5 +1,5 @@
 {
-  "id": "0c1b8b3e-5d76-40fd-8327-eacd48582ad1",
+  "id": "ebf48d4d-e842-4ed8-83c0-f52d96396c57",
   "prevId": "dee82f83-6a6a-4885-a7cf-0cef001120d2",
   "version": "7",
   "dialect": "postgresql",
@@ -6696,6 +6696,12 @@
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
+        },
+        "consent_ip_hash": {
+          "name": "consent_ip_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "consent_text_version": {
           "name": "consent_text_version",

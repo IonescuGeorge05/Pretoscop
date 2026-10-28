@@ -27,7 +27,9 @@ export async function userChannels(userId: string): Promise<UserChannels> {
   const [pushKey, pushDevices, telegramOn, telegram] = await Promise.all([
     pushPublicKey(),
     userPushDevices(db(), userId),
-    env.TELEGRAM_BOT_TOKEN && env.TELEGRAM_BOT_USERNAME ? isFlagEnabled(db(), TELEGRAM_FLAG).catch(() => false) : Promise.resolve(false),
+    // The web never needs the bot token (worker-only, blanked for the web replicas in production):
+    // the bot's username and the flag decide whether /alerte offers Telegram.
+    env.TELEGRAM_BOT_USERNAME ? isFlagEnabled(db(), TELEGRAM_FLAG).catch(() => false) : Promise.resolve(false),
     telegramLinkByUser(db(), userId),
   ]);
   const telegramBot = telegramOn ? (env.TELEGRAM_BOT_USERNAME ?? null) : null;

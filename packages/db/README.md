@@ -115,6 +115,20 @@ Contract (`src/queries/alerts.ts`):
   `markRetentionNotice`, `usersDueRetentionDeletion`, `pruneConsentRecords`, `pruneAlertSends`,
   `repointMergedAlerts`, `minimizeClicksAndEvents` (clicks/events: identifiers dropped after 90
   days, rows deleted after 13 months).
+- M27 channels (`src/queries/channels.ts`, migration `0017_channels`): `savePushSubscription`
+  (consent in the row and the ledger; ≤ 10 per account; an endpoint moves between accounts),
+  `userPushSubscriptions` (worker), `userPushDevices` (web: no endpoint or keys, its SHA-256),
+  `deletePushSubscription`, `markPushResult`; `createTelegramLinkToken` (hash only, 15 minutes,
+  one per account), `consumeTelegramLinkToken` (one-time under a row lock; a chat moves between
+  accounts), `telegramLinkTokenPending`, `telegramLinkByChat/ByUser`, `unlinkTelegram`,
+  `markTelegramBlocked`, `reactivateTelegramLink`, `pruneTelegramLinkTokens`,
+  `searchProductsForBot`; receipts `hasDeliveryReceipt`/`recordDeliveryReceipt`/
+  `pruneDeliveryReceipts`; `verifiedDrops` (M08 rules) and `claimChannelPost`/
+  `completeChannelPost`/`releaseChannelPost` for the daily deals post. Losing a channel pauses its
+  alerts (`channel_unavailable`) and withdraws its channel consent; setting it up again resumes them.
+  `updateAlert` on a channel change withdraws the old per-alert consent and records the new one;
+  `exportUserData` includes browsers (no keys) and the Telegram link; deleting a user removes both
+  (cascade). Inactive accounts that only keep a channel get the 24-month notice too.
 - `recordObservation` also returns `productId` (the matched product), so a source run can queue
   `rollup.touch` for products whose offers changed price.
 - E2E fixture for alerts: `createAlertsFixture`, `alertsFixturePrice`, `alertsFixtureState`,

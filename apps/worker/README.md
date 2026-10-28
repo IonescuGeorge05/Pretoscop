@@ -33,13 +33,42 @@ pg-boss workers: ingest, crawl, match, rollup, alerts, index, maintenance.
   an email), consent evidence 3 years after withdrawal, sends after 13 months, clicks/events
   minimized after 90 days, expired `verifications` rows (magic-link tokens, send counters). Each
   step runs on its own: a failing step is logged and reported as an ops alert, the others still run.
-- `notify(userId, message, channel)` (`src/alerts/notifier.ts`) is the channel interface; M19
-  implements email through `@pretoscop/mailer`.
+- `notify(userId, message, channel)` (`src/alerts/notifier.ts`) is the channel interface: email
+  through `@pretoscop/mailer` (M19), Web Push and Telegram (M27, below).
 - CLIs: `pnpm --filter @pretoscop/worker alerts:run [--products 1,2]` (evaluate + deliver now) and
   `pnpm alerts:simulate <productId> [percent] [--email <address>]... [--allow-prod]` (a
   "[SIMULARE]" message for the active alerts on the product of the given addresses only, by default
   ADMIN_EMAILS, never other subscribers; refused with APP_ENV=prod unless `--allow-prod`; no price
   event, no change to the alert's state).
+
+## Telegram bot and Web Push (M27)
+
+- Channels: `createAlertServices` adds a push sender when VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY are set
+  and a Telegram client when TELEGRAM_BOT_TOKEN is set; each still needs its flag
+  (`alerts.push.enabled`, `alerts.telegram.enabled`) to be evaluated and delivered. Same rules as
+  email (known price floor, dedupe, one message per user and channel), never 22:00–08:00.
+- Push (`src/alerts/channels.ts`): every browser of the user; 404/410 or an endpoint outside the
+  known push services → the subscription is deleted (none left → push alerts pause); a receipt per
+  browser and the Topic header make a retry idempotent. Never logs endpoints or message text.
+- Telegram: one message to the linked chat; a blocked bot marks the link blocked and pauses its
+  alerts (`/start` in the same chat reactivates it); a receipt makes a retry idempotent; the
+  client spaces messages (25/s overall, 1/s per chat) and holds everything after a 429.
+- The bot (`src/telegram/bot.ts`, ADR-022): long polling in the worker process under an advisory
+  lock, only while `alerts.telegram.enabled` is on. `/start <token>` links the chat to the
+  account that asked on /alerte (one-time token, consent box ticked there); `/urmareste <link or
+  words> [price]` (search offers buttons), `/alertele` (with stop buttons), `/oprire` (unlinks,
+  pauses Telegram alerts, withdraws the consent), `/ajutor`. Private chats only; updates older
+  than 15 minutes dropped; 20 updates a minute per chat; at most 100 alerts per account; buttons
+  only for the chat owner; nothing the person writes is stored or logged.
+- `telegram.deals` (09:15, flag `telegram.deals.enabled`, TELEGRAM_DEALS_CHAT_ID): at most one post
+  a day of verified drops (M08 rules: verdict good_price, ≥ 14 observed days, ≥ 5% under the
+  previous 30-day minimum, an offer alerts may speak about); none on a day without drops. Links go
+  to Pretoscop's product pages and "Toate reducerile" to /reduceri (M15: merge it before turning
+  the flag on).
+- Retention also prunes expired link tokens and receipts older than 7 days.
+- CLIs: `pnpm --filter @pretoscop/worker telegram:poll [--once]` (the bot without the worker;
+  refuses while the worker polls), `alerts:run --now <ISO>` (dev/test only: deliver as if at that
+  time), `pnpm --filter @pretoscop/notify vapid:keys` (a new VAPID pair for the server `.env`).
 
 ## Merchant feeds (M20)
 

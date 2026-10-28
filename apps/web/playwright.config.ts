@@ -48,7 +48,7 @@ export default defineConfig({
       // M27: test VAPID keys and a mock bot, so /alerte offers both channels (flags decide the rest).
       VAPID_PUBLIC_KEY: vapid.publicKey,
       VAPID_PRIVATE_KEY: vapid.privateKey,
-      TELEGRAM_BOT_TOKEN: E2E_TELEGRAM.token,
+      // The web only needs the bot's username (the token is worker-only).
       TELEGRAM_BOT_USERNAME: E2E_TELEGRAM.username,
     },
   },

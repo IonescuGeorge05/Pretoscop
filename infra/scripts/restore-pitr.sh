@@ -73,12 +73,18 @@ for _ in $(seq 1 720); do
   sleep 5
 done
 [[ "${in_recovery:-}" == "f" ]] || die "PostgreSQL is still in recovery after an hour; check: docker compose logs postgres"
-say "database is up: $(compose exec -T postgres psql -X -At -U pretoscop -d pretoscop -c "select 'shops=' || count(*) from shops")"
+# What came back: compare with what you expect before letting the site and the recorder write again.
+say "database is up: $(compose exec -T postgres psql -X -At -U pretoscop -d pretoscop -c "select format('shops=%s offers=%s price_events=%s newest price event=%s', (select count(*) from shops), (select count(*) from offers), (select count(*) from price_events), (select max(observed_at) from price_events))")"
 
 say "fresh full backup on the new timeline"
 compose up -d --no-deps pgbackrest
 compose exec -T pgbackrest pgbackrest-sidecar backup full || say "the full backup failed: run it again before relying on PITR"
 
+if [[ -z "$TAG" && "$IMAGE_TAG" == "unknown" ]]; then
+  # A new server (restore.md, "The server is lost"): no release deployed here yet.
+  say "done: database restored; no release in .deploy-history yet, so deploy one now: infra/scripts/deploy.sh ${ENV_NAME} <tag>"
+  exit 0
+fi
 say "starting web and worker (${IMAGE_TAG})"
 compose up -d --no-deps --wait --wait-timeout 300 web-1 web-2 worker || die "web/worker did not come back; check the logs"
 say "done"

@@ -64,6 +64,8 @@ wait_for_db() {
 }
 
 live_sql() { psql -X -q -At -v ON_ERROR_STOP=1 -h "$SOCKET_DIR" -U "$DB_USER" -d "$DB_NAME" -c "$1"; }
+# The scratch copy of the weekly restore test (private socket, no TCP).
+scratch_sql() { psql -X -q -At -v ON_ERROR_STOP=1 -h "${RESTORE_DIR}.sock" -p "$RESTORE_PORT" -U "$DB_USER" -d "$DB_NAME" -c "$1" 2>/dev/null; }
 
 ensure_stanza() {
   # Idempotent: succeeds when the stanza already exists and matches this cluster.
@@ -106,6 +108,8 @@ restore_test() {
   local started rc=0
   started=$(date +%s)
   log "restore test: latest backup + archived WAL into ${RESTORE_DIR}"
+  # Ship the current WAL segment first, so the copy is minutes behind the live database at most.
+  check_archiving >/dev/null 2>&1 || log "restore test: archive check failed; restoring what the repository has"
   stop_scratch
   mkdir -p "$RESTORE_DIR" "${RESTORE_DIR}.sock"
   chmod 700 "$RESTORE_DIR"
@@ -136,20 +140,34 @@ restore_test() {
       return 1
     fi
   done
-  local t live restored report=""
+  local t live restored report="" lag
   for t in "${count_tables[@]}"; do
     live=$(live_sql "select count(*) from ${t}" 2>/dev/null || echo "?")
-    restored=$(psql -X -At -h "${RESTORE_DIR}.sock" -p "$RESTORE_PORT" -U "$DB_USER" -d "$DB_NAME" -c "select count(*) from ${t}" 2>/dev/null || echo "?")
+    restored=$(scratch_sql "select count(*) from ${t}" || echo "?")
     report+="${t}=${restored}/${live} "
     if [[ "$restored" == "?" ]]; then
       rc=1
-    elif [[ "$live" != "?" ]] && ((restored * 100 < live * 98)); then
-      # The restored copy may only lag the live database by the last few minutes of WAL.
-      rc=1
+    elif [[ "$live" != "?" ]]; then
+      # The copy may lag the live database by the writes of the last few minutes (archive_timeout):
+      # at most 2% of a table, or 200 rows of a small one, while the recorder is running.
+      lag=$((live - restored))
+      if ((lag > 200 && lag * 100 > live * 2)); then rc=1; fi
     fi
   done
   if [[ "$(live_sql 'select count(*) > 0 from shops' 2>/dev/null)" == "t" ]] &&
-    [[ "$(psql -X -At -h "${RESTORE_DIR}.sock" -p "$RESTORE_PORT" -U "$DB_USER" -d "$DB_NAME" -c 'select count(*) > 0 from shops' 2>/dev/null)" != "t" ]]; then
+    [[ "$(scratch_sql 'select count(*) > 0 from shops')" != "t" ]]; then
+    rc=1
+  fi
+  # The newest price event in the copy must be at least as new as everything the live database had
+  # recorded 15 minutes ago: proof that archived WAL was replayed, not just the base backup restored.
+  local newest_live newest_restored
+  newest_live=$(live_sql "select coalesce(extract(epoch from max(observed_at))::bigint, 0) from price_events where observed_at < now() - interval '15 minutes'" 2>/dev/null || echo "?")
+  newest_restored=$(scratch_sql "select coalesce(extract(epoch from max(observed_at))::bigint, 0) from price_events" || echo "?")
+  if [[ "$newest_live" =~ ^[0-9]+$ && "$newest_restored" =~ ^[0-9]+$ ]]; then
+    report+="newest_event=$(date -u -d "@${newest_restored}" +%FT%TZ) "
+    ((newest_restored >= newest_live)) || rc=1
+  else
+    report+="newest_event=? "
     rc=1
   fi
   stop_scratch

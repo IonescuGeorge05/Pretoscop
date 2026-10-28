@@ -139,8 +139,15 @@ checked later while the stored value reveals nothing. Links are signed with ALER
   anti-bot services table (`BOT_PROGRAMS` in `src/lib/bot-policy.ts`: update the status and add a changelog entry when a
   programme answers) and the feed route through the merchant portal.
 - **`/bot/ips.json`** adds `creationTime` and `prefixes` (googlebot.json format) to the M17 fields.
-- **`/.well-known/http-message-signatures-directory`**: the public Ed25519 JWK, signed for the `Signature-Agent` authority
-  (origin of `BOT_INFO_URL`), `Cache-Control: max-age=300`; 404 until `WEB_BOT_AUTH_PRIVATE_KEY` is set
-  (`src/lib/web-bot-auth.ts`, signing primitives from `@pretoscop/fetch/signing`).
-- **`/admin/contactari`**: retailer outreach tracker (table `outreach`): add a contact, update its status, follow-ups due.
+- **`/bot` is rendered per request** (`dynamic = 'force-dynamic'`): the IP list and the key status come from the runtime
+  environment, like `ips.json` and the directory (a prerendered page would freeze them at build time).
+- **`/.well-known/http-message-signatures-directory`**: `{"keys":[{"kty":"OKP","crv":"Ed25519","kid","x","use":"sig"}]}`
+  (public members only), `Content-Digest` and a possession proof signed for the `Signature-Agent` authority (origin of
+  `BOT_INFO_URL`), `Cache-Control: max-age=300`; 404 until `WEB_BOT_AUTH_PRIVATE_KEY` is set (`src/lib/web-bot-auth.ts`,
+  draft-ietf-webbotauth-httpsig-protocol-00 primitives from `@pretoscop/fetch/signing`). Never behind a redirect.
+- **`/admin/contactari`**: retailer outreach tracker (table `outreach`): add a contact, update its status, follow-ups due,
+  delete (confirmed). Contacts are business channels only (`checkContact`: role addresses, form URLs, switchboard
+  numbers; free-mailbox addresses and names are refused); audit rows record which fields were set, never their content.
+  The "Ieșirea din accesul asistat" table (`assistedMigrationStatus`) lists every `access_mode = 'assisted'` shop with its
+  30-day success rate, a live replacement feed and the latest outreach (docs/12 §2b).
 - Runbooks and application dossiers: `infra/bot-program/`.

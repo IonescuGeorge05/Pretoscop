@@ -12,11 +12,11 @@ step makes the crawler easier to identify, never harder.
 | Identity: `Mozilla/5.0 (compatible; PretoscopBot/1.0; +https://pretoscop.ro/bot)` and `PretoscopBot-Feed/1.0` | `packages/fetch/src/identity.ts` | live since M02 |
 | Bot page with purpose, UAs, rules, IPs, reverse DNS, Web Bot Auth, anti-bot services, changelog | `apps/web/src/app/(site)/bot/page.tsx`, `apps/web/src/lib/bot-policy.ts` | live; IP list empty until A4 |
 | `/bot/ips.json` (googlebot.json `prefixes` format plus the M17 fields) | `apps/web/src/app/bot/ips.json/route.ts` | from `BOT_EGRESS_IPS` |
-| Web Bot Auth request signing (RFC 9421, Ed25519) | `packages/fetch/src/signing.ts`, hook in `fetcher.ts` | off (`WEB_BOT_AUTH=false`) |
-| Key directory `/.well-known/http-message-signatures-directory` (signed response) | `apps/web/src/app/.well-known/…/route.ts` | 404 until `WEB_BOT_AUTH_PRIVATE_KEY` is set |
+| Web Bot Auth request signing (RFC 9421, Ed25519; draft-ietf-webbotauth-httpsig-protocol-00) | `packages/fetch/src/signing.ts`, hook in `fetcher.ts` | off (`WEB_BOT_AUTH=false`) |
+| Key directory `/.well-known/http-message-signatures-directory` (Content-Digest + possession proof) | `apps/web/src/app/.well-known/…/route.ts` | 404 until `WEB_BOT_AUTH_PRIVATE_KEY` is set |
 | Identity self-check (FCrDNS, ips.json, directory signature) | `pnpm --filter @pretoscop/worker bot:check` | ready |
-| Re-probe from a vantage point (≤ 3 polite requests) | `pnpm --filter @pretoscop/worker shops:probe <slug> --vantage "…"` | ready |
-| Outreach tracker | `/admin/contactari` (table `outreach`) | ready |
+| Re-probe from a vantage point (≤ 3 polite requests, 5 s apart, audited) | `pnpm --filter @pretoscop/worker shops:probe <slug> --vantage "…"` | off (flag `shops.probe.enabled`; needs `CRAWL_ENABLED`) |
+| Outreach tracker (business channels only; audited; erasable) and the assisted-access exit table | `/admin/contactari` (table `outreach`) | ready |
 | Weekly extractor canary | worker job `extractors.canary`, flag `extractors.canary.enabled` | off |
 
 ## Order of operations (founders)
@@ -33,8 +33,10 @@ step makes the crawler easier to identify, never harder.
    in `BOT_PROGRAMS` (`bot-policy.ts`, shown on `/bot`), with a changelog entry when a status changes.
 4. **C3 — retailer outreach.** Use [outreach-templates.md](outreach-templates.md); log every message in
    `/admin/contactari`. A verified bot is still only a *known* bot: each shop decides whether to let it in.
-5. **Re-probe before calling a shop blocked**: `shops:probe <slug>` from the production IP and from a
-   Romanian IP, `--write` to record both outcomes in `packages/config/shops/<slug>.yaml`.
+5. **Re-probe before calling a shop blocked**: switch `shops.probe.enabled` on in `/admin/flaguri`, run
+   `shops:probe <slug> --vantage "…"` from the production IP and from a Romanian IP (with `DATABASE_URL` pointing at
+   production, so pauses are shared), `--write` to record both outcomes in `packages/config/shops/<slug>.yaml`,
+   then switch the flag off again. Shops removed from Pretoscop or read only through their feed are refused.
 
 ## Application status (update by hand)
 

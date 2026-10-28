@@ -8,7 +8,10 @@ set "Revenim la" to ten working days later.
 
 Rules: write from a `@pretoscop.ro` address; one shop per email; address a role mailbox (marketing,
 e-commerce, parteneriate) or the contact form, never a guessed personal address; never claim that we
-are already collecting their prices if the shop blocks us; never imply an endorsement. Send
+are already collecting their prices if the shop blocks us; never imply an endorsement. For a shop read
+through the assisted channel (M05B), never write as if we had no prices from it either: say that PretoscopBot
+is blocked and that a feed or an allowlist would replace the third-party collection service used today
+(docs/12 §0, point 7), and answer plainly if asked how prices are collected. Send
 `allowlist-v1` and `antibot-rule-v1` only once `bot:check` is all `OK` (published IPs with reverse DNS,
 key directory): they point the shop at those proofs. `feed-listing-v1` can go out today.
 
@@ -110,14 +113,16 @@ Send at most one follow-up; then set the status to "Fără răspuns".
 >
 > Bună ziua,
 >
-> vă confirmăm că din {data, ora} nu mai accesăm site-ul {Magazin}: am oprit robotul PretoscopBot pentru
-> acest site. {Ce se întâmplă cu ofertele deja afișate.} Dacă vă răzgândiți sau preferați să ne trimiteți
+> vă confirmăm că din {data, ora} nu mai colectăm prețuri de pe site-ul {Magazin}: am oprit atât robotul
+> PretoscopBot, cât și, acolo unde era cazul, serviciul de colectare pe care îl folosim. {Ce se întâmplă cu ofertele deja afișate.} Dacă vă răzgândiți sau preferați să ne trimiteți
 > un feed, scrieți-ne oricând la bot@pretoscop.ro.
 >
 > Cu stimă,
 > {Nume}
 
-In the system: switch the shop's sources off (admin → Surse, kill switch) before sending, and set the
+In the system: stop every channel before sending: the shop's sources off (admin → Surse, kill switch) and its
+access mode `off` (also ends the assisted channel; the bot page promises that a stop request covers all
+collection), and set the
 outreach status to "Refuz" with the date. What happens to offers already shown (hidden at once, or left
 to age out as stale) is a founder decision to make once and then state the same way every time; it is
 not decided in code yet.

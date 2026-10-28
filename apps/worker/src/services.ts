@@ -96,7 +96,16 @@ function opsMailer(env: Env, log: Logger): Mailer | undefined {
 /** Price-alert channels (M19 email; M27 adds push and Telegram), links and sender identity. */
 export function createAlertServices(env: Env, db: Db, log: Logger): AlertServices {
   const mailer = createMailer(env, log);
-  const push = env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY ? createPushSender({ publicKey: env.VAPID_PUBLIC_KEY, privateKey: env.VAPID_PRIVATE_KEY, subject: env.VAPID_SUBJECT }) : undefined;
+  // A local mock push service (http://127.0.0.1) is accepted only in dev and test (ADR-022).
+  const push =
+    env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY
+      ? createPushSender({
+          publicKey: env.VAPID_PUBLIC_KEY,
+          privateKey: env.VAPID_PRIVATE_KEY,
+          subject: env.VAPID_SUBJECT,
+          allowLocalEndpoints: env.APP_ENV === 'dev' || env.APP_ENV === 'test',
+        })
+      : undefined;
   const telegram = env.TELEGRAM_BOT_TOKEN ? createTelegramClient({ token: env.TELEGRAM_BOT_TOKEN, apiBase: env.TELEGRAM_API_BASE }) : undefined;
   const senders: Partial<Record<AlertChannel, ChannelSender>> = { email: createEmailSender(db, mailer, log) };
   if (push) senders.push = createPushChannelSender(db, push, log);

@@ -6,6 +6,7 @@ import { createLogger } from '@pretoscop/config/logger';
 import {
   addDaysIso,
   bucharestToday,
+  hasDeliveryReceipt,
   createAlert,
   createTelegramLinkToken,
   recordObservation,
@@ -24,8 +25,8 @@ import { evaluateAlerts } from '../src/alerts/evaluate';
 import { createNotifier } from '../src/alerts/notifier';
 import { telegramDealsJob } from '../src/jobs/telegram';
 import type { JobContext } from '../src/jobs/types';
-import { handleUpdate, parseFollowArgs, productIdFromText, type BotDeps } from '../src/telegram/bot';
-import { startTelegramPoller } from '../src/telegram/poller';
+import { createChatLimiter, handleUpdate, parseFollowArgs, productIdFromText, STALE_AFTER_SEC, type BotDeps } from '../src/telegram/bot';
+import { pollOnce, startTelegramPoller } from '../src/telegram/poller';
 
 const SECRET = 'channels-test-secret-0123456789';
 const BASE = 'https://pretoscop.test';
@@ -42,12 +43,13 @@ let telegram: TelegramClient;
 let shop: number;
 let n = 0;
 
-const bot = (): BotDeps => ({ db: t.db, telegram, links, secret: SECRET, log });
+const limiter = createChatLimiter(1000);
+const bot = (): BotDeps => ({ db: t.db, telegram, links, secret: SECRET, log, limiter });
 const deliverDeps = (): DeliverDeps => ({
   db: t.db,
   notifier: createNotifier({
     telegram: createTelegramChannelSender(t.db, telegram, log),
-    push: createPushChannelSender(t.db, createPushSender({ ...vapid, subject: 'mailto:alerte@pretoscop.ro' }), log),
+    push: createPushChannelSender(t.db, createPushSender({ ...vapid, subject: 'mailto:alerte@pretoscop.ro', allowLocalEndpoints: true }), log),
   }),
   links,
   operator: { name: 'Pretoscop (test)', address: 'România', website: BASE },
@@ -137,6 +139,7 @@ describe('Telegram bot', () => {
     await createTelegramLinkToken(t.db, u.id, token, 'telegramConsent.v1');
     await say(chat, `/start ${token}`);
     expect(lastTo(chat)?.text).toContain('contul tău Pretoscop este conectat');
+    expect(lastTo(chat)?.text).toContain('Dacă nu tu ai cerut conectarea, trimite /oprire.');
     expect(await telegramLinkByUser(t.db, u.id)).toMatchObject({ chatId: chat, status: 'active', consentTextVersion: 'telegramConsent.v1' });
     const c = await t.db.execute<{ purpose: string; confirm_method: string; confirmed: boolean }>(
       sql`SELECT purpose, confirm_method, confirmed_at IS NOT NULL AS confirmed FROM consent_records WHERE user_id = ${u.id}`,
@@ -245,6 +248,63 @@ describe('Telegram bot', () => {
     expect(c.rows[0]!.withdraw_method).toBe('telegram');
   });
 
+  it('ignores updates older than 15 minutes (the bot was off) and a chat flooding the bot', async () => {
+    const chat = ++chatSeq;
+    const old = Math.floor(Date.now() / 1000) - STALE_AFTER_SEC - 60;
+    await handleUpdate(bot(), { update_id: 1, message: { message_id: 1, date: old, chat: { id: chat, type: 'private' }, text: '/ajutor' } });
+    expect(lastTo(chat)).toBeUndefined();
+    const strict = createChatLimiter(3);
+    for (let i = 0; i < 6; i++) await handleUpdate({ ...bot(), limiter: strict }, { update_id: 10 + i, message: { message_id: 1, chat: { id: chat, type: 'private' }, text: '/ajutor' } });
+    expect(tgMock.sent().filter((m) => m.chat_id === chat)).toHaveLength(3);
+    // Group chats are never served.
+    await handleUpdate(bot(), { update_id: 30, message: { message_id: 1, chat: { id: -100123, type: 'supergroup' }, text: '/ajutor' } });
+    expect(lastTo(-100123)).toBeUndefined();
+  });
+
+  it('a button pressed by someone else than the chat owner does nothing', async () => {
+    const u = await user();
+    const chat = await linkedChat(u);
+    const p = await product();
+    await observe(p.id, `tg-btn-${p.id}`, 100);
+    const before = (await t.db.execute(sql`SELECT count(*)::text AS n FROM alerts WHERE user_id = ${u.id}`)).rows[0];
+    await handleUpdate(bot(), { update_id: 5, callback_query: { id: 'x1', from: { id: chat + 1 }, message: { message_id: 1, chat: { id: chat, type: 'private' } }, data: `f:${p.id}` } });
+    expect((await t.db.execute(sql`SELECT count(*)::text AS n FROM alerts WHERE user_id = ${u.id}`)).rows[0]).toEqual(before);
+  });
+
+  it('a retry of a message Telegram already accepted sends nothing (receipt per idempotency key)', async () => {
+    const u = await user();
+    const chat = await linkedChat(u);
+    const sender = createTelegramChannelSender(t.db, telegram, log);
+    const message = { title: 'Preț mai mic', body: '1.000,00 lei', url: `${BASE}/p/x-1`, idempotencyKey: `alert-sends-test-${chat}` };
+    expect(await sender(u.id, message)).toMatchObject({ ok: true });
+    const count = () => tgMock.sent().filter((m) => m.chat_id === chat).length;
+    const sent = count();
+    expect(await sender(u.id, message)).toEqual({ ok: true, id: 'tg:already-sent' });
+    expect(count()).toBe(sent);
+    expect(await hasDeliveryReceipt(t.db, message.idempotencyKey, 'telegram')).toBe(true);
+  });
+
+  it('with the flag off the poller reads nothing (no getUpdates); --once handles waiting updates and acknowledges them', async () => {
+    const calls = () => tgMock.calls.filter((c) => c.method === 'getUpdates').length;
+    const before = calls();
+    let on = false;
+    const p = startTelegramPoller({ pool: t.pool, telegram, handle: async () => undefined, log, lockRetryMs: 50, pollTimeoutSec: 0, flagCheckMs: 50, enabled: async () => on });
+    await new Promise((r) => setTimeout(r, 300));
+    expect(calls()).toBe(before);
+    on = true;
+    await new Promise((r) => setTimeout(r, 300));
+    expect(calls()).toBeGreaterThan(before);
+    // pollOnce refuses while the poller holds the lock.
+    expect(await pollOnce({ pool: t.pool, telegram, handle: async () => undefined })).toEqual({ busy: true });
+    await p.stop();
+    const seen: number[] = [];
+    tgMock.push({ message: { message_id: 3, chat: { id: 77, type: 'private' }, text: '/ajutor' } });
+    tgMock.push({ message: { message_id: 4, chat: { id: 77, type: 'private' }, text: '/ajutor' } });
+    expect(await pollOnce({ pool: t.pool, telegram, handle: async (u) => void seen.push(u.update_id) })).toEqual({ handled: 2 });
+    expect(seen).toHaveLength(2);
+    expect(await pollOnce({ pool: t.pool, telegram, handle: async (u) => void seen.push(u.update_id) })).toEqual({ handled: 0 });
+  });
+
   it('only one poller consumes updates at a time (advisory lock); the other takes over when it stops', async () => {
     const seen: string[] = [];
     const a = startTelegramPoller({ pool: t.pool, telegram, handle: async (u) => void seen.push(`a:${u.update_id}`), log, lockRetryMs: 100, pollTimeoutSec: 0 });
@@ -290,6 +350,36 @@ describe('Web Push delivery', () => {
     const a = await t.db.execute<{ status: string }>(sql`SELECT status FROM alerts WHERE user_id = ${u.id}`);
     expect(a.rows).toEqual([{ status: 'paused' }]);
   });
+
+  it('a retry skips the browsers that already got the message and sends the Topic header', async () => {
+    const u = await user();
+    const b1 = fakeBrowserKeys(`${pushMock.url}/push/${u.id}/r1`);
+    const b2 = fakeBrowserKeys(`${pushMock.url}/push/${u.id}/r2`);
+    browsers.set(`/push/${u.id}/r1`, b1);
+    browsers.set(`/push/${u.id}/r2`, b2);
+    for (const b of [b1, b2]) await savePushSubscription(t.db, { userId: u.id, endpoint: b.endpoint, p256dh: b.p256dh, auth: b.auth, deviceLabel: null, consentTextVersion: 'pushConsent.v1', emailHash: null, ipHash: null });
+    const sender = createPushChannelSender(t.db, createPushSender({ ...vapid, subject: 'mailto:alerte@pretoscop.ro', allowLocalEndpoints: true }), log);
+    const message = { title: 'Preț mai mic', body: '700,00 lei', url: `${BASE}/p/x-2`, idempotencyKey: `alert-sends-push-${u.id}` };
+    pushMock.failNext(`/push/${u.id}/r2`, 503);
+    expect(await sender(u.id, message)).toMatchObject({ ok: true });
+    const to = (path: string) => pushMock.received.filter((x) => x.path === path);
+    expect(to(`/push/${u.id}/r1`)).toHaveLength(1);
+    expect(to(`/push/${u.id}/r2`)).toHaveLength(0);
+    expect(to(`/push/${u.id}/r1`)[0]!.headers.topic).toMatch(/^[A-Za-z0-9_-]{32}$/);
+    await sender(u.id, message); // the retry
+    expect(to(`/push/${u.id}/r1`)).toHaveLength(1);
+    expect(to(`/push/${u.id}/r2`)).toHaveLength(1);
+  });
+
+  it('a stored endpoint outside the known push services is never called and is removed', async () => {
+    const u = await user();
+    await t.db.execute(sql`
+      INSERT INTO push_subscriptions (user_id, endpoint, p256dh, auth, consent_at, consent_text_version)
+      VALUES (${u.id}, 'https://169.254.169.254/latest/meta-data', ${fakeBrowserKeys('x').p256dh}, 'AAAAAAAAAAAAAAAAAAAAAA', now(), 'pushConsent.v1')`);
+    const sender = createPushChannelSender(t.db, createPushSender({ ...vapid, subject: 'mailto:alerte@pretoscop.ro' }), log);
+    expect(await sender(u.id, { title: 't', body: 'b', url: BASE })).toMatchObject({ ok: false, permanent: true });
+    expect((await t.db.execute(sql`SELECT 1 FROM push_subscriptions WHERE user_id = ${u.id}`)).rows).toHaveLength(0);
+  });
 });
 
 describe('daily deals post', () => {
@@ -306,6 +396,19 @@ describe('daily deals post', () => {
     const drops = await verifiedDrops(t.db, { today });
     expect(drops.find((d) => d.productId === p.id)).toMatchObject({ totalBani: 200_000, min30Bani: 240_000, dropPct: 16, shopName: 'Dedeman' });
 
+    // The M08 rules: no badge (no post) under 14 observed days or without the 'good_price' verdict.
+    const young = await product('Produs cu istoric scurt');
+    const youngOffer = await observe(young.id, `deal-young-${young.id}`, 2000);
+    for (let d = 10; d >= 1; d--) {
+      await t.db.execute(sql`INSERT INTO product_daily (product_id, day, min_total_price, offer_count, in_stock_count) VALUES (${young.id}, ${addDaysIso(today, -d)}::date, 2400, 1, 1)`);
+    }
+    await t.db.execute(sql`
+      INSERT INTO product_stats (product_id, current_min_total, current_min_offer_id, observations_days, median_90d, verdict)
+      VALUES (${young.id}, 2000, ${youngOffer}, 10, 2400, 'insufficient_data')`);
+    expect((await verifiedDrops(t.db, { today, minObservationDays: 3 })).map((d) => d.productId)).not.toContain(young.id);
+    await t.db.execute(sql`UPDATE product_stats SET observations_days = 20, verdict = 'usual' WHERE product_id = ${young.id}`);
+    expect((await verifiedDrops(t.db, { today })).map((d) => d.productId)).not.toContain(young.id);
+
     await setFlag(t.db, 'telegram.deals.enabled', true);
     const env = { ...getEnv({}), TELEGRAM_DEALS_CHAT_ID: '@pretoscop_test' };
     const ctx = { db: t.db, env, log, services: { alerts: { telegram, links } } } as unknown as JobContext;
@@ -315,7 +418,7 @@ describe('daily deals post', () => {
     const posts = tgMock.sent().slice(before);
     expect(posts).toHaveLength(1);
     expect(posts[0]!.chat_id).toBe('@pretoscop_test');
-    expect(posts[0]!.text).toContain('Televizor Testoscop 55&quot;'.replace('&quot;', '"'));
+    expect(posts[0]!.text).toContain('Televizor Testoscop 55&quot; QLED');
     expect(posts[0]!.text).toContain('cu 16% sub minimul din 30 de zile (2.400,00 lei)');
     expect(posts[0]!.text).toContain(`${BASE}/p/${p.slug}`);
   });

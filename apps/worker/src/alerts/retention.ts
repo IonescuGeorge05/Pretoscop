@@ -10,6 +10,7 @@ import {
   minimizeClicksAndEvents,
   pruneAlertSends,
   pruneConsentRecords,
+  pruneDeliveryReceipts,
   pruneTelegramLinkTokens,
   repointMergedAlerts,
   suppressionReason,
@@ -58,6 +59,8 @@ export interface RetentionResult {
   verificationsDeleted: number;
   /** M27: expired one-time Telegram link tokens. */
   telegramLinkTokensDeleted: number;
+  /** M27: push/Telegram delivery receipts older than 7 days (idempotency only). */
+  deliveryReceiptsDeleted: number;
   /** Steps that threw (logged and reported); empty on a clean night. */
   failedSteps: string[];
 }
@@ -82,6 +85,7 @@ export async function runAlertRetention(deps: RetentionDeps, now: Date = new Dat
     clicksEventsDeleted: 0,
     verificationsDeleted: 0,
     telegramLinkTokensDeleted: 0,
+    deliveryReceiptsDeleted: 0,
     failedSteps: [],
   };
 
@@ -154,9 +158,12 @@ export async function runAlertRetention(deps: RetentionDeps, now: Date = new Dat
   await step('verifications', async () => {
     out.verificationsDeleted = await deleteExpiredVerifications(db);
   });
-  // M27: one-time Telegram link tokens past their 15 minutes.
+  // M27: one-time Telegram link tokens past their 15 minutes; delivery receipts after a week.
   await step('telegram_link_tokens', async () => {
     out.telegramLinkTokensDeleted = await pruneTelegramLinkTokens(db);
+  });
+  await step('delivery_receipts', async () => {
+    out.deliveryReceiptsDeleted = await pruneDeliveryReceipts(db, 7);
   });
   return out;
 }

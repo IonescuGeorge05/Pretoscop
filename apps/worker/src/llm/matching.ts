@@ -134,7 +134,14 @@ function resolvePair(def: PreparedRequest, esc: PreparedRequest, highValue: bool
 }
 
 /** Builds the questions still to ask and the decisions that are ready, for a list of review items. */
-export async function planGrayZone(db: Db, gray: GrayZoneOffer[], settings: LlmSettings, log?: Pick<Logger, 'warn'>): Promise<GrayPlan> {
+export async function planGrayZone(
+  db: Db,
+  gray: GrayZoneOffer[],
+  settings: LlmSettings,
+  log?: Pick<Logger, 'warn'>,
+  /** Answers held in memory instead of `llm_results` (previews that must not write). */
+  memory?: Map<string, StoredLlmResult>,
+): Promise<GrayPlan> {
   type Draft = {
     offer: GrayZoneOffer;
     cands: Array<{ c: GrayZoneCandidate; rule: ReturnType<typeof scorePair>; def: PreparedRequest; esc: PreparedRequest; highValue: boolean }>;
@@ -166,7 +173,7 @@ export async function planGrayZone(db: Db, gray: GrayZoneOffer[], settings: LlmS
     }
   }
   const hashes = drafts.flatMap((d) => [...d.cands.flatMap((x) => [x.def.inputHash, x.esc.inputHash]), ...(d.attr ? [d.attr.inputHash] : [])]);
-  const [results, inflight] = await Promise.all([llmResultsByHash(db, hashes), llmInFlightHashes(db, hashes)]);
+  const [results, inflight] = memory ? [memory, new Set<string>()] : await Promise.all([llmResultsByHash(db, hashes), llmInFlightHashes(db, hashes)]);
 
   const items = new Map<string, PlannedItem>();
   const decisions: GrayPlan['decisions'] = [];
@@ -240,8 +247,11 @@ export interface CollectStats {
 /** Reads every ended batch in flight (idempotent: settled rows are skipped). */
 export async function collectLlmBatches(db: Db, llm: LlmClient, log: Pick<Logger, 'info' | 'warn'>): Promise<CollectStats> {
   const stats: CollectStats = { batches: 0, ended: 0, results: 0, stale: await llmSweepStaleReservations(db) };
-  // The eval CLI collects its own batches (purpose 'eval').
-  for (const b of await llmInFlightBatches(db, { purposes: ['match.verify', 'attributes.extract', 'category.suggest'] })) {
+  // The eval CLI collects its own batches (purpose 'eval'); one it abandoned (older than 25 h, so
+  // ended by the API) is collected here only to settle the ledger, its answers are dropped.
+  const own = await llmInFlightBatches(db, { purposes: ['match.verify', 'attributes.extract', 'category.suggest'] });
+  const abandoned = (await llmInFlightBatches(db, { purposes: ['eval'] })).filter((b) => Date.now() - new Date(b.createdAt).getTime() > 25 * 3_600_000);
+  for (const b of [...own, ...abandoned]) {
     stats.batches++;
     const rows = await llmBatchRows(db, b.batchId);
     const byCustom = new Map(rows.map((r) => [r.customId, r]));
@@ -251,6 +261,7 @@ export async function collectLlmBatches(db: Db, llm: LlmClient, log: Pick<Logger
         const row = byCustom.get(res.customId)!;
         // Expired or canceled items were never processed: ask again later, nothing to store.
         if (res.outcome === 'expired' || res.outcome === 'canceled') return;
+        if (!['pair', 'attributes', 'category'].includes(String(row.subject.kind))) return; // abandoned eval batch
         await storeAnswer(db, row.subject as Subject, { inputHash: row.inputHash, promptId: row.promptId, promptVersion: row.promptVersion, model: row.model }, res.answer, res.billed ? row.usageId : null);
         stats.results++;
       });
@@ -362,4 +373,52 @@ export async function runLlmMatching(
   }
   stats.budget = await llm.budget.status();
   return stats;
+}
+
+export interface PreviewResult {
+  offers: GrayZoneOffer[];
+  decisions: GrayPlan['decisions'];
+  asked: number;
+  costEurNanos: number;
+  stoppedByCap: boolean;
+}
+
+/**
+ * The same decisions computed without writing anything: answers are kept in memory (mock runs on a
+ * real database, demonstrations). Synchronous calls, up to three rounds (pair, escalation).
+ */
+export async function previewLlmMatching(deps: { db: Db; llm: LlmClient; log: Logger; settings: LlmSettings }, opts: { limit: number }): Promise<PreviewResult> {
+  const { db, llm, log, settings } = deps;
+  const memory = new Map<string, StoredLlmResult>();
+  const offers = await llmGrayZoneOffers(db, opts.limit);
+  const out: PreviewResult = { offers, decisions: [], asked: 0, costEurNanos: 0, stoppedByCap: false };
+  for (let round = 0; round < 4; round++) {
+    const plan = await planGrayZone(db, offers, settings, log, memory);
+    out.decisions = plan.decisions;
+    if (plan.items.length === 0 || out.stoppedByCap) break;
+    for (const it of plan.items.slice(0, settings.maxRequests)) {
+      try {
+        const r = await llm.call(it.prompt, it.req, it.meta);
+        const prev = memory.get(it.req.inputHash);
+        memory.set(it.req.inputHash, {
+          inputHash: it.req.inputHash,
+          ok: r.answer.ok,
+          output: r.answer.ok ? (r.answer.value as Record<string, unknown>) : null,
+          error: r.answer.ok ? null : r.answer.error,
+          attempts: (prev?.attempts ?? 0) + 1,
+          model: it.req.model,
+        });
+        out.asked++;
+        out.costEurNanos += r.costEurNanos;
+      } catch (e) {
+        if (e instanceof LlmBudgetExceededError) {
+          out.stoppedByCap = true;
+          break;
+        }
+        if (!(e instanceof LlmCallError)) throw e;
+        log.warn({ error: e.message }, 'llm preview call failed');
+      }
+    }
+  }
+  return out;
 }

@@ -32,8 +32,9 @@ restarted** (see "Database image" below) → **migrations once** (one-shot
 (`SMOKE_URL`) → line in `.deploy-history`. If a web replica does not become healthy, the replicas
 already switched go back to the previous release automatically.
 
-Watch: `docker compose -p pretoscop-prod -f infra/docker-compose.prod.yml --env-file .env ps` and
-`... logs -f --tail 100 web-1 worker`.
+Watch: `infra/scripts/compose.sh prod ps` and `infra/scripts/compose.sh prod logs -f --tail 100 web-1 worker`
+(`compose.sh` is `docker compose` for one environment with its deployed release tag; plain
+`docker compose` refuses to run without `IMAGE_TAG`).
 
 Compose rules kept in every file and override (they decide whether a deploy can hurt the database):
 `init: true` on every long-running service, exec-form health checks with 10 s timeouts (a shell-form
@@ -71,7 +72,7 @@ Apply them in a quiet hour (seconds of downtime for web and worker; they reconne
 
 ```bash
 cd /srv/pretoscop/prod
-C="docker compose -p pretoscop-prod -f infra/docker-compose.prod.yml --env-file .env"
+C="infra/scripts/compose.sh prod"   # docker compose for prod, with the deployed release
 $C exec pgbackrest pgbackrest-sidecar backup diff
 RECREATE_DATA_SERVICES=1 infra/scripts/deploy.sh prod <current tag>
 $C exec pgbackrest pgbackrest-sidecar check        # WAL archiving works with the new container

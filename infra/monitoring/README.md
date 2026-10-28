@@ -30,7 +30,7 @@ Create these monitors (Uptime → Monitors, and Heartbeats):
 The worker and the sidecar ping `<url>` on success and `<url>/fail` on failure, so a failure alerts
 at once and silence alerts after the grace period. healthchecks.io works the same way.
 
-Test it (the M18 founder check): `docker compose -p pretoscop-prod ... stop web-1 web-2` for two
+Test it (the M18 founder check): `infra/scripts/compose.sh prod stop web-1 web-2` for two
 minutes and watch the phone; then start them again (`infra/runbooks/incident.md`).
 
 ## 2. Telegram for ops alerts
@@ -39,7 +39,7 @@ minutes and watch the phone; then start them again (`infra/runbooks/incident.md`
 2. Create a group with both founders and the bot; send a message; read the chat id from
    `https://api.telegram.org/bot<token>/getUpdates` → `OPS_ALERT_TELEGRAM_CHAT_ID` (negative number).
 3. Restart the worker, then send a test alert through every configured channel:
-   `docker compose -p pretoscop-prod -f infra/docker-compose.prod.yml --env-file .env exec worker node --import tsx src/cli/ops-alert-test.ts`.
+   `infra/scripts/compose.sh prod exec worker node --import tsx src/cli/ops-alert-test.ts`.
 
 Email instead of (or as well as) Telegram: `OPS_ALERT_EMAIL=a@…,b@…` with `MAIL_DRIVER=resend`.
 
@@ -79,4 +79,4 @@ from Cloudflare's cache never reach the server.
 Every container logs JSON to Docker's `json-file` driver, rotated at 5 × 20 MB per container
 (`x-logging` in the compose files), so the disk never fills with logs. Caddy's access log drops
 proxy and identity headers and keeps client IPs truncated to /16 (IPv4) or /32 (IPv6). Reading:
-`docker compose -p pretoscop-prod -f infra/docker-compose.prod.yml logs -f --tail 200 worker`.
+`infra/scripts/compose.sh prod logs -f --tail 200 worker`.

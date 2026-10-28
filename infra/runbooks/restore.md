@@ -17,7 +17,7 @@ founders' password managers. Without it the physical backups are unreadable.
 
 ```bash
 cd /srv/pretoscop/prod
-C="docker compose -p pretoscop-prod -f infra/docker-compose.prod.yml --env-file .env"
+C="infra/scripts/compose.sh prod"   # docker compose for prod, with the deployed release
 $C exec pgbackrest pgbackrest info          # backups, WAL range, sizes
 $C logs --tail 50 pgbackrest                # last backup and restore test results
 $C exec worker node --import tsx src/cli/backup.ts --restore-test   # logical dump round-trip now
@@ -49,11 +49,14 @@ $C exec worker node --import tsx src/cli/backup.ts --restore-test   # logical du
 
 1. New server: `infra/runbooks/server-setup.md` §1–§3 (same `.env` and `.env.backup` from the
    password manager; the passphrase is the critical part).
-2. Start only the database with an empty volume, then stop it:
-   `$C up -d --wait postgres && $C stop postgres`.
-3. `infra/scripts/restore-pitr.sh prod --yes` (latest: replays every archived WAL segment).
-4. `infra/scripts/deploy.sh prod <last tag from GitHub releases>`; update the DNS A records in
-   Cloudflare to the new IP (proxied, so visitors see no change) and the PTR of the crawler IP.
+2. Start only the database with an empty volume, then stop it (no `.deploy-history` on a new server,
+   so name the release you will deploy, from GitHub releases):
+   `export IMAGE_TAG=<last release tag>; $C up -d --wait postgres && $C stop postgres`.
+3. `infra/scripts/restore-pitr.sh prod --yes` (latest: replays every archived WAL segment; it prints
+   the row counts and the newest price event, then takes a fresh full backup). `make verify M=18`
+   rehearses exactly steps 2–3 on every run.
+4. `infra/scripts/deploy.sh prod <the same tag>`; update the DNS A records in Cloudflare to the new IP
+   (proxied, so visitors see no change) and the PTR of the crawler IP.
 5. If the physical backups are unusable: the newest `backups/pg/*/pretoscop_*.dump` in R2 →
    `pg_restore --clean --if-exists --no-owner -d pretoscop` (loses up to a day).
 

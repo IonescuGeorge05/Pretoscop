@@ -40,7 +40,9 @@ openssl rand -base64 48   # → PGBACKREST_REPO1_CIPHER_PASS in .env.backup (als
 Fill in `.env`: `APP_ENV=prod`, `DEPLOY_ENV=prod`, `PUBLIC_BASE_URL=https://pretoscop.ro`,
 `IMAGE_REGISTRY=ghcr.io/OWNER`, R2 (`BLOB_DRIVER=s3`, `S3_ENDPOINT=https://<account>.r2.cloudflarestorage.com`,
 `S3_BUCKET=pretoscop-prod`, keys), Resend (`MAIL_DRIVER=resend`, `RESEND_API_KEY`, and `RESEND_WEBHOOK_SECRET` for M19 bounces), `ADMIN_EMAILS`,
-`OPS_ALERT_*`, the four heartbeat URLs (`infra/monitoring/README.md`), `CRAWL_ENABLED` (true only when
+`OPS_ALERT_*`, the four heartbeat URLs (`infra/monitoring/README.md`), Plausible if wanted
+(`COMPOSE_PROFILES=analytics`, `PLAUSIBLE_DB_PASSWORD`, `PLAUSIBLE_SECRET_KEY_BASE`; register the two founders at
+`https://stats.pretoscop.ro`, then registration stays invite-only), `CRAWL_ENABLED` (true only when
 the recorder moves here; see §5), `BOT_EGRESS_IPS` (M17), and the Deployment section as documented.
 `.env.backup`: the `pretoscop-backups` R2 bucket and its own token.
 
@@ -66,7 +68,7 @@ staging, then waits for approval to deploy production). By hand on the server:
 `/srv/pretoscop/prod` with `prod`. Check: `https://pretoscop.ro/api/health` → `"status":"ok"`.
 
 The pgbackrest sidecar creates the stanza and takes the first full backup within minutes:
-`docker compose -p pretoscop-prod -f infra/docker-compose.prod.yml --env-file .env exec pgbackrest pgbackrest info`.
+`infra/scripts/compose.sh prod exec pgbackrest pgbackrest info`.
 
 ## 5. Moving the recorder from the laptop (the data must not be lost)
 

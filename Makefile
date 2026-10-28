@@ -64,7 +64,7 @@ recorder-stop: ## stop the recorder container
 
 # --- Production and staging (M18; run on the server, in /srv/pretoscop/<env>) -------------
 ENVIRONMENT ?= prod
-PROD_COMPOSE = docker compose -p pretoscop-$(ENVIRONMENT) -f infra/docker-compose.prod.yml --env-file .env
+PROD_COMPOSE = infra/scripts/compose.sh $(ENVIRONMENT)
 
 deploy: ## deploy a release on this server: make deploy ENVIRONMENT=prod TAG=v2026.11.10-1
 	@test -n "$(TAG)" || (echo "usage: make deploy ENVIRONMENT=prod|staging TAG=<release tag>" >&2; exit 2)

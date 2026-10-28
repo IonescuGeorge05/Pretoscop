@@ -6,7 +6,7 @@ results disagree with the product pages.
 
 ```bash
 cd /srv/pretoscop/prod
-C="docker compose -p pretoscop-prod -f infra/docker-compose.prod.yml --env-file .env"
+C="infra/scripts/compose.sh prod"   # docker compose for prod, with the deployed release
 $C exec meilisearch curl -fsS http://localhost:7700/health          # {"status":"available"}
 $C exec worker node --import tsx src/cli/search.ts rebuild --popularity   # M14: blue/green full rebuild
 $C exec worker node --import tsx src/cli/search.ts status                 # document count, index sizes

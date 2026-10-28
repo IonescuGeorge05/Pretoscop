@@ -8,7 +8,7 @@ note. Aim: site back first, cause later.
 
 ```bash
 ssh deploy@<server>; cd /srv/pretoscop/prod
-C="docker compose -p pretoscop-prod -f infra/docker-compose.prod.yml --env-file .env"
+C="infra/scripts/compose.sh prod"   # docker compose for prod, with the deployed release
 E="docker compose -p pretoscop-edge -f infra/docker-compose.edge.yml --env-file .env"
 $C ps; $E ps                                   # what is up, healthy, restarting
 $C logs --tail 200 web-1 web-2 worker postgres # last lines of each

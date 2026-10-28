@@ -37,7 +37,7 @@ export interface MerchantPreviewRow {
   warnings: string[];
 }
 
-/** What the feed check found (worker `merchant.validate`); the web turns it into Romanian hints. */
+/** What the feed check found (worker `merchant.feed_check`); the web turns it into Romanian hints. */
 export interface MerchantFeedReport {
   source: 'url' | 'upload';
   fetchedAt: string;

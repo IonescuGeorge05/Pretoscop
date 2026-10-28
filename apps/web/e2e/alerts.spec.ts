@@ -1,7 +1,7 @@
-import { execFileSync } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { expect, test, type APIRequestContext } from '@playwright/test';
+import { runTsx } from './fixture';
 import { latestMail, mailHeaders, mailsTo } from './mailpit';
 
 // Price alerts (M19) end to end, against a throwaway product of its own (packages/db fixture
@@ -29,7 +29,7 @@ interface Evidence {
 }
 
 function cli<T>(cmd: string, ...args: string[]): T {
-  const out = execFileSync('pnpm', ['exec', 'tsx', 'src/cli/e2e-fixture.ts', cmd, ...args], { cwd: DB_DIR, encoding: 'utf8' });
+  const out = runTsx(DB_DIR, ['src/cli/e2e-fixture.ts', cmd, ...args]);
   const line = out.trim().split('\n').reverse().find((l) => l.startsWith('{') || l.startsWith('['));
   if (!line) throw new Error(`e2e-fixture ${cmd}: no JSON\n${out}`);
   return JSON.parse(line) as T;
@@ -37,10 +37,10 @@ function cli<T>(cmd: string, ...args: string[]): T {
 
 /** The worker's alerts.evaluate + alerts.deliver for the fixture product, without the job queue. */
 function runAlerts(baseURL: string, productId: number): void {
-  execFileSync('pnpm', ['exec', 'tsx', 'src/cli/alerts-run.ts', '--products', String(productId)], {
-    cwd: WORKER_DIR,
-    encoding: 'utf8',
-    env: { ...process.env, PUBLIC_BASE_URL: baseURL, LOG_LEVEL: 'warn' },
+  runTsx(WORKER_DIR, ['src/cli/alerts-run.ts', '--products', String(productId)], {
+    ...process.env,
+    PUBLIC_BASE_URL: baseURL,
+    LOG_LEVEL: 'warn',
   });
 }
 

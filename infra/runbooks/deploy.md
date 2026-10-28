@@ -27,8 +27,9 @@ What `deploy.sh` does, in order (stops at the first failure, old release keeps s
 preflight (env file matches the environment, staging cannot crawl, archive_mode needs backups,
 compose config valid) → pull images → PostgreSQL, its backup sidecar and Meilisearch up **but never
 restarted** (see "Database image" below) → **migrations once** (one-shot
-`migrate` service, advisory lock) → `web-1` recreated and healthy → `web-2` recreated and healthy
-(Caddy routes to the healthy one meanwhile: no downtime) → worker → optional Alloy → smoke check
+`migrate` service, advisory lock) → `web-1` drained (its `/api/ready` answers 503, so Caddy stops
+sending it requests within about 4 s), recreated and healthy → the same for `web-2` (Caddy routes to
+the other replica meanwhile: no failed requests) → worker → optional Alloy → smoke check
 (`SMOKE_URL`) → line in `.deploy-history`. If a web replica does not become healthy, the replicas
 already switched go back to the previous release automatically.
 

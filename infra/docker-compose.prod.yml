@@ -38,6 +38,9 @@ x-web: &web
     <<: *app-environment
     PORT: '3000'
     HOSTNAME: 0.0.0.0
+    # deploy.sh creates this file before replacing the replica: /api/ready turns 503 and the edge
+    # stops sending it requests (infra/caddy/Caddyfile, web_replicas).
+    DRAIN_FILE: /tmp/pretoscop-draining
     # Least privilege: the internet-facing replicas share the .env file but never get the credentials
     # only the worker uses (collection vendors, LLM, Icecat, network APIs, the ops bot). Empty values
     # here override the file. A new worker-only secret belongs in this list.

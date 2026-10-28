@@ -3,15 +3,16 @@
 # checkout, e.g. /srv/pretoscop/prod, as the deploy user (member of the docker group):
 #   infra/scripts/deploy.sh prod v2026.11.03-1        (or: make deploy ENVIRONMENT=prod TAG=v2026.11.03-1)
 # Steps: preflight → pull images → data services up (kept running: a release never restarts the
-# database) → migrations (one-shot, advisory lock) → web-1 then web-2 (each must turn healthy before
-# the next; Caddy sends traffic to the other meanwhile) → worker → smoke check → history line. If a
-# web replica fails its health check, the replicas already switched go back to the previous release
-# and the script exits non-zero.
+# database) → migrations (one-shot, advisory lock) → web-1 then web-2 (each drained from the edge,
+# replaced and healthy before the next; Caddy sends traffic to the other meanwhile) → worker → smoke
+# check → history line. If a web replica fails its health check, the replicas already switched go
+# back to the previous release and the script exits non-zero.
 #
 # Overrides: see infra/scripts/lib.sh (ENV_FILE, COMPOSE_PROJECT, COMPOSE_EXTRA_FILES), plus
 # NO_PULL=1 (use local images), SMOKE_URL (e.g. https://pretoscop.ro/api/health), SMOKE_CURL_OPTS,
-# DEPLOY_HEALTH_TIMEOUT (seconds), DEPLOY_HISTORY (file), RECREATE_DATA_SERVICES=1 (also apply a new
-# database/search image or changed settings for them: restarts PostgreSQL; runbooks/deploy.md).
+# DEPLOY_HEALTH_TIMEOUT, DEPLOY_DRAIN_SECONDS, DEPLOY_SETTLE_SECONDS (seconds), DEPLOY_HISTORY (file),
+# RECREATE_DATA_SERVICES=1 (also apply a new database/search image or changed settings for them:
+# restarts PostgreSQL; runbooks/deploy.md).
 set -Eeuo pipefail
 
 SCRIPT_NAME=deploy
@@ -108,24 +109,55 @@ say "migrations (previous release: ${PREV:-none})"
 compose run --rm --no-deps migrate || failed "migrations failed; nothing else was restarted (the old release still serves)"
 
 # ---------------------------------------------------------------- web replicas, one at a time
+# A replica about to be replaced first leaves the edge's rotation: DRAIN_FILE is created in it,
+# /api/ready answers 503, Caddy's active check (every 2 s, 2 failures) stops sending it requests and
+# the ones in flight finish; only then is it stopped. Only a running replica that compose will
+# recreate is drained (a redeploy of the same tag leaves it alone).
+DRAIN_SECONDS="${DEPLOY_DRAIN_SECONDS:-8}"
+SETTLE_SECONDS="${DEPLOY_SETTLE_SECONDS:-4}"
+drain() {
+  local cid
+  outdated "$1" || return 0
+  cid="$(compose ps -q "$1" 2>/dev/null | head -n 1)"
+  # shellcheck disable=SC2016 # expanded inside the container
+  if docker exec "$cid" sh -c 'touch "$DRAIN_FILE"' >/dev/null 2>&1; then
+    say "draining ${1} (${DRAIN_SECONDS} s)"
+    sleep "$DRAIN_SECONDS"
+  fi
+}
+# Safety net: a drained replica that compose kept (not recreated) must not stay out of rotation.
+undrain_if_kept() {
+  local cid
+  cid="$(compose ps -q "$1" 2>/dev/null | head -n 1)"
+  # shellcheck disable=SC2016 # expanded inside the container
+  if [[ -n "$cid" && "$cid" == "$2" ]]; then docker exec "$cid" sh -c 'rm -f "$DRAIN_FILE"' >/dev/null 2>&1 || true; fi
+}
 switched=()
 revert_web() {
   [[ -n "$PREV" ]] || return 0
-  local svc
+  local svc before
   for svc in "${switched[@]}"; do
     say "reverting ${svc} to ${PREV}"
+    before="$(compose ps -q "$svc" 2>/dev/null | head -n 1)"
+    IMAGE_TAG="$PREV" drain "$svc"
     IMAGE_TAG="$PREV" compose up -d --no-deps --wait --wait-timeout "$HEALTH_TIMEOUT" "$svc" ||
       say "revert of ${svc} failed: run infra/scripts/rollback.sh ${ENV_NAME}"
+    undrain_if_kept "$svc" "$before"
   done
 }
 for svc in web-1 web-2; do
   say "switching ${svc}"
   switched+=("$svc")
+  before="$(compose ps -q "$svc" 2>/dev/null | head -n 1)"
+  drain "$svc"
   if ! compose up -d --no-deps --wait --wait-timeout "$HEALTH_TIMEOUT" "$svc"; then
     compose logs --tail 80 "$svc" >&2 || true
     revert_web
     failed "${svc} did not become healthy on ${TAG}"
   fi
+  undrain_if_kept "$svc" "$before"
+  # Let the edge's readiness check take the new replica in before the next one drains.
+  [[ "$svc" == web-2 ]] || sleep "$SETTLE_SECONDS"
 done
 
 # ---------------------------------------------------------------- worker and optional services

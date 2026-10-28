@@ -13,7 +13,8 @@ services:
     # Not PID 1 (orphaned health-check children are reaped by tini); exec-form check, generous timeout.
     init: true
     healthcheck:
-      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:9180/metrics']
+      # Reads the whole page (--spider hangs up early and makes Caddy log a broken pipe every 10 s).
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:9180/metrics']
       interval: 10s
       timeout: 10s
       retries: 10

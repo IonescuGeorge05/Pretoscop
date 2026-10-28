@@ -148,8 +148,9 @@ export function createMetricsCollector(opts: MetricsOptions) {
       gauge('pretoscop_queue_jobs', 'pg-boss jobs waiting, running, or failed in the last 24 hours', queues.map((q) => ({ labels: { queue: q.name, state: q.state }, value: Number(q.n) }))),
       gauge(
         'pretoscop_job_last_success_timestamp_seconds',
-        'Unix time of the last successful run of scheduled jobs (backup.nightly, backup.restore_test, ...)',
-        jobs.map((j) => ({ labels: { job: j.name }, value: num(j.at) })),
+        // Labelled `queue` (the pg-boss queue name), never `job`: the scraper sets `job` to the target.
+        'Unix time of the last successful run of scheduled jobs, by pg-boss queue (backup.nightly, backup.restore_test, ...)',
+        jobs.map((j) => ({ labels: { queue: j.name }, value: num(j.at) })),
       ),
       gauge('pretoscop_pg_archive_mode_on', 'PostgreSQL archive_mode is on (WAL shipped by pgBackRest)', a ? (a.mode === 'on' || a.mode === 'always' ? 1 : 0) : null),
       counter('pretoscop_pg_archived_wal_total', 'WAL segments archived since the server started', num(a?.archived) ?? 0),

@@ -3,22 +3,24 @@
 # load`. They duplicate the worker's own hourly SLO check on purpose: the worker check needs nothing
 # but Telegram/email; these add graphs, history and the web-side signals (5xx rate, latency).
 # Whole-site and whole-server outages are Better Stack's job (infra/monitoring/README.md).
+# Every rule matches per `env` (Alloy's target label): production and staging series never mix.
+# Unit tests: alerts.test.yml (`promtool test rules`, run by make verify M=18).
 groups:
   - name: pretoscop-data
     rules:
       - alert: SourceStale
         expr: |
           (pretoscop_source_last_success_age_seconds
-            > on (source) group_left () (pretoscop_source_freshness_slo_seconds + 7200))
-          and on (source) (pretoscop_source_live == 1)
-          and on () (pretoscop_crawl_enabled == 1)
+            > on (env, source) group_left () (pretoscop_source_freshness_slo_seconds + 7200))
+          and on (env, source) (pretoscop_source_live == 1)
+          and on (env) (pretoscop_crawl_enabled == 1)
         for: 15m
         labels: { severity: warning }
         annotations:
           summary: 'Source {{ $labels.source }} is past its freshness SLO'
           runbook: infra/runbooks/source-pause.md
       - alert: SourceFailing
-        expr: (pretoscop_source_consecutive_failures >= 2) and on (source) (pretoscop_source_live == 1)
+        expr: (pretoscop_source_consecutive_failures >= 2) and on (env, source) (pretoscop_source_live == 1)
         for: 5m
         labels: { severity: warning }
         annotations:
@@ -26,8 +28,8 @@ groups:
           runbook: infra/runbooks/source-pause.md
       - alert: OfferFreshnessLow
         expr: |
-          sum(pretoscop_offers_checked_26h) / sum(pretoscop_offers_active) < 0.95
-          and on () sum(pretoscop_offers_active) > 100
+          sum by (env) (pretoscop_offers_checked_26h) / sum by (env) (pretoscop_offers_active) < 0.95
+          and on (env) sum by (env) (pretoscop_offers_active) > 100
         for: 1h
         labels: { severity: warning }
         annotations:
@@ -49,14 +51,14 @@ groups:
   - name: pretoscop-backups
     rules:
       - alert: NightlyDumpMissing
-        expr: time() - pretoscop_job_last_success_timestamp_seconds{job="backup.nightly"} > 26 * 3600
+        expr: time() - pretoscop_job_last_success_timestamp_seconds{queue="backup.nightly"} > 26 * 3600
         for: 10m
         labels: { severity: critical }
         annotations:
           summary: 'No nightly pg_dump for more than 26 hours'
           runbook: infra/runbooks/restore.md
       - alert: LogicalRestoreTestMissing
-        expr: time() - pretoscop_job_last_success_timestamp_seconds{job="backup.restore_test"} > 8 * 86400
+        expr: time() - pretoscop_job_last_success_timestamp_seconds{queue="backup.restore_test"} > 8 * 86400
         for: 10m
         labels: { severity: warning }
         annotations:
@@ -65,9 +67,9 @@ groups:
       - alert: WalArchivingFailing
         expr: |
           (pretoscop_pg_archive_mode_on == 1)
-          and on () (
-            (pretoscop_pg_last_archive_failure_timestamp_seconds > on () pretoscop_pg_last_archived_timestamp_seconds)
-            or on () (time() - pretoscop_pg_last_archived_timestamp_seconds > 1800)
+          and on (env) (
+            (pretoscop_pg_last_archive_failure_timestamp_seconds > on (env) pretoscop_pg_last_archived_timestamp_seconds)
+            or on (env) (time() - pretoscop_pg_last_archived_timestamp_seconds > 1800)
           )
         for: 10m
         labels: { severity: critical }

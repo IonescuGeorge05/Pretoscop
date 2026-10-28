@@ -65,7 +65,7 @@ per-host histograms (≈ 300): well inside the free 10k.
 | `pretoscop_price_events_24h` | the recorder's pulse: price changes and first sightings per day |
 | `pretoscop_queue_jobs{queue,state}` | pg-boss backlog and failures |
 | `pretoscop_review_queue_offers` | human matching queue (SLO < 500) |
-| `pretoscop_job_last_success_timestamp_seconds{job}` | last nightly dump, restore test, rollup, partition maintenance |
+| `pretoscop_job_last_success_timestamp_seconds{queue}` | last nightly dump, restore test, rollup, partition maintenance |
 | `pretoscop_pg_last_archived_timestamp_seconds`, `pretoscop_pg_archive_failures_total` | WAL shipping to the pgBackRest repository (RPO 5 min) |
 | `pretoscop_disk_free_bytes / pretoscop_disk_size_bytes` | the server's data filesystem |
 | `pretoscop_assisted_*` (M05B) | assisted-access spend against the cap, success rate per shop |

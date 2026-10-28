@@ -8,6 +8,7 @@ import {
   minimizeClicksAndEvents,
   pruneAlertSends,
   pruneConsentRecords,
+  pruneTelegramLinkTokens,
   repointMergedAlerts,
   usersDueRetentionDeletion,
   usersDueRetentionNotice,
@@ -85,6 +86,7 @@ export async function runAlertRetention(deps: RetentionDeps, now: Date = new Dat
 
   out.consentRecordsPruned = await pruneConsentRecords(db, { keepYears: RETENTION.consentEvidenceYears, unconfirmedDays: RETENTION.unconfirmedConsentDays });
   out.sendsPruned = await pruneAlertSends(db, RETENTION.alertSendsMonths);
+  await pruneTelegramLinkTokens(db);
   const ce = await minimizeClicksAndEvents(db);
   out.clicksEventsAnonymized = ce.anonymized;
   out.clicksEventsDeleted = ce.deleted;

@@ -21,9 +21,10 @@ const pool = createPool(env.DATABASE_URL, 2);
 try {
   const db = createDb(pool);
   const productIds = values.products ? values.products.split(',').map((s) => Number(s.trim())).filter((n) => Number.isInteger(n) && n > 0) : null;
-  const channels = await enabledChannels(db);
+  const services = createAlertServices(env, db, log);
+  const channels = await enabledChannels(db, services.channels);
   const evaluated = await evaluateAlerts(db, { productIds, channels, log });
-  const delivered = await deliverAlerts({ db, log, ...createAlertServices(env, db, log) }, { channels });
+  const delivered = await deliverAlerts({ db, log, ...services }, { channels });
   console.log(JSON.stringify({ channels, evaluated, delivered }));
 } finally {
   await pool.end();

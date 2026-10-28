@@ -2,7 +2,7 @@ import type { Env } from '@pretoscop/config/env';
 import type { Logger } from '@pretoscop/config/logger';
 import { sql, type AlertChannel, type Db } from '@pretoscop/db';
 import type { Mailer } from '@pretoscop/mailer';
-import type { RenderedEmail } from '@pretoscop/notify';
+import type { InlineButton, PushPayload, RenderedEmail } from '@pretoscop/notify';
 
 /**
  * One message for one user on one channel (docs/05 M27 contract: `notify(userId, message, channel)`).
@@ -11,6 +11,10 @@ import type { RenderedEmail } from '@pretoscop/notify';
  */
 export interface NotifyMessage {
   email?: RenderedEmail;
+  /** M27: the Telegram form (HTML parse mode, inline buttons). */
+  telegram?: { text: string; buttons: InlineButton[][] };
+  /** M27: the Web Push form (title, body, click URL, replacement tag). */
+  push?: PushPayload;
   title: string;
   body: string;
   url: string;

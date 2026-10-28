@@ -7,6 +7,8 @@ import { jobs } from './jobs';
 import { startHealthServer } from './ops/health';
 import { syncShops } from './registry/sync';
 import { createServices } from './services';
+import { handleUpdate } from './telegram/bot';
+import { startTelegramPoller } from './telegram/poller';
 
 loadRootEnvFile();
 const env = getEnv();
@@ -28,6 +30,16 @@ await boss.start();
 await registerJobs(boss, jobs, { boss, db, env, log, services });
 const startedAt = new Date().toISOString();
 const health = startHealthServer(env.METRICS_PORT, () => ({ crawl_enabled: env.CRAWL_ENABLED, started_at: startedAt }));
+// M27: the Telegram bot (long polling; one process at a time holds the advisory lock).
+const telegram = services.alerts.telegram;
+const poller = telegram
+  ? startTelegramPoller({
+      pool,
+      telegram,
+      handle: (u) => handleUpdate({ db, telegram, links: services.alerts.links, secret: services.alerts.secret, log: log.child({ component: 'telegram' }) }, u),
+      log: log.child({ component: 'telegram' }),
+    })
+  : null;
 log.info({ jobs: jobs.map((j) => j.name), crawl_enabled: env.CRAWL_ENABLED }, 'worker started');
 
 let stopping = false;
@@ -36,6 +48,7 @@ async function shutdown(signal: string): Promise<void> {
   stopping = true;
   log.info({ signal }, 'worker stopping');
   health.close();
+  await poller?.stop();
   await boss.stop({ graceful: true, timeout: 30_000 });
   await services.close();
   await pool.end();

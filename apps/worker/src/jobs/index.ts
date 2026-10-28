@@ -1,4 +1,5 @@
 import { alertsDeliverJob, alertsEvaluateJob, alertsRetentionJob } from './alerts';
+import { telegramDealsJob } from './telegram';
 import { heartbeatJob } from './heartbeat';
 import { partitionsJob, requestLogPruneJob } from './maintenance';
 import { backupJob, restoreTestJob, schedulerTickJob, sourceRunJob } from './recorder';
@@ -23,4 +24,5 @@ export const jobs: JobDefinition<any>[] = [
   alertsEvaluateJob,
   alertsDeliverJob,
   alertsRetentionJob,
+  telegramDealsJob,
 ];

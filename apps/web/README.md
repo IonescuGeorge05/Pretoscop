@@ -230,5 +230,5 @@ checked later while the stored value reveals nothing. Links are signed with ALER
   delete (confirmed). Contacts are business channels only (`checkContact`: role addresses, form URLs, switchboard
   numbers; free-mailbox addresses and names are refused); audit rows record which fields were set, never their content.
   The "Ieșirea din accesul asistat" table (`assistedMigrationStatus`) lists every `access_mode = 'assisted'` shop with its
-  30-day success rate, a live replacement feed and the latest outreach (docs/12 §2b).
+  30-day success rate, this month's vendor cost (`access_costs`), a live replacement feed and the latest outreach (docs/12 §2b).
 - Runbooks and application dossiers: `infra/bot-program/`.

@@ -6,6 +6,7 @@ import { formatDate, formatPercent } from '@/lib/format';
 import { isContacted, isOwnKey, OUTREACH_CHANNELS, OUTREACH_PURPOSES, OUTREACH_STATUSES, OUTREACH_TEMPLATES } from '@/lib/outreach';
 
 const btn = 'h-9 rounded-lg px-3 text-sm font-semibold';
+const euro = new Intl.NumberFormat('ro-RO', { style: 'currency', currency: 'EUR' });
 const field = 'h-9 w-full rounded-lg border border-line bg-white px-2 text-sm';
 
 const FLASH: Record<string, string> = {
@@ -225,7 +226,7 @@ export default async function OutreachAdminPage({ searchParams }: { searchParams
               Niciun magazin nu folosește acum accesul asistat.
             </p>
           ) : (
-            <Table head={['Magazin', 'Cereri 30 de zile', 'Succes', 'Feed înlocuitor', 'Ultima contactare', 'Revenim la']}>
+            <Table head={['Magazin', 'Cereri 30 de zile', 'Succes', 'Cost luna aceasta', 'Feed înlocuitor', 'Ultima contactare', 'Revenim la']}>
               {assisted.map((a) => (
                 <tr key={a.shopId} data-testid={`assisted-${a.slug}`}>
                   <Td>
@@ -234,6 +235,7 @@ export default async function OutreachAdminPage({ searchParams }: { searchParams
                   </Td>
                   <Td>{a.requests30d}</Td>
                   <Td>{a.successRate30d === null ? '—' : formatPercent(a.successRate30d)}</Td>
+                  <Td>{euro.format(a.costMonthCents / 100)}</Td>
                   <Td>{a.feedLive ? 'da, rulează: oprește accesul asistat' : 'nu încă'}</Td>
                   <Td>
                     {a.outreachStatus ? OUTREACH_STATUSES[a.outreachStatus] : 'necontactat'}

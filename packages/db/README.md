@@ -87,7 +87,8 @@ authoritative. Additions beyond §5: `shops.shipping_verified`, `shops.vat_inclu
 - Bot legitimacy (M21): `extractor_canaries` (written by the worker's weekly canary, migration 0017),
   `outreach` (admin tracker, migration 0018; business channels only, deleted with the shop) and
   `assistedMigrationStatus(db)` (`queries/outreach.ts`): every `access_mode = 'assisted'` shop with its
-  30-day request count and success rate from `request_log` (assisted channel), whether a replacement
+  30-day request count and success rate from `request_log` (assisted channel), this month's vendor cost
+  (`access_costs`), whether a replacement
   feed source succeeded in the last 3 days, and its latest outreach entry.
 
 ## Price alerts (M19)

@@ -21,6 +21,12 @@ beforeAll(async () => {
       (now() - interval '40 days', 'www.asistat-a.ro', 'https://www.asistat-a.ro/c/5', 'asistat-a', 'assisted', 403, true, 1, null),
       (now() - interval '1 day', 'www.asistat-a.ro', 'https://www.asistat-a.ro/c/6', 'asistat-a', 'direct', 403, true, 1, null),
       (now() - interval '1 day', 'www.asistat-a.ro', 'https://www.asistat-a.ro/c/7', 'asistat-a', 'assisted', 0, false, 0, null)`);
+  // A's vendor costs: two days this month, one day last month (not counted).
+  await t.db.execute(sql`
+    INSERT INTO access_costs (day, shop_id, vendor, requests, successes, cost_cents)
+    SELECT (date_trunc('month', now() AT TIME ZONE 'Europe/Bucharest'))::date, id, 'zyte', 100, 95, 12 FROM shops WHERE slug = 'asistat-a'
+    UNION ALL SELECT (date_trunc('month', now() AT TIME ZONE 'Europe/Bucharest'))::date, id, 'oxylabs', 10, 9, 30 FROM shops WHERE slug = 'asistat-a'
+    UNION ALL SELECT (date_trunc('month', now() AT TIME ZONE 'Europe/Bucharest') - interval '1 day')::date, id, 'zyte', 100, 95, 500 FROM shops WHERE slug = 'asistat-a'`);
   // B already has its replacement: a merchant feed that ran yesterday, and an agreement.
   await t.db.execute(sql`
     INSERT INTO shop_sources (shop_id, key, kind, url, parser_key, enabled, kill_switch, last_success_at)
@@ -41,8 +47,8 @@ describe('assistedMigrationStatus', () => {
   it('lists only assisted shops, with their 30-day success rate, a live replacement feed and the latest outreach', async () => {
     const rows = await assistedMigrationStatus(t.db);
     expect(rows.map((r) => r.slug)).toEqual(['asistat-a', 'asistat-b']);
-    expect(rows[0]).toMatchObject({ requests30d: 4, successRate30d: 0.75, feedLive: false, outreachStatus: null, legalBasisRef: 'infra/legal/opinie-2026-10.pdf' });
-    expect(rows[1]).toMatchObject({ requests30d: 0, successRate30d: null, feedLive: true, outreachStatus: 'agreed' });
+    expect(rows[0]).toMatchObject({ requests30d: 4, successRate30d: 0.75, costMonthCents: 42, feedLive: false, outreachStatus: null, legalBasisRef: 'infra/legal/opinie-2026-10.pdf' });
+    expect(rows[1]).toMatchObject({ requests30d: 0, successRate30d: null, costMonthCents: 0, feedLive: true, outreachStatus: 'agreed' });
     expect(rows[1]!.outreachAt?.toISOString()).toBe('2026-10-20T10:00:00.000Z');
   });
 });

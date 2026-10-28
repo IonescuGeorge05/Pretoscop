@@ -5,9 +5,9 @@ import type { OutreachStatus } from '../schema/outreach';
 /**
  * Exit tracker for the assisted-access channel (M21; docs/12 §2b "Exit per shop", ADR-015): for
  * every shop read through the channel, how it performed over the last 30 days (`request_log`
- * keeps 30 days), whether a replacement feed already runs, and where the outreach for a feed or an
- * allowlist stands. Once a replacement is live, a founder switches the shop's access mode off
- * `assisted` (shop registry, audited).
+ * keeps 30 days), what it cost this month (`access_costs`, the M05B ledger), whether a replacement
+ * feed already runs, and where the outreach for a feed or an allowlist stands. Once a replacement
+ * is live, a founder switches the shop's access mode off `assisted` (shop registry, audited).
  */
 export interface AssistedMigrationRow {
   shopId: number;
@@ -18,6 +18,8 @@ export interface AssistedMigrationRow {
   requests30d: number;
   /** Share of them that came back usable (2xx or 304, not blocked, no error); null without requests. */
   successRate30d: number | null;
+  /** Vendor cost booked this calendar month (Europe/Bucharest), euro cents, from the `access_costs` ledger. */
+  costMonthCents: number;
   /** An enabled, not kill-switched feed source (merchant or affiliate) succeeded in the last 3 days. */
   feedLive: boolean;
   /** The latest outreach entry for the shop. */
@@ -33,6 +35,7 @@ interface Row extends Record<string, unknown> {
   legal_basis_ref: string | null;
   requests: number;
   ok: number;
+  cost_cents: number;
   feed_live: boolean;
   status: OutreachStatus | null;
   created_at: string | Date | null;
@@ -45,6 +48,8 @@ export async function assistedMigrationStatus(db: Db): Promise<AssistedMigration
   const res = await db.execute<Row>(sql`
     SELECT s.id, s.slug, s.name, s.legal_basis_ref,
            coalesce(r.n, 0)::int AS requests, coalesce(r.ok, 0)::int AS ok,
+           (SELECT coalesce(sum(c.cost_cents), 0) FROM access_costs c
+             WHERE c.shop_id = s.id AND c.day >= date_trunc('month', now() AT TIME ZONE 'Europe/Bucharest')::date)::int AS cost_cents,
            EXISTS (
              SELECT 1 FROM shop_sources f
               WHERE f.shop_id = s.id AND f.kind = 'feed' AND f.enabled AND NOT f.kill_switch
@@ -70,6 +75,7 @@ export async function assistedMigrationStatus(db: Db): Promise<AssistedMigration
     legalBasisRef: r.legal_basis_ref,
     requests30d: Number(r.requests),
     successRate30d: Number(r.requests) > 0 ? Number(r.ok) / Number(r.requests) : null,
+    costMonthCents: Number(r.cost_cents),
     feedLive: r.feed_live,
     outreachStatus: r.status,
     outreachAt: asDate(r.created_at),

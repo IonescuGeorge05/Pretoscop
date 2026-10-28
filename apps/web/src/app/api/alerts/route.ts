@@ -55,7 +55,8 @@ export async function POST(req: Request): Promise<Response> {
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return reply(mode, 400, { ok: false, error: 'invalid_body' }, resultUrl('eroare', null));
       raw = parsed as Record<string, unknown>;
     } else {
-      const form = await new Response(body, { headers: { 'content-type': contentType } }).formData();
+      // The original header, not the lower-cased copy: a multipart boundary is case-sensitive.
+      const form = await new Response(body, { headers: { 'content-type': req.headers.get('content-type') ?? contentType } }).formData();
       raw = Object.fromEntries([...form.entries()].filter(([, v]) => typeof v === 'string'));
     }
   } catch {

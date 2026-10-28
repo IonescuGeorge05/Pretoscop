@@ -108,10 +108,12 @@ export async function llmSweepStaleReservations(db: Db, olderThanMinutes = 60): 
   return r.rowCount ?? 0;
 }
 
-export async function llmInFlightBatches(db: Db): Promise<Array<{ batchId: string; items: number; createdAt: string }>> {
+/** Batches with reserved rows; `purposes` limits them (the eval CLI collects its own batches). */
+export async function llmInFlightBatches(db: Db, opts: { purposes?: string[] } = {}): Promise<Array<{ batchId: string; items: number; createdAt: string }>> {
   const r = await db.execute<{ batch_id: string; n: string; created_at: string }>(sql`
     SELECT batch_id, count(*)::text AS n, min(created_at)::text AS created_at FROM llm_usage
-    WHERE status = 'reserved' AND batch_id IS NOT NULL GROUP BY batch_id ORDER BY min(created_at)`);
+    WHERE status = 'reserved' AND batch_id IS NOT NULL ${opts.purposes ? sql`AND purpose = ANY(${sql.param(opts.purposes)}::text[])` : sql``}
+    GROUP BY batch_id ORDER BY min(created_at)`);
   return r.rows.map((x) => ({ batchId: x.batch_id, items: Number(x.n), createdAt: x.created_at }));
 }
 

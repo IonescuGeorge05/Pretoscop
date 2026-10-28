@@ -141,6 +141,9 @@ importers:
       '@pretoscop/icecat':
         specifier: workspace:*
         version: link:../../packages/icecat
+      '@pretoscop/llm':
+        specifier: workspace:*
+        version: link:../../packages/llm
       '@pretoscop/mailer':
         specifier: workspace:*
         version: link:../../packages/mailer

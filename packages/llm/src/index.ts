@@ -39,5 +39,5 @@ export {
   ZERO_USAGE,
 } from './models';
 export * from './prompts';
-export { defaultRoutes, INPUT_TOKEN_ALLOWANCE, orderByPrefix, parseAnswer, type ParsedAnswer, prepare, type PreparedRequest, type Route, type Routes } from './request';
+export { defaultRoutes, INPUT_TOKEN_ALLOWANCE, type MessageParams, orderByPrefix, parseAnswer, type ParsedAnswer, prepare, type PreparedRequest, type Route, type Routes } from './request';
 export { type Cost, extractAttributes, LlmAnswerError, suggestCategory, verifyPair } from './tasks';

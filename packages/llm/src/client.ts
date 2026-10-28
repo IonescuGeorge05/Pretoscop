@@ -89,6 +89,7 @@ export interface BatchRowInfo {
 export interface BatchItemResult {
   customId: string;
   row: BatchRowInfo;
+  outcome: 'succeeded' | 'errored' | 'expired' | 'canceled';
   answer: ParsedAnswer<unknown>;
   billed: boolean;
   usage: UsageTokens;
@@ -281,12 +282,12 @@ export class LlmClient {
         const eur = usdToEurNanos(usd, row.eurPerUsd);
         const prompt = promptByVersion(row.promptId, row.promptVersion);
         const answer: ParsedAnswer<unknown> = prompt ? parseAnswer(prompt, line.result.message) : { ok: false, error: `unknown prompt ${row.promptId}@${row.promptVersion}` };
-        await onResult({ customId: line.custom_id, row, answer, billed: true, usage, costUsdNanos: usd, costEurNanos: eur });
+        await onResult({ customId: line.custom_id, row, outcome: 'succeeded', answer, billed: true, usage, costUsdNanos: usd, costEurNanos: eur });
         await this.opts.ledger.settle(row.usageId, { usage, costUsdNanos: usd, costEurNanos: eur, error: answer.ok ? undefined : answer.error });
       } else {
         const detail = line.result.type === 'errored' ? `${line.result.error?.error?.type ?? 'error'}: ${line.result.error?.error?.message ?? ''}` : '';
         const error = `batch item ${line.result.type}${detail ? ` (${detail})` : ''}`.slice(0, 300);
-        await onResult({ customId: line.custom_id, row, answer: { ok: false, error }, billed: false, usage: usageFromApi(null), costUsdNanos: 0, costEurNanos: 0 });
+        await onResult({ customId: line.custom_id, row, outcome: line.result.type, answer: { ok: false, error }, billed: false, usage: usageFromApi(null), costUsdNanos: 0, costEurNanos: 0 });
         await this.opts.ledger.release(row.usageId, error);
       }
     }

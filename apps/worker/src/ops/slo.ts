@@ -1,6 +1,7 @@
 import { statfs } from 'node:fs/promises';
 import type { Env } from '@pretoscop/config/env';
-import { type Db, isFlagEnabled, sql } from '@pretoscop/db';
+import { type Db, isFlagEnabled, llmInFlightBatches, llmMonthToDate, sql } from '@pretoscop/db';
+import { budgetStatusOf, monthStartBucharest } from '@pretoscop/llm';
 
 /**
  * Service-level checks from docs/03 §9 that the worker can see from the database, evaluated by the
@@ -185,6 +186,23 @@ export async function evaluateSlos(db: Db, env: Env, opts: SloOptions = {}): Pro
     } catch {
       // no such path (tests, dev): skip
     }
+  }
+
+  // ---- LLM spend (M22): 80 % of the monthly cap warns, 100 % has stopped every call; a batch in
+  // flight for more than 26 h (the API ends every batch within 24 h) means collection is failing.
+  const monthStart = monthStartBucharest(now);
+  const llm = budgetStatusOf(await llmMonthToDate(db, monthStart), env.LLM_MONTHLY_CAP_EUR, monthStart);
+  if (llm.usedEurNanos > 0 && llm.level !== 'ok') {
+    const used = `€${(llm.usedEurNanos / 1e9).toFixed(2)} of €${env.LLM_MONTHLY_CAP_EUR.toFixed(2)}`;
+    alerts.push(
+      llm.level === 'stop'
+        ? { key: 'llm-cap', message: `LLM monthly cap reached (${used}): every LLM call is stopped until next month`, details: { calls: llm.calls }, everySeconds: DAY }
+        : { key: 'llm-cap-80', message: `LLM spend above 80 % of the monthly cap (${used})`, details: { calls: llm.calls }, everySeconds: 7 * DAY },
+    );
+  }
+  const stuck = (await llmInFlightBatches(db)).filter((b) => now.getTime() - new Date(b.createdAt).getTime() > 26 * HOUR * 1000);
+  if (stuck.length > 0) {
+    alerts.push({ key: 'llm-batch-stuck', message: `${stuck.length} LLM batch(es) in flight for more than 26 h: llm.match cannot collect them`, details: { batches: stuck.map((b) => b.batchId) }, everySeconds: DAY });
   }
 
   if (opts.extra) alerts.push(...(await opts.extra()));

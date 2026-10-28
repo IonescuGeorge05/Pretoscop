@@ -151,11 +151,25 @@ export const EnvSchema = z
     OPS_HEARTBEAT_URL: optionalString,
     DUMP_HEARTBEAT_URL: optionalString,
 
-    // LLM (M22, ADR-011)
+    // LLM (M22, ADR-011, ADR-022). Without a key nothing is sent; the job also needs the flag
+    // `llm.matching.enabled` (off). The cap covers spend plus calls in flight (hard stop at 100 %).
     ANTHROPIC_API_KEY: optionalString,
-    LLM_MONTHLY_CAP_EUR: z.coerce.number().default(50),
+    // Only for local stand-ins of the API (tests, `--mock` runs); unset in every real environment.
+    ANTHROPIC_BASE_URL: optionalString,
+    LLM_MONTHLY_CAP_EUR: z.coerce.number().min(0).default(50),
     LLM_MODEL_DEFAULT: z.string().default('claude-haiku-5-5'),
     LLM_MODEL_ESCALATION: z.string().default('claude-sonnet-5-5'),
+    // Gray-zone policy: accept one confirmed candidate at ≥ this confidence; reject every candidate
+    // at ≥ LLM_REJECT_CONFIDENCE (when LLM_AUTO_REJECT); anything else stays with a human.
+    LLM_ACCEPT_CONFIDENCE: z.coerce.number().min(0.5).max(1).default(0.9),
+    LLM_REJECT_CONFIDENCE: z.coerce.number().min(0.5).max(1).default(0.9),
+    LLM_AUTO_REJECT: bool.default(true),
+    // Candidates whose lowest price is at least this (lei) are verified by the escalation model.
+    LLM_HIGH_VALUE_RON: z.coerce.number().min(0).default(3000),
+    // Requests per llm.match run (one Message Batch).
+    LLM_BATCH_MAX_REQUESTS: int(2000),
+    // EUR per USD when the ECB rate in fx_rates is missing or older than 10 days (conservative).
+    LLM_EUR_PER_USD_FALLBACK: z.coerce.number().positive().max(10).default(1),
 
     // Icecat (M11). Open Icecat needs only the account name (sent as `shopname`); the tokens are
     // for Full Icecat and are not used. The job also needs the flag `icecat.enabled` (off).

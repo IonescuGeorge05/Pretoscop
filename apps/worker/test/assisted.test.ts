@@ -139,6 +139,16 @@ describe('assisted shop: gates', () => {
     expect(policy.accessMode).toBe('off');
     await t.db.execute(sql`UPDATE shops SET access_mode = 'direct' WHERE id = ${dedeman}`);
     expect((await createPolicyResolver(t.db, 0)('altex.ro')).accessMode).toBe('assisted');
+    // The flag closes every assisted shop at the fetch layer too, not only at the run gate.
+    await setFlag(t.db, 'assisted.enabled', false);
+    expect((await createPolicyResolver(t.db, 0)('altex.ro')).accessMode).toBe('off');
+    await setFlag(t.db, 'assisted.enabled', true);
+  });
+
+  it('no vendor, no channel: ASSISTED_VENDOR=none (the default) or a vendor without its key', () => {
+    expect(createAssistedChannelFromEnv(testEnv({ ASSISTED_VENDOR: 'none' }), t.db, log)).toEqual({ channel: null, reason: 'ASSISTED_VENDOR=none' });
+    expect(createAssistedChannelFromEnv(testEnv({ ZYTE_API_KEY: undefined }), t.db, log).channel).toBeNull();
+    expect(createAssistedChannelFromEnv(getEnv({}), t.db, log).channel).toBeNull();
   });
 });
 

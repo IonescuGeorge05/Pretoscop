@@ -292,6 +292,7 @@ describe('icecat.sync job gates', () => {
       normalize: (() => ({ rejectReason: 'x' })) as never,
       alert: vi.fn(async () => undefined),
       revalidate: async () => 0,
+      alerts: {} as never,
     },
   });
   const job = { id: 'j', name: 'icecat.sync', data: {} } as never;

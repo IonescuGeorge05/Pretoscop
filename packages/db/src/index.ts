@@ -17,4 +17,5 @@ export * from './queries/matching';
 export * from './queries/admin';
 export * from './queries/report';
 export * from './queries/alerts';
+export * from './queries/affiliate';
 export * from './queries/icecat';

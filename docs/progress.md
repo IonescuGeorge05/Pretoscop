@@ -30,8 +30,8 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 | M07 | Matching v1 (deterministic + review queue) | review | chain `mod/M13-product-page` (from `mod/M07-matching`) | | Eval 375 pairs: 0 false accepts; 100 founder labels still needed |
 | M08 | Rollups, stats, anomaly filters, verdicts | review | chain `mod/M13-product-page` (from `mod/M08-rollups`) | | Known-answer series, quarantine, breaker; full rollup < 5 min |
 | M09 | Admin v1 (sources, review queue, merge/split) | review | chain `mod/M13-product-page` (from `mod/M09-admin`) | | Magic link via Mailpit; every mutation audited |
-| M10 | Source adapters batch 1 | todo | | | |
-| M11 | Icecat enrichment | todo | | | |
+| M10 | Source adapters batch 1 | review | `mod/M10-adapters` (merged locally into `daniel`) | | 105 listing sources: IT Galaxy, forIT, Carrefour, Dedeman, Auchan, Bonami; Flip product pages |
+| M11 | Icecat enrichment | review | `mod/M11-icecat` (merged locally into `daniel`) | | Built against synthetic fixtures; flag `icecat.enabled` off until B1 |
 
 **Gate G1** — ≥20,000 products with ≥2 live offers; audited match precision ≥98%; freshness ≥90% < 24h. Approved: ☐ date: ____
 
@@ -326,3 +326,33 @@ Founder checklist: `scripts/verify/M23.checklist.md`.
 Human tasks needed: approve each report (`report:approve`); confirm the data licence for reuse (e.g. CC BY 4.0) and the press contact; give shops the right of reply before a release that names them.
 Risks / open questions: Black Friday 2026 comes ~4 weeks after recording started, so the 30-day comparison is barely covered and raise-then-cut (60 days) cannot be evaluated this year; eMAG's history has a gap on 28 Oct (paused after the CAPTCHA).
 Next module: M16 (sitemap entries for approved reports).
+
+### M10 — Source adapters batch 1 — 2026-10-27
+(Implemented by a delegated Opus agent; integrated and re-verified by the lead.)
+Scope delivered:
+- Fixture recording through the polite fetcher (`pnpm --filter @pretoscop/fetch record`, `scripts/record-fixture.sh`), refusing any shop that is not `active` with `access_mode: direct`.
+- Generic JSON-LD listing pages (forIT, 60 per page, next-page link, relative URLs, stray HTML entities) and new parsers `itgalaxy-listing` (EAN on some cards), `dedeman-listing`, `carrefour-listing` (ignores the wishlist link carrying another product), `vtex-listing` (Auchan: page state, not the VTEX API; EAN everywhere), `bonami-listing`, `flip-product` (refurbished; grade in `raw.grade`; Flip's stated 30-day minimum as reference; its "0 lei delivery" ignored because it contradicts Flip's courier fee).
+- Registry: 105 listing sources (IT Galaxy 25, forIT 25, Carrefour 23, Dedeman 19, Auchan 11, Bonami 2) staggered from 02:15 Bucharest, page caps kept under each daily budget by a test, freshness 26 h; IT Galaxy and forIT sitemap sweeps disabled (one request per product; forIT's sitemaps exceed the 15 MiB cap); Flip keeps its sitemap (SLO 192 h).
+- Delivery rules only as the shops state them: Dedeman locker 11 lei; Flip courier 19,99 / locker 11,99 lei; forIT per offer; IT Galaxy, Carrefour, Auchan and Bonami state no fee (left unknown).
+- A listing page whose products are all unavailable ends the run normally. Tests: 16 parser tests, 8 recorder end-to-end cases with the real normalizer, 3 registry checks.
+Out of scope / deferred: Libris, Elefant, JYSK (no electronics; Phase 4); blocked shops (M05B / feeds).
+Deviations from plan: listing pages instead of sitemap sweeps for IT Galaxy and forIT; Auchan read from page HTML.
+Verification: `make verify M=10` → OK (extractors 47, config 24, fetch 194, worker 27 tests; fixtures parse; registry table; a blocked shop is refused). After the merge the lead ran the whole monorepo suite (35/36 tasks; the mailer package has no tests and passes on its own) and restarted the recorder with the new sources on 28 Oct 01:4x Bucharest. Live probes, 27 Oct 21:34–21:47 UTC: 33 requests, ≥ 5 s apart per host, none blocked.
+Founder checklist: `scripts/verify/M10.checklist.md`.
+Human tasks needed: read the six shops' terms; confirm the delivery amounts and add courier fees where shops state none; decide whether Dedeman's "Verifică disponibilitatea online" counts as in stock (recorded as unknown); decide on Auchan's VTEX API (allowed by robots.txt, terms not read).
+Risks / open questions: markup changes show as failing sources; Auchan pages are 4.4 MB and mostly unavailable products (the hold rule may alert); Flip records only the default grade.
+Next module: M11.
+
+### M11 — Icecat enrichment — 2026-10-27
+(Implemented by a delegated Opus agent; integrated by the lead.)
+Scope delivered:
+- `@pretoscop/icecat`: Open Icecat client through the polite fetcher (Icecat's robots.txt obeyed, as its licence requires) with lookup classes found / not found / restricted (Apple) / Full-Icecat-only (Sony) / cap reached / stop (a plain per-product 403 lifts the fetch layer's pause; a CDN 403, 429 or robots refusal stops the run), monthly cap counted before each datasheet request, pure mapper to `product_specs.data`, licensed image copies (120/400/800 px), licence texts, a local mock server.
+- Job `icecat.sync` (05:30, flag `icecat.enabled` off and `ICECAT_USERNAME` required): GTIN, then brand + MPN, Romanian then English; up to 6 images; primary image only when none; confirms provisional products found by GTIN; misses remembered 30 days; monthly refresh; alerts on stop or cap. CLIs `icecat:lookup`, `icecat:coverage`, `icecat:sync`, `icecat:demo`.
+- Product page: "Specs Icecat" credit linked to icecat.biz whenever specs or images come from Icecat. ADR-016: Icecat data is isolated (GTINs never copied into `product_gtins`/`products`).
+Out of scope / deferred: real responses (no account).
+Deviations from plan: fixtures hand-written to the documented shape and labelled `_synthetic`; per-product API lookups instead of index files; counters and misses in existing tables (`fetch_domain_daily` host `icecat:<LANG>`, `product_specs` rows with `source = 'icecat-miss'` — readers must filter on `source`); `is_icecat` as `source = 'icecat'`; images in the local blob store.
+Verification: `make verify M=11` → OK (icecat 16 tests, 6 end-to-end sync tests, web 7), licence checks, offline demo (3 found, 1 not found, 1 restricted, 1 Full-only, 5 images).
+Founder checklist: `scripts/verify/M11.checklist.md`.
+Human tasks needed: B1 (Open Icecat account); read and file the Open Content Licence (open item 40); keep `icecat.enabled` off until then and until M16 blocks AI crawlers in robots.txt (`ICECAT_ROBOTS_DISALLOW_AGENTS`).
+Risks / open questions: `live.icecat.biz/robots.txt` never read (bot wall): check once with `icecat:lookup` after creating the account; real responses may differ from the synthetic fixtures; schema wishes: `icecat_usage` and `icecat_lookups` tables, a unique index on `product_images(product_id, sha256)`.
+Next module: M16 (robots.txt AI-crawler rule), M22 (keep Icecat rows out of prompts).

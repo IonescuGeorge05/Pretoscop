@@ -13,6 +13,8 @@ E="docker compose -p pretoscop-edge -f infra/docker-compose.edge.yml --env-file 
 $C ps; $E ps                                   # what is up, healthy, restarting
 $C logs --tail 200 web-1 web-2 worker postgres # last lines of each
 df -h /; free -g; uptime                        # disk, memory, load
+$C restart worker                              # a running container
+$C up -d --no-deps web-1 web-2                 # stopped ones (`start` refuses: they depend on the one-shot migrate)
 ```
 
 ## 1. "Site" monitor down (Better Stack)

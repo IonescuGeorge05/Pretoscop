@@ -31,7 +31,8 @@ The worker and the sidecar ping `<url>` on success and `<url>/fail` on failure, 
 at once and silence alerts after the grace period. healthchecks.io works the same way.
 
 Test it (the M18 founder check): `infra/scripts/compose.sh prod stop web-1 web-2` for two
-minutes and watch the phone; then start them again (`infra/runbooks/incident.md`).
+minutes and watch the phone; then start them again with `infra/scripts/compose.sh prod up -d --no-deps web-1 web-2`
+(`compose start` refuses: the replicas depend on the one-shot `migrate`; `infra/runbooks/incident.md`).
 
 ## 2. Telegram for ops alerts
 

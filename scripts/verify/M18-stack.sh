@@ -444,7 +444,8 @@ step "an outage as the uptime monitor sees it"
 app stop web-1 web-2 >/dev/null
 down="$(curl -sk -o /dev/null -m 30 -w '%{http_code}' "$BASE/api/health" || echo 000)"
 [[ "$down" =~ ^(502|503|504)$ ]] || fail "with both replicas stopped, /api/health answered ${down}"
-app start web-1 web-2 >/dev/null
+# `compose start` refuses (they depend on the one-shot migrate); up --no-deps starts them as they are.
+app up -d --no-deps web-1 web-2 >/dev/null
 for _ in $(seq 1 60); do
   curl -fsSk -o /dev/null "$BASE/api/health" && break
   sleep 2

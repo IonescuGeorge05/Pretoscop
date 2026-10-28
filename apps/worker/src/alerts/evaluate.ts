@@ -43,7 +43,9 @@ export async function evaluateAlerts(
   for (const c of candidates) {
     const decision = decideAlert(
       { kind: c.kind, targetBani: c.targetBani, baselineBani: c.baselineBani, armed: c.armed, lastNotifiedAt: c.lastNotifiedAt, lastNotifiedBani: c.lastNotifiedBani },
-      c.best ? { offerId: c.best.offerId, totalBani: c.best.totalBani, crossShopMedianBani: c.best.crossShopMedianBani } : null,
+      c.best
+        ? { offerId: c.best.offerId, totalBani: c.best.totalBani, crossShopMedianBani: c.best.crossShopMedianBani, knownFloorBani: c.best.knownFloorBani }
+        : null,
       now,
     );
     switch (decision.action) {

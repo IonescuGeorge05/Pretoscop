@@ -62,7 +62,7 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 
 | Module | Name | Status | Branch / PR | Verified by founder | Notes |
 |---|---|---|---|---|---|
-| M19 | Accounts and price alerts | in progress | `mod/M19-alerts` (merged into `daniel`) | | Verify passes; an independent review found 2 high and 3 medium issues, being fixed on the branch |
+| M19 | Accounts and price alerts | review | `mod/M19-alerts` (merged into `daniel`) | | Independently reviewed; all high/medium findings fixed; flag `alerts.email.enabled` off until B2/B4/B5 |
 | M20 | Merchant self-serve feed portal (free listing) | in progress | `mod/M20-merchants` (merged into `daniel`) | | Verify passes; migration regenerated as 0015_merchants. An independent review found 3 high issues (a domain-verification race; feed checks able to pause our crawler on any shop; suspension not hiding offers), being fixed; keep `merchants.portal.enabled` off until then |
 | M21 | Bot legitimacy program and source adapters batch 2 | in progress | `mod/M21-bot-legitimacy` (WIP) | | Stopped mid-work for the machine move |
 | M22 | LLM-assisted matching and attribute extraction | todo | `mod/M22-llm-matching` (empty) | | Brief in docs/HANDOFF.md §7 |
@@ -384,3 +384,25 @@ Founder checklist: `scripts/verify/M24.checklist.md`.
 Human tasks needed: A6/A7 (2Performant account, program approvals, ToS §9 clearance), C4 (Awin/CJ/Tradedoubler accounts), B4 (SRL for payouts), B7 (bank account); then set `TWOPERFORMANT_*` in `.env` and turn on `affiliate.links.enabled`.
 Risks / open questions: comparator permissions can be withdrawn with notice (the nightly sync catches it, but only for 2Performant); commission reports are imported by CSV until the API import is tested with a real account.
 Next module: M25 (promoted placements; needs M20 and M24).
+
+### M19 — Accounts and price alerts — 2026-10-28
+(Implemented by a delegated Opus agent before the machine move; merged by the lead on the Windows laptop, then independently reviewed by a second Opus agent, which also implemented the fixes; the lead reviewed the fix diff and re-verified. The original agent's report was lost in the move; this one is rebuilt from the branch.)
+Scope delivered:
+- `@pretoscop/core` alert rules (decisions in integer bani, target-price parsing, quiet hours 22:00–08:00 Romania time, email checks); `@pretoscop/notify` (signed confirmation/unsubscribe links with HMAC-SHA256, address hash, Romanian alert emails with sender identity); `@pretoscop/mailer` (Mailpit in dev, Resend in production).
+- Migration `0014_alerts`: `alerts` (consent evidence: time, daily-salted IP hash, text version; double opt-in), `alert_sends` (outbox claimed by compare-and-set), `consent_records` (evidence ledger kept 3 years after withdrawal), `email_suppressions` (hashes only).
+- Worker: `alerts.evaluate` (after rollups and price changes, nightly 07:30), `alerts.deliver` (one message per user and channel, offer re-checked before sending, suppression honoured, retries), `alerts.retention` (03:20: pending requests, unverified accounts, 24-month inactivity notice then deletion, consent pruning, sends after 13 months, clicks/events minimized after 90 days, expired login tokens), CLIs `alerts:run` and `alerts:simulate`.
+- Web: the alert form on product pages (unticked consent with the versioned text, works without JavaScript), double opt-in and one-click unsubscribe pages (`List-Unsubscribe` + `List-Unsubscribe-Post`, RFC 8058), `/alerte` (magic-link login, list, edit, delete, stop all, export JSON, delete account), the Resend bounce/complaint webhook (Svix signature), `/admin/alerte` (volumes, failures, data-subject requests).
+Independent review (28 Oct) and fixes: 2 high, 3 medium and 13 low findings; all high and medium ones and most low ones fixed with regression tests:
+- **High:** magic-link emails could be sent without limit (Better Auth's limiter was disabled by `disableIpTracking`). Now every login path is capped at 5 emails per address per hour (in the database) and 20 per client per 15 minutes, with the same answer either way.
+- **High:** two products merged into one target broke the nightly retention job for good. Merges are now deduplicated along the whole merge chain, and each retention step runs on its own with an ops alert when one fails.
+- **Medium:** a briefly stale or out-of-stock cheapest offer could trigger a repeat "below target" email at an unchanged price. Its last known price is now kept for 7 days, and implausible prices are ignored.
+- **Medium:** `alerts:simulate` emailed every real subscriber. It now sends only to named addresses and refuses `APP_ENV=prod`.
+- **Medium:** production now refuses to start with the placeholder sender identity or, on Resend, without the webhook secret; staging warns.
+- **Low, also fixed:** limiters keyed on the IP hash only; capped request bodies; Resend idempotency keys; advisory locks against double-submit races; export includes the suppression status; paused-alert wording.
+Out of scope / deferred: push and Telegram (M27); React Email templates (plain string templates instead: recorded deviation); recorded but not changed: batching per time window, consent text for the logged-in path (lawyer, B5), consent records of deleted products, "any variant" alerts on an inactive variant, separate keys for link signing and address pseudonyms (rotation).
+Deviations from plan: ADR-017 (renumbered at merge: M11 took ADR-016); login and alert-form limits documented in `apps/web/README.md`.
+Verification: `make verify M=19` on `daniel` after the fixes → lint/typecheck/tests green (core 779, db 71, worker 71, web 51, config 46, notify 12, mailer 2), production build, Playwright 9/9 (consent, double opt-in, drop email with List-Unsubscribe, dedupe, unsubscribe incl. one-click POST, export/delete, no-JS form, login cap on every path, cross-site refusal, per-IP limit regardless of User-Agent, suppressed address, daily confirmation cap, hash formats), no test data left; admin login e2e 4/4. Full suite on `daniel`: 39/39 tasks.
+Founder checklist: `scripts/verify/M19.checklist.md` (simulation now `pnpm alerts:simulate <productId> 10 --email <your address>`).
+Human tasks needed: B2 (Resend domain, `RESEND_WEBHOOK_SECRET`), B4 (SRL: the legal name and postal address in every email; production will not start without them), B5 (lawyer: `alertConsent.v1`, including the logged-in path wording).
+Risks / open questions: per-IP limits trust `cf-connecting-ip`/`x-forwarded-for`, so the production proxy must overwrite them (M18); in-memory limiters are per process (the per-address caps are in the database); retried delivery groups that gain rows get a new idempotency key.
+Next module: M27 (Telegram and web push, on top of these fixes).

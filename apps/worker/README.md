@@ -24,15 +24,22 @@ pg-boss workers: ingest, crawl, match, rollup, alerts, index, maintenance.
   user and channel (several alerts → one email), the offer re-checked first (a changed price is
   skipped and re-evaluated), suppressed addresses never emailed (their email alerts paused),
   transient failures retried 3 times, a failed or skipped send gives the alert its state back.
-  Push and Telegram (M27) wait outside 22:00–08:00 Romania time.
+  Every message carries an idempotency key made of its `alert_sends` ids (Resend drops a retry of
+  a message it already accepted); a delivery interrupted in 'sending' is re-queued as it was (same
+  key) after 15 minutes. Push and Telegram (M27) wait outside 22:00–08:00 Romania time.
 - `alerts.retention` (03:20): pending requests after 7 days, unverified empty accounts after 7
-  days, 24-month inactivity notice then deletion after 30 days, consent evidence 3 years after
-  withdrawal, sends after 13 months, clicks/events minimized after 90 days.
+  days, 24-month inactivity notice then deletion after 30 days (the notice is sent only while
+  `alerts.email.enabled` is on, and never to a suppressed address: its notice is recorded without
+  an email), consent evidence 3 years after withdrawal, sends after 13 months, clicks/events
+  minimized after 90 days, expired `verifications` rows (magic-link tokens, send counters). Each
+  step runs on its own: a failing step is logged and reported as an ops alert, the others still run.
 - `notify(userId, message, channel)` (`src/alerts/notifier.ts`) is the channel interface; M19
   implements email through `@pretoscop/mailer`.
 - CLIs: `pnpm --filter @pretoscop/worker alerts:run [--products 1,2]` (evaluate + deliver now) and
-  `pnpm alerts:simulate <productId> <percent>` (a "[SIMULARE]" message to every active alert of the
-  product; no price event, no change to the alert's state).
+  `pnpm alerts:simulate <productId> [percent] [--email <address>]... [--allow-prod]` (a
+  "[SIMULARE]" message for the active alerts on the product of the given addresses only, by default
+  ADMIN_EMAILS, never other subscribers; refused with APP_ENV=prod unless `--allow-prod`; no price
+  event, no change to the alert's state).
 
 ## Merchant feeds (M20)
 

@@ -3,6 +3,7 @@ import { alertProduct, bestAlertOffer, createAlert, deleteAlert, markConfirmatio
 import { validateAlertForm, type AlertErrors } from '@/lib/alert-form';
 import { alertConsent, alertsEnabled, findOrCreateUser, hashEmail, logAlert, sendConfirmation } from '@/lib/alerts';
 import { auth } from '@/lib/auth';
+import { readBodyCapped } from '@/lib/body';
 import { db } from '@/lib/db';
 import { clientIp, hashWithDailySalt } from '@/lib/privacy';
 import { createRateLimiter } from '@/lib/rate-limit';
@@ -11,7 +12,10 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const MAX_BYTES = 8 * 1024;
-/** Per daily-salted session hash (no raw IP is kept): 10 alert requests per hour. */
+/**
+ * 10 alert requests per hour per daily-salted IP hash (no raw IP is kept). Never keyed on the
+ * User-Agent: a client changes it at will.
+ */
 const limiter = createRateLimiter({ limit: 10, windowMs: 60 * 60 * 1000 });
 /** At most this many confirmation emails per address per 24 hours (someone typing another's address). */
 const MAX_CONFIRMATIONS_PER_DAY = 3;
@@ -38,21 +42,22 @@ export async function POST(req: Request): Promise<Response> {
   const contentType = (req.headers.get('content-type') ?? '').toLowerCase();
   const mode: Mode = contentType.includes('application/json') ? 'json' : 'form';
   if (req.headers.get('sec-fetch-site') === 'cross-site') return reply(mode, 403, { ok: false, error: 'forbidden' }, resultUrl('respins', null));
-  if (Number(req.headers.get('content-length') ?? 0) > MAX_BYTES) return reply(mode, 413, { ok: false, error: 'too_large' }, resultUrl('eroare', null));
+  const isForm = contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data');
+  if (mode === 'form' && !isForm) return new Response('unsupported content type', { status: 415, headers: { 'cache-control': 'no-store' } });
 
   let raw: Record<string, unknown>;
   try {
+    // Refused by Content-Length before reading, and the read stops at the limit (chunked bodies).
+    const body = await readBodyCapped(req, MAX_BYTES);
+    if (body === null) return reply(mode, 413, { ok: false, error: 'too_large' }, resultUrl('eroare', null));
     if (mode === 'json') {
-      const text = await req.text();
-      if (text.length > MAX_BYTES) return reply(mode, 413, { ok: false, error: 'too_large' }, resultUrl('eroare', null));
-      const parsed: unknown = JSON.parse(text);
+      const parsed: unknown = JSON.parse(new TextDecoder().decode(body));
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return reply(mode, 400, { ok: false, error: 'invalid_body' }, resultUrl('eroare', null));
       raw = parsed as Record<string, unknown>;
-    } else if (contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
-      const form = await req.formData();
-      raw = Object.fromEntries([...form.entries()].filter(([, v]) => typeof v === 'string'));
     } else {
-      return new Response('unsupported content type', { status: 415, headers: { 'cache-control': 'no-store' } });
+      // The original header, not the lower-cased copy: a multipart boundary is case-sensitive.
+      const form = await new Response(body, { headers: { 'content-type': req.headers.get('content-type') ?? contentType } }).formData();
+      raw = Object.fromEntries([...form.entries()].filter(([, v]) => typeof v === 'string'));
     }
   } catch {
     return reply(mode, 400, { ok: false, error: 'invalid_body' }, resultUrl('eroare', null));
@@ -61,8 +66,8 @@ export async function POST(req: Request): Promise<Response> {
   if (!(await alertsEnabled())) return reply(mode, 503, { ok: false, error: 'disabled' }, resultUrl('oprit', null));
 
   const ip = clientIp(req.headers);
-  const session = hashWithDailySalt(ip, req.headers.get('user-agent'));
-  const limit = limiter.hit(session);
+  const ipHash = hashWithDailySalt('ip', ip);
+  const limit = limiter.hit(ipHash);
   if (!limit.allowed) return reply(mode, 429, { ok: false, error: 'rate_limited' }, resultUrl('limita', null), { 'retry-after': String(limit.retryAfterSec) });
 
   const d = db();
@@ -83,7 +88,6 @@ export async function POST(req: Request): Promise<Response> {
   const anyVariant = input.anyVariant && product.variants > 1;
   const email = normalizeEmail(input.email);
   const emailHashValue = hashEmail(email);
-  const ipHash = hashWithDailySalt('ip', ip);
   const now = new Date();
 
   try {

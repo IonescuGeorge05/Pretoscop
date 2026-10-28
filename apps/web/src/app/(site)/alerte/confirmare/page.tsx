@@ -37,6 +37,21 @@ export default async function ConfirmPage({ searchParams }: Props) {
         <p>Verifică dacă ai copiat linkul întreg din email. Poți cere o alertă nouă de pe pagina produsului.</p>
       </Notice>
     );
+  } else if (alert && alert.status === 'paused' && state !== 'expirat') {
+    // Confirmed earlier, but stopped since (suppressed address, channel gone, paused by the user).
+    body = (
+      <Notice tone="warn" title="Alerta este confirmată, dar oprită">
+        <p>
+          Alerta pentru <strong className="text-ink">{alert.productTitle}</strong> nu trimite emailuri acum
+          {alert.pausedReason === 'suppressed' ? ': adresa ta nu mai primește emailuri de la noi.' : '.'} O găsești în pagina Alertele mele.
+        </p>
+        <p>
+          <Link href="/alerte" className="font-medium text-brand-700 underline">
+            Vezi și gestionează alertele
+          </Link>
+        </p>
+      </Notice>
+    );
   } else if (state === 'confirmat' || (alert && alert.status !== 'pending' && state !== 'expirat')) {
     body = (
       <Notice tone="good" title={state === 'confirmat' ? 'Gata, alerta este activă' : 'Alerta este deja activă'}>

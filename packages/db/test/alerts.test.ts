@@ -6,15 +6,19 @@ import {
   bestAlertOffer,
   claimAlertNotification,
   claimQueuedSends,
+  clearSendCounter,
   confirmAlert,
   createAlert,
   deleteAlert,
   deleteEmptyAccounts,
   deleteExpiredPendingAlerts,
+  deleteExpiredVerifications,
   deleteUserData,
   exportUserData,
   finishSends,
+  hitSendCounter,
   minimizeClicksAndEvents,
+  recoverStuckSends,
   pruneConsentRecords,
   recordObservation,
   repointMergedAlerts,
@@ -317,5 +321,111 @@ describe('retention', () => {
     ]);
     const e = await t.db.execute<{ name: string; session_hash: string | null }>(sql`SELECT name, session_hash FROM events ORDER BY name`);
     expect(e.rows).toEqual([{ name: 'x', session_hash: null }]);
+  });
+});
+
+describe('M19 review fixes', () => {
+  const session = { confirm: { method: 'session' as const, ipHash: null } };
+  const liveAlert = async (u: string, p: number, h: string) =>
+    (await createAlert(t.db, { userId: u, productId: p, kind: 'any_drop', targetBani: null, anyVariant: false, channel: 'email', emailHash: h, ...consent, ...session })).alertId;
+
+  it('several products merged into one: one live alert per user and channel survives, the rest are withdrawn', async () => {
+    const [a, b, target, c1, c2, c3] = [await product(), await product(), await product(), await product(), await product(), await product()];
+    // Two duplicates (a, b) merged into `target`; u1 watched both, u2 watched a duplicate and the target.
+    const u1 = await user();
+    const u1a = await liveAlert(u1, a, 'm1');
+    const u1b = await liveAlert(u1, b, 'm1');
+    const u1pending = (await createAlert(t.db, { userId: u1, productId: b, kind: 'any_drop', targetBani: null, anyVariant: false, channel: 'email', emailHash: 'm1', ...consent })).alertId;
+    const u2 = await user();
+    const u2a = await liveAlert(u2, a, 'm2');
+    const u2target = await liveAlert(u2, target, 'm2');
+    // A chain c1 → c2 → c3 with alerts on its first and last product.
+    const u3 = await user();
+    const u3c1 = await liveAlert(u3, c1, 'm3');
+    const u3c3 = await liveAlert(u3, c3, 'm3');
+    await t.db.execute(sql`UPDATE products SET status = 'merged', merged_into_id = ${target} WHERE id IN (${a}, ${b})`);
+    await t.db.execute(sql`UPDATE products SET status = 'merged', merged_into_id = ${c2} WHERE id = ${c1}`);
+    await t.db.execute(sql`UPDATE products SET status = 'merged', merged_into_id = ${c3} WHERE id = ${c2}`);
+
+    await repointMergedAlerts(t.db); // used to throw: two of u1's alerts landed on `target`
+
+    const rows = async (u: string) =>
+      (await t.db.execute<{ id: string; product_id: string; status: string }>(sql`SELECT id::text, product_id::text, status FROM alerts WHERE user_id = ${u} ORDER BY id`)).rows.map(
+        (r) => ({ id: Number(r.id), product: Number(r.product_id), status: r.status }),
+      );
+    // u1: the newer of the two moved alerts is kept; the pending request follows the merge.
+    expect(await rows(u1)).toEqual([
+      { id: u1b, product: target, status: 'active' },
+      { id: u1pending, product: target, status: 'pending' },
+    ]);
+    // u2: the alert already on the target wins.
+    expect(await rows(u2)).toEqual([{ id: u2target, product: target, status: 'active' }]);
+    // u3: the chain ends on c3, where an alert already exists.
+    expect(await rows(u3)).toEqual([{ id: u3c3, product: c3, status: 'active' }]);
+    const losers = [u1a, u2a, u3c1].sort((x, y) => x - y);
+    const withdrawn = await t.db.execute<{ alert_id: string; withdraw_method: string }>(
+      sql`SELECT alert_id::text, withdraw_method FROM consent_records WHERE alert_id = ANY(${sql.param(losers)}::bigint[]) ORDER BY alert_id`,
+    );
+    expect(withdrawn.rows).toEqual(losers.map((id) => ({ alert_id: String(id), withdraw_method: 'replaced' })));
+    expect(await repointMergedAlerts(t.db)).toBe(0); // idempotent
+  });
+
+  it('two live-alert writers at the same moment never break the unique index (double submit, two confirmations)', async () => {
+    const u = await user();
+    const p = await product();
+    const results = await Promise.all([liveAlert(u, p, 'r1'), liveAlert(u, p, 'r1'), liveAlert(u, p, 'r1')]);
+    expect(results).toHaveLength(3);
+    const left = await t.db.execute<{ n: string }>(sql`SELECT count(*)::text AS n FROM alerts WHERE user_id = ${u} AND status <> 'pending'`);
+    expect(left.rows[0]!.n).toBe('1');
+
+    const v = await user();
+    const pending = async () =>
+      (await createAlert(t.db, { userId: v, productId: p, kind: 'any_drop', targetBani: null, anyVariant: false, channel: 'email', emailHash: 'r2', ...consent })).alertId;
+    const ids = [await pending(), await pending()];
+    const outcomes = await Promise.all(ids.map((id) => confirmAlert(t.db, id, { ipHash: null, method: 'email_link', ttlDays: 7, emailHash: 'r2' })));
+    expect(outcomes).toEqual(['confirmed', 'confirmed']);
+    const live = await t.db.execute<{ n: string }>(sql`SELECT count(*)::text AS n FROM alerts WHERE user_id = ${v} AND status = 'active'`);
+    expect(live.rows[0]!.n).toBe('1');
+  });
+
+  it('send counters: a fixed window per key, cleared on demand, gone once expired', async () => {
+    expect(await hitSendCounter(t.db, 'k1', 60)).toBe(1);
+    expect(await hitSendCounter(t.db, 'k1', 60)).toBe(2);
+    expect(await hitSendCounter(t.db, 'k2', 60)).toBe(1);
+    await clearSendCounter(t.db, 'k1');
+    expect(await hitSendCounter(t.db, 'k1', 60)).toBe(1);
+    // The window ends: the next send starts a new one.
+    await t.db.execute(sql`UPDATE verifications SET expires_at = now() - interval '1 second' WHERE id = 'send-cap:k2'`);
+    expect(await hitSendCounter(t.db, 'k2', 60)).toBe(1);
+    await t.db.execute(sql`UPDATE verifications SET expires_at = now() - interval '1 second' WHERE id = 'send-cap:k1'`);
+    expect(await deleteExpiredVerifications(t.db)).toBeGreaterThanOrEqual(1);
+    expect((await t.db.execute(sql`SELECT 1 FROM verifications WHERE id = 'send-cap:k1'`)).rows).toHaveLength(0);
+  });
+
+  it('the export says whether (and why) the address is on the suppression list', async () => {
+    const u = await user();
+    await suppressEmail(t.db, 'x1', 'bounce');
+    expect(await exportUserData(t.db, u, 'x1')).toMatchObject({ emailSuppression: { reason: 'bounce' } });
+    expect(await exportUserData(t.db, u, 'x-none')).toMatchObject({ emailSuppression: null });
+  });
+
+  it('an interrupted delivery goes back to the queue as it was (same rows, same idempotency key); out of attempts it fails', async () => {
+    const u = await user();
+    const p = await product();
+    await offer(p, 1500);
+    await createAlert(t.db, { userId: u, productId: p, kind: 'below', targetBani: 160_000, anyVariant: false, channel: 'email', emailHash: 's1', ...consent, ...session });
+    const [c] = await alertCandidates(t.db, { productIds: [p], channels: ['email'] });
+    const id = (await claimAlertNotification(t.db, c!, 'below_target', 160_000))!;
+    await t.db.execute(sql`UPDATE alert_sends SET status = 'sending', attempts = 1, not_before = now() - interval '20 minutes' WHERE id = ${id}`);
+    expect(await recoverStuckSends(t.db, 15, 3)).toBe(1);
+    const again = await t.db.execute<{ status: string; error: string }>(sql`SELECT status, error FROM alert_sends WHERE id = ${id}`);
+    expect(again.rows[0]).toEqual({ status: 'queued', error: 'interrupted' });
+    // Still counted as notified: the queued row is delivered again (and deduplicated by the provider).
+    expect((await alertCandidates(t.db, { productIds: [p], channels: ['email'] }))[0]).toMatchObject({ armed: false });
+
+    await t.db.execute(sql`UPDATE alert_sends SET status = 'sending', attempts = 3, not_before = now() - interval '20 minutes' WHERE id = ${id}`);
+    expect(await recoverStuckSends(t.db, 15, 3)).toBe(1);
+    expect((await t.db.execute<{ status: string }>(sql`SELECT status FROM alert_sends WHERE id = ${id}`)).rows[0]!.status).toBe('failed');
+    expect((await alertCandidates(t.db, { productIds: [p], channels: ['email'] }))[0]).toMatchObject({ armed: true, lastNotifiedBani: null });
   });
 });

@@ -3,7 +3,7 @@ import type { Logger } from '@pretoscop/config/logger';
 import { normalizeOffer } from '@pretoscop/core';
 import { contentHash } from '@pretoscop/core/hash';
 import { type Db, latestFxRate } from '@pretoscop/db';
-import { createFetcher, createGuardedDispatcher, type DomainStateStore, type Fetcher, type FetcherDeps, ScopedDomainStateStore } from '@pretoscop/fetch';
+import { createFetcher, createGuardedDispatcher, type DomainStateStore, type Fetcher, type FetcherDeps, ScopedDomainStateStore, signerFromEnv } from '@pretoscop/fetch';
 import { createMailer, type Mailer } from '@pretoscop/mailer';
 import { alertLinks } from '@pretoscop/notify';
 import { createBlobStore } from '@pretoscop/storage';
@@ -115,6 +115,8 @@ function fetcherDeps(env: Env, db: Db, log: Logger, deps: Pick<FetcherDeps, 'dis
     defaultTimeoutMs: env.FETCH_TIMEOUT_MS,
     defaultMaxBytes: env.FETCH_MAX_BODY_BYTES,
     logger: log,
+    // Web Bot Auth (M21): signed only when WEB_BOT_AUTH is on (getEnv() already required the key).
+    signer: signerFromEnv({ WEB_BOT_AUTH: String(env.WEB_BOT_AUTH), WEB_BOT_AUTH_PRIVATE_KEY: env.WEB_BOT_AUTH_PRIVATE_KEY, BOT_INFO_URL: env.BOT_INFO_URL }) ?? null,
   };
 }
 
@@ -156,6 +158,7 @@ export function createServices(env: Env, db: Db, log: Logger): Services & { clos
     ...(assisted.channel ? { assisted: assisted.channel } : {}),
   });
   const merchantFetcher = createMerchantFetcher(env, db, log, { dispatcher, requestLog, stateStore: state });
+  if (env.WEB_BOT_AUTH) log.info({ web_bot_auth: true }, 'crawler requests are signed (Web Bot Auth)');
   let eur: { rate: number | null; at: number } = { rate: null, at: 0 };
   const refreshEur = () => {
     if (Date.now() - eur.at < 3600_000) return;

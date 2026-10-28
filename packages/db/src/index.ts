@@ -19,5 +19,6 @@ export * from './queries/report';
 export * from './queries/alerts';
 export * from './queries/affiliate';
 export * from './queries/icecat';
+export * from './queries/outreach';
 export * from './queries/deals';
 export * from './queries/sitemap';

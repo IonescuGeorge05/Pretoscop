@@ -68,6 +68,7 @@ pg-boss workers: ingest, crawl, match, rollup, alerts, index, maintenance.
 - The fetcher's dispatcher refuses non-public addresses at connect time (`createGuardedDispatcher`), so a feed URL
   cannot reach the internal network; `FETCH_ALLOW_PRIVATE_HOSTS=true` (everything) or `FETCH_PRIVATE_ALLOWLIST` (exact
   `ip:port` fixtures, what `make verify M=20` uses) lift that in development only.
+
 ## Re-normalization after a rule change
 
 `pnpm --filter @pretoscop/worker renormalize [--shop emag] [--dry-run] [--limit N] [--samples 20]`
@@ -116,3 +117,32 @@ It prints a before/after summary; run `--dry-run` first, then `match:run` (or wa
   yesterday's success was under 90%; `/metrics` exports `pretoscop_assisted_*`.
 - `pnpm assisted:record <shop> <name> <url>` records an extractor fixture through the channel.
 - Procedure for the founders: `infra/runbooks/assisted-access.md`.
+
+## Bot legitimacy (M21)
+
+- **Web Bot Auth**: `services.ts` gives the fetcher a signer when `WEB_BOT_AUTH=true` (key in `WEB_BOT_AUTH_PRIVATE_KEY`,
+  `BOT_INFO_URL` https); the worker logs `crawler requests are signed (Web Bot Auth)` at start. Off by default.
+- **`extractors.canary`** (Monday 04:30 Bucharest; flag `extractors.canary.enabled`, off by default): up to five live URLs
+  per active, directly crawled shop (listing pages, then product pages that answered 200, only from sources that are
+  enabled and not kill-switched) are fetched through the polite fetcher and parsed; per-URL results go to
+  `extractor_canaries`; a page without offers, missing or unusable core fields (id, URL, title, price) or an optional field
+  that disappears compared with the previous week raise one ops alert per shop and parser, and a block the canary runs
+  into raises its own alert (the host is paused for every job). Same gates as source runs (CRAWL_ENABLED, kill switches,
+  `crawl.enabled`, eMAG flag). Nothing is ingested. Idempotent per ISO week.
+- **`pnpm --filter @pretoscop/worker bot:check [--site URL] [--skip-dns]`**: forward-confirmed reverse DNS of every
+  `BOT_EGRESS_IPS` address, `/bot/ips.json`, the key directory (served without a redirect, Content-Digest, one
+  possession proof per key, our key in it); prints the headers a signed request would carry. Contacts DNS and our own
+  site only.
+- **`pnpm --filter @pretoscop/worker shops:probe <slug> --vantage "…" [--url <page>] [--write] [--from-published-ip]`**:
+  re-probe of one shop (docs/12 §2 layer 1).
+  - Off by default: needs `CRAWL_ENABLED=true`, the flags `crawl.enabled` and `shops.probe.enabled` (switch it on for a
+    probe session, then off) and, for eMAG, `source.emag.enabled`.
+  - Refused (exit 2, nothing sent): shops that asked us to stop or said no (status `paused` or `removed`, every source
+    kill-switched, latest outreach `declined`), feed-only shops, and, once `BOT_EGRESS_IPS` is published, any run
+    without `--from-published-ip` (the bot page says other addresses are not ours).
+  - At most three requests (robots.txt, home page, one registry page from a source that is not kill-switched, or `--url`
+    on the shop's domain), at least 5 s apart (spaced before each shared slot reservation; the cap is enforced at the
+    transport by `CappedDispatcher`), no retries, through the polite fetcher with the database's state (pauses shared with
+    the recorder) and request log; stops at the first refusal.
+  - Prints (or with `--write` adds) the registry `probes:` entry and leaves an `audit_log` row (`shops.probe`). Needs the
+    database: from a second vantage point run it with `DATABASE_URL` pointing at production (e.g. over WireGuard).

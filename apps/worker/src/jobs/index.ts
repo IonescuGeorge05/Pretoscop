@@ -1,6 +1,7 @@
 import { alertsDeliverJob, alertsEvaluateJob, alertsRetentionJob } from './alerts';
 import { affiliateSyncJob, commissionsImportJob } from './affiliate';
 import { assistedHealthJob } from './assisted';
+import { extractorCanaryJob } from './canary';
 import { heartbeatJob } from './heartbeat';
 import { partitionsJob, requestLogPruneJob } from './maintenance';
 import { backupJob, restoreTestJob, schedulerTickJob, sourceRunJob } from './recorder';
@@ -42,4 +43,5 @@ export const jobs: JobDefinition<any>[] = [
   searchRebuildJob,
   sitemapBuildJob,
   assistedHealthJob,
+  extractorCanaryJob,
 ];

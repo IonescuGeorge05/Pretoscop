@@ -244,7 +244,7 @@ pause set while the request waited for its slot); `attempts` then counts the att
 `network_unreachable`, `protocol_error`, `network`, `body_too_large`, `decode_error`,
 `too_many_redirects`, `cross_site_redirect`, `invalid_redirect`, `redirect_disallowed`,
 `channel_change`, `robots_unavailable`, `invalid_policy`, `invalid_request`, `crawl_disabled`,
-`assisted_error`, `non_public_address`, `local_suspend`, `assisted_cap`, `assisted_refused`.
+`assisted_error`, `non_public_address`, `local_suspend`, `assisted_cap`, `assisted_refused`, `request_cap` (M21: a tool's own `CappedDispatcher` limit; nothing was sent).
 
 Pure helpers are exported too: `detectBlock`, `classifyTransportError`, `detectChallengeRedirect`,
 `parseRetryAfter`, `parseRobotsTxt`, `selectRobotsGroups`, `evaluateRobots`, `normalizeRobotsPath`,
@@ -375,6 +375,43 @@ dispatcher to the Zyte client), not to shop URLs. The merchant fetcher (`ScopedD
 no channel: a merchant-supplied URL on an assisted shop is refused (`assisted_unavailable`). Both
 share the per-host start slots, and assisted requests obey the crawler's pauses, never a
 merchant-scoped one.
+
+### Web Bot Auth (M21)
+
+`src/signing.ts` (also `@pretoscop/fetch/signing`, no undici) implements Web Bot Auth as specified by
+**draft-ietf-webbotauth-httpsig-protocol-00** (`WEB_BOT_AUTH_SPEC`) on top of RFC 9421: Ed25519 keys
+(`loadEd25519Key` from a base64url seed or PKCS#8 PEM, `generateEd25519Key`), the JWK thumbprint
+`keyid`, the signature base and parameters (including `;key=` dictionary members and `;req`),
+`createWebBotAuthSigner({ key, agentOrigin })`, the key directory (`directoryBody`,
+`signDirectoryResponse`) and two verifiers for tests and self-checks: `verifyWebBotAuthRequest` (what a
+CDN checks: tag, created/expires, known key, the authority and the Signature-Agent member covered, the
+signature; the legacy bare-string Signature-Agent is accepted) and `verifyDirectoryResponse`
+(Content-Digest, one possession proof per published key for the requested authority).
+
+A signed request carries `Signature-Agent: sig1="https://pretoscop.ro"` (the dictionary form the draft
+requires; an https origin, http only on loopback for local tests) and
+`Signature-Input: sig1=("@authority" "signature-agent";key="sig1");created;keyid;alg="ed25519";expires;nonce;tag="web-bot-auth"`
+with a fresh 64-byte nonce and a 60 s validity. The directory body is
+`{"keys":[{"kty":"OKP","crv":"Ed25519","kid":<thumbprint>,"x":…,"use":"sig"}]}` (public members only),
+signed with tag `http-message-signatures-directory` over `("@authority";req "content-digest")`. Tests
+reproduce RFC 9421 Appendix B.2.6 and the draft's E.2.1, E.2.2 and E.2.3 vectors byte for byte.
+
+The fetcher signs each direct hop for its own authority (a redirect to another host gets a new
+signature) when `FetcherDeps.signer` is set; by default it uses `signerFromEnv(process.env)`: no signer
+unless `WEB_BOT_AUTH=1`, and `WEB_BOT_AUTH=1` without a usable `WEB_BOT_AUTH_PRIVATE_KEY` throws at
+construction (a crawler told to sign never runs unsigned). `signer: null` turns it off. The assisted
+channel is never signed with our key. A key: `pnpm --filter @pretoscop/fetch bot-auth:keygen`; rollout
+and rotation: `infra/bot-program/web-bot-auth.md`.
+
+### Request caps for one-off tools (M21)
+
+`new CappedDispatcher(dispatcher, { maxRequests, minGapMs })` wraps the transport so a tool cannot send
+more than `maxRequests` requests (robots.txt, redirect hops and retries included) and starts any two at
+least `minGapMs` apart, whatever the host. Its gap is a delay after the fetcher reserved the host's slot, so
+with a shared state store prefer spacing before the reservation: `shops:probe` uses the dispatcher for its
+3-request cap only (`minGapMs: 0`) and spaces requests in a state-store wrapper (`spacedStateStore`). Over the cap it throws
+`RequestCapError` before anything is sent; the fetch layer reports `errorCode: 'request_cap'`, which is
+neutral: no pause, no failure count, and no robots.txt outcome is cached in the shared state.
 
 ## Demo CLI
 

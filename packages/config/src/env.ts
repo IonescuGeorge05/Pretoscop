@@ -121,6 +121,12 @@ export const EnvSchema = z
     REVALIDATE_TOKEN: z.string().min(16).default(DEV_SECRET),
     HASH_SALT_SECRET: z.string().min(16).default(DEV_SECRET),
 
+    // Price alerts (M19): signs confirmation/unsubscribe links and keys the stable address hash
+    // (suppression list, consent ledger). Never rotate without accepting that both break.
+    ALERTS_SECRET: z.string().min(16).default(DEV_SECRET),
+    // Resend webhook signing secret (`whsec_…`) for bounces and complaints; unset = endpoint off.
+    RESEND_WEBHOOK_SECRET: optionalString,
+
     // Operations alerts (two consecutive source failures, backups, caps)
     OPS_ALERT_TELEGRAM_BOT_TOKEN: optionalString,
     OPS_ALERT_TELEGRAM_CHAT_ID: optionalString,
@@ -163,7 +169,7 @@ export const EnvSchema = z
   })
   .superRefine((env, ctx) => {
     if (env.APP_ENV === 'staging' || env.APP_ENV === 'prod') {
-      for (const key of ['BETTER_AUTH_SECRET', 'REVALIDATE_TOKEN', 'HASH_SALT_SECRET'] as const) {
+      for (const key of ['BETTER_AUTH_SECRET', 'REVALIDATE_TOKEN', 'HASH_SALT_SECRET', 'ALERTS_SECRET'] as const) {
         if (env[key] === DEV_SECRET) {
           ctx.addIssue({ code: 'custom', path: [key], message: `${key} must be set outside dev` });
         }

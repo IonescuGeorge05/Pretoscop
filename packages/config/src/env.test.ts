@@ -25,6 +25,9 @@ describe('getEnv', () => {
 
   it('refuses dev secrets in production', () => {
     expect(() => getEnv({ APP_ENV: 'prod' })).toThrow(/BETTER_AUTH_SECRET must be set/);
+    const others = { BETTER_AUTH_SECRET: 'a'.repeat(32), REVALIDATE_TOKEN: 'b'.repeat(32), HASH_SALT_SECRET: 'c'.repeat(32) };
+    expect(() => getEnv({ APP_ENV: 'prod', ...others })).toThrow(/ALERTS_SECRET must be set/);
+    expect(getEnv({ APP_ENV: 'prod', ...others, ALERTS_SECRET: 'd'.repeat(32) }).RESEND_WEBHOOK_SECRET).toBeUndefined();
   });
 
   it('reports invalid enums readably', () => {

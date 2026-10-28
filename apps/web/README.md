@@ -73,3 +73,24 @@ Local instance: `docker compose -f infra/docker-compose.dev.yml -p pretoscop --p
 CE v3.2.1 with ClickHouse and its own Postgres on http://localhost:8100 (about 2 GB of RAM; not started by `make dev`).
 Register the first account, add the site, then build the web app with the two variables above. When a Content Security
 Policy is added (M16/M18), allow the Plausible origin in `script-src` and `connect-src`.
+
+## Price alerts and accounts (M19)
+
+Behind the flag `alerts.email.enabled` (off by default); with it off the product page keeps the
+"În curând" box and `POST /api/alerts` answers 503.
+
+| Route | What it does |
+|---|---|
+| product page, "Alertă de preț" | `components/alerts/alert-form.tsx`: below a target or any drop of at least 1%, optionally any variant, the unticked consent box with `alertConsent` (current version from `@pretoscop/config/legal-texts`); a plain HTML form without JavaScript |
+| `POST /api/alerts` | validates (`lib/alert-form.ts`, shared with the form), refuses cross-site posts, bodies > 8 KB and the honeypot; 10 requests/hour per daily-salted session; at most 3 confirmation emails per address per day; same answer whether or not the address has an account; logged in with the same verified address → active at once (`confirm_method = 'session'`) |
+| `/alerte/confirmare?a=&t=` + `POST /api/alerts/confirm` | double opt-in: the page only shows the alert and the consent text; the button confirms (mail scanners open links) |
+| `/alerte/dezabonare?a=&t=` / `?u=&t=` + `POST /api/alerts/unsubscribe` | one button, no login; the same URL takes the RFC 8058 one-click POST (`List-Unsubscribe=One-Click`) from mailbox providers; a GET never unsubscribes |
+| `/alerte` | magic-link login (server action, works without JavaScript); list, edit, confirm, delete, stop all; `GET /api/account/export` (JSON); delete the account |
+| `/alerte/rezultat`, `/alerte/pastreaza` | the no-JavaScript result of the form; "keep my account" from the 24-month notice |
+| `POST /api/webhooks/resend` | Svix-signed (RESEND_WEBHOOK_SECRET): complaints and permanent bounces stop the address's email alerts and suppress its hash |
+| `/admin/alerte`, `GET /api/admin/users/{id}/export` | volumes, failures, and data-subject requests (export, delete; audited without the address) |
+
+Evidence: `consent_ip_hash`/`confirm_ip_hash` = `hashWithDailySalt('ip', ip)` (the salt of the
+UTC day of `consent_at`/`confirmed_at`, derived from HASH_SALT_SECRET), so a claimed IP can be
+checked later while the stored value reveals nothing. Links are signed with ALERTS_SECRET
+(`@pretoscop/notify`). E2E: `E2E_SHARED_FIXTURE=0 pnpm exec playwright test e2e/alerts.spec.ts --project=desktop --workers=1`.

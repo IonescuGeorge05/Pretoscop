@@ -8,6 +8,7 @@ import {
   markOffer,
   mergeProducts,
   removeGtin,
+  revertLlmDecision,
   searchProducts,
   setOfferBlacklisted,
   setProductStatus,
@@ -81,6 +82,21 @@ export async function auditMatchAction(form: FormData): Promise<void> {
   else await unlinkOffer(db(), offerId, admin.actor);
   await audit(admin.actor, correct ? 'match.audit_correct' : 'match.audit_wrong', 'offers', offerId, { productId }, { productId: correct ? productId : null });
   if (!correct) await touch([productId]);
+  revalidatePath('/admin/potriviri');
+}
+
+/**
+ * Undo of an LLM decision (M22): the offer goes back to the human review queue and the LLM never
+ * decides it again. Audited like every review action.
+ */
+export async function llmRevertAction(form: FormData): Promise<void> {
+  const admin = await requireAdmin();
+  const offerId = int(form, 'offerId');
+  const res = await revertLlmDecision(db(), offerId, admin.actor);
+  // Already replaced by a later decision (another admin, or the offer changed): nothing to undo.
+  if (!res) return revalidatePath('/admin/potriviri');
+  await audit(admin.actor, 'llm.revert', 'offers', offerId, { productId: res.previousProductId }, { productId: null, matchStatus: 'pending' });
+  await touch([res.previousProductId]);
   revalidatePath('/admin/potriviri');
 }
 

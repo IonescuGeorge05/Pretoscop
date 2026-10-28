@@ -565,3 +565,9 @@ export async function unmappedShopCategories(db: Db, limit: number): Promise<Arr
     GROUP BY s.slug, s.name, o.category_raw ORDER BY count(*) DESC LIMIT ${limit}`);
   return r.rows.map((x) => ({ shopSlug: x.slug, shopName: x.name, path: x.path, offers: Number(x.n), titles: x.titles ?? [] }));
 }
+
+/** Start of the current calendar month in Europe/Bucharest (the LLM budget month), from the database clock. */
+export async function bucharestMonthStart(db: Db): Promise<Date> {
+  const r = await db.execute<{ t: string }>(sql`SELECT (date_trunc('month', now() AT TIME ZONE 'Europe/Bucharest') AT TIME ZONE 'Europe/Bucharest')::text AS t`);
+  return new Date(r.rows[0]!.t);
+}

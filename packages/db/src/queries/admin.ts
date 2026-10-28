@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm';
 import type { Db } from '../client';
+import { llmOpinions, type LlmOpinion } from './llm';
 import { asciiTitle, decideManually, slugPart } from './matching';
 
 /**
@@ -19,6 +20,8 @@ export interface ReviewCandidate {
   via: string | null;
   offerCount: number;
   minTotal: string | null;
+  /** The LLM's answer for this pair (M22), when it was asked. */
+  llm: LlmOpinion | null;
 }
 
 export interface ReviewItem {
@@ -83,6 +86,7 @@ export async function reviewQueue(db: Db, limit = 50, opts: { q?: string } = {})
         FROM match_candidates mc JOIN products p ON p.id = mc.product_id
         WHERE mc.offer_id = ANY(${sql.param(ids)}::bigint[]) ORDER BY mc.score DESC`)
     : { rows: [] };
+  const opinions = await llmOpinions(db, ids);
   const byOffer = new Map<number, ReviewCandidate[]>();
   for (const c of cands.rows) {
     const list = byOffer.get(Number(c.offer_id)) ?? [];
@@ -97,6 +101,7 @@ export async function reviewQueue(db: Db, limit = 50, opts: { q?: string } = {})
       via: c.features?.via ?? null,
       offerCount: c.offer_count,
       minTotal: c.min_total,
+      llm: opinions.get(`${c.offer_id}:${c.product_id}`) ?? null,
     });
     byOffer.set(Number(c.offer_id), list);
   }

@@ -67,3 +67,19 @@ still clear the accept bar against it), so re-matching never duplicates a produc
 price events are never touched; an offer updated by the recorder meanwhile is skipped (`raced`).
 It prints a before/after summary; run `--dry-run` first, then `match:run` (or wait for
 `match.pending`) to re-match the re-queued offers.
+
+## Operations (M18)
+
+- HTTP on `METRICS_PORT` (9464, never published): `GET /health` → 200 when the database answers
+  (503 otherwise; Docker health check), `GET /metrics` → Prometheus text (`src/ops/metrics.ts`:
+  source freshness vs SLO, failures, runs, offer freshness, events/24 h, queues, review queue, last
+  success of scheduled jobs, WAL archiving, database size, disk, process).
+- `ops.heartbeat` (every 5 min) pings `OPS_HEARTBEAT_URL`; `backup.nightly` pings `DUMP_HEARTBEAT_URL`
+  (`/fail` on failure). A missing ping is what alerts (Better Stack).
+- `ops.slo_check` (hourly) evaluates the SLOs of `docs/03-architecture.md` §9 (`src/ops/slo.ts`) and
+  sends deduplicated `ops.alert` jobs (pg-boss throttling per key: once a day for most problems).
+- `ops.alert` delivers through Telegram (`OPS_ALERT_TELEGRAM_*`) and email (`OPS_ALERT_EMAIL`), and
+  always logs; `pnpm ops:alert-test` sends a test alert.
+- Page caches: `WEB_INTERNAL_URL` may list several web replicas; every replica gets each revalidation.
+- The image (`infra/docker/worker.Dockerfile`) runs `node --import tsx src/index.ts` as the `node`
+  user under tini (`init: true`); the same image runs the one-shot `migrate` service.

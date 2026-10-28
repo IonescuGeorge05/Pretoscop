@@ -4,7 +4,7 @@ import { normalizeOffer } from '@pretoscop/core';
 import { contentHash } from '@pretoscop/core/hash';
 import { type Db, latestFxRate } from '@pretoscop/db';
 import { createFetcher, createGuardedDispatcher } from '@pretoscop/fetch';
-import { createMailer } from '@pretoscop/mailer';
+import { createMailer, type Mailer } from '@pretoscop/mailer';
 import { alertLinks } from '@pretoscop/notify';
 import { createBlobStore } from '@pretoscop/storage';
 import { createEmailSender, createNotifier, operatorFromEnv } from './alerts/notifier';
@@ -81,6 +81,17 @@ export function createNormalize(eurRonRate: () => number | null): NormalizeFn {
   };
 }
 
+/** Mailer for ops alerts by email (OPS_ALERT_EMAIL); none when unset or misconfigured. */
+function opsMailer(env: Env, log: Logger): Mailer | undefined {
+  if (!env.OPS_ALERT_EMAIL) return undefined;
+  try {
+    return createMailer(env, log);
+  } catch (err) {
+    log.error({ err }, 'ops alert email disabled: mailer misconfigured');
+    return undefined;
+  }
+}
+
 /** Price-alert channels (M19 email; M27 adds push and Telegram), links and sender identity. */
 export function createAlertServices(env: Env, db: Db, log: Logger): AlertServices {
   const mailer = createMailer(env, log);
@@ -127,8 +138,9 @@ export function createServices(env: Env, db: Db, log: Logger): Services & { clos
       refreshEur();
       return eur.rate;
     }),
-    alert: createOpsAlert(env, log),
+    alert: createOpsAlert(env, log, opsMailer(env, log)),
     revalidate: createRevalidator(env, log),
+    startedAt: new Date(),
     alerts: createAlertServices(env, db, log),
     async close() {
       await requestLog.flush();

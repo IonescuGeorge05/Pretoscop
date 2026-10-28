@@ -137,9 +137,12 @@ export async function computeProductStats(db: Db, productIds: number[] | null, t
         drop_pct_7d = EXCLUDED.drop_pct_7d, verdict = EXCLUDED.verdict, observations_days = EXCLUDED.observations_days,
         history_started_at = EXCLUDED.history_started_at, updated_at = now()
     `);
+    // A product the matcher made from one offer stops being provisional once it has two live offers
+    // (M07: "provisional until ≥ 2 offers, Icecat specs or a human check"); it never goes back.
     await db.execute(sql`
       UPDATE products SET offer_count = ${Number(r.offer_count)}, min_price = ${r.cur_price}, min_total_price = ${r.cur_total},
-        min_shop_id = ${r.cur_shop ? Number(r.cur_shop) : null}, updated_at = now()
+        min_shop_id = ${r.cur_shop ? Number(r.cur_shop) : null},
+        provisional = provisional AND ${Number(r.offer_count)} < 2, updated_at = now()
       WHERE id = ${Number(r.product_id)}
     `);
     n++;

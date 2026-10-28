@@ -42,6 +42,11 @@ Code: `src/matching.ts` (pure scoring and routing), `src/taxonomy.ts` (categoriz
 | brand + regional MPN variant | 0.90 + 0.08 × title similarity (≤ 0.99) |
 | title only | 0.55 × token Jaccard + 0.30 × model-token overlap + 0.15 brand bonus, capped at **0.96** |
 
+"Guessed" MPNs (`mpn_source = 'title'`) are title codes and eMAG URL slug tails: the slug tail is
+stated nowhere and is as often a marketplace seller's SKU as a manufacturer code, so it never
+counts as a product field (M06, `RawOffer.mpnHint`). Offers recorded before that rule are fixed by
+`pnpm --filter @pretoscop/worker renormalize`.
+
 ## Decision table
 
 | Situation | Decision | Offer status |

@@ -127,6 +127,7 @@ KNOWN_FAKE_GTINS: Record<shopSlug | '*', string[]>
 normalizeMpn(raw): string | null
 extractMpnCandidates(title, { brand?, productCode? }): { raw; norm; score; source: 'title' | 'product_code' }[]
 isSpecToken(token): boolean             // "67INCH", "175X75CM", "CORTEX-A35", "RK3326": never an MPN
+mpnHintOf(raw): string | null           // a URL hint's MPN, or null when it cannot be one (ASIN, words…)
 
 detectBrand(title, brandField?, categoryHint?):
   { name; slug; confidence; via: 'field' | 'title' | 'alias' | 'product_line'; known: boolean;
@@ -186,8 +187,10 @@ affiliateUrl, observedAt`; money `priceBani` (non-null when accepted), `oldPrice
 `shippingEstimated`, `shippingBasis`, `shopLowest30dBani`, `currency` (observed), `fxRate`,
 `vatGrossedUp`, `priceIsFrom`; identifiers `gtin14` (valid only), `gtinQuality`, `gtinReason`,
 `gtinAlternates`, `gtinRaw`, `brandName`, `brandSlug`, `brandConfidence`, `brandVia`, `brandKnown`,
-`brandGuess` (how an unknown title brand was read, else null), `brandRaw`, `mpnNorm`, `mpnRaw`,
-`mpnSource`, `mpnCandidates`; `attributes`, `productKind`,
+`brandGuess` (how an unknown title brand was read, else null), `brandRaw`, `mpnNorm`, `mpnRaw`
+(the shop's MPN field as seen, never the URL hint), `mpnSource` (`field` | `title`: stated or
+guessed), `mpnOrigin` (`field` | `title` | `url`), `mpnHint` (plausible URL hint, normalized),
+`mpnCandidates`; `attributes`, `productKind`,
 `condition`, `conditionDetail`, `conditionReason`, `isBundle`, `bundleKind`, `bundleReason`,
 `isAccessory`, `accessoryReason`, `availability`; titles `titleRaw`, `titleClean`, `titleAscii`,
 `titleMatch`; `categoryRaw`, `sellerName`, `isMarketplaceSeller`; `contentHash` (non-null when
@@ -195,7 +198,8 @@ accepted).
 
 Warnings include `brand_unknown` (no dictionary brand: an unknown field or a guessed title brand),
 `brand_conflict`, `mpn_looks_like_gtin`, `mpn_looks_like_spec` (an MPN field such as "67INCH" or
-"CORTEXA35" is ignored and the title is used), `gtin_<quality>`, `price_<flag>`, `vat_conflict`,
+"CORTEXA35" is ignored and the title is used), `mpn_from_url`, `mpn_from_url_confirmed_by_title`,
+`mpn_url_hint_rejected`, `gtin_<quality>`, `price_<flag>`, `vat_conflict`,
 `old_price_not_higher`, `old_price_implausible`, `<amount>_unparseable`.
 
 ## Rules in plain English
@@ -385,7 +389,17 @@ Order: missing → malformed → placeholder → check digit → restricted rang
   valid GTIN is ignored (warning `mpn_looks_like_gtin`), and so is one that is a spec or a chip
   (`isSpecToken`: "67INCH", "175X75CM", "CORTEXA35", "RK3326"; warning `mpn_looks_like_spec`);
   otherwise the best title code (`mpnSource: 'title'`). Codes written with spaces ("FFB 8458 BV
-  EE") are not recovered.
+  EE") are not recovered from titles.
+- **URL hints** (`raw.mpnHint`, e.g. eMAG's slug tail): never stated by the shop and as often a
+  marketplace seller's SKU or an Amazon ASIN as a manufacturer code, so they are a last resort and
+  always a guess (`mpnSource: 'title'`, `mpnOrigin: 'url'`, warning `mpn_from_url`). `mpnHintOf`
+  drops hints that cannot be part numbers: placeholders, fewer than 5 or more than 16 characters,
+  digits or letters only, spec and chip tokens, ASINs (`B0` + 8), codes containing product or
+  colour words ("CONSOLA620JOCURI", "ERIKROB9GREY"; warning `mpn_url_hint_rejected`). A stated
+  MPN always wins; a title code wins too ("NH.QSGEX.00H" over the seller SKU "KXG0214352"),
+  unless the hint contains and extends it ("43U8072H" in the title, "UE43U8072HUXXH" in the slug:
+  the hint is kept, warning `mpn_from_url_confirmed_by_title`). `mpnOrigin` says where the MPN
+  came from (`field`, `title`, `url`); `mpnHint` keeps the plausible hint even when unused.
 
 ### Product kind
 

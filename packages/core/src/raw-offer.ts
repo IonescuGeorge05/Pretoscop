@@ -31,7 +31,15 @@ export interface RawOffer {
   /** Raw condition: schema.org URL, "resigilat", "refurbished", "Grad A"... */
   condition?: string;
   gtin?: string;
+  /** Manufacturer part number stated by the shop (structured data, feed column). */
   mpn?: string;
+  /**
+   * A part number guessed from the product URL, not stated by the shop (eMAG slugs end with one):
+   * as often a seller SKU or an Amazon ASIN as a manufacturer code. Low trust: `normalizeOffer`
+   * uses it only when neither `mpn` nor the title yields a code, and reports it as a guess
+   * (`mpnSource: 'title'`, `mpnOrigin: 'url'`).
+   */
+  mpnHint?: string;
   brand?: string;
   /** Raw category or breadcrumb path, e.g. "Telefoane mobile > Smartphone". */
   category?: string;

@@ -53,7 +53,7 @@ test('click-out logs a hashed click and redirects to the shop', async ({ request
   const forit = f.offers.forit!;
   const res = await request.get(`/out/${forit.offerId}?p=offers_table`, { maxRedirects: 0 });
   expect(res.status()).toBe(302);
-  expect(res.headers().location).toBe('https://example.com/e2e/forit');
+  expect(res.headers().location).toBe('https://www.forit.ro/e2e-fixture/forit');
   expect(res.headers()['x-robots-tag']).toContain('noindex');
   const clicks = fixtureCli('clicks') as Array<{ offerId: number; placement: string | null; ipHash: string | null }>;
   const last = clicks.at(-1);

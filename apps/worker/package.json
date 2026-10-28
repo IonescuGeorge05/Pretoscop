@@ -26,7 +26,9 @@
     "icecat:lookup": "tsx src/cli/icecat-lookup.ts",
     "icecat:coverage": "tsx src/cli/icecat-coverage.ts",
     "icecat:sync": "tsx src/cli/icecat-sync.ts",
-    "icecat:demo": "tsx src/cli/icecat-demo.ts"
+    "icecat:demo": "tsx src/cli/icecat-demo.ts",
+    "renormalize": "tsx src/cli/renormalize.ts",
+    "commissions:import": "tsx src/cli/commissions-import.ts"
   },
   "devDependencies": {
     "pino-pretty": "^13.2.0"

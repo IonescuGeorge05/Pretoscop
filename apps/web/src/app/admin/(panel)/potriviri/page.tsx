@@ -7,8 +7,9 @@ import { ReviewQueue } from './review-queue';
 
 export const dynamic = 'force-dynamic';
 
-export default async function MatchesPage() {
-  const [queue, sample, metrics] = await Promise.all([reviewQueue(db(), 50), autoMatchSample(db(), 10), matchMetrics(db(), 7)]);
+export default async function MatchesPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+  const { q = '' } = await searchParams;
+  const [queue, sample, metrics] = await Promise.all([reviewQueue(db(), 50, { q }), autoMatchSample(db(), 10), matchMetrics(db(), 7)]);
   const bySource = new Map<string, Record<string, number>>();
   for (const m of metrics) bySource.set(m.source, { ...(bySource.get(m.source) ?? {}), [m.decision]: m.n });
   return (
@@ -18,6 +19,10 @@ export default async function MatchesPage() {
         Oferte din zona gri a potrivirii automate ({queue.total} în total), ordonate după trafic estimat × incertitudine. Fiecare decizie devine un
         alias fix: re-potrivirea nu o mai schimbă până când identitatea ofertei se schimbă.
       </p>
+      <form className="mb-3 flex items-center gap-2 text-sm">
+        <input name="q" defaultValue={q} placeholder="Filtrează după titlu" aria-label="Filtrează coada după titlu" className="w-72 max-w-full rounded border border-line px-2 py-1.5" />
+        <button className="rounded bg-surface px-3 py-1.5 ring-1 ring-line">Filtrează</button>
+      </form>
       <Section title={`Coada de verificare (${queue.items.length} din ${queue.total})`}>
         <div className="p-3">
           <ReviewQueue items={queue.items} />

@@ -66,9 +66,10 @@ const SPEC_PATTERNS: readonly RegExp[] = [
   /^mali-?g\d+(?:-?mp\d+)?$/,
   /^[2-6]g$/,
   /^(?:wi-?fi|wifi)\d*e?$/,
+  /^802\.?11[a-z]{1,2}$/,
   /^usb(?:-?[abc]|\d(?:\.\d)?)?$/,
   /^type-?c$/,
-  /^(?:lp)?g?ddr\d+[lx]?x?$/,
+  /^(?:lp)?g?ddr\d+[lx]?x?(?:-?sdram)?$/,
   /^pcie?\d*(?:\.\d)?$/,
   /^m\.?2$/,
   /^hdmi\d*(?:\.\d+)?$/,
@@ -87,9 +88,9 @@ const SPEC_PATTERNS: readonly RegExp[] = [
   /^\d+(?:\.\d)?k$/,
   /^\d{3,4}p$/,
   /^x\d{2,3}$/,
-  // CPUs: i5-13420H, i3-N305, 8645HS, 275HX, 9800X3D, 265K, 125U
+  // CPUs: i5-13420H, i3-N305, 8645HS, 275HX, 9800X3D, 265K, 125U, Pentium Gold 6500Y
   /^(?:i[3579]|core)-?n?\d{3,5}[a-z]{0,3}$/,
-  /^\d{3,5}(?:h|hs|hx|u|p|k|kf|ks|f|t|g\d|x|x3d|xt|xtx|ti|s|v|ge|hk|m|c)$/,
+  /^\d{3,5}(?:h|hs|hx|u|p|k|kf|ks|f|t|g\d|x|x3d|xt|xtx|ti|s|v|ge|hk|m|c|y)$/,
   // Intel N and Celeron J: N95, N150, N5095, J4105
   /^[jn]\d{2,4}[a-z]?$/,
   // GPUs: RTX4070, RX7600, 4070Ti
@@ -153,8 +154,10 @@ const SERIES_WORDS = new Set([
  * All-caps codes such as "FTXF35E" stay candidates.
  */
 function isModelName(token: string): boolean {
-  // A series letter, a number and an edition: X12plus, R36TMAX, G5pro.
-  if (/^[a-z]{1,2}\d{1,3}[a-z]?(?:plus|pro|max|lite|mini|ultra)$/i.test(token)) return true;
+  // A series letter, a number and an edition: X12plus, X12-plus, R36TMAX, G5pro.
+  if (/^[a-z]{1,2}\d{1,3}[a-z]?(?:plus|pro|max|lite|mini|ultra)$/i.test(token.replace(/-/g, ''))) {
+    return true;
+  }
   const m = /^([A-Za-z]{3,})(\d{1,2})([A-Za-z]?)$/.exec(token);
   if (!m) return false;
   const letters = m[1] ?? '';
@@ -174,6 +177,32 @@ export function isSpecToken(token: string | null | undefined): boolean {
   const lower = asciiFold(normalizeText(token)).toLowerCase();
   if (lower === '') return false;
   return isSpec(lower) || isSpec(lower.replace(/[^a-z0-9.,]/g, ''));
+}
+
+/** Amazon Standard Identification Number: B0 + 8 letters/digits (B0BHPQ5MSM). */
+const ASIN_RE = /^B0[A-Z0-9]{8}$/;
+
+/**
+ * Words that never occur in manufacturer part numbers but do in sellers' SKUs and slug leftovers
+ * ("CONSOLA620JOCURI", "ERIKROB9GREY"): product nouns and colour names (Romanian and English).
+ */
+const NON_PART_WORDS =
+  /CONSOL[AE]|JOCURI|JOCUL|GAMES|TELEFON|PHONE|LAPTOP|NOTEBOOK|TABLETA|TELEVIZOR|NEGRU|NEAGRA|ALBASTRU|ARGINTIU|AURIU|GALBEN|VERDE|ROSU|BLACK|WHITE|SILVER|GREY|GRAY|GREEN|PURPLE|YELLOW|ORANGE|PINK|BUNDLE|EDITION|CADOU/;
+
+/**
+ * The normalized part number of a low-trust hint (a URL slug tail), or null when it cannot be a
+ * manufacturer code: a placeholder, shorter than 5 or longer than 16 characters, a spec or chip
+ * token (`isSpecToken`), an Amazon ASIN, digits only, letters only, or a code containing product
+ * or colour words (sellers' SKUs such as "CONSOLA620JOCURI", "ERIKROB9GREY"). Plausible hints may
+ * still be seller SKUs ("KXG0214352"): callers treat them as guesses.
+ */
+export function mpnHintOf(raw: string | null | undefined): string | null {
+  const norm = normalizeMpn(raw);
+  // Manufacturer codes are 5–16 characters (UE43U8072HUXXH is 14); longer tails are sellers' ids.
+  if (norm === null || norm.length < 5 || norm.length > 16) return null;
+  if (!/[A-Z]/.test(norm) || !/\d/.test(norm)) return null;
+  if (isSpecToken(raw) || ASIN_RE.test(norm) || NON_PART_WORDS.test(norm)) return null;
+  return norm;
 }
 
 /** Words after which a token names a processor or graphics part ("Celeron J4105", "Atom A3950"). */
@@ -284,7 +313,9 @@ export function extractMpnCandidates(
   tokens.forEach((t, i) => {
     const token = t.replace(/^[^A-Za-z0-9]+|[^A-Za-z0-9]+$/g, '');
     if (CHIP_CONTEXT.has(asciiFold(tokens[i - 1] ?? '').toLowerCase())) return;
-    if (token !== '' && plausibleToken(token)) push(token, 'title');
+    // "WIFI6.Windows 11": two words glued by a missing space, not a dotted code ("NH.QSGEX.00H").
+    const parts = /\.(?:windows|android|linux|win\d+)\b/i.test(token) ? token.split('.') : [token];
+    for (const part of parts) if (part !== '' && plausibleToken(part)) push(part, 'title');
   });
   const code = options.productCode?.trim();
   if (code && plausibleToken(code)) push(code, 'product_code');

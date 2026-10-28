@@ -64,7 +64,7 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 |---|---|---|---|---|---|
 | M19 | Accounts and price alerts | review | `mod/M19-alerts` (merged into `daniel`) | | Independently reviewed; all high/medium findings fixed; flag `alerts.email.enabled` off until B2/B4/B5 |
 | M20 | Merchant self-serve feed portal (free listing) | review | `mod/M20-merchants` (merged into `daniel`) | | Independently reviewed; all high/medium findings fixed; migration 0015_merchants; `merchants.portal.enabled` off until B5 and the founders open it |
-| M21 | Bot legitimacy program and source adapters batch 2 | in progress | `mod/M21-bot-legitimacy` (WIP) | | Stopped mid-work for the machine move |
+| M21 | Bot legitimacy program and source adapters batch 2 | review | `mod/M21-bot-legitimacy` (merged into `daniel`) | | Signing, canary and probes all off by default; reviewed independently; migrations 0017/0018; needs A4, C2, C3 |
 | M22 | LLM-assisted matching and attribute extraction | todo | `mod/M22-llm-matching` (empty) | | Brief in docs/HANDOFF.md §7 |
 | M23 | Black Friday / fake-discount report tooling | review | `mod/M23-reports` (merged locally into `daniel`) | | Generator deterministic, reconciled with SQL; BF 2026 page waits for approved data |
 
@@ -626,3 +626,50 @@ Founder checklist: `scripts/verify/M05B.checklist.md`.
 Human tasks needed: A10 (Zyte account with a spend limit; check one real answer on toscrape.com; the written legal opinion naming the vendor and the shops); to record fixtures, a founder sets one shop to `status: active`, `access_mode: assisted` with a `legal.basis_ref` and one on-demand source.
 Risks / open questions: vendor answer shapes and prices are synthetic until the first real call; the cel.ro challenge markers come from research notes, not a recorded page; the path deny-list fails safe (may refuse a legitimate page whose path segment is a word such as `cont`); auto-pause needs ≥ 20 assisted requests a day for 7 days; the prototype's legal clearance needs written re-confirmation before Gate G2 (docs/12 §0).
 Next module: the founders' A10, then per-shop activation.
+
+### M21 — Bot legitimacy program and source adapters batch 2 — 2026-10-28
+(Built by a delegated Opus agent on top of M20 before the machine move and stopped mid-work; finished by a second Opus agent, which had it independently reviewed; merged and re-verified by the lead.)
+Scope delivered:
+- **Web Bot Auth signing.**
+  - `packages/fetch/src/signing.ts` signs every direct hop per draft-ietf-webbotauth-httpsig-protocol-00 (September 2026): Ed25519, 60 s validity, a fresh nonce, `Signature-Agent` covered by the signature. The assisted channel is never signed.
+  - **Off unless `WEB_BOT_AUTH=1`.** Production refuses to start with signing on but no key, a malformed key, a non-https `BOT_INFO_URL`, or the public RFC 9421 test key.
+  - `bot-auth:keygen` generates the key; the verify checks git for any committed key.
+  - The key directory `/.well-known/http-message-signatures-directory` exposes public members only, with Content-Digest and a proof signature.
+  - Test vectors (RFC 9421 B.2.6, the draft's E.2.1–E.2.3) reproduce byte for byte.
+- **`/bot` page.**
+  - It follows the agreed draft: purpose, user-agents, IPs from `BOT_EGRESS_IPS`, reverse DNS `crawl-N.bot.pretoscop.ro`, signature status, rate and back-off rules, what we store, how to block, slow us or send a feed, the anti-bot services, and a changelog.
+  - It describes PretoscopBot only and links to the methodology for other sources. It is rendered per request, so the IP list and key status are live.
+  - `/bot/ips.json` uses googlebot.json's format. `bot:check` verifies FCrDNS, `ips.json` and the key directory against our own site.
+- **Weekly extractor canary** (migration `0017_extractor_canaries`): behind flag `extractors.canary.enabled`, **off**, plus `CRAWL_ENABLED`, kill switches, `crawl.enabled` and eMAG's ADR-013 flag. It runs through the shared polite fetcher, with drift alerts and an alert when the canary itself triggers a block.
+- **`shops:probe`:**
+  - Behind flag `shops.probe.enabled`, **off**, plus the crawl gates.
+  - It refuses removed, paused, fully kill-switched and feed-only shops, and shops whose last outreach was declined (the independent review's high finding).
+  - At most 3 requests including robots.txt and redirects, enforced in the transport (`CappedDispatcher`); ≥ 5 s spacing on the shared host slots; no retries.
+  - Pauses are shared with the recorder; every run is audited.
+- **Admin `/admin/contactari`** (migration `0018_outreach`):
+  - The retailer outreach tracker accepts business channels only, with audit rows that never store the contact or the answer text.
+  - The assisted-access exit tracker shows, per assisted shop, the 30-day success rate, this month's vendor cost, whether a replacement feed is live, and the latest outreach.
+- **Docs:** application dossiers and runbooks in `infra/bot-program/`; outreach templates (a stop request ends every collection channel); ADR-023; RoPA P12.
+Out of scope / deferred:
+- The manual-observation admin tool, which needs a founder decision on its label and on whether manual prices enter ranking, verdicts and history.
+- Awin/CJ/Tradedoubler feed mappers (accounts and real sample feeds needed, C4).
+- Adapters for shops that open up (none yet; C2/C3).
+- The optional `crawler-ro` node.
+- Key-rotation overlap (documented, not built).
+Deviations from plan:
+- Signing follows the newer working-group draft.
+- `shops:probe` needs the database (gates, shared pauses, audit); probe outcomes are kept in the YAML registry plus `audit_log`.
+- eMAG probes are gated by `source.emag.enabled`.
+- `@pretoscop/fetch` is now a web dependency; `packages/fetch` gains `request_cap` and `CappedDispatcher`.
+Verification:
+- `make verify M=21` on `daniel`: services; migrated (flags absent, so off); lint/typecheck/tests green (fetch 318, worker 138, web 94, db 87, config 54); keygen fine and no key in git; `shops:probe` refused with `CRAWL_ENABLED=false` (exit 2); production build; `ips.json` and the signed key directory check out with signing off; Playwright 4/4; clean.
+- Full suite on `daniel`: 42/42 tasks. No live request to any shop was made.
+Founder checklist: `scripts/verify/M21.checklist.md` (11 steps, including optional live probes only by a founder's decision).
+Human tasks needed: A4 (fixed egress IPs with PTR and A records); C2 (Cloudflare Verified Bots, Akamai, DataDome, Fastly applications, submitted by a founder; nothing has been submitted); C3 (outreach emails until ≥ 8 shops are contacted); C4 (affiliate network accounts); A1/B4 (domain, SRL details on `/bot` and in the dossiers); the production signing key once A1 exists.
+Risks / open questions:
+- The Web Bot Auth draft may change again; it is pinned in one place, with test vectors.
+- Signatures cover only the host, so a captured header can be replayed on the same site for up to 60 s.
+- `WEB_BOT_AUTH` must be set the same way on web and worker.
+- The canary uses up to 5 of each shop's daily requests on Mondays.
+- `legal.spec.ts` and `merchant.spec.ts` fall back to the main database when `DATABASE_URL` is not exported.
+Next module: M22, M27.

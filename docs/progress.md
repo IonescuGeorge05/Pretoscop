@@ -4,6 +4,10 @@ Single page the founders read to supervise the build. The implementing agent upd
 
 Last updated: 2026-10-27 (autonomous build session started; see "Build session mode" below).
 
+## Build session paused (28 Oct 2026, machine move)
+
+All work stopped on 28 Oct 2026 to move to a new machine. Start with `docs/HANDOFF.md`: what to copy, setup, the state of every branch, the merge order for migrations and the open decisions.
+
 ## Build session mode (2026-10-27)
 
 Daniel asked the implementing agent to build the whole plan while the founders are away. His instructions for this session: one local branch `mod/MXX-*` per module, merged into `daniel` with `--no-ff` once `make verify M=XX` passes; nothing is pushed to GitHub; phase gates are marked **awaiting founder approval** and the build continues; no external credentials yet, so every integration runs against a local stand-in (filesystem blob store for R2, Mailpit for email, recorded responses for vendors); live, polite crawling from Daniel's Mac is allowed and the recorder is left running. Every module below in status `review` still needs the founders' 5-minute check.
@@ -18,7 +22,7 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 | M03 | Extractors: structured data and feed mappers | review | `mod/M03-extractors` (merged locally into `daniel`) | | eMAG listing/product, JSON-LD/microdata/OG, 5 feed mappers, sitemaps |
 | M04 | Shop registry and configuration | review | `mod/M04-registry` (merged locally into `daniel`) | | 28 shops, 49 sources (eMAG 43 listings + Tier A), idempotent sync |
 | M05 | Phase-0 price recorder (eMAG listings + first feeds) | review | chain `mod/M13-product-page` (from `mod/M05-recorder`) | | Live since 27 Oct: 960 eMAG offers; eMAG product pages answered with a CAPTCHA → Tier A off (decision needed) |
-| M05B | Assisted-access channel for blocked shops (prototype) | todo | | | decided 2026-10-27 after legal advice; file the written opinion and open the vendor account (A10) |
+| M05B | Assisted-access channel for blocked shops (prototype) | in progress | `mod/M05B-assisted` (unmerged) | | Implemented by an agent, verify script present, not yet reviewed; decided 2026-10-27 after legal advice; file the written opinion and open the vendor account (A10) |
 
 **Gate G0** — recorder runs daily on ≥5,000 products from ≥2 shops; raw snapshots in R2; backups on. Target: assisted channel live for ≥3 of the 5 designated shops at ≥90% success within the cap. Approved: ☐ date: ____
 
@@ -41,11 +45,11 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 |---|---|---|---|---|---|
 | M12 | Web foundation (Next.js app, design system, layout) | review | `mod/M12-web-foundation` (merged locally into `daniel`) | | Lighthouse mobile 98/95, desktop 100/100 |
 | M13 | Product page, history API, click-out | review | chain `mod/M13-product-page` | | Cached TTFB p95 13 ms; worker → web revalidation |
-| M14 | Search, category, brand and shop pages | todo | | | |
-| M15 | Deals page and discount verdict UI | todo | | | |
-| M16 | SEO: structured data, sitemaps, performance | todo | | | |
+| M14 | Search, category, brand and shop pages | in progress | `mod/M14-search` (unmerged) | | Implemented by an agent, verify script present, not yet reviewed |
+| M15 | Deals page and discount verdict UI | in progress | `mod/M15-deals` (unmerged) | | Implemented by an agent, not yet reviewed |
+| M16 | SEO: structured data, sitemaps, performance | in progress | `mod/M16-seo` (WIP) | | Stopped mid-work for the machine move |
 | M17 | Legal and trust pages, consent, analytics, bot page | review | `mod/M17-legal` (merged into the chain) | | Lawyer review pending (B5) |
-| M18 | Production deployment, backups, monitoring, staging | todo | | | |
+| M18 | Production deployment, backups, monitoring, staging | in progress | `mod/M18-deploy` (unmerged) | | Implemented by an agent; PITR rehearsal was running when stopped |
 
 **Gate G2** — staging reviewed by founders; launch checklist complete (`04-plan-normal.md` §9); SRL exists; lawyer review done. Launch date: ____ ANCOM DSA notification due: launch + 45 days.
 
@@ -53,10 +57,10 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 
 | Module | Name | Status | Branch / PR | Verified by founder | Notes |
 |---|---|---|---|---|---|
-| M19 | Accounts and price alerts | todo | | | |
-| M20 | Merchant self-serve feed portal (free listing) | todo | | | |
-| M21 | Bot legitimacy program and source adapters batch 2 | todo | | | |
-| M22 | LLM-assisted matching and attribute extraction | todo | | | |
+| M19 | Accounts and price alerts | in progress | `mod/M19-alerts` (unmerged) | | Implemented by an agent; merge first (migration 0014_alerts) |
+| M20 | Merchant self-serve feed portal (free listing) | in progress | `mod/M20-merchants` (unmerged) | | Implemented by an agent; regenerate its migration when merging |
+| M21 | Bot legitimacy program and source adapters batch 2 | in progress | `mod/M21-bot-legitimacy` (WIP) | | Stopped mid-work for the machine move |
+| M22 | LLM-assisted matching and attribute extraction | todo | `mod/M22-llm-matching` (empty) | | Brief in docs/HANDOFF.md §7 |
 | M23 | Black Friday / fake-discount report tooling | review | `mod/M23-reports` (merged locally into `daniel`) | | Generator deterministic, reconciled with SQL; BF 2026 page waits for approved data |
 
 **Gate G3** — alerts live with double opt-in; ≥10 merchants onboarded; Verified Bots application submitted. Approved: ☐ date: ____
@@ -65,10 +69,10 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 
 | Module | Name | Status | Branch / PR | Verified by founder | Notes |
 |---|---|---|---|---|---|
-| M24 | Affiliate operations (program sync, links, commissions, revenue dashboard) | todo | | | |
+| M24 | Affiliate operations (program sync, links, commissions, revenue dashboard) | in progress | `mod/M24-affiliate` (complete, unmerged) | | Merge after M19/M27/M20/M21 (migration 0014_commissions to regenerate) |
 | M25 | Promoted placements and merchant billing; optional ad slots | todo | | | |
 | M26 | Browser extension (MV3) | todo | | | |
-| M27 | Telegram bot and web push | todo | | | |
+| M27 | Telegram bot and web push | in progress | `mod/M27-telegram-push` (WIP) | | Stopped mid-work for the machine move |
 | M28 | B2B price intelligence MVP | todo | | | |
 | M29 | Category expansion playbook and CSS enrolment readiness | todo | | | |
 

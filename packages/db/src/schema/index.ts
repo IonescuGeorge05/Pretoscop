@@ -12,3 +12,4 @@ export * from './contact';
 export * from './clicks';
 export * from './merchants';
 export * from './canaries';
+export * from './outreach';

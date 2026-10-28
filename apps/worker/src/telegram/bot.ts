@@ -7,6 +7,7 @@ import {
   createAlert,
   deleteAlert,
   isFlagEnabled,
+  reactivateTelegramLink,
   searchProductsForBot,
   sql,
   telegramLinkByChat,
@@ -172,6 +173,13 @@ async function onCommand(deps: BotDeps, chatId: number, text: string): Promise<v
       chatId,
       `Gata, contul tău Pretoscop este conectat. Îți trimit aici alertele de preț pe care le alegi pe Telegram.\nDacă nu tu ai cerut conectarea, trimite /oprire.\n\n${HELP}`,
     );
+    return;
+  }
+  if (cmd === '/start' && link?.status === 'blocked') {
+    // Unblocked and started again: the same chat, the same consent; the paused alerts resume.
+    await reactivateTelegramLink(deps.db, link.userId);
+    await touchUserActivity(deps.db, link.userId);
+    await reply(deps, chatId, `Bine ai revenit! Îți trimit din nou aici alertele de preț de pe Telegram.\n\n${HELP}`);
     return;
   }
   if (cmd === '/start' || cmd === '/ajutor' || cmd === '/help') {

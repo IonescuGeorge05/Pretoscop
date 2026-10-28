@@ -218,6 +218,14 @@ describe('Telegram bot', () => {
     expect((await telegramLinkByUser(t.db, u.id))?.status).toBe('blocked');
     const a = await t.db.execute<{ status: string; paused_reason: string }>(sql`SELECT status, paused_reason FROM alerts WHERE user_id = ${u.id}`);
     expect(a.rows[0]).toEqual({ status: 'paused', paused_reason: 'channel_unavailable' });
+
+    // Unblocked and /start again in the same chat: the link and its alerts work again.
+    tgMock.blocked.delete(chat);
+    await say(chat, '/start');
+    expect(lastTo(chat)?.text).toContain('Bine ai revenit');
+    expect((await telegramLinkByUser(t.db, u.id))?.status).toBe('active');
+    const b = await t.db.execute<{ status: string; paused_reason: string | null }>(sql`SELECT status, paused_reason FROM alerts WHERE user_id = ${u.id}`);
+    expect(b.rows[0]).toEqual({ status: 'active', paused_reason: null });
   });
 
   it('push and Telegram wait for the morning; email does not', async () => {

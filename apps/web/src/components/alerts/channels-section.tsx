@@ -77,7 +77,7 @@ export function ChannelsSection({
           <div className="space-y-2 text-sm text-ink-soft">
             <p>
               Conectat din {formatDateTime(ch.telegram.linkedAt)}.
-              {ch.telegram.status === 'blocked' && ' Ai blocat robotul în Telegram: deblochează-l și conectează-te din nou ca să primești alertele.'}
+              {ch.telegram.status === 'blocked' && ' Ai blocat robotul în Telegram: deblochează-l și trimite-i /start ca să primești din nou alertele.'}
               {!ch.telegramBot && ' Alertele pe Telegram sunt oprite deocamdată; nu îți trimitem nimic acolo.'}
             </p>
             <form action={unlinkTelegramAction}>

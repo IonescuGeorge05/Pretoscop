@@ -280,6 +280,19 @@ export async function markTelegramBlocked(db: Db, userId: string, error: string)
   });
 }
 
+/**
+ * The person unblocked the bot and wrote /start in the same chat: the link (and its consent, never
+ * withdrawn by a block) works again and the Telegram alerts paused by the block resume.
+ */
+export async function reactivateTelegramLink(db: Db, userId: string): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    const r = await tx.execute(sql`UPDATE telegram_links SET status = 'active', last_error = NULL WHERE user_id = ${userId} AND status = 'blocked' RETURNING user_id`);
+    if (r.rows.length === 0) return false;
+    await resumeChannel(tx, userId, 'telegram');
+    return true;
+  });
+}
+
 export async function pruneTelegramLinkTokens(db: Exec): Promise<number> {
   const r = await db.execute<{ token_hash: string }>(sql`DELETE FROM telegram_link_tokens WHERE expires_at < now() RETURNING token_hash`);
   return r.rows.length;

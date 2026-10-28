@@ -215,3 +215,57 @@ tests:
       - eval_time: 30m
         alertname: DiskSpaceLow
         exp_alerts: []
+
+  # The weekly logical restore test has not passed for more than 8 days.
+  - interval: 1m
+    input_series:
+      - series: 'pretoscop_job_last_success_timestamp_seconds{job="pretoscop-worker", env="prod", queue="backup.restore_test"}'
+        values: '0x11600'
+    alert_rule_test:
+      - eval_time: 8d
+        alertname: LogicalRestoreTestMissing
+        exp_alerts: []
+      - eval_time: 8d1h
+        alertname: LogicalRestoreTestMissing
+        exp_alerts:
+          - exp_labels: { severity: warning, job: pretoscop-worker, env: prod, queue: backup.restore_test }
+            exp_annotations: { summary: 'The weekly restore test of the nightly dump has not passed for 8 days', runbook: infra/runbooks/restore.md }
+
+  # A pg-boss backlog in production alerts per environment and queue; staging's smaller one does not
+  # (and is never added to production's).
+  - interval: 1m
+    input_series:
+      - series: 'pretoscop_queue_jobs{job="pretoscop-worker", env="prod", queue="match.pending", state="created"}'
+        values: '1500x40'
+      - series: 'pretoscop_queue_jobs{job="pretoscop-worker", env="prod", queue="match.pending", state="active"}'
+        values: '5000x40'
+      - series: 'pretoscop_queue_jobs{job="pretoscop-worker", env="staging", queue="match.pending", state="created"}'
+        values: '600x40'
+    alert_rule_test:
+      - eval_time: 40m
+        alertname: QueueBacklog
+        exp_alerts:
+          - exp_labels: { severity: warning, env: prod, queue: match.pending }
+            exp_annotations: { summary: 'pg-boss queue match.pending has 1500 waiting jobs', runbook: infra/runbooks/scale-workers.md }
+
+  # Review queue above 500 for 6 hours; the worker's event loop lagging for 15 minutes.
+  - interval: 1m
+    input_series:
+      - series: 'pretoscop_review_queue_offers{job="pretoscop-worker", env="prod"}'
+        values: '600x420'
+      - series: 'nodejs_eventloop_delay_p99_seconds{job="pretoscop-worker", env="prod"}'
+        values: '1.5x420'
+    alert_rule_test:
+      - eval_time: 5h
+        alertname: ReviewQueueLarge
+        exp_alerts: []
+      - eval_time: 7h
+        alertname: ReviewQueueLarge
+        exp_alerts:
+          - exp_labels: { severity: info, job: pretoscop-worker, env: prod }
+            exp_annotations: { summary: 'Match review queue holds 600 offers (SLO < 500)' }
+      - eval_time: 20m
+        alertname: WorkerEventLoopLag
+        exp_alerts:
+          - exp_labels: { severity: warning, job: pretoscop-worker, env: prod }
+            exp_annotations: { summary: 'Worker event loop p99 delay above 1 s for 15 minutes', runbook: infra/runbooks/scale-workers.md }

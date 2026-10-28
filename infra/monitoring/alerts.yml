@@ -41,7 +41,7 @@ groups:
         annotations:
           summary: 'Match review queue holds {{ $value }} offers (SLO < 500)'
       - alert: QueueBacklog
-        expr: sum by (queue) (pretoscop_queue_jobs{state=~"created|retry"}) > 1000
+        expr: sum by (env, queue) (pretoscop_queue_jobs{state=~"created|retry"}) > 1000
         for: 30m
         labels: { severity: warning }
         annotations:

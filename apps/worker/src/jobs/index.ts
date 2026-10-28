@@ -1,3 +1,4 @@
+import { extractorCanaryJob } from './canary';
 import { heartbeatJob } from './heartbeat';
 import { partitionsJob, requestLogPruneJob } from './maintenance';
 import { backupJob, restoreTestJob, schedulerTickJob, sourceRunJob } from './recorder';
@@ -22,4 +23,5 @@ export const jobs: JobDefinition<any>[] = [
   matchPendingJob,
   merchantValidateJob,
   merchantVerifyDomainJob,
+  extractorCanaryJob,
 ];

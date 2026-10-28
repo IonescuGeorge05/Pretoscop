@@ -12,6 +12,7 @@ export const KNOWN_FLAGS: Record<string, string> = {
   'affiliate.links.enabled': 'Use affiliate links in click-outs when the program allows (M24)',
   'promoted.enabled': 'Promoted placements (M25)',
   'merchants.portal.enabled': 'Merchant self-serve portal: new registrations and submissions (M20)',
+  'extractors.canary.enabled': 'Weekly extractor canary: up to 5 live URLs per active shop, field drift alerts (M21)',
 };
 
 export async function isFlagEnabled(db: Db, key: string): Promise<boolean> {

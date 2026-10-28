@@ -103,7 +103,7 @@ export const BOT_PROGRAM_STATUS_LABELS: Record<BotProgramStatus, string> = {
 /** Newest first. Add an entry for every change of behaviour, identity or published IPs. */
 export const BOT_CHANGELOG: ReadonlyArray<{ date: string; change: string }> = [
   {
-    date: '2026-10-27',
+    date: '2026-10-28',
     change:
       'Pagina descrie cum ne verifici: lista adreselor IP (și în /bot/ips.json, în formatul folosit de marii operatori de roboți), ' +
       'numele reverse DNS crawl-N.bot.pretoscop.ro și semnătura criptografică Web Bot Auth (RFC 9421), pe care o activăm după ' +

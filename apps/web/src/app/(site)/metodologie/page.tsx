@@ -102,8 +102,14 @@ export default function MethodologyPage() {
                 ]}
               />
               <p>
-                Afișăm „−X% față de minimul ultimelor 30 de zile” doar după cel puțin 14 zile de observații. Prețul tăiat al magazinului îl arătăm separat, ca
-                „preț de referință afișat de magazin”.
+                Afișăm „−X% față de minimul din 30 de zile” doar când prețul total de acum este cu cel puțin 3% sub cel mai mic preț observat de noi în cele
+                30 de zile dinaintea scăderii și doar dacă am observat prețul în cel puțin 14 dintre acele zile. Procentul este rotunjit în jos, iar eticheta
+                dispare la 30 de zile după scădere. „Minim istoric” înseamnă că prețul de acum este sub orice preț observat de noi înainte, după cel puțin 14
+                zile de istoric. Ambele se calculează pe ofertele noi, în stoc, vândute direct de magazine; lista lor este pe{' '}
+                <Link href="/reduceri">pagina de reduceri verificate</Link>.
+              </p>
+              <p>
+                Prețul tăiat al magazinului îl arătăm separat, ca „preț de referință afișat de magazin”, și nu intră în aceste calcule.
               </p>
             </>
           ),

@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
-import { dropVersus30dMin } from '@pretoscop/core';
 import { OffersTable } from '@/components/product/offers-table';
 import { PriceChart } from '@/components/product/price-chart';
 import { ProductImage } from '@/components/product/product-image';
@@ -10,7 +9,7 @@ import { SummaryCard } from '@/components/product/summary-card';
 import { ViewBeacon } from '@/components/product/view-beacon';
 import { Container } from '@/components/ui/container';
 import { serverEnv } from '@/lib/db';
-import { formatDate, formatLeiNumeric, plural, toBani } from '@/lib/format';
+import { formatDate, formatLeiNumeric, plural } from '@/lib/format';
 import { bestOffer, getProductPageData, idFromSlug, type ProductPageData } from '@/lib/product';
 
 export const revalidate = 3600;
@@ -83,12 +82,9 @@ export default async function ProductPage({ params }: Props) {
   const p = await resolve(slug);
   const specs = keySpecs(p.attributes);
   const stats = p.stats;
-  // Best = what a buyer pays now (marketplace sellers included); the drop badge compares like with
-  // like: the best shop-sold offer against the shop-sold 30-day minimum of the history series.
+  // Best = what a buyer pays now (marketplace sellers included); the drop badge (M15) compares like with
+  // like: the best shop-sold offer against the shop-sold daily series (computed in the loader).
   const best = bestOffer(p.offers);
-  const bestShop = bestOffer(p.offers, { shopSoldOnly: true });
-  const current = toBani(bestShop?.total ?? null);
-  const drop = current !== null && stats ? dropVersus30dMin(current, toBani(stats.min30d), stats.observationsDays) : null;
   const shops = new Set(p.offers.map((o) => o.shopSlug)).size;
   const affiliate = p.offers.some((o) => o.hasAffiliate);
 
@@ -143,7 +139,7 @@ export default async function ProductPage({ params }: Props) {
           </header>
 
           <div className="lg:hidden">
-            <SummaryCard best={best} stats={stats} drop={drop} placement="summary_mobile" />
+            <SummaryCard best={best} stats={stats} facts={p.priceFacts} placement="summary_mobile" />
           </div>
 
           {p.variants.length > 1 && (
@@ -223,7 +219,7 @@ export default async function ProductPage({ params }: Props) {
 
         <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
           <div className="hidden lg:block">
-            <SummaryCard best={best} stats={stats} drop={drop} placement="summary" />
+            <SummaryCard best={best} stats={stats} facts={p.priceFacts} placement="summary" />
           </div>
           <div className="rounded-[var(--radius-card)] bg-surface p-4 text-sm text-ink-soft ring-1 ring-line">
             <p className="font-semibold text-ink">Alertă de preț</p>

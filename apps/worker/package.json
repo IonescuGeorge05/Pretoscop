@@ -23,7 +23,8 @@
     "match:label": "tsx src/cli/match-label.ts",
     "compare:live": "tsx src/cli/compare-live.ts",
     "report": "tsx src/cli/report.ts",
-    "report:approve": "tsx src/cli/report-approve.ts"
+    "report:approve": "tsx src/cli/report-approve.ts",
+    "deals:show": "tsx src/cli/deals-show.ts"
   },
   "devDependencies": {
     "pino-pretty": "^13.2.0"

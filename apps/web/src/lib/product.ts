@@ -1,8 +1,9 @@
 import 'server-only';
 import type { DiscountFact } from '@pretoscop/core';
-import { productOfferFacts, sql } from '@pretoscop/db';
+import { priceFactsFor, productOfferFacts, sql, type PriceFacts } from '@pretoscop/db';
 import { unstable_cache } from 'next/cache';
 import { db } from './db';
+import { toBani } from './format';
 
 export interface ProductOffer {
   id: number;
@@ -57,6 +58,8 @@ export interface ProductPageData {
   offers: ProductOffer[];
   variants: Array<{ id: number; slug: string; title: string; attributes: Record<string, unknown>; minTotal: string | null; current: boolean }>;
   notCovered: Array<{ slug: string; name: string; searchUrl: string }>;
+  /** Verified drop, new all-time low, 30-day low (M15), measured on the best shop-sold total shown. */
+  priceFacts: PriceFacts | null;
   updatedAt: string;
 }
 
@@ -153,6 +156,10 @@ async function load(id: number): Promise<ProductPageData | null> {
   // Ranking (published on /cum-functioneaza): fresh in-stock first, then stale, then unavailable;
   // within a group by total price, then by the most recent check.
   mapped.sort((a, b) => rank(a) - rank(b) || Number(a.total) - Number(b.total) || b.lastCheckedAt.localeCompare(a.lastCheckedAt));
+  // Like with like: the drop compares the best shop-sold offer with the shop-sold daily series.
+  const shopBest = bestOffer(mapped, { shopSoldOnly: true });
+  const shopBestBani = toBani(shopBest?.total ?? null);
+  const priceFacts = shopBestBani === null ? null : ((await priceFactsFor(d, new Map([[id, shopBestBani]])).catch(() => null))?.get(id) ?? null);
 
   return {
     id: Number(row.id),
@@ -171,6 +178,7 @@ async function load(id: number): Promise<ProductPageData | null> {
     offers: mapped,
     variants: variants.rows.map((v) => ({ id: Number(v.id), slug: v.slug, title: v.title, attributes: v.attributes ?? {}, minTotal: v.min_total, current: Number(v.id) === id })),
     notCovered: notCovered.rows.map((s) => ({ slug: s.slug, name: s.name, searchUrl: s.tpl.replace('{q}', q) })),
+    priceFacts,
     updatedAt: new Date().toISOString(),
   };
 }

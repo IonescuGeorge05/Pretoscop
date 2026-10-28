@@ -11,6 +11,14 @@
  * - "Best total" comes only from fresh, in-stock, new, shop-sold offers without a pending
  *   quarantine (the query in packages/db), and a total under 30% of the product's cross-shop
  *   median is treated as a probable mismatch, never notified.
+ * - Known prices (M19 review, finding 3): an offer that is briefly stale, out of stock or in
+ *   quarantine drops out of the best total, but its last price is still known for
+ *   `ALERT_KNOWN_PRICE_DAYS` (the "known floor": the lowest such total, eligible offers included).
+ *   A shrinking offer list is not a price rise, so a 'below' alert is re-armed only when the known
+ *   floor too is above the target, and an 'any_drop' reference (baseline) is never above the
+ *   known floor. Without this, the cheapest shop blinking out and back would send "the price
+ *   dropped" again at an unchanged price. An offer unseen (or unavailable) for longer than the
+ *   window no longer holds its price: its return counts as news.
  */
 import { belowCrossShopFloor } from './anomaly';
 import { parsePriceRon } from './price';
@@ -27,6 +35,12 @@ export const ALERT_CONFIRM_TTL_DAYS = 7;
 export const QUIET_HOURS = { from: 22, to: 8 } as const;
 /** Largest target we accept (just under the numeric(12,2) placeholder range of the parser). */
 export const ALERT_MAX_TARGET_BANI = 99_999_999;
+/**
+ * How long a temporarily ineligible offer (stale, out of stock, pending quarantine) still holds
+ * its last known total for alert decisions (counted from its last check, and for an unavailable
+ * offer from its last change).
+ */
+export const ALERT_KNOWN_PRICE_DAYS = 7;
 
 export interface AlertState {
   kind: AlertKind;
@@ -42,16 +56,32 @@ export interface BestOfferForAlert {
   totalBani: number;
   /** Cross-shop median of the offer's product (≥ 2 shops), for the mismatch guard. */
   crossShopMedianBani: number | null;
+  /**
+   * Lowest total still known within `ALERT_KNOWN_PRICE_DAYS`, the eligible offers included
+   * (so never above `totalBani`); null or absent when nothing more is known than the best offer.
+   */
+  knownFloorBani?: number | null;
 }
 
 export type AlertNotifyReason = 'below_target' | 'lower_below_target' | 'drop';
-export type AlertQuietReason = 'no_offer' | 'not_met' | 'cooldown' | 'already_notified' | 'suspicious' | 'invalid';
+/** `held`: above the target now, but a price at or under it is still known (no re-arm). */
+export type AlertQuietReason = 'no_offer' | 'not_met' | 'cooldown' | 'already_notified' | 'held' | 'suspicious' | 'invalid';
 
 export type AlertDecision =
   | { action: 'notify'; reason: AlertNotifyReason; referenceBani: number | null }
   | { action: 'set_baseline'; baselineBani: number }
   | { action: 'rearm' }
   | { action: 'none'; why: AlertQuietReason };
+
+/**
+ * The 'any_drop' reference taken when an alert starts (or is edited): the best total, or a lower
+ * total still known (an offer briefly stale, out of stock or quarantined), whichever is lower.
+ */
+export function alertBaselineBani(bestTotalBani: number | null, knownFloorBani: number | null): number | null {
+  if (bestTotalBani === null) return knownFloorBani;
+  if (knownFloorBani === null) return bestTotalBani;
+  return Math.min(bestTotalBani, knownFloorBani);
+}
 
 /** `total` is at least `ALERT_MIN_DROP_PERCENT` under `reference` (integer arithmetic). */
 export function droppedEnough(totalBani: number, referenceBani: number): boolean {
@@ -67,11 +97,19 @@ export function decideAlert(state: AlertState, best: BestOfferForAlert | null, n
   if (!best) return { action: 'none', why: 'no_offer' };
   if (belowCrossShopFloor(best.totalBani, best.crossShopMedianBani)) return { action: 'none', why: 'suspicious' };
   const total = best.totalBani;
+  const known = best.knownFloorBani ?? null;
 
   if (state.kind === 'below') {
     const target = state.targetBani;
     if (target === null || target <= 0) return { action: 'none', why: 'invalid' };
-    if (total > target) return state.armed ? { action: 'none', why: 'not_met' } : { action: 'rearm' };
+    if (total > target) {
+      if (state.armed) return { action: 'none', why: 'not_met' };
+      // Re-armed only on a real rise: while a known price is still at or under the target, the
+      // cheaper offer is only out of view (stale, out of stock, quarantined), and its return at
+      // the same price must not read as a new crossing.
+      if (known !== null && known <= target) return { action: 'none', why: 'held' };
+      return { action: 'rearm' };
+    }
     if (state.armed) {
       if (inCooldown(state, now)) return { action: 'none', why: 'cooldown' };
       return { action: 'notify', reason: 'below_target', referenceBani: target };
@@ -85,7 +123,9 @@ export function decideAlert(state: AlertState, best: BestOfferForAlert | null, n
   }
 
   const reference = state.lastNotifiedBani ?? state.baselineBani;
-  if (reference === null) return { action: 'set_baseline', baselineBani: total };
+  // The reference is never above a price we still know: a cheaper shop briefly out of view would
+  // otherwise come back as a "drop" at its unchanged price.
+  if (reference === null) return { action: 'set_baseline', baselineBani: Math.min(total, known ?? total) };
   if (!droppedEnough(total, reference)) return { action: 'none', why: 'not_met' };
   if (inCooldown(state, now)) return { action: 'none', why: 'cooldown' };
   return { action: 'notify', reason: 'drop', referenceBani: reference };

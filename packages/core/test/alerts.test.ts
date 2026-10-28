@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   ALERT_COOLDOWN_HOURS,
+  ALERT_KNOWN_PRICE_DAYS,
+  alertBaselineBani,
   decideAlert,
   droppedEnough,
   inQuietHours,
@@ -97,6 +99,42 @@ describe('decideAlert: any drop', () => {
   it('waits out the cooldown', () => {
     const notified = anyDrop({ lastNotifiedAt: hoursAgo(2), lastNotifiedBani: 230_000 });
     expect(decideAlert(notified, best(200_000), NOW)).toEqual({ action: 'none', why: 'cooldown' });
+  });
+});
+
+describe('decideAlert: a shrinking offer list is not a price change (known prices)', () => {
+  // The cheapest shop (1.990 lei) was notified; it goes stale, out of stock or into quarantine for a
+  // day, so the best eligible total is another shop's 2.100 lei; then it comes back unchanged.
+  const known = (totalBani: number, knownFloorBani: number | null) => ({ offerId: 7, totalBani, crossShopMedianBani: null, knownFloorBani });
+
+  it("'below': no re-arm while a price at or under the target is still known, so its return sends nothing", () => {
+    const notified = below({ armed: false, lastNotifiedAt: hoursAgo(30), lastNotifiedBani: 199_000 });
+    expect(decideAlert(notified, known(210_000, 199_000), NOW)).toEqual({ action: 'none', why: 'held' });
+    // Back in view at the same total: the alert was never re-armed, so this is not news.
+    expect(decideAlert(notified, known(199_000, 199_000), NOW)).toEqual({ action: 'none', why: 'already_notified' });
+  });
+
+  it("'below': a real rise (every known price above the target) re-arms, and the next crossing is news", () => {
+    const notified = below({ armed: false, lastNotifiedAt: hoursAgo(30), lastNotifiedBani: 199_000 });
+    expect(decideAlert(notified, known(210_000, 205_000), NOW)).toEqual({ action: 'rearm' });
+    expect(decideAlert({ ...notified, armed: true }, known(199_000, 199_000), NOW)).toMatchObject({ action: 'notify', reason: 'below_target' });
+  });
+
+  it("'any_drop': the baseline is never above a price still known", () => {
+    // Confirmed while the cheapest shop was stale: the reference is its 2.300 lei, not 2.400 lei.
+    expect(decideAlert(anyDrop({ baselineBani: null }), known(240_000, 230_000), NOW)).toEqual({ action: 'set_baseline', baselineBani: 230_000 });
+    // It comes back at 2.300 lei: same as the reference, not a drop.
+    expect(decideAlert(anyDrop({ baselineBani: 230_000 }), known(230_000, 230_000), NOW)).toEqual({ action: 'none', why: 'not_met' });
+    expect(alertBaselineBani(240_000, 230_000)).toBe(230_000);
+    expect(alertBaselineBani(240_000, null)).toBe(240_000);
+    expect(alertBaselineBani(null, 230_000)).toBe(230_000);
+    expect(alertBaselineBani(null, null)).toBeNull();
+  });
+
+  it('without a known floor the rules are unchanged', () => {
+    const notified = below({ armed: false, lastNotifiedAt: hoursAgo(30), lastNotifiedBani: 199_000 });
+    expect(decideAlert(notified, known(210_000, null), NOW)).toEqual({ action: 'rearm' });
+    expect(ALERT_KNOWN_PRICE_DAYS).toBe(7);
   });
 });
 

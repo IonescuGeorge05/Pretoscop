@@ -111,16 +111,18 @@ Next.js 16 (App Router): public site, admin, API routes and click-out. Romanian 
   `ICECAT_ROBOTS_DISALLOW_AGENTS` from `@pretoscop/icecat/attribution`, which the Open Icecat licence requires on pages with
   Icecat content); the TDM reservation is repeated in `/.well-known/tdmrep.json`, the `tdm-reservation` header and meta tag.
   Add a crawler to the list when a new AI crawler appears; never add a search engine.
-- **Sitemaps**: `/sitemap.xml` (index) → `/sitemaps/pages.xml` (built per request: home, `/categorii`, `/magazine`,
+- **Sitemaps**: `/sitemap.xml` (index) → `/sitemaps/pages.xml` (built by the web app, its database facts cached 15 minutes: home, `/categorii`, `/magazine`,
   `/reduceri` and its tabs while they list drops, trust and legal pages with their document dates, `/rapoarte` and every
   report a founder approved with `report:approve`) and the files the worker's `sitemap.build` writes to the blob store
   nightly at 05:30 and at start (`products-{n}.xml` ≤ 50,000 indexable product pages with `lastmod` = last price change,
   `categories.xml`, `brands.xml`, `shops.xml`, `manifest.json`). Rebuild by hand: `pnpm --filter @pretoscop/worker
   sitemap:build`. Unknown file names are 404.
 - **Structured data** (`src/lib/structured-data.ts`, `JsonLd` escapes `<`): `Product` with brand, GTIN (most specific
-  `gtin8/12/13/14`), MPN, licensed image, `AggregateOffer` over live offers (low/high of in-stock item prices, offer count)
-  with up to 10 `Offer` (seller = shop or marketplace seller, availability, condition, known delivery as
-  `shippingDetails`; never `priceValidUntil`: our prices are observations); `BreadcrumbList` on product and browse pages;
+  `gtin8/12/13/14`), MPN, licensed image, `AggregateOffer` over one set of live offers (the in-stock ones when there are any, otherwise
+  every live offer; low/high item price and count over that set) with up to 10 `Offer` (seller = shop or the named
+  marketplace seller, never the operator for an unnamed one; availability, left out when unknown; condition; known
+  delivery as `shippingDetails`; never `priceValidUntil`: our prices are observations); no `Product` markup without a
+  live offer; `BreadcrumbList` on product and browse pages;
   `ItemList` on category and brand pages (indexable products only) and on /reduceri (the verified deals listed); `Organization` and `WebSite` + `SearchAction`
   on the home page. Variants are product pages with their own `AggregateOffer`; there are no family pages. The test
   validator (`validateStructuredData`) checks the properties Google requires; run Google's Rich Results Test by hand.

@@ -16,7 +16,7 @@ import { categoryHref, getBrands, getCategoryTree, type BrandInfo, type Category
 import { serverEnv } from '@/lib/db';
 import { plural } from '@/lib/format';
 import { meili, names, q } from '@/lib/search';
-import { forMetadata, pageOrNotFound, robotsFor, unresolvedMetadata } from '@/lib/seo';
+import { forMetadata, pageOpenGraph, pageOrNotFound, robotsFor, unresolvedMetadata } from '@/lib/seo';
 import { breadcrumbList, itemList } from '@/lib/structured-data';
 
 // docs/03 §7.1: ISR 1 h, rendered on first request.
@@ -104,7 +104,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: `${h}: ${plural(n, 'produs', 'produse')} cu prețul total (preț + livrare) din magazinele online din România și istoricul prețului observat de Pretoscop.`,
     alternates: { canonical: p.href(p.page), languages: { 'ro-RO': p.href(p.page) } },
     robots: robotsFor(pageIndexable(p)),
-    openGraph: { title, url: p.href(p.page), type: 'website' },
+    openGraph: pageOpenGraph({ title, url: p.href(p.page) }),
   };
 }
 

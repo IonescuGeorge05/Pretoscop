@@ -2,7 +2,7 @@ import { isProductIndexable } from '@pretoscop/core';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { permanentRedirect } from 'next/navigation';
-import { AlertForm } from '@/components/alerts/alert-form';
+import { AlertFormLazy as AlertForm } from '@/components/alerts/alert-form-lazy';
 import { NotFoundResponse } from '@/components/http/not-found-status';
 import { OffersTable } from '@/components/product/offers-table';
 import { PriceChart } from '@/components/product/price-chart';
@@ -17,7 +17,7 @@ import { alertConsent, alertsEnabled } from '@/lib/alerts';
 import { serverEnv } from '@/lib/db';
 import { formatDate, formatLeiNumeric, plural, toBani } from '@/lib/format';
 import { bestOffer, getProductPageData, idFromSlug, type ProductPageData } from '@/lib/product';
-import { robotsFor, unresolvedMetadata } from '@/lib/seo';
+import { pageOpenGraph, robotsFor, unresolvedMetadata } from '@/lib/seo';
 import { breadcrumbList, productJsonLd, type BreadcrumbItem } from '@/lib/structured-data';
 import ProductNotFound from './not-found';
 
@@ -102,7 +102,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     description: `Compară prețul total pentru ${p.title}${shops ? ` la ${plural(shops, 'magazin', 'magazine')}` : ''} și vezi istoricul prețului observat de Pretoscop.`,
     alternates: { canonical: `/p/${p.slug}`, languages: { 'ro-RO': `/p/${p.slug}` } },
     robots: robotsFor(indexable(p)),
-    openGraph: { title, type: 'website', url: `/p/${p.slug}`, locale: 'ro_RO' },
+    openGraph: pageOpenGraph({ title, url: `/p/${p.slug}` }),
   };
 }
 

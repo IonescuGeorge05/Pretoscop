@@ -37,7 +37,17 @@ function bump(map: Map<string, Agg>, key: string | null, lastmod: number): void 
 
 const iso = (ms: number) => (ms > 0 ? w3cDate(new Date(ms)) : null);
 
-export async function buildSitemaps(deps: { db: Db; blob: BlobStore; baseUrl: string; log?: { info(o: object, m?: string): void } }): Promise<SitemapManifest> {
+export interface BuildSitemapsDeps {
+  db: Db;
+  blob: BlobStore;
+  baseUrl: string;
+  log?: { info(o: object, m?: string): void };
+  /** URLs per products file (the protocol limit, 50,000; smaller only in tests). */
+  maxUrlsPerFile?: number;
+}
+
+export async function buildSitemaps(deps: BuildSitemapsDeps): Promise<SitemapManifest> {
+  const perFile = Math.min(deps.maxUrlsPerFile ?? SITEMAP_MAX_URLS, SITEMAP_MAX_URLS);
   const base = deps.baseUrl.replace(/\/+$/, '');
   const files: SitemapManifest['files'] = [];
   const write = async (name: string, urls: SitemapEntry[]) => {
@@ -63,7 +73,7 @@ export async function buildSitemaps(deps: { db: Db; blob: BlobStore; baseUrl: st
       bump(categories, r.parentSlug, lm);
       bump(brands, r.brandSlug, lm);
       if (r.brandSlug && r.categorySlug) bump(brandCategories, `${r.brandSlug}/${r.categorySlug}`, lm);
-      if (page.length === SITEMAP_MAX_URLS) {
+      if (page.length === perFile) {
         await write(`products-${++part}.xml`, page);
         page = [];
       }

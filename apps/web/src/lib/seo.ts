@@ -48,6 +48,23 @@ export async function pageOrNotFound<T>(load: () => Promise<T>): Promise<T | nul
   }
 }
 
+/** The static Open Graph image (app/opengraph-image.tsx, rendered at build time). */
+export const DEFAULT_OG_IMAGE = {
+  url: '/opengraph-image',
+  width: 1200,
+  height: 630,
+  alt: 'Pretoscop — prețul total real din magazinele online din România, cu istoric',
+} as const;
+
+/**
+ * Open Graph for a page that sets its own title and URL. A page's `openGraph` replaces the root
+ * layout's whole object (Next.js merges metadata one key deep), so site name, locale and the image
+ * are repeated here; otherwise shared links of product and browse pages would have no image.
+ */
+export function pageOpenGraph(o: { title: string; url: string }): NonNullable<Metadata['openGraph']> {
+  return { title: o.title, url: o.url, type: 'website', locale: 'ro_RO', siteName: 'Pretoscop', images: [DEFAULT_OG_IMAGE] };
+}
+
 /** Metadata of a page that will answer 404 or redirect (the page decides): never indexed. */
 export function unresolvedMetadata(title = 'Pagina nu există'): Metadata {
   return { title, robots: robotsFor(false) };

@@ -15,7 +15,7 @@ import { categoryHref, getBrands, getCategoryTree, type CategoryNode } from '@/l
 import { serverEnv } from '@/lib/db';
 import { inSentence, plural } from '@/lib/format';
 import { meili, names, q } from '@/lib/search';
-import { forMetadata, pageOrNotFound, robotsFor, unresolvedMetadata } from '@/lib/seo';
+import { forMetadata, pageOpenGraph, pageOrNotFound, robotsFor, unresolvedMetadata } from '@/lib/seo';
 import { breadcrumbList, itemList } from '@/lib/structured-data';
 
 // docs/03 §7.1: ISR 1 h. Rendered on first request, never at build time (no database needed to build).
@@ -95,7 +95,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         : `${node.name}: categoria în care Pretoscop va compara prețurile din magazinele online din România.`,
     alternates: { canonical: categoryHref(node, page), languages: { 'ro-RO': categoryHref(node, page) } },
     robots: robotsFor(indexableCount(list) > 0),
-    openGraph: { title, url: categoryHref(node, page), type: 'website' },
+    openGraph: pageOpenGraph({ title, url: categoryHref(node, page) }),
   };
 }
 

@@ -1,10 +1,11 @@
 import 'server-only';
 import { legalDocuments } from '@pretoscop/config/legal-texts';
-import { urlsetXml, w3cDate, type SitemapEntry } from '@pretoscop/core';
+import { urlsetXml } from '@pretoscop/core';
 import { getDeals, sql } from '@pretoscop/db';
 import { createBlobStore } from '@pretoscop/storage';
 import { PUBLISHED } from '@/content/reports';
 import { db, serverEnv } from './db';
+import { newestLastmod, pagesSitemapEntries } from './sitemap-pages';
 
 /**
  * Sitemaps (M16). The worker's `sitemap.build` writes the data-driven files to the blob store
@@ -39,27 +40,20 @@ export async function readSitemapFile(name: string): Promise<string | null> {
   return raw ? Buffer.from(raw).toString('utf8') : null;
 }
 
-/** The pages only the web app knows, with honest lastmods (document dates, latest price change). */
+/** `pages.xml`: the pages only the web app knows (rules in ./sitemap-pages), with their newest lastmod. */
 export async function pagesSitemap(): Promise<{ xml: string; lastmod: string | null }> {
-  const base = baseUrl();
   const latest = await db()
     .execute<{ t: Date | string | null }>(sql`SELECT max(price_changed_at) AS t FROM offers WHERE active`)
-    .then((r) => (r.rows[0]?.t ? w3cDate(new Date(r.rows[0].t)) : null))
+    .then((r) => r.rows[0]?.t ?? null)
     .catch(() => null);
-  const deals = await getDeals(db(), { windowDays: 7 }).catch(() => null);
-  const urls: SitemapEntry[] = [
-    { loc: `${base}/`, lastmod: latest },
-    { loc: `${base}/categorii`, lastmod: latest },
-    { loc: `${base}/magazine`, lastmod: latest },
-  ];
-  if (deals && deals.drops.length) {
-    urls.push({ loc: `${base}/reduceri`, lastmod: latest });
-    for (const root of new Set(deals.drops.map((d) => d.rootSlug).filter((s): s is string => !!s))) urls.push({ loc: `${base}/reduceri/${root}`, lastmod: latest });
-  }
-  for (const d of Object.values(legalDocuments)) urls.push({ loc: `${base}${d.path}`, lastmod: d.updatedAt });
-  const reports = PUBLISHED.filter((r) => r.approval.approved);
-  urls.push({ loc: `${base}/rapoarte`, lastmod: reports.map((r) => r.approval.at).filter((x): x is string => !!x).sort().at(-1)?.slice(0, 10) ?? null });
-  for (const r of reports) urls.push({ loc: `${base}/rapoarte/${r.id}`, lastmod: r.approval.at ? w3cDate(r.approval.at) : null });
-  const lastmod = urls.map((u) => u.lastmod ?? '').sort().at(-1) || null;
-  return { xml: urlsetXml(urls), lastmod };
+  // The same deals as /reduceri (7 days, every category): its tabs are indexable only with drops.
+  const deals = await getDeals(db(), { windowDays: 7, limit: Infinity, lowsLimit: 0 }).catch(() => null);
+  const urls = pagesSitemapEntries({
+    base: baseUrl(),
+    latestPriceChange: latest,
+    dealRoots: deals ? deals.drops.map((d) => d.rootSlug).filter((s): s is string => !!s) : null,
+    documents: Object.values(legalDocuments),
+    reports: PUBLISHED,
+  });
+  return { xml: urlsetXml(urls), lastmod: newestLastmod(urls) };
 }

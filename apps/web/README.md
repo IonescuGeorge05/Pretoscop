@@ -24,7 +24,8 @@ Next.js 16 (App Router): public site, admin, API routes and click-out. Romanian 
   inlined at build) loads only after Accept; nothing third-party loads before a choice (e2e network assertion).
   `useConsent()` exposes the choice.
 - **Static vs dynamic**: pages prerendered at build read env at build time; use `NEXT_PUBLIC_*` for client values.
-- **Security headers** in `next.config.ts` (nosniff, referrer policy, frame options, permissions policy). CSP is not set yet (M16/M18).
+- **Security headers** in `next.config.ts` (nosniff, referrer policy, frame options, permissions policy, and since M16 a
+  Content Security Policy with the Plausible and media origins, `Content-Language: ro-RO` and `tdm-reservation: 1`).
 - **Accessibility**: jsx-a11y recommended rules are errors; skip link; landmarks; visible focus ring.
 
 ## Legal and trust pages (M17)
@@ -86,9 +87,55 @@ Next.js 16 (App Router): public site, admin, API routes and click-out. Romanian 
 - **Analytics**: `/cauta` logs `search` events (query ≤ 100 characters, hit count, matching mode; no cookies, daily-salted
   session hash) and product pages send one `product_view` beacon; both feed popularity. `EVENTS_ENABLED=false` stores
   nothing (the e2e suite sets it), and bot user agents are never stored.
-- **e2e**: global setup creates the throwaway fixture (including the Testoscop brand set) and builds an `e2e_` index from
-  the dev database; teardown removes both. The web server under test runs with `MEILI_INDEX_PREFIX=e2e_`. Run after
+- **e2e**: global setup creates the throwaway fixture (including the Testoscop brand set) and builds e2e indexes from
+  the dev database under `<MEILI_INDEX_PREFIX>e2e_` (the checkout's own prefix from `.env`, so parallel worktrees never
+  share them); teardown removes both. The web server under test runs with that prefix. Run after
   `next build` and never with another server on the e2e port (Playwright would reuse it).
+
+## SEO rules (M16)
+
+- **Closed until launch**: `SITE_INDEXABLE=false` (prototype, staging) makes every page `noindex, nofollow` (root layout
+  and `robotsFor`) and `/robots.txt` a plain `User-agent: *` / `Disallow: /`. `SITE_INDEXABLE=true` (launch only) lets each
+  page decide with `robotsFor(indexable)`: indexable pages `index, follow`, the others `noindex, follow`. Both are read at
+  request time, so one build serves staging and production.
+- **Index policy** (docs/03 §6.6): one function, `productIndexDecision` / `isProductIndexable` in `@pretoscop/core`, used
+  by the product page, the search documents (`indexable`), the ItemList markup and `sitemap.build`: active, not
+  provisional, at least one live offer, and two live offers or 14 observed days. Search and facet pages (`/cauta`) are
+  always `noindex, follow`; category and brand pages need one indexable product, brand × category pages three; shop pages
+  need the shop to be covered; `/reduceri` needs a verified drop. 404s and redirects are never indexed.
+- **robots.txt** (`src/lib/robots.ts`, pure, tested with our own RFC 9309 parser): search engines everywhere except
+  `/out/`, `/admin`, `/api/`, `/cauta`; AI training, dataset and answer-engine crawlers refused site-wide (our list plus
+  `ICECAT_ROBOTS_DISALLOW_AGENTS` from `@pretoscop/icecat/attribution`, which the Open Icecat licence requires on pages with
+  Icecat content); the TDM reservation is repeated in `/.well-known/tdmrep.json`, the `tdm-reservation` header and meta tag.
+  Add a crawler to the list when a new AI crawler appears; never add a search engine.
+- **Sitemaps**: `/sitemap.xml` (index) → `/sitemaps/pages.xml` (built per request: home, `/categorii`, `/magazine`,
+  `/reduceri` and its tabs while they list drops, trust and legal pages with their document dates, `/rapoarte` and every
+  report a founder approved with `report:approve`) and the files the worker's `sitemap.build` writes to the blob store
+  nightly at 05:30 and at start (`products-{n}.xml` ≤ 50,000 indexable product pages with `lastmod` = last price change,
+  `categories.xml`, `brands.xml`, `shops.xml`, `manifest.json`). Rebuild by hand: `pnpm --filter @pretoscop/worker
+  sitemap:build`. Unknown file names are 404.
+- **Structured data** (`src/lib/structured-data.ts`, `JsonLd` escapes `<`): `Product` with brand, GTIN (most specific
+  `gtin8/12/13/14`), MPN, licensed image, `AggregateOffer` over live offers (low/high of in-stock item prices, offer count)
+  with up to 10 `Offer` (seller = shop or marketplace seller, availability, condition, known delivery as
+  `shippingDetails`; never `priceValidUntil`: our prices are observations); `BreadcrumbList` on product and browse pages;
+  `ItemList` (indexable products only) on category, brand and deals pages; `Organization` and `WebSite` + `SearchAction`
+  on the home page. Variants are product pages with their own `AggregateOffer`; there are no family pages. The test
+  validator (`validateStructuredData`) checks the properties Google requires; run Google's Rich Results Test by hand.
+- **Metadata**: titles `"{product} – prețuri de la {min} la {n} magazine | Pretoscop"`, category and brand titles with
+  counts; canonical and `hreflang="ro-RO"` alternates on every page (absolute through `metadataBase`); a wrong product
+  slug or a merged product is a permanent redirect (308) to the canonical URL; `pageOpenGraph()` keeps the static
+  Open Graph image (`app/opengraph-image.tsx`) on pages that set their own Open Graph title.
+- **404s are server-rendered**: never call `notFound()` while a page renders; return the page's not-found content inside
+  `NotFoundResponse` (`src/components/http/not-found-status.tsx`), which raises `notFound()` inside a Suspense boundary
+  (status 404, `noindex`) and keeps the message in the HTML (`pageOrNotFound()` turns a loader's `notFound()` into
+  `null`). A plain `notFound()` during render makes Next.js send an empty `<html id="__next_error__">` that only
+  JavaScript fills. Use `forMetadata()` in `generateMetadata` (404 and redirect signals → `unresolvedMetadata()`).
+- **Performance budget** (docs/03 §7.3): LCP < 2.5 s on a throttled phone, checked by `e2e/seo.spec.ts` (DevTools
+  throttling: 4× CPU, 150 ms RTT, 1.6 Mbit/s). JavaScript: the shared shell is ~150 kB compressed (React 19 + Next.js 16),
+  so the product page is held to a budget over the shell (< 20 kB of its own): uPlot loads when the chart nears the
+  viewport, the alert form only where alerts are on (`alert-form-lazy.tsx`). Keep new client components small, prefer
+  server components and CSS-only interactions. `lighthouserc.json` runs Lighthouse CI on the home, a static and a
+  category page (`pnpm --filter @pretoscop/web lhci`, needs a server on :3200 and network access for the CLI).
 
 ## Plausible (self-hosted, after consent)
 

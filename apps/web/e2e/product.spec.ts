@@ -35,6 +35,8 @@ test('offers are ranked by total price, best offer summarised, refurbished behin
   await expect(offers).toHaveCount(5);
 
   await expect(page.locator('#continut').getByText('Prețurile și disponibilitatea sunt preluate automat de pe site-urile magazinelor')).toBeVisible();
+  // The chart library loads when the chart comes near the viewport (M16 performance budget).
+  await page.getByTestId('price-chart').scrollIntoViewIfNeeded();
   await expect(page.getByTestId('price-chart').locator('canvas')).toBeVisible();
   await page.getByRole('button', { name: '30 de zile' }).click();
   await expect(page.getByRole('button', { name: '30 de zile' })).toHaveAttribute('aria-pressed', 'true');

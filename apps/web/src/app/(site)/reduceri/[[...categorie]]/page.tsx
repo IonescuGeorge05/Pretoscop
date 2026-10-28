@@ -16,7 +16,7 @@ import { getCategoryTree, type CategoryNode } from '@/lib/catalog';
 import { db, serverEnv } from '@/lib/db';
 import { cn } from '@/lib/cn';
 import { formatDate, inSentence, plural } from '@/lib/format';
-import { forMetadata, pageOrNotFound, robotsFor, unresolvedMetadata } from '@/lib/seo';
+import { forMetadata, pageOpenGraph, pageOrNotFound, robotsFor, unresolvedMetadata } from '@/lib/seo';
 import { breadcrumbList, itemList } from '@/lib/structured-data';
 
 // docs/03 §7.1: ISR 15 min, rendered on first request (never at build time).
@@ -83,7 +83,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     alternates: { canonical: p.href, languages: { 'ro-RO': p.href } },
     // An empty deals page is thin: indexable only while it lists verified drops.
     robots: robotsFor(p.drops.length > 0),
-    openGraph: { title, url: p.href, type: 'website' },
+    openGraph: pageOpenGraph({ title, url: p.href }),
   };
 }
 

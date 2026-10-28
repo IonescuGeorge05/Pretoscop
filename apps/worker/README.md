@@ -102,6 +102,22 @@ It prints a before/after summary; run `--dry-run` first, then `match:run` (or wa
 - The image (`infra/docker/worker.Dockerfile`) runs `node --import tsx src/index.ts` as the `node`
   user under tini (`init: true`); the same image runs the one-shot `migrate` service.
 
+## Assisted-access channel (M05B)
+
+- `src/fetch/assisted.ts` builds the channel from `ASSISTED_VENDOR` (`none` by default: no channel, so
+  the fetch layer refuses every assisted host) for the crawler fetcher only (never the merchant fetcher),
+  with each shop's hosts and tier from the registry and the guarded dispatcher; `src/fetch/assisted-ledger.ts`
+  is the `access_costs` ledger: every call booked before it is sent under an advisory lock, only if the
+  month stays within the cap, and given back when the vendor does not bill it.
+- The policy resolver and `checkGates` keep an assisted shop closed unless it is designated
+  (`@pretoscop/config` `ASSISTED_DESIGNATED_SHOPS`), the flag `assisted.enabled` is on, a vendor is
+  configured and the month is under `ASSISTED_MONTHLY_CAP_EUR`.
+- `assisted.health` (09:15 daily) auto-pauses a shop below 80% success on each of the last 7 days
+  (kill switches + audit row + alert); the hourly SLO check alerts at 80%/100% of the cap and when
+  yesterday's success was under 90%; `/metrics` exports `pretoscop_assisted_*`.
+- `pnpm assisted:record <shop> <name> <url>` records an extractor fixture through the channel.
+- Procedure for the founders: `infra/runbooks/assisted-access.md`.
+
 ## Bot legitimacy (M21)
 
 - **Web Bot Auth**: `services.ts` gives the fetcher a signer when `WEB_BOT_AUTH=true` (key in `WEB_BOT_AUTH_PRIVATE_KEY`,

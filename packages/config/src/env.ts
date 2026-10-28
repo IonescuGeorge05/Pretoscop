@@ -130,7 +130,15 @@ export const EnvSchema = z
     ZYTE_API_KEY: optionalString,
     OXYLABS_USERNAME: optionalString,
     OXYLABS_PASSWORD: optionalString,
-    ASSISTED_MONTHLY_CAP_EUR: z.coerce.number().default(150),
+    ASSISTED_MONTHLY_CAP_EUR: z.coerce.number().min(0).default(150),
+    // EUR per USD for the cost estimate of USD-priced vendors (rounded up on purpose).
+    ASSISTED_EUR_PER_USD: z.coerce.number().positive().default(0.9),
+    // Zyte API endpoint (tests point it at a mock server). The API key travels with every call: https
+    // only, except a local mock on a loopback host in development.
+    ZYTE_API_URL: z
+      .string()
+      .default('https://api.zyte.com/v1/extract')
+      .refine(isVendorEndpoint, 'ZYTE_API_URL must be an https URL (http only for a local mock on 127.0.0.1, ::1 or localhost)'),
 
     // Blob storage (R2 in production, local filesystem in dev)
     BLOB_DRIVER: z.enum(['fs', 's3']).default('fs'),
@@ -246,6 +254,9 @@ export const EnvSchema = z
       if (env.FETCH_PRIVATE_ALLOWLIST.length > 0) {
         ctx.addIssue({ code: 'custom', path: ['FETCH_PRIVATE_ALLOWLIST'], message: 'FETCH_PRIVATE_ALLOWLIST is for local development only' });
       }
+      if (!env.ZYTE_API_URL.startsWith('https://')) {
+        ctx.addIssue({ code: 'custom', path: ['ZYTE_API_URL'], message: 'ZYTE_API_URL must be https outside development' });
+      }
     }
     // Production refuses to start without a real sender identity in every email (Law 506/2004
     // art. 12, Law 365/2002) and, on Resend, without the bounce/complaint webhook (a complaint must
@@ -254,6 +265,17 @@ export const EnvSchema = z
       for (const p of emailComplianceProblems(env)) ctx.addIssue({ code: 'custom', path: [p.key], message: p.message });
     }
   });
+
+/** An https URL, or http to a loopback host (a local mock of a vendor API). */
+export function isVendorEndpoint(value: string): boolean {
+  try {
+    const u = new URL(value);
+    if (u.protocol === 'https:') return true;
+    return u.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(u.hostname);
+  } catch {
+    return false;
+  }
+}
 
 interface EmailComplianceInput {
   COMPANY_LEGAL_NAME: string;

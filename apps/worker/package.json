@@ -35,6 +35,7 @@
     "ops:alert-test": "tsx src/cli/ops-alert-test.ts",
     "deals:show": "tsx src/cli/deals-show.ts",
     "sitemap:build": "tsx src/cli/sitemap-build.ts",
+    "assisted:record": "tsx src/cli/assisted-record.ts",
     "bot:check": "tsx src/cli/bot-check.ts",
     "shops:probe": "tsx src/cli/shops-probe.ts"
   },

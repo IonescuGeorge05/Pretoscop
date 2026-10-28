@@ -14,6 +14,15 @@ import { addDaysIso, bucharestToday, computeProductStats, rollupProducts } from 
 export const E2E_TITLE = 'Telefon mobil Testoscop X1, Dual SIM, 128GB, 8GB RAM, 5G, Negru (produs de test E2E)';
 const PREFIX = 'e2e-fixture-';
 
+/**
+ * Test products stay provisional (never indexed) although they have several live offers, a state a
+ * real product leaves at its next stats computation (M07: provisional until ≥ 2 offers). Call it
+ * after every `computeProductStats` on a fixture product.
+ */
+async function keepFixtureProvisional(db: Db, productId: number): Promise<void> {
+  await db.execute(sql`UPDATE products SET provisional = true WHERE id = ${productId}`);
+}
+
 interface Step {
   daysAgo: number;
   price: number;
@@ -103,10 +112,10 @@ export async function createE2eFixture(db: Db): Promise<E2eFixture> {
   const productId = await decideManually(db, ids.emag!, { kind: 'new_product' }, 'e2e-fixture');
   if (!productId) throw new Error('e2e fixture: product not created');
   for (const o of OFFERS) if (o.key !== 'emag') await decideManually(db, ids[o.key]!, { kind: 'accept', productId }, 'e2e-fixture');
-  await db.execute(sql`UPDATE products SET provisional = true WHERE id = ${productId}`);
   const today = bucharestToday();
   await rollupProducts(db, { productIds: [productId], from: addDaysIso(today, -10), to: today });
   await computeProductStats(db, [productId], today);
+  await keepFixtureProvisional(db, productId);
 
   const admin = await createAdminFixture(db, shopId, now);
   const search = await createSearchFixture(db, shopId, now);
@@ -411,10 +420,10 @@ export async function createAlertsFixture(db: Db): Promise<E2eAlertsFixture> {
   const productId = await decideManually(db, ids.a!, { kind: 'new_product' }, 'e2e-fixture');
   if (!productId) throw new Error('e2e alerts fixture: product not created');
   await decideManually(db, ids.b!, { kind: 'accept', productId }, 'e2e-fixture');
-  await db.execute(sql`UPDATE products SET provisional = true WHERE id = ${productId}`);
   const today = bucharestToday();
   await rollupProducts(db, { productIds: [productId], from: addDaysIso(today, -1), to: today });
   await computeProductStats(db, [productId], today);
+  await keepFixtureProvisional(db, productId);
   await db.execute(sql`
     INSERT INTO feature_flags (key, enabled, description) VALUES ('alerts.email.enabled', true, 'Price alert emails (M19)')
     ON CONFLICT (key) DO UPDATE SET enabled = true, updated_at = now()`);
@@ -439,6 +448,7 @@ export async function alertsFixturePrice(db: Db, key: string, lei: number): Prom
   const today = bucharestToday();
   await rollupProducts(db, { productIds: [Number(row.product_id)], from: today, to: today });
   await computeProductStats(db, [Number(row.product_id)], today);
+  await keepFixtureProvisional(db, Number(row.product_id));
   const t = await db.execute<{ total: string }>(sql`SELECT total_price::text AS total FROM offers WHERE id = ${offerId}`);
   return { offerId, total: t.rows[0]!.total };
 }

@@ -8,11 +8,13 @@ import { createMailer, type Mailer } from '@pretoscop/mailer';
 import { alertLinks } from '@pretoscop/notify';
 import { createBlobStore } from '@pretoscop/storage';
 import { createEmailSender, createNotifier, operatorFromEnv } from './alerts/notifier';
+import { createAssistedChannelFromEnv } from './fetch/assisted';
 import { createPolicyResolver } from './fetch/policy';
 import { PgDomainStateStore } from './fetch/pg-state';
 import { PgRequestLogSink } from './fetch/request-log';
 import type { AlertServices, Services } from './jobs/types';
 import { createOpsAlert } from './ops/alert';
+import { assistedMetricFamilies, assistedSloAlerts } from './ops/assisted';
 import { createRevalidator } from './ops/revalidate';
 import { offerIdentity } from './recorder/identity';
 import type { NormalizeFn } from './recorder/types';
@@ -147,7 +149,14 @@ export function createServices(env: Env, db: Db, log: Logger): Services & { clos
     timeoutMs: env.FETCH_TIMEOUT_MS,
   });
   const state = new PgDomainStateStore(db);
-  const fetcher = createFetcher(fetcherDeps(env, db, log, { dispatcher, requestLog, stateStore: state }));
+  // Assisted-access channel (M05B): the crawler fetcher only, and only with a configured vendor; otherwise
+  // the fetch layer refuses every assisted host (`assisted_unavailable`). Merchant requests never use it.
+  const assisted = createAssistedChannelFromEnv(env, db, log, dispatcher);
+  log.info({ assisted: assisted.channel ? 'on' : 'off', detail: assisted.reason }, 'assisted-access channel');
+  const fetcher = createFetcher({
+    ...fetcherDeps(env, db, log, { dispatcher, requestLog, stateStore: state }),
+    ...(assisted.channel ? { assisted: assisted.channel } : {}),
+  });
   const merchantFetcher = createMerchantFetcher(env, db, log, { dispatcher, requestLog, stateStore: state });
   if (env.WEB_BOT_AUTH) log.info({ web_bot_auth: true }, 'crawler requests are signed (Web Bot Auth)');
   let eur: { rate: number | null; at: number } = { rate: null, at: 0 };
@@ -173,6 +182,8 @@ export function createServices(env: Env, db: Db, log: Logger): Services & { clos
     revalidate: createRevalidator(env, log),
     startedAt: new Date(),
     alerts: createAlertServices(env, db, log),
+    sloExtra: () => assistedSloAlerts(db, env),
+    metricsExtra: () => assistedMetricFamilies(db, env),
     async close() {
       await requestLog.flush();
       await fetcher.close?.();

@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./assisted": "./src/assisted/index.ts",
     "./signing": "./src/signing.ts"
   },
   "scripts": {
@@ -13,6 +14,7 @@
     "test": "vitest run",
     "demo": "tsx src/cli/demo.ts",
     "record": "tsx src/cli/record.ts",
+    "assisted:demo": "tsx src/cli/assisted-demo.ts",
     "bot-auth:keygen": "tsx src/cli/bot-auth-keygen.ts"
   },
   "dependencies": {

@@ -65,7 +65,8 @@ export async function setFlagAction(form: FormData): Promise<void> {
     .values({ key, enabled })
     .onConflictDoUpdate({ target: featureFlags.key, set: { enabled, updatedAt: new Date() } });
   await audit(admin.actor, 'flag.set', 'feature_flags', key, before ?? null, { enabled });
-  revalidatePath('/admin/flaguri');
+  // Every admin page that shows a flag (Flaguri, Acces asistat) is re-rendered.
+  revalidatePath('/admin', 'layout');
 }
 
 export async function releaseQuarantineAction(form: FormData): Promise<void> {

@@ -10,8 +10,15 @@ the build. Read this first, then `CLAUDE.md` and `docs/progress.md`.
 - **Ten more modules are implemented or partly implemented on their own branches** (section 4).
   Parallel agents built them and were stopped mid-work for the move. Their unfinished changes are
   committed as `WIP` commits; nothing was lost.
-- **Nothing has ever been pushed to GitHub**, by design (local branches only). The code travels as
-  a git bundle (section 2).
+- **Everything is on GitHub** (`origin` = github.com/IonescuGeorge05/Pretoscop), pushed on
+  28 Oct 2026 at Daniel's request: `daniel` and all `mod/*` branches.
+  - GitHub push protection rejected the first push, because three recorded eMAG pages
+    (`packages/extractors/fixtures/emag/*.html`) contained the Mapbox and Google browser keys eMAG
+    embeds in its HTML.
+  - Those keys were redacted with same-length placeholders in every commit from M03 on (`git
+    filter-branch`), so commit hashes from M03 onwards differ from the ones in older notes and
+    agent messages.
+  - The redaction doesn't affect parsing: the parsers never read those keys.
 - **The recorder ran from 27 Oct.** The dev database holds 4,493 offers (eMAG 960, forIT 2,246,
   IT Galaxy 1,109, Bonami 104, Dedeman 34, Carrefour 24, Flip 12, Auchan 4) and 2,679 products.
   131 products already have offers from two or more shops. That price history is the most valuable
@@ -25,7 +32,7 @@ All of it lives in the repo folder `Pretoscop/` on the old Mac.
 
 | File or folder | What it is | Needed? |
 |---|---|---|
-| `data/handoff/pretoscop-all-branches.bundle` | Git bundle of all 49 refs: `daniel`, every `mod/*` branch, the agents' worktree branches | **Yes** |
+| `data/handoff/pretoscop-all-branches.bundle` | Git bundle of `daniel` and every `mod/*` branch (the same as GitHub) | Only if cloning from GitHub is not possible |
 | `data/handoff/pretoscop-dev-2026-10-28.dump` + `.sha256` | `pg_dump --format=custom` of the dev database (recorded prices, products, matches, admin audit) | **Yes** |
 | `.env` | Local dev settings (git-ignored): `CRAWL_ENABLED=true`, `ADMIN_EMAILS`, dev secrets | Yes, or recreate from `.env.example` |
 | `data/` (rest) | Raw run snapshots and backups (`data/blobs`), generated reports, probe notes; ~12 MB | Recommended |
@@ -44,11 +51,10 @@ Prerequisites:
 - **The machine must stay awake and on power while the recorder runs** (section 6).
 
 ```bash
-# Code: every branch from the bundle
-git clone data/handoff/pretoscop-all-branches.bundle pretoscop && cd pretoscop
+# Code: every branch from GitHub (offline alternative: git clone data/handoff/pretoscop-all-branches.bundle pretoscop)
+git clone https://github.com/IonescuGeorge05/Pretoscop.git pretoscop && cd pretoscop
 git checkout daniel
-for b in $(git branch -r | grep -v -- '->' | sed 's#origin/##'); do git branch --track "$b" "origin/$b" 2>/dev/null; done
-git remote set-url origin https://github.com/IonescuGeorge05/Pretoscop.git   # GitHub as the remote again (nothing is pushed until you decide)
+for b in $(git branch -r | grep -E 'origin/mod/' | sed 's#origin/##'); do git branch --track "$b" "origin/$b" 2>/dev/null; done
 
 # Settings and dependencies
 cp /path/from/old/mac/.env .env            # or: cp .env.example .env, then set CRAWL_ENABLED=true and ADMIN_EMAILS
@@ -137,7 +143,7 @@ order:
 - **The old Mac slept on battery overnight.** In-flight requests broke as "connection reset" and the
   fetch layer paused six shops for 24 h. Five pauses were lifted after matching each reset to a
   sleep or wake in `pmset -g log` (audit action `fetch.unpause`). **Flip** stays paused until
-  29 Oct 00:23 UTC. Since commit `8547f0d`, a transport error that surfaces more than 30 s after its
+  29 Oct 00:23 UTC. Since commit `4d46a06`, a transport error that surfaces more than 30 s after its
   own timeout is logged as `local_suspend` and never pauses a shop. The old recorder image predates
   that commit; `make recorder` on the new machine builds it fresh.
 - **Keep the recording machine plugged in and awake** (System Settings → Battery/Energy: prevent
@@ -156,7 +162,8 @@ order:
 - **Working agreement** (CLAUDE.md, `docs/progress.md` "Build session mode"):
   - One `mod/MXX-*` branch per module, merged into `daniel` with `--no-ff` after `make verify` passes.
   - Module reports go in `docs/progress.md`; phase gates are marked "awaiting founder approval".
-  - **Never push** without the founders.
+  - Push only when the founders ask. Every branch was pushed on 28 Oct 2026; keep recorded
+    shop pages free of third-party keys (GitHub push protection blocks them).
   - Commits are module-prefixed and end with the Co-Authored-By line.
 - **Gotchas found during the build:**
   - The Write tool and shell heredocs turn `\uXXXX` escapes into literal characters. Re-escape them

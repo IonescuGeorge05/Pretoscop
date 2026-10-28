@@ -76,3 +76,22 @@ export const channelPosts = pgTable(
   },
   (t) => [primaryKey({ columns: [t.channel, t.day] })],
 );
+
+/**
+ * Idempotency receipts of push and Telegram deliveries (M27): one row per message key (the
+ * `alert_sends` ids it carries) and target ('push:<subscription id>' or 'telegram'). A retry of the
+ * same rows (a timeout, a crash between sending and recording, one browser of several failing)
+ * skips the targets that already got the message, as Resend's idempotency key does for email. No
+ * personal data: the key is a hash and the target a subscription number. Pruned after 7 days.
+ */
+export const channelDeliveries = pgTable(
+  'channel_deliveries',
+  {
+    idempotencyKey: text('idempotency_key').notNull(),
+    target: text('target').notNull(),
+    /** The provider's message reference (Telegram message id, push HTTP status). */
+    ref: text('ref'),
+    createdAt: ts('created_at').notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.idempotencyKey, t.target] }), index('channel_deliveries_created_idx').on(t.createdAt)],
+);

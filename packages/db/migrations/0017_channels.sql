@@ -1,3 +1,11 @@
+CREATE TABLE "channel_deliveries" (
+	"idempotency_key" text NOT NULL,
+	"target" text NOT NULL,
+	"ref" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "channel_deliveries_idempotency_key_target_pk" PRIMARY KEY("idempotency_key","target")
+);
+--> statement-breakpoint
 CREATE TABLE "channel_posts" (
 	"channel" text NOT NULL,
 	"day" date NOT NULL,
@@ -43,6 +51,7 @@ CREATE TABLE "telegram_links" (
 ALTER TABLE "push_subscriptions" ADD CONSTRAINT "push_subscriptions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "telegram_link_tokens" ADD CONSTRAINT "telegram_link_tokens_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "telegram_links" ADD CONSTRAINT "telegram_links_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "channel_deliveries_created_idx" ON "channel_deliveries" USING btree ("created_at");--> statement-breakpoint
 CREATE UNIQUE INDEX "push_subscriptions_endpoint_uq" ON "push_subscriptions" USING btree ("endpoint");--> statement-breakpoint
 CREATE INDEX "push_subscriptions_user_idx" ON "push_subscriptions" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "telegram_link_tokens_user_idx" ON "telegram_link_tokens" USING btree ("user_id");--> statement-breakpoint

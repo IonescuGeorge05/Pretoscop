@@ -61,6 +61,27 @@ describe('getEnv', () => {
     expect(getEnv({ TELEGRAM_BOT_TOKEN: '1:x', TELEGRAM_BOT_USERNAME: 'PretoscopBot' }).TELEGRAM_API_BASE).toBe('https://api.telegram.org');
   });
 
+  it('checks the shape of the M27 settings (keys, contact, bot username) and keeps the token on TLS outside dev', () => {
+    const pub = `B${'A'.repeat(86)}`;
+    const priv = 'A'.repeat(43);
+    expect(getEnv({ VAPID_PUBLIC_KEY: pub, VAPID_PRIVATE_KEY: priv }).VAPID_PUBLIC_KEY).toBe(pub);
+    expect(() => getEnv({ VAPID_PUBLIC_KEY: 'short', VAPID_PRIVATE_KEY: priv })).toThrow(/VAPID_PUBLIC_KEY must be/);
+    expect(() => getEnv({ VAPID_PUBLIC_KEY: pub, VAPID_PRIVATE_KEY: 'x' })).toThrow(/VAPID_PRIVATE_KEY must be/);
+    expect(() => getEnv({ VAPID_SUBJECT: 'alerte@pretoscop.ro' })).toThrow(/VAPID_SUBJECT must be/);
+    expect(getEnv({ VAPID_SUBJECT: 'https://pretoscop.ro/contact' }).VAPID_SUBJECT).toBe('https://pretoscop.ro/contact');
+    expect(() => getEnv({ TELEGRAM_BOT_TOKEN: '1:x', TELEGRAM_BOT_USERNAME: '@PretoscopBot' })).toThrow(/without @/);
+    expect(() => getEnv({ TELEGRAM_BOT_TOKEN: '1:x', TELEGRAM_BOT_USERNAME: 'Pretoscop?start=x' })).toThrow(/without @/);
+    const prod = {
+      APP_ENV: 'staging',
+      BETTER_AUTH_SECRET: 'a'.repeat(32),
+      REVALIDATE_TOKEN: 'b'.repeat(32),
+      HASH_SALT_SECRET: 'c'.repeat(32),
+      ALERTS_SECRET: 'd'.repeat(32),
+    };
+    expect(() => getEnv({ ...prod, TELEGRAM_API_BASE: 'http://127.0.0.1:3481' })).toThrow(/TELEGRAM_API_BASE must be https/);
+    expect(getEnv({ ...prod, TELEGRAM_API_BASE: 'http://127.0.0.1:3481', APP_ENV: 'dev' }).TELEGRAM_API_BASE).toBe('http://127.0.0.1:3481');
+  });
+
   it('reports invalid enums readably', () => {
     expect(() => getEnv({ APP_ENV: 'qa' })).toThrow(/APP_ENV/);
   });

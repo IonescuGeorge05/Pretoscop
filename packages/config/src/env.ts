@@ -207,8 +207,20 @@ export const EnvSchema = z
     if ((env.VAPID_PUBLIC_KEY === undefined) !== (env.VAPID_PRIVATE_KEY === undefined)) {
       ctx.addIssue({ code: 'custom', path: ['VAPID_PRIVATE_KEY'], message: 'set both VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY, or neither' });
     }
+    if (env.VAPID_PUBLIC_KEY !== undefined && !/^[A-Za-z0-9_-]{86,88}$/.test(env.VAPID_PUBLIC_KEY)) {
+      ctx.addIssue({ code: 'custom', path: ['VAPID_PUBLIC_KEY'], message: 'VAPID_PUBLIC_KEY must be the base64url P-256 public key printed by vapid:keys' });
+    }
+    if (env.VAPID_PRIVATE_KEY !== undefined && !/^[A-Za-z0-9_-]{42,44}$/.test(env.VAPID_PRIVATE_KEY)) {
+      ctx.addIssue({ code: 'custom', path: ['VAPID_PRIVATE_KEY'], message: 'VAPID_PRIVATE_KEY must be the base64url private key printed by vapid:keys' });
+    }
+    if (!/^(mailto:\S+@\S+|https:\/\/\S+)$/.test(env.VAPID_SUBJECT)) {
+      ctx.addIssue({ code: 'custom', path: ['VAPID_SUBJECT'], message: 'VAPID_SUBJECT must be a mailto: address or an https: URL' });
+    }
     if (env.TELEGRAM_BOT_TOKEN && !env.TELEGRAM_BOT_USERNAME) {
       ctx.addIssue({ code: 'custom', path: ['TELEGRAM_BOT_USERNAME'], message: 'TELEGRAM_BOT_USERNAME is needed for the t.me link when TELEGRAM_BOT_TOKEN is set' });
+    }
+    if (env.TELEGRAM_BOT_USERNAME !== undefined && !/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(env.TELEGRAM_BOT_USERNAME)) {
+      ctx.addIssue({ code: 'custom', path: ['TELEGRAM_BOT_USERNAME'], message: 'TELEGRAM_BOT_USERNAME is the bot username without @ (5–32 letters, digits, _)' });
     }
     if (env.APP_ENV === 'staging' || env.APP_ENV === 'prod') {
       for (const key of ['BETTER_AUTH_SECRET', 'REVALIDATE_TOKEN', 'HASH_SALT_SECRET', 'ALERTS_SECRET'] as const) {
@@ -221,6 +233,10 @@ export const EnvSchema = z
       }
       if (env.FETCH_PRIVATE_ALLOWLIST.length > 0) {
         ctx.addIssue({ code: 'custom', path: ['FETCH_PRIVATE_ALLOWLIST'], message: 'FETCH_PRIVATE_ALLOWLIST is for local development only' });
+      }
+      // M27: the bot token travels in every Telegram request URL: only over TLS outside dev.
+      if (!env.TELEGRAM_API_BASE.startsWith('https://')) {
+        ctx.addIssue({ code: 'custom', path: ['TELEGRAM_API_BASE'], message: 'TELEGRAM_API_BASE must be https outside dev (the bot token is in the URL)' });
       }
     }
     // Production refuses to start without a real sender identity in every email (Law 506/2004

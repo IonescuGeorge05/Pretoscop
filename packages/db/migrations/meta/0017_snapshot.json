@@ -1,5 +1,5 @@
 {
-  "id": "f27ed3fd-53cd-40d3-ad3a-b8838299f03f",
+  "id": "9a06a4b9-201f-489b-9306-32098ceda5c0",
   "prevId": "ce196e6a-6a04-4358-b7af-3167e2816957",
   "version": "7",
   "dialect": "postgresql",
@@ -6090,6 +6090,68 @@
           "value": "\"commissions\".\"status\" in ('pending','accepted','rejected','paid')"
         }
       },
+      "isRLSEnabled": false
+    },
+    "public.channel_deliveries": {
+      "name": "channel_deliveries",
+      "schema": "",
+      "columns": {
+        "idempotency_key": {
+          "name": "idempotency_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "target": {
+          "name": "target",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ref": {
+          "name": "ref",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "channel_deliveries_created_idx": {
+          "name": "channel_deliveries_created_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {
+        "channel_deliveries_idempotency_key_target_pk": {
+          "name": "channel_deliveries_idempotency_key_target_pk",
+          "columns": [
+            "idempotency_key",
+            "target"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.channel_posts": {

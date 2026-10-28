@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
-import { foldLower } from '@pretoscop/core';
+import { foldLower, VERDICT_MIN_DAYS } from '@pretoscop/core';
 import { sql } from 'drizzle-orm';
 import type { Db } from '../client';
 import { numericToBani } from '../money';
+import { ELIGIBLE_ALERT_OFFER } from './alerts';
 
 /**
  * Push and Telegram channels (M27). Each channel's consent lives with it (text version and time)
@@ -41,13 +42,18 @@ export interface PushSubscriptionRow {
   p256dh: string;
   auth: string;
   deviceLabel: string | null;
+  consentTextVersion: string;
   createdAt: Date;
   lastSuccessAt: Date | null;
 }
 
+/** Browsers one account may keep subscribed; a new one beyond this replaces the oldest. */
+export const MAX_PUSH_SUBSCRIPTIONS_PER_USER = 10;
+
 /**
  * Stores a browser subscription with its consent (the box next to "Activează notificările" and the
- * browser's own permission). An endpoint already stored for another account moves to this one.
+ * browser's own permission). An endpoint already stored for another account moves to this one (the
+ * same browser, another login). At most `MAX_PUSH_SUBSCRIPTIONS_PER_USER` per account.
  */
 export async function savePushSubscription(
   db: Db,
@@ -73,15 +79,30 @@ export async function savePushSubscription(
     await tx.execute(sql`
       INSERT INTO consent_records (user_id, email_hash, purpose, text_version, given_at, given_ip_hash, confirmed_at, confirm_ip_hash, confirm_method)
       VALUES (${i.userId}, ${i.emailHash}, 'alert_push', ${i.consentTextVersion}, now(), ${i.ipHash}, now(), ${i.ipHash}, 'session')`);
+    const id = Number(r.rows[0]!.id);
+    await tx.execute(sql`
+      DELETE FROM push_subscriptions WHERE user_id = ${i.userId} AND id NOT IN (
+        SELECT id FROM push_subscriptions WHERE user_id = ${i.userId} ORDER BY consent_at DESC, id DESC LIMIT ${MAX_PUSH_SUBSCRIPTIONS_PER_USER})`);
     await resumeChannel(tx, i.userId, 'push');
     await tx.execute(sql`UPDATE users SET last_active_at = now(), retention_notice_at = NULL WHERE id = ${i.userId}`);
-    return Number(r.rows[0]!.id);
+    return id;
   });
 }
 
 export async function userPushSubscriptions(db: Exec, userId: string): Promise<PushSubscriptionRow[]> {
-  const r = await db.execute<{ id: string; user_id: string; endpoint: string; p256dh: string; auth: string; device_label: string | null; created_at: string; last_success_at: string | null }>(sql`
-    SELECT id::text, user_id, endpoint, p256dh, auth, device_label, created_at, last_success_at FROM push_subscriptions WHERE user_id = ${userId} ORDER BY id`);
+  const r = await db.execute<{
+    id: string;
+    user_id: string;
+    endpoint: string;
+    p256dh: string;
+    auth: string;
+    device_label: string | null;
+    consent_text_version: string;
+    created_at: string;
+    last_success_at: string | null;
+  }>(sql`
+    SELECT id::text, user_id, endpoint, p256dh, auth, device_label, consent_text_version, created_at, last_success_at
+    FROM push_subscriptions WHERE user_id = ${userId} ORDER BY id`);
   return r.rows.map((x) => ({
     id: Number(x.id),
     userId: x.user_id,
@@ -89,6 +110,28 @@ export async function userPushSubscriptions(db: Exec, userId: string): Promise<P
     p256dh: x.p256dh,
     auth: x.auth,
     deviceLabel: x.device_label,
+    consentTextVersion: x.consent_text_version,
+    createdAt: new Date(x.created_at),
+    lastSuccessAt: x.last_success_at === null ? null : new Date(x.last_success_at),
+  }));
+}
+
+/** What /alerte lists about a user's browsers (no endpoint, no keys). */
+export interface PushDevice {
+  id: number;
+  deviceLabel: string | null;
+  consentTextVersion: string;
+  createdAt: Date;
+  lastSuccessAt: Date | null;
+}
+
+export async function userPushDevices(db: Exec, userId: string): Promise<PushDevice[]> {
+  const r = await db.execute<{ id: string; device_label: string | null; consent_text_version: string; created_at: string; last_success_at: string | null }>(sql`
+    SELECT id::text, device_label, consent_text_version, created_at, last_success_at FROM push_subscriptions WHERE user_id = ${userId} ORDER BY id`);
+  return r.rows.map((x) => ({
+    id: Number(x.id),
+    deviceLabel: x.device_label,
+    consentTextVersion: x.consent_text_version,
     createdAt: new Date(x.created_at),
     lastSuccessAt: x.last_success_at === null ? null : new Date(x.last_success_at),
   }));
@@ -118,6 +161,27 @@ export async function markPushResult(db: Exec, id: number, ok: boolean): Promise
       ? sql`UPDATE push_subscriptions SET last_success_at = now(), failures = 0 WHERE id = ${id}`
       : sql`UPDATE push_subscriptions SET failures = failures + 1 WHERE id = ${id}`,
   );
+}
+
+// ---------------------------------------------------------------------------------------------
+// Delivery receipts (idempotency of push and Telegram sends)
+
+/** True when this message (key) already reached this target ('push:<id>' or 'telegram'). */
+export async function hasDeliveryReceipt(db: Exec, idempotencyKey: string, target: string): Promise<boolean> {
+  const r = await db.execute(sql`SELECT 1 FROM channel_deliveries WHERE idempotency_key = ${idempotencyKey} AND target = ${target}`);
+  return r.rows.length > 0;
+}
+
+/** Records a delivery right after the provider accepted it. */
+export async function recordDeliveryReceipt(db: Exec, idempotencyKey: string, target: string, ref: string | null): Promise<void> {
+  await db.execute(sql`
+    INSERT INTO channel_deliveries (idempotency_key, target, ref) VALUES (${idempotencyKey}, ${target}, ${ref}) ON CONFLICT DO NOTHING`);
+}
+
+/** Receipts older than `days` (retries end within hours). */
+export async function pruneDeliveryReceipts(db: Exec, days = 7): Promise<number> {
+  const r = await db.execute(sql`DELETE FROM channel_deliveries WHERE created_at < now() - make_interval(days => ${days}::int)`);
+  return r.rowCount ?? 0;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -249,12 +313,16 @@ export interface VerifiedDropRow {
 }
 
 /**
- * Today's verified drops (the same honesty rule as the "−X%" badge): the current shop-sold best
- * total, checked within 26 hours, at least `minDropPct` under the lowest daily total we observed in
- * the 30 days before today, with at least 14 observed days; never a provisional product or a total
- * under 30% of the 90-day median (probable mismatch).
+ * Today's verified drops, by the M08 rules the product page uses (M15's deals rules are not merged
+ * yet): verdict 'good_price' (today's best total is the lowest of the last 30 days), at least
+ * `VERDICT_MIN_DAYS` (14) observed days (no badge on a shorter history), and today's total at least
+ * `minDropPct` under the lowest daily total we observed in the 30 days before today. The offer must
+ * be one an alert may speak about (`ELIGIBLE_ALERT_OFFER`: in stock, shop-sold, matched, trusted
+ * shop, checked within the shop's freshness SLO, no pending quarantine), never on a provisional
+ * product and never under 30% of the 90-day median (probable mismatch). Biggest drops first.
  */
 export async function verifiedDrops(db: Exec, opts: { today: string; limit?: number; minDropPct?: number; minObservationDays?: number }): Promise<VerifiedDropRow[]> {
+  const minDays = Math.max(opts.minObservationDays ?? VERDICT_MIN_DAYS, VERDICT_MIN_DAYS);
   const r = await db.execute<{ id: string; slug: string; title: string; cur: string; shop: string; prev: string }>(sql`
     WITH prev AS (
       SELECT product_id, min(min_total_price) AS m FROM product_daily
@@ -268,8 +336,10 @@ export async function verifiedDrops(db: Exec, opts: { today: string; limit?: num
     JOIN offers o ON o.id = ps.current_min_offer_id
     JOIN shops s ON s.id = o.shop_id
     WHERE p.status = 'active' AND NOT p.provisional AND ps.current_min_total IS NOT NULL
-      AND ps.observations_days >= ${opts.minObservationDays ?? 14}
-      AND o.last_checked_at > now() - interval '26 hours'
+      AND ps.verdict = 'good_price'
+      AND ps.observations_days >= ${minDays}
+      AND ${ELIGIBLE_ALERT_OFFER}
+      AND o.total_price = ps.current_min_total
       AND ps.current_min_total * 100 <= prev.m * (100 - ${opts.minDropPct ?? 5})
       AND (ps.median_90d IS NULL OR ps.current_min_total >= ps.median_90d * 0.3)
     ORDER BY (prev.m - ps.current_min_total) / prev.m DESC, p.id

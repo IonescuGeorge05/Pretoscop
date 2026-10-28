@@ -170,6 +170,8 @@ describe('channel changes and the consent ledger', () => {
       expect.objectContaining({ purpose: 'alert_email', withdraw_method: 'channel_changed' }),
       expect.objectContaining({ purpose: 'alert_telegram', text_version: 'telegramConsent.v1', withdraw_method: null }),
     ]);
+    const own = await t.db.execute<{ channel: string; consent_text_version: string }>(sql`SELECT channel, consent_text_version FROM alerts WHERE id = ${alertId}`);
+    expect(own.rows).toEqual([{ channel: 'telegram', consent_text_version: 'telegramConsent.v1' }]);
     // Same channel, no new record.
     expect(await updateAlert(t.db, alertId, u, { kind: 'below', targetBani: 10_000 })).toBe(true);
     expect((await consents(u)).filter((x) => x.alert_id === String(alertId))).toHaveLength(2);

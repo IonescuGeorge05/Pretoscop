@@ -488,8 +488,13 @@ export async function updateAlert(
     // pause caused by the old channel (unavailable; for email also the suppression list) ends when
     // the alert moves to another channel.
     const leftItsPause = sql`status = 'paused' AND channel <> ${channel} AND (paused_reason = 'channel_unavailable' OR (channel = 'email' AND paused_reason = 'suppressed'))`;
+    // The alert's own consent fields follow its channel (the ledger keeps the history).
+    const consentNow =
+      channel !== a.channel && patch.consent
+        ? sql`consent_at = now(), consent_text_version = ${patch.consent.textVersion}, consent_ip_hash = ${patch.consent.ipHash},`
+        : sql``;
     await tx.execute(sql`
-      UPDATE alerts SET kind = ${patch.kind}, target_price = ${money(patch.targetBani)}, channel = ${channel},
+      UPDATE alerts SET kind = ${patch.kind}, target_price = ${money(patch.targetBani)}, channel = ${channel}, ${consentNow}
         armed = true, last_notified_at = NULL, last_notified_total = NULL, last_notified_offer_id = NULL,
         baseline_total = ${money(baseline)},
         status = CASE WHEN ${leftItsPause} THEN 'active' ELSE status END,

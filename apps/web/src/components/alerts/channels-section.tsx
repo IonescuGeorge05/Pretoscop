@@ -10,7 +10,9 @@ const linkOf = (c: ConsentText) => ({ key: c.key, text: c.text, link: { href: c.
 
 /**
  * "Canale de notificare" on /alerte (M27): email (always), browser notifications (Web Push) and
- * Telegram, each with its own consent text; alerts pick a channel in "Modifică".
+ * Telegram, each with its own consent text; alerts pick a channel in "Modifică". A browser or a
+ * Telegram chat already set up is always listed with its "remove" button, even while the feature is
+ * switched off (withdrawing consent must stay possible).
  */
 export function ChannelsSection({
   email,
@@ -21,7 +23,7 @@ export function ChannelsSection({
 }: {
   email: string;
   ch: UserChannels;
-  /** Set right after "Conectează Telegram": the one-time token of the deep link. */
+  /** Set right after "Conectează Telegram" (cookie): the one-time token of the deep link. */
   telegramToken: string | null;
   pushConsent: ConsentText;
   telegramConsent: ConsentText;
@@ -43,41 +45,40 @@ export function ChannelsSection({
 
       <div className="space-y-2" data-testid="channel-push">
         <h3 className="font-semibold text-ink">Notificări în browser</h3>
+        {ch.pushDevices.length > 0 && (
+          <ul className="space-y-1 text-sm text-ink-soft">
+            {ch.pushDevices.map((d) => (
+              <li key={d.id} className="flex flex-wrap items-center gap-2" data-testid="push-device">
+                <span>
+                  {d.deviceLabel ?? 'Dispozitiv'}, activ din {formatDateTime(d.createdAt)}
+                </span>
+                <form action="/api/push/unsubscribe" method="post">
+                  <input type="hidden" name="id" value={d.id} />
+                  <Button type="submit" size="sm" variant="ghost">
+                    Elimină
+                  </Button>
+                </form>
+              </li>
+            ))}
+          </ul>
+        )}
         {ch.pushKey ? (
-          <>
-            {ch.pushDevices.length > 0 && (
-              <ul className="space-y-1 text-sm text-ink-soft">
-                {ch.pushDevices.map((d) => (
-                  <li key={d.id} className="flex flex-wrap items-center gap-2" data-testid="push-device">
-                    <span>
-                      {d.deviceLabel ?? 'Dispozitiv'}, activ din {formatDateTime(d.createdAt)}
-                    </span>
-                    <form action="/api/push/unsubscribe" method="post">
-                      <input type="hidden" name="id" value={d.id} />
-                      <Button type="submit" size="sm" variant="ghost">
-                        Elimină
-                      </Button>
-                    </form>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <PushControls vapidPublicKey={ch.pushKey} consent={linkOf(pushConsent)} />
-          </>
+          <PushControls vapidPublicKey={ch.pushKey} consent={linkOf(pushConsent)} knownEndpointHashes={ch.pushDevices.map((d) => d.endpointHash)} />
         ) : (
-          <p className="text-sm text-ink-soft">Notificările în browser pornesc în curând.</p>
+          <p className="text-sm text-ink-soft">
+            {ch.pushDevices.length > 0 ? 'Notificările în browser sunt oprite deocamdată; nu îți trimitem nimic pe aceste dispozitive.' : 'Notificările în browser pornesc în curând.'}
+          </p>
         )}
       </div>
 
       <div className="space-y-2" data-testid="channel-telegram">
         <h3 className="font-semibold text-ink">Telegram</h3>
-        {!ch.telegramBot ? (
-          <p className="text-sm text-ink-soft">Alertele pe Telegram pornesc în curând.</p>
-        ) : ch.telegram ? (
+        {ch.telegram ? (
           <div className="space-y-2 text-sm text-ink-soft">
             <p>
               Conectat din {formatDateTime(ch.telegram.linkedAt)}.
               {ch.telegram.status === 'blocked' && ' Ai blocat robotul în Telegram: deblochează-l și conectează-te din nou ca să primești alertele.'}
+              {!ch.telegramBot && ' Alertele pe Telegram sunt oprite deocamdată; nu îți trimitem nimic acolo.'}
             </p>
             <form action={unlinkTelegramAction}>
               <Button type="submit" size="sm" variant="secondary">
@@ -85,6 +86,8 @@ export function ChannelsSection({
               </Button>
             </form>
           </div>
+        ) : !ch.telegramBot ? (
+          <p className="text-sm text-ink-soft">Alertele pe Telegram pornesc în curând.</p>
         ) : token ? (
           <div className="space-y-2 text-sm text-ink-soft">
             <p>Deschide Telegram și apasă „Start” în conversația cu robotul. Linkul expiră în 15 minute și merge o singură dată.</p>
@@ -97,11 +100,12 @@ export function ChannelsSection({
             >
               Deschide Telegram
             </a>
+            <p>După ce ai apăsat „Start”, reîncarcă această pagină.</p>
           </div>
         ) : (
           <form action={startTelegramLinkAction} className="space-y-2">
             <div className="flex items-start gap-2.5">
-              <input id="telegram-consent" aria-labelledby="telegram-consent-label" name="telegramConsent" type="checkbox" required className="mt-1 size-4 shrink-0 accent-brand-600" />
+              <input id="telegram-consent" aria-labelledby="telegram-consent-label" name="telegramConsent" type="checkbox" className="mt-1 size-4 shrink-0 accent-brand-600" />
               <label id="telegram-consent-label" htmlFor="telegram-consent" className="text-[13px] leading-snug text-ink-soft">
                 {telegramConsent.text}{' '}
                 <Link href={telegramConsent.link.href} className="text-brand-700 underline">

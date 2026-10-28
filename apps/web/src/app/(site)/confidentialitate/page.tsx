@@ -154,7 +154,7 @@ export default function PrivacyPage() {
                 items={[
                   [
                     'Ce date',
-                    'Adresa tehnică de notificare a browserului tău (furnizată de serviciul de notificări al browserului), cheile ei de criptare, un nume al dispozitivului (de exemplu „Chrome · Android”, nu informațiile complete ale browserului), data acordului și versiunea textului acceptat.',
+                    'Adresa tehnică de notificare a browserului tău (furnizată de serviciul de notificări al browserului), cheile ei de criptare, un nume al dispozitivului (de exemplu „Chrome · Android”, nu informațiile complete ale browserului), data acordului, versiunea textului acceptat și o amprentă (hash) a adresei IP, ca dovadă a acordului.',
                   ],
                   ['De ce', 'Ca să îți trimitem pe acest dispozitiv alertele de preț alese.'],
                   [
@@ -173,14 +173,17 @@ export default function PrivacyPage() {
                 items={[
                   [
                     'Ce date',
-                    'Identificatorul conversației tale cu robotul Pretoscop (un număr dat de Telegram, nu numărul de telefon), data conectării, versiunea textului acceptat și alertele pe care le urmărești acolo.',
+                    'Identificatorul conversației tale cu robotul Pretoscop (un număr dat de Telegram, nu numărul de telefon), data conectării, versiunea textului acceptat și alertele pe care le urmărești acolo. Nu păstrăm numele, numele de utilizator sau numărul tău de telefon din Telegram și nici mesajele pe care le trimiți robotului.',
                   ],
                   ['De ce', 'Ca să îți trimitem pe Telegram alertele alese și să răspundem comenzilor robotului (/urmareste, /alertele, /oprire).'],
                   [
                     'Temeiul legal',
-                    'Consimțământul tău (art. 6 alin. (1) lit. a) GDPR), dat pe site și confirmat când apeși „Start” în Telegram. Telegram Messenger Inc. este un operator separat, cu propria politică de confidențialitate; datele utilizatorilor din Spațiul Economic European sunt păstrate de Telegram în Țările de Jos.',
+                    'Consimțământul tău (art. 6 alin. (1) lit. a) GDPR), dat pe site și confirmat când apeși „Start” în Telegram. Linkul de conectare merge o singură dată și expiră în 15 minute.',
                   ],
-                  ['Cât timp', 'Până trimiți /oprire sau deconectezi Telegram din pagina Alertele mele. Dovada acordului se păstrează încă 3 ani după retragerea lui.'],
+                  [
+                    'Cât timp',
+                    'Până trimiți /oprire, deconectezi Telegram din pagina Alertele mele sau ștergi contul; dacă blochezi robotul, nu îți mai scriem. Dovada acordului se păstrează încă 3 ani după retragerea lui.',
+                  ],
                 ]}
               />
               <InfoCard
@@ -253,12 +256,6 @@ export default function PrivacyPage() {
                     'Rețea globală; companie din SUA',
                   ],
                   ['Resend', 'Trimite emailurile: autentificare, alerte, notificări din formularul de contact', 'Adresa destinatarului și conținutul emailului', 'SUA'],
-                  [
-                    'Serviciul de notificări al browserului tău (Google, Mozilla, Apple sau Microsoft)',
-                    'Transmite notificările de preț, dacă le-ai activat',
-                    'Adresa tehnică de notificare; conținutul este criptat și nu poate fi citit de serviciu',
-                    'În funcție de browser; companii din SUA',
-                  ],
                   ['Sentry', 'Raportează erorile tehnice ale site-ului', 'Detalii tehnice despre erori, fără adresa IP', 'SUA sau UE'],
                   ['Anthropic', 'Ajută la recunoașterea automată a produselor din titlurile ofertelor', 'Doar titluri și caracteristici de produse, fără date personale', 'SUA'],
                   ['Furnizorul căsuțelor de email (în curs de alegere)', 'Primește mesajele trimise la adresele noastre', 'Adresa ta și mesajul', 'Va fi precizat aici'],
@@ -269,9 +266,19 @@ export default function PrivacyPage() {
                 dezvoltă. Putem dezvălui date autorităților doar când legea ne obligă.
               </p>
               <p>
-                Dacă alegi alertele pe Telegram, Telegram Messenger Inc. primește mesajele ca operator separat (nu în numele nostru), conform politicii sale de
-                confidențialitate.
+                Două servicii primesc date doar dacă tu le alegi și lucrează după propriile reguli, nu în numele nostru:
               </p>
+              <ul>
+                <li>
+                  <strong>Serviciul de notificări al browserului tău</strong> (Google pentru Chrome, Edge pe Android, Opera și Samsung Internet; Mozilla pentru
+                  Firefox; Apple pentru Safari; Microsoft pentru Edge pe Windows), dacă activezi notificările în browser: primește adresa tehnică de notificare și
+                  notificarea criptată, pe care nu o poate citi. Companii din SUA sau din UE, după browser.
+                </li>
+                <li>
+                  <strong>Telegram</strong>, dacă alegi alertele pe Telegram: primește mesajele pe care ți le trimite robotul nostru, conform politicii sale de
+                  confidențialitate (telegram.org/privacy).
+                </li>
+              </ul>
             </>
           ),
         },

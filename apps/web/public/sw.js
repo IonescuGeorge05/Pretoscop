@@ -1,6 +1,8 @@
 /* Pretoscop service worker (M27): shows price-alert notifications sent by Web Push and opens the
- * page they point to. No caching, no offline mode, no tracking: only `push` and
- * `notificationclick`. The payload is JSON: { title, body, url, tag }. */
+ * page they point to. No fetch handler, no caching, no offline mode, no tracking: only `push` and
+ * `notificationclick`, so it can never serve a stale page. The payload is JSON:
+ * { title, body, url, tag }; a URL off this site is replaced by /alerte. Served with
+ * Cache-Control: no-cache (next.config.ts) and registered with updateViaCache: 'none'. */
 'use strict';
 
 self.addEventListener('install', () => {
@@ -31,7 +33,7 @@ self.addEventListener('push', (event) => {
     self.registration.showNotification(title, {
       body: typeof data.body === 'string' ? data.body : '',
       tag: typeof data.tag === 'string' ? data.tag : undefined,
-      icon: '/icon.svg',
+      icon: '/apple-icon',
       lang: 'ro',
       data: { url },
     }),

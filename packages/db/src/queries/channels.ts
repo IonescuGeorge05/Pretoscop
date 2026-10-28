@@ -119,6 +119,8 @@ export async function userPushSubscriptions(db: Exec, userId: string): Promise<P
 /** What /alerte lists about a user's browsers (no endpoint, no keys). */
 export interface PushDevice {
   id: number;
+  /** SHA-256 (hex) of the endpoint: lets this browser recognize its own subscription. */
+  endpointHash: string;
   deviceLabel: string | null;
   consentTextVersion: string;
   createdAt: Date;
@@ -126,10 +128,12 @@ export interface PushDevice {
 }
 
 export async function userPushDevices(db: Exec, userId: string): Promise<PushDevice[]> {
-  const r = await db.execute<{ id: string; device_label: string | null; consent_text_version: string; created_at: string; last_success_at: string | null }>(sql`
-    SELECT id::text, device_label, consent_text_version, created_at, last_success_at FROM push_subscriptions WHERE user_id = ${userId} ORDER BY id`);
+  const r = await db.execute<{ id: string; endpoint_hash: string; device_label: string | null; consent_text_version: string; created_at: string; last_success_at: string | null }>(sql`
+    SELECT id::text, encode(sha256(convert_to(endpoint, 'UTF8')), 'hex') AS endpoint_hash, device_label, consent_text_version, created_at, last_success_at
+    FROM push_subscriptions WHERE user_id = ${userId} ORDER BY id`);
   return r.rows.map((x) => ({
     id: Number(x.id),
+    endpointHash: x.endpoint_hash,
     deviceLabel: x.device_label,
     consentTextVersion: x.consent_text_version,
     createdAt: new Date(x.created_at),

@@ -14,6 +14,11 @@ function base64UrlToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
   return out;
 }
 
+async function sha256Hex(text: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 const noopSubscribe = () => () => {};
 
 function detect(): Support {
@@ -27,26 +32,48 @@ function detect(): Support {
 /**
  * Web Push on this device (M27): the explicit consent box (pushConsent, versioned), then the
  * browser's own permission prompt, then the subscription stored on our side. Off again at any time
- * here or in the browser settings. On iPhone, notifications work only from the Home Screen app.
+ * here, in the device list or in the browser settings. On iPhone and iPad, web notifications work
+ * only from the Home Screen app (iOS 16.4+), so Safari gets that note instead of the button.
  */
-export function PushControls({ vapidPublicKey, consent }: { vapidPublicKey: string; consent: { key: string; text: string; link: { href: string; label: string } } }) {
+export function PushControls({
+  vapidPublicKey,
+  consent,
+  knownEndpointHashes,
+}: {
+  vapidPublicKey: string;
+  consent: { key: string; text: string; link: { href: string; label: string } };
+  /** SHA-256 of the endpoints this account has stored: tells whether this browser is one of them. */
+  knownEndpointHashes: string[];
+}) {
   // What the browser can do, read on the client only ('checking' on the server and before hydration).
   const detected = useSyncExternalStore(noopSubscribe, detect, () => 'checking' as Support);
   const [override, setSupport] = useState<Support | null>(null);
   const support = override ?? detected;
+  /** This browser's subscription, when it is also stored for this account. */
   const [endpoint, setEndpoint] = useState<string | null>(null);
   const [agreed, setAgreed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const known = knownEndpointHashes.join(',');
 
   useEffect(() => {
     if (detected !== 'ok') return;
+    let cancelled = false;
     navigator.serviceWorker
       .register('/sw.js', { scope: '/', updateViaCache: 'none' })
       .then((reg) => reg.pushManager.getSubscription())
-      .then((sub) => setEndpoint(sub?.endpoint ?? null))
-      .catch(() => setSupport('unsupported'));
-  }, [detected]);
+      .then(async (sub) => {
+        if (cancelled) return;
+        const mine = sub ? known.split(',').includes(await sha256Hex(sub.endpoint)) : false;
+        setEndpoint(mine && sub ? sub.endpoint : null);
+      })
+      .catch(() => {
+        if (!cancelled) setSupport('unsupported');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [detected, known]);
 
   async function enable() {
     setBusy(true);
@@ -59,7 +86,15 @@ export function PushControls({ vapidPublicKey, consent }: { vapidPublicKey: stri
         return;
       }
       const reg = await navigator.serviceWorker.ready;
-      const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToUint8Array(vapidPublicKey) });
+      const options = { userVisibleOnly: true, applicationServerKey: base64UrlToUint8Array(vapidPublicKey) };
+      let sub: PushSubscription;
+      try {
+        sub = await reg.pushManager.subscribe(options);
+      } catch {
+        // A subscription made with another key (a rotated VAPID pair) blocks a new one: replace it.
+        await (await reg.pushManager.getSubscription())?.unsubscribe().catch(() => undefined);
+        sub = await reg.pushManager.subscribe(options);
+      }
       const res = await fetch('/api/push/subscribe', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
@@ -91,6 +126,8 @@ export function PushControls({ vapidPublicKey, consent }: { vapidPublicKey: stri
       setEndpoint(null);
       setMessage('Notificările sunt oprite pe acest dispozitiv.');
       window.location.reload();
+    } catch {
+      setMessage('Nu am putut opri notificările. Încearcă din nou sau oprește-le din setările browserului.');
     } finally {
       setBusy(false);
     }
@@ -102,6 +139,8 @@ export function PushControls({ vapidPublicKey, consent }: { vapidPublicKey: stri
       const res = await fetch('/api/push/test', { method: 'POST' });
       const body = (await res.json().catch(() => null)) as { sent?: number } | null;
       setMessage(res.ok && (body?.sent ?? 0) > 0 ? 'Am trimis o notificare de test.' : 'Notificarea de test nu a putut fi trimisă.');
+    } catch {
+      setMessage('Notificarea de test nu a putut fi trimisă.');
     } finally {
       setBusy(false);
     }

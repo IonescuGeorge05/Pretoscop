@@ -1,6 +1,7 @@
 import { consentTextByKey, currentConsentText } from '@pretoscop/config/legal-texts';
 import { userAlerts, type AlertView } from '@pretoscop/db';
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import Link from 'next/link';
 import { ChannelsSection } from '@/components/alerts/channels-section';
 import { Notice } from '@/components/alerts/notice';
@@ -10,7 +11,7 @@ import { Button } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import { describeAlert } from '@/lib/alert-form';
 import { getSession } from '@/lib/auth';
-import { userChannels, type UserChannels } from '@/lib/channels';
+import { TELEGRAM_LINK_COOKIE, userChannels, type UserChannels } from '@/lib/channels';
 import { db } from '@/lib/db';
 import { formatDateTime, formatLei } from '@/lib/format';
 import { confirmPendingAction, deleteAccountAction, deleteAlertAction, requestLoginLink, signOutAction, stopAllAction, updateAlertAction } from './actions';
@@ -217,7 +218,9 @@ export default async function AlertsPage({ searchParams }: Props) {
     );
   }
 
-  const [alerts, ch] = await Promise.all([userAlerts(db(), session.user.id), userChannels(session.user.id)]);
+  const [alerts, ch, jar] = await Promise.all([userAlerts(db(), session.user.id), userChannels(session.user.id), cookies()]);
+  // The one-time Telegram link token, set by "Conectează Telegram" (httpOnly cookie, 15 minutes).
+  const telegramToken = jar.get(TELEGRAM_LINK_COOKIE)?.value ?? null;
   const changed = Number(one(p.modificat) || one(p.confirmat));
   const notice =
     one(p.modificat) !== ''
@@ -279,14 +282,15 @@ export default async function AlertsPage({ searchParams }: Props) {
           )}
           <p className="text-sm text-muted">
             Îți scriem cel mult o dată pe zi pentru fiecare alertă, doar când prețul total (preț + livrare) scade la un magazin care vinde direct, verificat
-            recent. Fiecare email are linkul de dezabonare. Notificările în browser și pe Telegram așteaptă dimineața (8:00–22:00).
+            recent. Fiecare email are linkul de dezabonare. Notificările în browser și pe Telegram nu pleacă noaptea: cele dintre 22:00 și 8:00 așteaptă
+            până dimineața.
           </p>
         </section>
 
         <ChannelsSection
           email={session.user.email}
           ch={ch}
-          telegramToken={one(p.tg) || null}
+          telegramToken={telegramToken}
           pushConsent={currentConsentText('pushConsent')}
           telegramConsent={currentConsentText('telegramConsent')}
         />
@@ -296,7 +300,8 @@ export default async function AlertsPage({ searchParams }: Props) {
             Datele tale
           </h2>
           <p className="text-[15px] text-ink-soft">
-            Păstrăm adresa de email, alertele, alertele trimise și dovada acordului tău.{' '}
+            Păstrăm adresa de email, alertele, alertele trimise, dovada acordului tău și, dacă le-ai activat, browserele pentru notificări și
+            conversația cu robotul Telegram.{' '}
             <Link href="/confidentialitate#alerte" className="font-medium text-brand-700 underline">
               Detalii
             </Link>

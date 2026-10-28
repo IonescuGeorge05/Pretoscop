@@ -1,6 +1,7 @@
 import { normalizeEmail } from '@pretoscop/core';
 import { sql, suppressEmail, unsubscribeAllEmail } from '@pretoscop/db';
 import { hashEmail, logAlert } from '@/lib/alerts';
+import { readTextCapped } from '@/lib/body';
 import { db, serverEnv } from '@/lib/db';
 import { eventAction, eventRecipients, verifySvix, type ResendEvent } from '@/lib/svix';
 
@@ -18,8 +19,9 @@ const MAX_BYTES = 256 * 1024;
 export async function POST(req: Request): Promise<Response> {
   const secret = serverEnv().RESEND_WEBHOOK_SECRET;
   if (!secret) return new Response('not found', { status: 404 });
-  const body = await req.text();
-  if (body.length > MAX_BYTES) return new Response('too large', { status: 413 });
+  // Refused by Content-Length before reading; the read itself stops at the limit.
+  const body = await readTextCapped(req, MAX_BYTES);
+  if (body === null) return new Response('too large', { status: 413 });
   const ok = verifySvix(secret, { id: req.headers.get('svix-id'), timestamp: req.headers.get('svix-timestamp'), signature: req.headers.get('svix-signature') }, body);
   if (!ok) return new Response('invalid signature', { status: 401 });
   let event: ResendEvent;

@@ -15,7 +15,8 @@
     "backup": "tsx src/cli/backup.ts",
     "stats:show": "tsx src/cli/stats-show.ts",
     "match:run": "tsx src/cli/match-run.ts",
-    "bot:check": "tsx src/cli/bot-check.ts"
+    "bot:check": "tsx src/cli/bot-check.ts",
+    "shops:probe": "tsx src/cli/shops-probe.ts"
   },
   "devDependencies": {
     "pino-pretty": "^13.2.0"

@@ -1,0 +1,89 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`channel message formats (snapshots) > Telegram alert: facts, escaped title, offer button and a stop button 1`] = `
+{
+  "buttons": [
+    [
+      {
+        "text": "Vezi oferta la IT Galaxy",
+        "url": "https://pretoscop.ro/out/55?p=alert",
+      },
+    ],
+    [
+      {
+        "callback_data": "d:12",
+        "text": "Oprește alerta",
+      },
+    ],
+  ],
+  "text": "<b>Preț mai mic</b>
+
+<b>Telefon mobil Testoscop X1, 128GB &lt;Negru&gt;</b>
+1.399,00 lei la IT Galaxy (1.399,00 lei, livrare gratuită)
+Sub pragul tău de 1.450,00 lei.
+Verificat pe 6 nov. 2026, 12:05. <a href="https://pretoscop.ro/out/55?p=alert">Vezi oferta</a> · <a href="https://pretoscop.ro/p/telefon-mobil-testoscop-x1-1">Istoric</a>
+
+<i>Prețul final este cel afișat de magazin.</i>
+Oprești alertele cu /oprire.",
+}
+`;
+
+exports[`channel message formats (snapshots) > Telegram alert: facts, escaped title, offer button and a stop button 2`] = `
+{
+  "buttons": [
+    [
+      {
+        "text": "Alertele mele",
+        "url": "https://pretoscop.ro/alerte",
+      },
+    ],
+  ],
+  "text": "<b>2 prețuri mai mici</b>
+
+<b>Telefon mobil Testoscop X1, 128GB &lt;Negru&gt;</b>
+1.399,00 lei la IT Galaxy (1.399,00 lei, livrare gratuită)
+Sub pragul tău de 1.450,00 lei.
+Verificat pe 6 nov. 2026, 12:05. <a href="https://pretoscop.ro/out/55?p=alert">Vezi oferta</a> · <a href="https://pretoscop.ro/p/telefon-mobil-testoscop-x1-1">Istoric</a>
+
+<b>Laptop Y</b>
+1.399,00 lei la IT Galaxy (1.399,00 lei, livrare gratuită)
+Sub pragul tău de 1.450,00 lei.
+Verificat pe 6 nov. 2026, 12:05. <a href="https://pretoscop.ro/out/55?p=alert">Vezi oferta</a> · <a href="https://pretoscop.ro/p/telefon-mobil-testoscop-x1-1">Istoric</a>
+
+<i>Prețul final este cel afișat de magazin.
+Unele linkuri pot fi afiliate (comision fără cost pentru tine).</i>
+Oprești alertele cu /oprire.",
+}
+`;
+
+exports[`channel message formats (snapshots) > daily deals post: verified drops only, numbers and dates, links to Pretoscop 1`] = `
+"<b>Reduceri verificate de Pretoscop</b> · 6 noiembrie 2026
+Prețuri totale (preț + livrare) mai mici decât cel mai mic preț observat de noi în ultimele 30 de zile:
+
+1. <a href="https://pretoscop.ro/p/televizor-samsung-55-7">Televizor Samsung 55" QLED</a>
+   2.499,00 lei la forit · cu 13% sub minimul din 30 de zile (2.899,00 lei)
+
+2. <a href="https://pretoscop.ro/p/casti-sony-9">Căști Sony WH-1000XM6</a>
+   1.299,00 lei la IT Galaxy · cu 7% sub minimul din 30 de zile (1.399,00 lei)
+
+<i>Prețurile se pot schimba oricând; prețul final este cel de pe site-ul magazinului.</i> <a href="https://pretoscop.ro/reduceri">Toate reducerile</a>"
+`;
+
+exports[`channel message formats (snapshots) > push payload: one alert opens the product, several open the alerts page 1`] = `
+{
+  "body": "1.399,00 lei la IT Galaxy. Sub pragul tău de 1.450,00 lei. Verificat pe 6 nov. 2026, 12:05.",
+  "tag": "alerta-12",
+  "title": "Preț mai mic: Telefon mobil Testoscop X1, 128GB <Negru>",
+  "url": "https://pretoscop.ro/p/telefon-mobil-testoscop-x1-1",
+}
+`;
+
+exports[`channel message formats (snapshots) > push payload: one alert opens the product, several open the alerts page 2`] = `
+{
+  "body": "Telefon mobil Testoscop X1, 128GB <Negr…: 1.399,00 lei
+Laptop Y: 1.399,00 lei",
+  "tag": "alerte",
+  "title": "[SIMULARE] 2 alerte de preț",
+  "url": "https://pretoscop.ro/alerte",
+}
+`;

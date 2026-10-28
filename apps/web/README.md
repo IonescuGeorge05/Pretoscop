@@ -176,6 +176,28 @@ Evidence: `consent_ip_hash`/`confirm_ip_hash` = `hashWithDailySalt('ip', ip)` (t
 UTC day of `consent_at`/`confirmed_at`, derived from HASH_SALT_SECRET), so a claimed IP can be
 checked later while the stored value reveals nothing. Links are signed with ALERTS_SECRET
 (`@pretoscop/notify`). E2E: `E2E_SHARED_FIXTURE=0 pnpm exec playwright test e2e/alerts.spec.ts --project=desktop --workers=1`.
+## Web Push and Telegram on /alerte (M27)
+
+Flags `alerts.push.enabled` (needs VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY) and
+`alerts.telegram.enabled` (needs TELEGRAM_BOT_TOKEN/TELEGRAM_BOT_USERNAME), both off by default.
+With a flag off the channel says "pornește în curând" and nothing is sent; a browser or a Telegram
+chat already set up stays listed with its remove button (withdrawal always works).
+
+| Piece | What it does |
+|---|---|
+| "Canale de notificare" on `/alerte` (`components/alerts/channels-section.tsx`) | email, browsers (label, since when, "Elimină" as a plain form) and Telegram (link status, "Deconectează"); each alert picks its channel in "Modifică": moving to push or Telegram needs that channel set up and on (the consent given there is recorded for the alert), moving to email needs the email consent box |
+| `components/alerts/push-controls.tsx` | the unticked `pushConsent` box, then the browser's permission prompt, then `POST /api/push/subscribe`; this browser is recognized by the SHA-256 of its endpoint; on iPhone/iPad outside a Home Screen app it shows how to add Pretoscop to the Home Screen (iOS 16.4+) |
+| `POST /api/push/subscribe` | logged in, same origin (`lib/same-origin.ts`: Sec-Fetch-Site and Origin vs Host), JSON only, body ≤ 4 KB before reading, 10/hour per account, the current `pushConsent` version, endpoint on a known push service (`parsePushSubscription`; local http only with APP_ENV dev/test); stores a device label ("Chrome · Android"), never the User-Agent |
+| `POST /api/push/unsubscribe` | the user's own subscription by endpoint (JSON) or id (form); the last one gone pauses push alerts and withdraws the push consent |
+| `POST /api/push/test` | one test notification to each of the user's browsers (5 per 10 minutes) |
+| "Conectează Telegram" (server action) | needs the `telegramConsent` box; a 192-bit one-time token (15 minutes, stored as SHA-256) for `https://t.me/<bot>?start=<token>`, handed to the page in an httpOnly cookie (path /alerte), never in a URL (access logs keep query strings); the deep link shows only while the token is still pending |
+| `public/sw.js` | the service worker: `push` (same-origin click URL only) and `notificationclick`; no fetch handler, no cache; served with `Cache-Control: no-cache` (`next.config.ts`) |
+| `app/manifest.ts`, `app/icon.svg`, `app/apple-icon.tsx` | Home Screen install (needed for Web Push on iOS) |
+
+E2E (local mock push service and Bot API, test VAPID keys from `playwright.config.ts`):
+`E2E_SHARED_FIXTURE=0 pnpm exec playwright test e2e/channels.spec.ts --project=desktop --workers=1`
+(start with no server on the port: the web server needs the test keys in its environment).
+
 ## Merchant portal (M20)
 
 - **Flag**: `merchants.portal.enabled` (off by default) gates new registrations and submissions; approved feeds keep running

@@ -4,15 +4,21 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
   },
   "scripts": {
     "lint": "eslint src",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run --passWithNoTests",
+    "vapid:keys": "tsx src/cli/vapid-keys.ts"
   },
   "dependencies": {
     "@pretoscop/core": "workspace:*",
-    "@pretoscop/mailer": "workspace:*"
+    "@pretoscop/mailer": "workspace:*",
+    "web-push": "3.6.7"
+  },
+  "devDependencies": {
+    "@types/web-push": "3.6.4"
   }
 }

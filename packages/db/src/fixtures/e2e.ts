@@ -4,6 +4,7 @@ import type { Db } from '../client';
 import { decideManually } from '../queries/matching';
 import { recordObservation, type OfferObservation } from '../queries/offers';
 import { addDaysIso, bucharestToday, computeProductStats, rollupProducts } from '../queries/rollup';
+import { E2E_CHANNEL_EMAIL_LIKE } from './channels-e2e';
 
 /**
  * A throwaway product for the product-page end-to-end tests (M13): six offers at active shops with
@@ -214,9 +215,12 @@ export async function dropE2eFixture(db: Db): Promise<number> {
     UNION SELECT id::text FROM products WHERE title = ${E2E_TITLE} OR title LIKE ${`%${MARK}`}
   `);
   const productIds = products.rows.map((r) => Number(r.id));
-  // Accounts of the alert e2e flows (M19); their alerts go with the products below anyway.
-  await db.execute(sql`DELETE FROM consent_records WHERE user_id IN (SELECT id FROM users WHERE email LIKE ${E2E_ALERT_EMAIL_LIKE})`);
-  await db.execute(sql`DELETE FROM users WHERE email LIKE ${E2E_ALERT_EMAIL_LIKE}`);
+  // Accounts of the alert e2e flows (M19) and of the channel flows (M27, with their browsers and
+  // Telegram links); their alerts go with the products below anyway.
+  for (const pattern of [E2E_ALERT_EMAIL_LIKE, E2E_CHANNEL_EMAIL_LIKE]) {
+    await db.execute(sql`DELETE FROM consent_records WHERE user_id IN (SELECT id FROM users WHERE email LIKE ${pattern})`);
+    await db.execute(sql`DELETE FROM users WHERE email LIKE ${pattern}`);
+  }
   await db.execute(sql`DELETE FROM clicks WHERE offer_id IN (SELECT id FROM offers WHERE external_id LIKE ${like})`);
   await db.execute(sql`DELETE FROM offer_aliases WHERE external_id LIKE ${like}`);
   await db.execute(sql`DELETE FROM offers WHERE external_id LIKE ${like}`);

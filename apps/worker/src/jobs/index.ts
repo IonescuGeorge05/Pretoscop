@@ -1,5 +1,6 @@
 import { alertsDeliverJob, alertsEvaluateJob, alertsRetentionJob } from './alerts';
 import { affiliateSyncJob, commissionsImportJob } from './affiliate';
+import { telegramDealsJob } from './telegram';
 import { assistedHealthJob } from './assisted';
 import { extractorCanaryJob } from './canary';
 import { heartbeatJob } from './heartbeat';
@@ -40,6 +41,7 @@ export const jobs: JobDefinition<any>[] = [
   icecatSyncJob,
   merchantValidateJob,
   merchantVerifyDomainJob,
+  telegramDealsJob,
   searchSyncJob,
   searchRebuildJob,
   sitemapBuildJob,

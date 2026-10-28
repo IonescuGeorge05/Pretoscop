@@ -1,7 +1,7 @@
 import type { Env } from '@pretoscop/config/env';
-import type { Db } from '@pretoscop/db';
+import type { AlertChannel, Db } from '@pretoscop/db';
 import type { Mailer } from '@pretoscop/mailer';
-import type { AlertLinks, Operator } from '@pretoscop/notify';
+import type { AlertLinks, Operator, PushSender, TelegramClient } from '@pretoscop/notify';
 import type { FetchLike, NormalizeFn, OpsAlert } from '../recorder/types';
 import type { Notifier } from '../alerts/notifier';
 import type { BlobStore } from '@pretoscop/storage';
@@ -13,7 +13,13 @@ import type { SloAlert } from '../ops/slo';
 /** Price alerts (M19): channels, signed links, sender identity, the ALERTS_SECRET. */
 export interface AlertServices {
   notifier: Notifier;
+  /** Channels with a configured sender (email always; push with VAPID keys; Telegram with a token). */
+  channels: AlertChannel[];
   mailer: Mailer;
+  /** M27, when VAPID keys are set. */
+  push?: PushSender;
+  /** M27, when TELEGRAM_BOT_TOKEN is set. */
+  telegram?: TelegramClient;
   links: AlertLinks;
   operator: Operator;
   secret: string;

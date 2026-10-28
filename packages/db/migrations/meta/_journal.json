@@ -141,6 +141,13 @@
       "when": 1793186054744,
       "tag": "0019_llm_usage",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1793187059601,
+      "tag": "0020_channels",
+      "breakpoints": true
     }
   ]
 }

@@ -26,6 +26,7 @@
     "report:approve": "tsx src/cli/report-approve.ts",
     "alerts:simulate": "tsx src/cli/alerts-simulate.ts",
     "alerts:run": "tsx src/cli/alerts-run.ts",
+    "telegram:poll": "tsx src/cli/telegram-poll.ts",
     "icecat:lookup": "tsx src/cli/icecat-lookup.ts",
     "icecat:coverage": "tsx src/cli/icecat-coverage.ts",
     "icecat:sync": "tsx src/cli/icecat-sync.ts",

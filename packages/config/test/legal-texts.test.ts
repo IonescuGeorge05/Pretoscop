@@ -25,7 +25,13 @@ describe('consent texts', () => {
   it('publishes alertConsent.v1 and analyticsConsent.v1, and currentVersion points at them', () => {
     expect(legalTexts.alertConsent.v1.key).toBe('alertConsent.v1');
     expect(legalTexts.analyticsConsent.v1.key).toBe('analyticsConsent.v1');
-    expect(currentVersion).toEqual({ alertConsent: 'alertConsent.v1', analyticsConsent: 'analyticsConsent.v1', merchantTerms: 'merchantTerms.v1' });
+    expect(currentVersion).toEqual({
+      alertConsent: 'alertConsent.v1',
+      analyticsConsent: 'analyticsConsent.v1',
+      merchantTerms: 'merchantTerms.v1',
+      pushConsent: 'pushConsent.v1',
+      telegramConsent: 'telegramConsent.v1',
+    });
     expect(currentConsentText('alertConsent')).toBe(legalTexts.alertConsent.v1);
     expect(currentConsentText('analyticsConsent')).toBe(legalTexts.analyticsConsent.v1);
   });
@@ -63,6 +69,18 @@ describe('consent texts', () => {
     expect(t.text).toMatch(/dreptul să reprezint/);
     expect(t.text).toMatch(/corecte și actualizate/);
     expect(t.link.href).toBe('/pentru-magazine/termeni');
+  });
+
+  it('the push and Telegram consents (M27) say what goes where and how to stop', () => {
+    const push = legalTexts.pushConsent.v1;
+    expect(push.text).toMatch(/acest dispozitiv/);
+    expect(push.text).toMatch(/serviciul de notificări al browserului/);
+    expect(push.text).toMatch(/opri oricând/);
+    expect(push.link.href).toBe('/confidentialitate#notificari');
+    const tg = legalTexts.telegramConsent.v1;
+    expect(tg.text).toMatch(/Telegram este un serviciu separat/);
+    expect(tg.text).toContain('/oprire');
+    expect(tg.link.href).toBe('/confidentialitate#telegram');
   });
 
   it('the analytics banner offers Accept and Reject and links to the cookie page', () => {

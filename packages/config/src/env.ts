@@ -178,6 +178,18 @@ export const EnvSchema = z
     // Resend webhook signing secret (`whsec_…`) for bounces and complaints; unset = endpoint off.
     RESEND_WEBHOOK_SECRET: optionalString,
 
+    // Web Push (M27): VAPID key pair (`pnpm --filter @pretoscop/notify vapid:keys`); unset = off.
+    VAPID_PUBLIC_KEY: optionalString,
+    VAPID_PRIVATE_KEY: optionalString,
+    VAPID_SUBJECT: z.string().default('mailto:alerte@pretoscop.ro'),
+
+    // Telegram bot (M27, BotFather token; setup D2); unset = the bot does not run.
+    TELEGRAM_BOT_TOKEN: optionalString,
+    TELEGRAM_BOT_USERNAME: optionalString,
+    TELEGRAM_API_BASE: z.string().default('https://api.telegram.org'),
+    // Channel for the daily verified-deals post (`@pretoscop_reduceri` or a -100… id); unset = no post.
+    TELEGRAM_DEALS_CHAT_ID: optionalString,
+
     // Operations alerts (two consecutive source failures, backups, caps, SLO breaches)
     OPS_ALERT_TELEGRAM_BOT_TOKEN: optionalString,
     OPS_ALERT_TELEGRAM_CHAT_ID: optionalString,
@@ -241,6 +253,24 @@ export const EnvSchema = z
     METRICS_PORT: int(9464),
   })
   .superRefine((env, ctx) => {
+    if ((env.VAPID_PUBLIC_KEY === undefined) !== (env.VAPID_PRIVATE_KEY === undefined)) {
+      ctx.addIssue({ code: 'custom', path: ['VAPID_PRIVATE_KEY'], message: 'set both VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY, or neither' });
+    }
+    if (env.VAPID_PUBLIC_KEY !== undefined && !/^[A-Za-z0-9_-]{86,88}$/.test(env.VAPID_PUBLIC_KEY)) {
+      ctx.addIssue({ code: 'custom', path: ['VAPID_PUBLIC_KEY'], message: 'VAPID_PUBLIC_KEY must be the base64url P-256 public key printed by vapid:keys' });
+    }
+    if (env.VAPID_PRIVATE_KEY !== undefined && !/^[A-Za-z0-9_-]{42,44}$/.test(env.VAPID_PRIVATE_KEY)) {
+      ctx.addIssue({ code: 'custom', path: ['VAPID_PRIVATE_KEY'], message: 'VAPID_PRIVATE_KEY must be the base64url private key printed by vapid:keys' });
+    }
+    if (!/^(mailto:\S+@\S+|https:\/\/\S+)$/.test(env.VAPID_SUBJECT)) {
+      ctx.addIssue({ code: 'custom', path: ['VAPID_SUBJECT'], message: 'VAPID_SUBJECT must be a mailto: address or an https: URL' });
+    }
+    if (env.TELEGRAM_BOT_TOKEN && !env.TELEGRAM_BOT_USERNAME) {
+      ctx.addIssue({ code: 'custom', path: ['TELEGRAM_BOT_USERNAME'], message: 'TELEGRAM_BOT_USERNAME is needed for the t.me link when TELEGRAM_BOT_TOKEN is set' });
+    }
+    if (env.TELEGRAM_BOT_USERNAME !== undefined && !/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(env.TELEGRAM_BOT_USERNAME)) {
+      ctx.addIssue({ code: 'custom', path: ['TELEGRAM_BOT_USERNAME'], message: 'TELEGRAM_BOT_USERNAME is the bot username without @ (5–32 letters, digits, _)' });
+    }
     // Never echo the key itself in an error message.
     const key = env.WEB_BOT_AUTH_PRIVATE_KEY;
     if (env.WEB_BOT_AUTH && !key) {
@@ -267,6 +297,10 @@ export const EnvSchema = z
       }
       if (env.FETCH_PRIVATE_ALLOWLIST.length > 0) {
         ctx.addIssue({ code: 'custom', path: ['FETCH_PRIVATE_ALLOWLIST'], message: 'FETCH_PRIVATE_ALLOWLIST is for local development only' });
+      }
+      // M27: the bot token travels in every Telegram request URL: only over TLS outside dev.
+      if (!env.TELEGRAM_API_BASE.startsWith('https://')) {
+        ctx.addIssue({ code: 'custom', path: ['TELEGRAM_API_BASE'], message: 'TELEGRAM_API_BASE must be https outside dev (the bot token is in the URL)' });
       }
       if (!env.ZYTE_API_URL.startsWith('https://')) {
         ctx.addIssue({ code: 'custom', path: ['ZYTE_API_URL'], message: 'ZYTE_API_URL must be https outside development' });

@@ -17,7 +17,9 @@ ok "per-status totals as in the report; the unreadable line is reported"
 
 step "production build and Playwright: allowed → affiliate link with click id; forbidden after sync → plain link; eMAG always plain"
 (cd apps/web && pnpm exec next build >/dev/null)
-(cd apps/web && pnpm exec playwright test e2e/affiliate.spec.ts e2e/product.spec.ts --project=desktop --reporter=line)
+# One worker: affiliate.spec switches forit's program and the flag on for a while, which product.spec
+# (expects plain links) must not see. Playwright's default runs files in parallel (12 workers here).
+(cd apps/web && pnpm exec playwright test e2e/affiliate.spec.ts e2e/product.spec.ts --project=desktop --workers=1 --reporter=line)
 ok "e2e green"
 
 echo

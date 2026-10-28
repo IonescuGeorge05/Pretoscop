@@ -14,7 +14,7 @@ export const metadata: Metadata = {
   title: 'Cum funcționează clasamentul',
   description:
     'Ce stabilește ordinea ofertelor pe Pretoscop și cât contează fiecare criteriu: prețul total cu livrarea, disponibilitatea, momentul ultimei verificări. Plus magazinele pe care le acoperim acum.',
-  alternates: { canonical: '/cum-functioneaza' },
+  alternates: { canonical: '/cum-functioneaza', languages: { 'ro-RO': '/cum-functioneaza' } },
 };
 
 interface Coverage {

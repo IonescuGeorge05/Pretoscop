@@ -43,7 +43,11 @@ export function verdictText(v: Verdict, observationsDays: number): string {
   }
 }
 
-/** "-X% față de minimul ultimelor 30 de zile" only with ≥ 14 days of history (else null). */
+/**
+ * Superseded for display by `verifiedDrop` (M15): `product_stats.min_30d` already includes today's
+ * price, so this is never positive for the current price. Kept for the M08 tests and callers that
+ * pass a minimum that excludes the current level.
+ */
 export function dropVersus30dMin(currentBani: number, min30dBani: number | null, observationsDays: number): number | null {
   if (observationsDays < VERDICT_MIN_DAYS || min30dBani === null || min30dBani <= 0) return null;
   const drop = (min30dBani - currentBani) / min30dBani;

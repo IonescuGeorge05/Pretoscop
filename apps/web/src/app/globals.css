@@ -60,3 +60,12 @@
     font-variant-numeric: tabular-nums;
   }
 }
+
+/* /reduceri: filters that work without JavaScript (radio and checkbox inputs + :has()). */
+.deals:has(#perioada-azi:checked) [data-deal][data-today="0"],
+.deals:has(#scadere-10:checked) [data-deal][data-p10="0"],
+.deals:has(#scadere-20:checked) [data-deal][data-p20="0"],
+.deals:has(#scadere-30:checked) [data-deal][data-p30="0"],
+.deals:has(#doar-minime:checked) [data-deal][data-atl="0"] {
+  display: none;
+}

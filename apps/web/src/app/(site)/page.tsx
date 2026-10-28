@@ -1,18 +1,26 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { SearchBox } from '@/components/layout/search-box';
+import { JsonLd } from '@/components/seo/json-ld';
 import { Container } from '@/components/ui/container';
+import { serverEnv } from '@/lib/db';
+import { organization, website } from '@/lib/structured-data';
 
 export const revalidate = 600;
+
+export const metadata: Metadata = { alternates: { canonical: '/', languages: { 'ro-RO': '/' } } };
 
 const promises = [
   ['Prețul total, nu doar prețul afișat', 'Clasăm ofertele după preț + livrare și arătăm mereu calculul.'],
   ['Istoric observat de noi', 'Fiecare preț are data la care l-am văzut. Nu completăm și nu ghicim golurile.'],
-  ['Reduceri verificate', 'Arătăm „-X%” doar față de minimul nostru din ultimele 30 de zile.'],
+  ['Reduceri verificate', 'Arătăm „−X%” doar față de cel mai mic preț observat de noi în cele 30 de zile dinaintea scăderii.'],
 ] as const;
 
 export default function HomePage() {
+  const base = serverEnv().PUBLIC_BASE_URL;
   return (
     <>
+      <JsonLd data={[organization(base), website(base)]} />
       <section className="border-b border-line bg-gradient-to-b from-brand-50 to-white">
         <Container className="py-12 sm:py-16">
           <h1 className="max-w-2xl text-3xl font-bold tracking-tight text-ink sm:text-4xl">

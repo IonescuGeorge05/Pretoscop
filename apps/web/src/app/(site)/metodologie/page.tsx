@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: 'Metodologie',
   description:
     'De unde vin datele Pretoscop, cum construim istoricul prețurilor fără să completăm golurile, cum stabilim verdictul de preț și cum verificăm reducerile.',
-  alternates: { canonical: '/metodologie' },
+  alternates: { canonical: '/metodologie', languages: { 'ro-RO': '/metodologie' } },
 };
 
 export default function MethodologyPage() {
@@ -102,8 +102,16 @@ export default function MethodologyPage() {
                 ]}
               />
               <p>
-                Afișăm „−X% față de minimul ultimelor 30 de zile” doar după cel puțin 14 zile de observații. Prețul tăiat al magazinului îl arătăm separat, ca
-                „preț de referință afișat de magazin”.
+                Afișăm „−X% față de minimul din 30 de zile” doar când prețul total de acum este cu cel puțin 3% sub cel mai mic preț observat de noi în cele
+                30 de zile dinaintea scăderii și doar dacă am observat prețul în cel puțin 14 dintre acele zile. Procentul este rotunjit în jos, iar eticheta
+                dispare la 30 de zile după scădere. „Minim istoric” înseamnă că prețul de acum este sub orice preț observat de noi înainte, după cel puțin 14
+                zile de istoric. Niciuna nu apare dacă, de la scădere până azi, am observat un preț și mai mic (de exemplu când prețul a revenit parțial),
+                iar data pe care o arătăm este prima zi în care am observat prețul mai mic. Ambele se calculează pe ofertele noi, în stoc, vândute direct de
+                magazine, și nu apar la produsele încă neverificate (provizorii); lista lor este pe{' '}
+                <Link href="/reduceri">pagina de reduceri verificate</Link>.
+              </p>
+              <p>
+                Prețul tăiat al magazinului îl arătăm separat, ca „preț de referință afișat de magazin”, și nu intră în aceste calcule.
               </p>
             </>
           ),

@@ -23,3 +23,10 @@ export function clientIp(headers: Headers): string {
     '0.0.0.0'
   );
 }
+
+/** Crawlers, link previewers and audit tools: their requests never become analytics rows. */
+const BOT_UA = /bot|crawl|spider|slurp|preview|facebookexternalhit|headless|lighthouse|pagespeed|gtmetrix|curl|wget|python|httpclient/i;
+
+export function isBot(userAgent: string | null | undefined): boolean {
+  return !userAgent || BOT_UA.test(userAgent);
+}

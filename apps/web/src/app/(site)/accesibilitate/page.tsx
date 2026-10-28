@@ -7,7 +7,7 @@ import { formatLongDate } from '@/lib/legal';
 export const metadata: Metadata = {
   title: 'Declarație de accesibilitate',
   description: 'Cât de accesibil este Pretoscop, ce standard urmărim (WCAG 2.2 nivel AA), ce am făcut, ce limitări cunoaștem și cum ne semnalezi o problemă.',
-  alternates: { canonical: '/accesibilitate' },
+  alternates: { canonical: '/accesibilitate', languages: { 'ro-RO': '/accesibilitate' } },
 };
 
 export default function AccessibilityPage() {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import uPlot from 'uplot';
+import type uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
 import { formatDayMonth, formatLeiShort } from '@/lib/format';
 
@@ -37,6 +37,27 @@ export function PriceChart({ productId }: { productId: number }) {
   const [error, setError] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const plot = useRef<uPlot | null>(null);
+  // uPlot (~20 kB compressed) loads only when the chart comes near the viewport (M16 performance
+  // budget: it is below the fold on phones, and most visitors read the offers first).
+  const [UPlot, setUPlot] = useState<typeof uPlot | null>(null);
+  useEffect(() => {
+    const el = box.current;
+    if (!el) return;
+    let done = false;
+    const load = () => {
+      if (done) return;
+      done = true;
+      // A chunk that fails to load (network) shows the same message as a failed history request.
+      import('uplot').then((m) => setUPlot(() => m.default), () => setError(true));
+    };
+    if (typeof IntersectionObserver === 'undefined') {
+      load();
+      return;
+    }
+    const io = new IntersectionObserver((entries) => entries.some((e) => e.isIntersecting) && (load(), io.disconnect()), { rootMargin: '600px 0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -68,7 +89,8 @@ export function PriceChart({ productId }: { productId: number }) {
   }, [data]);
 
   useEffect(() => {
-    if (!box.current || !aligned || !data) return;
+    if (!box.current || !aligned || !data || !UPlot) return;
+    const uPlot = UPlot;
     // x range: the observed part of the window up to today, at least a week wide.
     const today = Math.max(aligned.x.at(-1)!, Math.floor(Date.now() / 1000 / DAY) * DAY + DAY / 2);
     const windowStart = aligned.windowDays === null ? -Infinity : today - (aligned.windowDays - 1) * DAY;
@@ -122,7 +144,7 @@ export function PriceChart({ productId }: { productId: number }) {
       plot.current?.destroy();
       plot.current = null;
     };
-  }, [aligned, data]);
+  }, [aligned, data, UPlot]);
 
   const summary = useMemo(() => {
     const vals = data?.series.min.map(([, v]) => v) ?? [];
@@ -147,7 +169,13 @@ export function PriceChart({ productId }: { productId: number }) {
       </div>
       {error && <p className="text-sm text-high">Istoricul nu a putut fi încărcat.</p>}
       {!error && data && !aligned && <p className="rounded-lg bg-surface p-4 text-sm text-muted">Încă nu avem observații în acest interval.</p>}
-      <div ref={box} className="w-full" role="img" aria-label={summary ? `Grafic cu istoricul prețului. ${summary}` : 'Grafic cu istoricul prețului'} data-testid="price-chart" />
+      <div
+        ref={box}
+        className="w-full"
+        // Room for the chart while the data and the chart library load (no layout shift), none once
+        // the window turns out to be empty.
+        style={{ minHeight: (!data && !error) || aligned ? HEIGHT : undefined }}
+        role="img" aria-label={summary ? `Grafic cu istoricul prețului. ${summary}` : 'Grafic cu istoricul prețului'} data-testid="price-chart" />
     </div>
   );
 }

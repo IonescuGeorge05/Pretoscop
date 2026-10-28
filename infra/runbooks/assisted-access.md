@@ -3,25 +3,26 @@
 The channel reads the public pages of the shops the founders designated on 2026-10-27 (Altex,
 Media Galaxy, Flanco, PC Garage, cel.ro; evoMAG and Vexio until their feeds are live) through a
 commercial data-collection service (Zyte API), under the conditions of
-`docs/12-blocked-shops-strategy.md` §0 and ADR-015. It ships **off**: no shop has
+`docs/12-blocked-shops-strategy.md` §0, ADR-015 and ADR-022. It ships **off**: no shop has
 `access_mode: assisted`, `ASSISTED_VENDOR=none`, flag `assisted.enabled` off.
 
 ## What it guarantees (and how)
 
 | Condition (docs/12 §0) | Where it is enforced |
 |---|---|
-| Designated shops only, never eMAG | registry schema (`packages/config/src/assisted.ts`) refuses `access_mode: assisted` for any other slug; the worker's policy resolver and run gates refuse it again |
+| Designated shops only, never eMAG | registry schema (`packages/config/src/assisted.ts`) refuses `access_mode: assisted` for any other slug; the worker's policy resolver and run gates refuse it again; the channel itself refuses any other shop before a vendor call |
 | Same politeness as PretoscopBot | the same `fetchPolite` call: robots.txt (read through the channel, obeyed), per-domain interval ≥ 5 s, one request at a time, daily budget, crawl window, pauses after failures |
-| Public product, category and sitemap pages only | sources are listing/product/sitemap kinds in the YAML; robots.txt applies; no login, cart, checkout, images or descriptions are requested or stored |
+| Public product, category and sitemap pages only | the channel serves robots.txt, sitemap, listing and product requests only (no feeds, no probes), on the shop's own host (registry domain or `www.` of it: no API subdomains such as `fenrir.altex.ro`), and refuses login, account, cart, checkout and API paths (`/cos`, `/checkout`, `/customer`, `/api`, `/rest`, `/graphql`, Zen Cart `main_page=shopping_cart` …; `packages/fetch/src/assisted/scope.ts`); robots.txt applies on top; no images or descriptions are stored |
 | No impersonation, no tooling of ours | we send the vendor only `{url, httpResponseBody, httpResponseHeaders, followRedirect:false}` (or `browserHtml` for pages of a shop configured `assisted_render: true`): no User-Agent, no headers, no IP type, no sessions; robots.txt, sitemaps and feeds always on the HTTP tier |
-| Monthly cap with a hard stop | `access_costs` ledger written on every vendor call; `packages/fetch` refuses any assisted request once the month's spend reaches `ASSISTED_MONTHLY_CAP_EUR` (before any slot or budget is used); runs are gated too; alerts at 80% and 100% |
+| Monthly cap with a hard stop | every vendor call is booked in `access_costs` at its full price **before** it is sent, under one database lock, and only if the month stays within `ASSISTED_MONTHLY_CAP_EUR`; an unbilled call (ban, timeout, error) gives its booking back. The gate in `packages/fetch` refuses a call that could not fit before any slot or budget is used; runs are gated too; alerts at 80% and 100% |
 | Kill switch per shop, auto-pause | `/admin/acces-asistat` → Oprește (all sources of the shop); `assisted.health` (09:15 daily) pauses a shop whose success rate was below 80% on each of the last 7 days, with an audit row and an alert; nothing ever escalates to other tooling |
 | Provenance | `ingest_runs.channel = 'assisted'`, `request_log.channel = 'assisted'`; offers stay `source_tier` 1 (our own reading of the public page) |
 
 The cost is estimated, not billed back: Zyte's PAYG price of the shop's tier (`assisted_tier`,
-default 5, the dearest) × billable responses, EUR cents rounded up. The cap can be overshot by at
-most the requests already in flight (one per shop host, about 1.5 cents each on the browser tier).
-Keep a spend limit in the Zyte dashboard as the second line of defence.
+default 5, the dearest) × billable responses, EUR cents rounded up. Because calls are booked before
+they leave, concurrent jobs, retries, `assisted:record` and a second worker can never pass the cap
+together; a call whose outcome is unknown (aborted, process killed) stays booked, so the ledger can
+only err on the high side. Keep a spend limit in the Zyte dashboard as the second line of defence.
 
 ## Switching one shop on (all steps; founders only)
 
@@ -39,16 +40,22 @@ and the shop; the decision row in `docs/progress.md`; the Zyte account with a sp
    if listings prove client-rendered, optional `assisted_country: RO` (dearer: extended
    geolocation), `max_pages_per_day` (start ≤ 300), `allowed_hours` (e.g. 02:00–07:00), and the
    listing sources (`enabled: true`, parser keys that exist: recorded fixtures first, see below).
-3. Server `.env`: `ASSISTED_VENDOR=zyte`, `ZYTE_API_KEY=…`, `ASSISTED_MONTHLY_CAP_EUR=150`; deploy.
+3. Server `.env`: `ASSISTED_VENDOR=zyte`, `ZYTE_API_KEY=…`, `ASSISTED_MONTHLY_CAP_EUR=150` (`ZYTE_API_URL`
+   stays the default https endpoint); deploy.
 4. `/admin/acces-asistat` → **Pornește canalul asistat** (flag `assisted.enabled`). The shop's
    first run starts at its next schedule; watch the page (success rate, cost) the first day.
 
 Recording fixtures for a new shop's extractor goes through the same channel and costs money: at
 most three pages per shop, dated, with every rule applied (access mode, flag, cap, robots.txt,
 ledger): `pnpm --filter @pretoscop/worker assisted:record <shop> <name> <url> [listing|product]`
-writes `packages/extractors/fixtures/<shop>/<name>_<date>.html`. The per-shop extractors (Altex and
-Media Galaxy `__NEXT_DATA__`, PC Garage JSON-LD `ItemList`, Flanco and cel.ro listings) are built on
-those fixtures; until then the shop's sources stay disabled (M05B deferred them for this reason).
+writes `packages/extractors/fixtures/<shop>/<name>_<date>.html`. The fetch layer opens a shop only
+while it has a live source, so before its extractor exists give the shop one listing source with
+`enabled: true` and `schedule: null` (on demand only: the scheduler never runs it, and nobody
+presses "Rulează acum" on it). Only the shop's own host (`<domain>` or `www.<domain>`; the YAML
+`hosts:` list does not widen it) and public listing, product, sitemap and robots.txt URLs are
+accepted. The per-shop extractors (Altex and Media Galaxy `__NEXT_DATA__`, PC Garage JSON-LD
+`ItemList`, Flanco and cel.ro listings) are built on those fixtures; until then the shop's
+scheduled sources stay disabled (M05B deferred them for this reason).
 
 ## Stopping
 

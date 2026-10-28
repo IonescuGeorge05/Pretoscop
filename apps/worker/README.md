@@ -99,8 +99,10 @@ It prints a before/after summary; run `--dry-run` first, then `match:run` (or wa
 ## Assisted-access channel (M05B)
 
 - `src/fetch/assisted.ts` builds the channel from `ASSISTED_VENDOR` (`none` by default: no channel, so
-  the fetch layer refuses every assisted host); `src/fetch/assisted-ledger.ts` is the `access_costs`
-  ledger (one upsert per vendor call, cost recomputed from the counters).
+  the fetch layer refuses every assisted host) for the crawler fetcher only (never the merchant fetcher),
+  with each shop's hosts and tier from the registry and the guarded dispatcher; `src/fetch/assisted-ledger.ts`
+  is the `access_costs` ledger: every call booked before it is sent under an advisory lock, only if the
+  month stays within the cap, and given back when the vendor does not bill it.
 - The policy resolver and `checkGates` keep an assisted shop closed unless it is designated
   (`@pretoscop/config` `ASSISTED_DESIGNATED_SHOPS`), the flag `assisted.enabled` is on, a vendor is
   configured and the month is under `ASSISTED_MONTHLY_CAP_EUR`.

@@ -5,6 +5,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { cache } from 'react';
+import { NotFoundResponse } from '@/components/http/not-found-status';
+import { NotFoundContent } from '@/components/layout/not-found-content';
 import { Breadcrumbs, type Crumb } from '@/components/listing/breadcrumbs';
 import { ProductGrid } from '@/components/listing/product-card';
 import { Pagination } from '@/components/listing/pagination';
@@ -14,7 +16,7 @@ import { categoryHref, getBrands, getCategoryTree, type BrandInfo, type Category
 import { serverEnv } from '@/lib/db';
 import { plural } from '@/lib/format';
 import { meili, names, q } from '@/lib/search';
-import { robotsFor } from '@/lib/seo';
+import { forMetadata, pageOpenGraph, pageOrNotFound, robotsFor, unresolvedMetadata } from '@/lib/seo';
 import { breadcrumbList, itemList } from '@/lib/structured-data';
 
 // docs/03 §7.1: ISR 1 h, rendered on first request.
@@ -39,9 +41,11 @@ interface BrandPage {
 /**
  * `/b/samsung`, `/b/samsung/2`, `/b/samsung/televizoare`, `/b/samsung/televizoare/2`. A brand ×
  * category page exists only when the brand has products in that category, and is indexable (a
- * curated landing page, docs/03 §6.6) from BRAND_CATEGORY_MIN_PRODUCTS indexable products.
+ * curated landing page, docs/03 §6.6) from BRAND_CATEGORY_MIN_PRODUCTS indexable products. Cached per
+ * request by slug and the joined rest (generateMetadata and the page share one load).
  */
-const load = cache(async (slug: string, rest: string[]): Promise<BrandPage> => {
+const load = cache(async (slug: string, restKey: string): Promise<BrandPage> => {
+  const rest = restKey ? restKey.split('/') : [];
   const brand = (await getBrands()).get(slug.toLowerCase());
   if (!brand) notFound();
   const parts = [...rest];
@@ -88,7 +92,8 @@ function pageIndexable(p: BrandPage): boolean {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, rest } = await params;
-  const p = await load(slug, rest ?? []);
+  const p = await forMetadata(() => load(slug, (rest ?? []).join('/')));
+  if (!p) return unresolvedMetadata();
   const n = p.list.total;
   const h = heading(p);
   const cats = Object.keys(p.list.facets.category_slug ?? {}).length;
@@ -97,15 +102,22 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title,
     description: `${h}: ${plural(n, 'produs', 'produse')} cu prețul total (preț + livrare) din magazinele online din România și istoricul prețului observat de Pretoscop.`,
-    alternates: { canonical: p.href(p.page) },
+    alternates: { canonical: p.href(p.page), languages: { 'ro-RO': p.href(p.page) } },
     robots: robotsFor(pageIndexable(p)),
-    openGraph: { title, url: p.href(p.page), type: 'website' },
+    openGraph: pageOpenGraph({ title, url: p.href(p.page) }),
   };
 }
 
 export default async function BrandPageView({ params }: Props) {
   const { slug, rest } = await params;
-  const p = await load(slug, rest ?? []);
+  const p = await pageOrNotFound(() => load(slug, (rest ?? []).join('/')));
+  if (!p) {
+    return (
+      <NotFoundResponse>
+        <NotFoundContent />
+      </NotFoundResponse>
+    );
+  }
   const tree = await getCategoryTree();
   const base = serverEnv().PUBLIC_BASE_URL;
   const h = heading(p);

@@ -61,6 +61,17 @@ export function runTsx(cwd: string, args: string[], env: NodeJS.ProcessEnv = pro
   });
 }
 
+/**
+ * Builds the data-driven sitemaps (worker `sitemap:build`, M16) for the site at `baseUrl`, from the
+ * dev database with the fixture in it; returns the CLI's JSON summary.
+ */
+export function sitemapBuild(baseUrl: string): { baseUrl: string; files: Array<{ name: string; urls: number }> } {
+  const out = runTsx(WORKER_DIR, ['src/cli/sitemap-build.ts'], { ...process.env, PUBLIC_BASE_URL: baseUrl });
+  const line = out.trim().split('\n').reverse().find((l) => l.startsWith('{'));
+  if (!line) throw new Error(`sitemap:build: no JSON output\n${out}`);
+  return JSON.parse(line) as { baseUrl: string; files: Array<{ name: string; urls: number }> };
+}
+
 /** Rebuilds or drops the e2e search indexes (worker search CLI with MEILI_INDEX_PREFIX=E2E_SEARCH_PREFIX). */
 export function searchCli(cmd: 'rebuild' | 'drop'): void {
   runTsx(WORKER_DIR, ['src/cli/search.ts', cmd], { ...process.env, MEILI_INDEX_PREFIX: E2E_SEARCH_PREFIX });

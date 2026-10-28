@@ -20,3 +20,4 @@ export * from './queries/alerts';
 export * from './queries/affiliate';
 export * from './queries/icecat';
 export * from './queries/deals';
+export * from './queries/sitemap';

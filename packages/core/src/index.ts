@@ -183,3 +183,4 @@ export {
 } from './merchant';
 export * from './affiliate';
 export * from './deals';
+export * from './sitemap';

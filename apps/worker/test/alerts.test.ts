@@ -217,6 +217,22 @@ describe('alerts.evaluate → alerts.deliver', () => {
     expect(outbox.find((m) => m.to === u.email)?.text).toContain('Preț total acum: 880,00 lei');
   });
 
+  it('a further drop after a notification waits out the 24 hours, then is sent (cooldown path)', async () => {
+    const p = await product();
+    await observe(p, `g-${p}`, 1000);
+    const u = await userWith();
+    await activeAlert(u.id, p, 'any_drop');
+    await observe(p, `g-${p}`, 900);
+    expect((await run(p)).delivered.sent).toBe(1);
+    await observe(p, `g-${p}`, 800); // within 24 h of the first email
+    const quiet = await evaluateAlerts(t.db, { productIds: [p], channels: ['email'], now: new Date() });
+    expect(quiet).toMatchObject({ queued: 0, quiet: { cooldown: 1 } });
+    await t.db.execute(sql`UPDATE alerts SET last_notified_at = now() - interval '25 hours' WHERE user_id = ${u.id}`);
+    const r = await run(p);
+    expect(r.evaluated.queued).toBe(1);
+    expect(outbox.filter((m) => m.to === u.email).at(-1)?.text).toContain('Cu 11% sub 900,00 lei, prețul din alerta anterioară.');
+  });
+
   it('only channels whose flag is on are evaluated', async () => {
     expect(await enabledChannels(t.db)).toEqual([]);
     await setFlag(t.db, 'alerts.email.enabled', true);

@@ -26,6 +26,10 @@ export const ELIGIBLE_ALERT_OFFER: SQL = sql.raw(`(
   AND NOT EXISTS (SELECT 1 FROM price_events_quarantine q WHERE q.offer_id = o.id AND q.status = 'pending')
 )`);
 
+/** Raw `execute` returns timestamptz as text ("2026-10-28 00:18:26.73+00"): convert at the edge. */
+const toDate = (v: Date | string | null | undefined): Date | null => (v === null || v === undefined ? null : v instanceof Date ? v : new Date(v));
+const toDateNN = (v: Date | string): Date => toDate(v)!;
+
 const purposeOf = (channel: AlertChannel): ConsentPurpose => (channel === 'email' ? 'alert_email' : channel === 'push' ? 'alert_push' : 'alert_telegram');
 const bani = (v: string | null | undefined): number | null => numericToBani(v ?? null);
 const money = (b: number | null): string | null => (b === null ? null : baniToNumeric(b));
@@ -222,13 +226,13 @@ function toView(r: AlertViewRow): AlertView {
     status: r.status,
     pausedReason: r.paused_reason,
     baselineBani: bani(r.baseline),
-    lastNotifiedAt: r.last_notified_at,
+    lastNotifiedAt: toDate(r.last_notified_at),
     lastNotifiedBani: bani(r.last_total),
-    consentAt: r.consent_at,
+    consentAt: toDateNN(r.consent_at),
     consentTextVersion: r.consent_text_version,
-    confirmedAt: r.confirmed_at,
+    confirmedAt: toDate(r.confirmed_at),
     confirmMethod: r.confirm_method,
-    createdAt: r.created_at,
+    createdAt: toDateNN(r.created_at),
   };
 }
 
@@ -481,7 +485,7 @@ export async function alertCandidates(db: Exec, opts: { productIds?: number[] | 
     targetBani: bani(x.target),
     baselineBani: bani(x.baseline),
     armed: x.armed,
-    lastNotifiedAt: x.last_at,
+    lastNotifiedAt: toDate(x.last_at),
     lastNotifiedBani: bani(x.last_total),
     state: { lastNotifiedAt: x.last_at_text, lastNotifiedTotal: x.last_total, lastNotifiedOfferId: x.last_offer ? Number(x.last_offer) : null, armed: x.armed },
     best:
@@ -890,7 +894,7 @@ export async function alertAdminStats(db: Exec): Promise<AlertAdminStats> {
     withdrawals30d: withdrawals.rows.map((x) => ({ method: x.method, n: Number(x.n) })),
     suppressions: suppressions.rows.map((x) => ({ reason: x.reason, n: Number(x.n) })),
     topProducts: top.rows.map((x) => ({ productId: Number(x.id), title: x.title, slug: x.slug, n: Number(x.n) })),
-    recentFailures: failures.rows.map((x) => ({ id: Number(x.id), channel: x.channel, error: x.error, at: x.at })),
+    recentFailures: failures.rows.map((x) => ({ id: Number(x.id), channel: x.channel, error: x.error, at: toDateNN(x.at) })),
     users: Number(users.rows[0]?.n ?? 0),
   };
 }
@@ -901,5 +905,5 @@ export async function findUserByEmail(db: Exec, email: string): Promise<{ id: st
     SELECT u.id, u.email, u.role, u.created_at, (SELECT count(*) FROM alerts a WHERE a.user_id = u.id)::text AS n
     FROM users u WHERE lower(u.email) = lower(${email.trim()})`);
   const x = r.rows[0];
-  return x ? { id: x.id, email: x.email, role: x.role, createdAt: x.created_at, alerts: Number(x.n) } : null;
+  return x ? { id: x.id, email: x.email, role: x.role, createdAt: toDateNN(x.created_at), alerts: Number(x.n) } : null;
 }

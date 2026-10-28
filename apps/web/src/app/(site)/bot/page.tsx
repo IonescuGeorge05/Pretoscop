@@ -9,6 +9,11 @@ import { serverEnv } from '@/lib/db';
 import { formatLongDate } from '@/lib/legal';
 import { webBotAuthStatus } from '@/lib/web-bot-auth';
 
+// Rendered per request: the egress IPs and the Web Bot Auth key come from the runtime environment
+// (BOT_EGRESS_IPS, WEB_BOT_AUTH_*), like /bot/ips.json and the key directory; a build-time snapshot
+// would show stale addresses after A4 or a key rotation.
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'PretoscopBot, robotul Pretoscop',
   description:

@@ -97,7 +97,15 @@ test.describe('bot legitimacy', () => {
 
   test('/bot explains the three ways to verify us and the anti-bot services', async ({ page, request }) => {
     const directory = await request.get('/.well-known/http-message-signatures-directory');
+    const ips = (await (await request.get('/bot/ips.json')).json()) as { ipv4: string[]; ipv6: string[] };
     await page.goto('/bot');
+    // The page reads the runtime environment like ips.json (M21.sh builds without BOT_EGRESS_IPS and starts with it).
+    const listed = [...ips.ipv4, ...ips.ipv6];
+    if (listed.length > 0) for (const ip of listed) await expect(page.getByTestId('bot-ips')).toContainText(ip);
+    else await expect(page.getByTestId('bot-ips-pending')).toBeVisible();
+    // It describes PretoscopBot only and points to the methodology for every other source.
+    await expect(page.getByText('Această pagină descrie doar PretoscopBot.')).toBeVisible();
+    await expect(page.locator('main a[href="/metodologie#surse"]')).toHaveText('Metodologie');
     await expect(page.getByRole('heading', { name: 'Cum verifici că o cerere vine de la noi' })).toBeVisible();
     await expect(page.getByRole('heading', { name: '2. Reverse DNS' })).toBeVisible();
     await expect(page.getByText('crawl-N.bot.pretoscop.ro', { exact: true }).first()).toBeVisible();
@@ -105,6 +113,7 @@ test.describe('bot legitimacy', () => {
     await expect(status).toContainText('RFC 9421');
     if (directory.status() === 200) {
       await expect(status).toContainText('Cheia publică este deja publicată');
+      await expect(status).toContainText('Signature-Agent: sig1="http');
       await expect(page.getByTestId('web-bot-auth-directory')).toHaveAttribute('href', /\/\.well-known\/http-message-signatures-directory$/);
     }
     await expect(page.getByTestId('bot-program-cloudflare')).toHaveText('cerere în pregătire');
@@ -135,7 +144,8 @@ test.describe('bot legitimacy', () => {
 
       // A private mailbox is refused, nothing stored.
       await fill('ion.popescu@gmail.com');
-      await ui(page.getByRole('alert')).toContainText('Nu păstrăm adrese personale');
+      // (Next's route announcer is a role=alert element too.)
+      await ui(page.getByRole('alert').filter({ hasText: 'Nu păstrăm adrese personale' })).toBeVisible();
       expect(await query(`SELECT 1 FROM outreach WHERE shop_id = $1`, [shop!.id])).toHaveLength(0);
 
       await fill('marketing@e2e-fixture-outreach.test');

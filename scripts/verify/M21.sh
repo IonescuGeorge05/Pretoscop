@@ -75,16 +75,17 @@ echo "$PROBE" | sed 's/^/   /'
 grep -q 'refused, nothing sent: env CRAWL_ENABLED is false' <<<"$PROBE" || fail "shops:probe did not refuse"
 ok "refused, exit 2"
 
-# The web app runs with the public test key (directory published, signing still off), the bot
-# info URL on the e2e port (so the directory is signed for localhost:${E2E_PORT}) and one
-# documentation address (RFC 5737) as the published egress IP.
-export WEB_BOT_AUTH=false WEB_BOT_AUTH_PRIVATE_KEY="$RFC9421_TEST_SEED" BOT_INFO_URL="http://localhost:${E2E_PORT}/bot" BOT_EGRESS_IPS="203.0.113.10"
 export PUBLIC_BASE_URL="http://localhost:${E2E_PORT}"
 
 step "production build (waits while another Next build runs on this machine)"
 for ((i = 0; i < 180; i++)); do next_build_running || break; sleep 5; done
 (cd apps/web && pnpm exec next build >/dev/null)
 ok "next build"
+
+# Only now, so the e2e proves /bot reads them at request time: the public test key (directory
+# published, signing still off), the bot info URL on the e2e port (the directory is signed for
+# localhost:${E2E_PORT}) and one documentation address (RFC 5737) as the published egress IP.
+export WEB_BOT_AUTH=false WEB_BOT_AUTH_PRIVATE_KEY="$RFC9421_TEST_SEED" BOT_INFO_URL="http://localhost:${E2E_PORT}/bot" BOT_EGRESS_IPS="203.0.113.10"
 
 step "web app on :${E2E_PORT}; identity self-check against it (DNS skipped: the IP is a documentation address)"
 LOG_DIR="$(mktemp -d)"

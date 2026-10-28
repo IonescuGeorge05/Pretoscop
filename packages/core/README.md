@@ -641,12 +641,20 @@ observe are absent and are never filled in. Money is integer bani; thresholds ar
 
 - `decideAlert(state, best, now)` → `notify` (reason `below_target`, `lower_below_target` or `drop`,
   with the reference it rests on) | `set_baseline` | `rearm` | `none` (`no_offer`, `not_met`,
-  `cooldown`, `already_notified`, `suspicious`, `invalid`).
+  `cooldown`, `already_notified`, `held`, `suspicious`, `invalid`).
 - 'below': at or under the target; afterwards only a further drop of at least 1% under the last
-  notified total, or a new crossing after the total went back above the target (re-armed). No
-  offer (stale shop, out of stock) never re-arms: a crawler outage is not a price change.
+  notified total, or a new crossing after the total really went back above the target (re-armed).
+  No offer (stale shop, out of stock) never re-arms: a crawler outage is not a price change.
 - 'any_drop': at least 1% (`ALERT_MIN_DROP_PERCENT`) under the last total told to the user, or
-  under the best total at confirmation; a later rise does not move the reference up.
+  under the reference taken when the alert started; a later rise does not move the reference up.
+- Known prices (`ALERT_KNOWN_PRICE_DAYS`, 7): an offer that drops out of the best total because it
+  is stale, out of stock or in quarantine still holds its last total for 7 days (from its last
+  check; for an unavailable offer, from its last change). `best.knownFloorBani` is the lowest such
+  total, eligible offers included. A shrinking offer list is not a price rise: a 'below' alert is
+  re-armed only when the known floor too is above the target (else `none: held`), and the
+  'any_drop' reference is `alertBaselineBani(best, knownFloor)`, never above a price still known.
+  So the cheapest shop blinking out and back never sends "the price dropped" at an unchanged
+  price; after 7 days out of view its return counts as news again.
 - At most one notification per alert per 24 hours (`ALERT_COOLDOWN_HOURS`); a total under 30% of
   the cross-shop median (`belowCrossShopFloor`) is a probable mismatch and never notified.
 - `parseTargetPrice(input, currentBestBani)`: Romanian separators ("1.999", "1999,99", "2.000 lei");

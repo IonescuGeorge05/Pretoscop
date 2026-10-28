@@ -2,6 +2,7 @@ import { listCategories, productDetail } from '@pretoscop/db';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Section, Table, Td } from '@/components/admin/ui';
+import { requireAdmin } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { formatDateTime, formatLeiNumeric } from '@/lib/format';
 import {
@@ -22,6 +23,8 @@ const input = 'w-full rounded border border-line px-2 py-1.5 text-sm';
 const button = 'rounded bg-brand-600 px-3 py-1.5 text-sm font-semibold text-white';
 
 export default async function ProductAdminPage({ params }: { params: Promise<{ id: string }> }) {
+  // Each admin page checks the session itself: the layout guard does not stop a segment from rendering.
+  await requireAdmin();
   const id = Number((await params).id);
   if (!Number.isInteger(id)) notFound();
   const [p, categories] = await Promise.all([productDetail(db(), id), listCategories(db())]);

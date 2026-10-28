@@ -12,6 +12,9 @@ Contract:
   (`isIpOrCidr()` is exported). Published on `/bot` and `/bot/ips.json`.
 - `FETCH_ALLOW_PRIVATE_HOSTS` (M20): lets the worker's fetcher connect to private, loopback and link-local addresses
   (local fixture servers, e2e). Default off; `getEnv()` refuses it in staging and production.
+- `FETCH_PRIVATE_ALLOWLIST` (M20): comma-separated `ip:port` pairs (IP literals) the worker may reach although they
+  are private, while the guard stays on for everything else (`make verify M=20` opens only its fixture feed server, so
+  the e2e also proves that any other private address is refused). Empty by default; refused in staging and production.
 
 ## Legal and consent texts (M17)
 

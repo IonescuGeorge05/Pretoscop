@@ -153,7 +153,7 @@ The consent choice itself is stored only in the visitor's browser (`localStorage
 | Transfers | Resend (US): DPF or SCCs |
 | Retention | While the account is active and 3 years after it is closed (evidence of decisions and of the contract; general limitation period); invoices per the accounting law (setup B4). Job pending |
 | Security | Magic-link login; a merchant only lists offers whose product URLs are on the domain it proved it controls; feed URLs are fetched by the worker, which refuses private addresses |
-| Implementation | `merchants` (migration 0014), `/pentru-magazine/cont`, `/admin/comercianti` |
+| Implementation | `merchants` (migration 0015), `/pentru-magazine/cont`, `/admin/comercianti` |
 
 ### P10. Error monitoring
 

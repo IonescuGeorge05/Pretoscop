@@ -1,12 +1,15 @@
 import { searchProducts } from '@pretoscop/db';
 import Link from 'next/link';
 import { Section, Table, Td } from '@/components/admin/ui';
+import { requireAdmin } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { formatLeiNumeric } from '@/lib/format';
 
 export const dynamic = 'force-dynamic';
 
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<{ q?: string; inactive?: string }> }) {
+  // Each admin page checks the session itself: the layout guard does not stop a segment from rendering.
+  await requireAdmin();
   const { q = '', inactive } = await searchParams;
   const rows = await searchProducts(db(), q, 60, { includeInactive: inactive === '1' });
   return (

@@ -6,8 +6,10 @@ import {
   affiliateRestore,
   affiliateSyncForbidden,
   alertsFixtureEvidence,
+  alertsFixtureExtraProducts,
   alertsFixturePrice,
   alertsFixtureState,
+  alertsFixtureSuppress,
   createAlertsFixture,
   createE2eFixture,
   dropAlertsFixture,
@@ -25,6 +27,8 @@ import {
 //   alerts-price <offerKey> <lei>              synthetic price change of a fixture offer
 //   alerts-state <email>                       account, alerts and sends of a test address
 //   alerts-evidence <email…>                   consent records and suppressions (by address hash)
+//   alerts-products <n>                        n extra throwaway products (removed by alerts-drop)
+//   alerts-suppress <email> <reason>           puts a test address on the suppression list
 //   alerts-drop <flagWas:on|off> <email…>      removes the alert fixture and the test addresses
 loadRootEnvFile();
 const env = getEnv();
@@ -45,6 +49,11 @@ try {
     out = await alertsFixturePrice(db, args[0] ?? 'a', Number(args[1]));
   else if (cmd === 'alerts-state') out = await alertsFixtureState(db, args[0] ?? '');
   else if (cmd === 'alerts-evidence') out = await alertsFixtureEvidence(db, hashes(args));
+  else if (cmd === 'alerts-products') out = await alertsFixtureExtraProducts(db, Number(args[0] ?? 1));
+  else if (cmd === 'alerts-suppress') {
+    const reason = args[1] === 'bounce' || args[1] === 'unsubscribed' ? args[1] : 'complaint';
+    out = await alertsFixtureSuppress(db, hashes([args[0] ?? ''])[0]!, reason);
+  }
   else if (cmd === 'alerts-drop')
     out = {
       dropped: await dropAlertsFixture(db, {

@@ -1,6 +1,6 @@
 import type { MerchantFeedReport } from '@pretoscop/db/schema';
 import { describe, expect, it } from 'vitest';
-import { dashboardHints, feedReportHints, REASON_CATEGORIES, rejectLabel, STATUS_LABELS } from '../merchant-hints';
+import { dashboardHints, feedReportHints, REASON_CATEGORIES, rejectLabel, REPORT_PROBLEM_LABELS, STATUS_LABELS } from '../merchant-hints';
 
 function report(over: Partial<MerchantFeedReport> = {}): MerchantFeedReport {
   return {
@@ -60,15 +60,27 @@ describe('feedReportHints', () => {
     expect(hints.filter((h) => h.level === 'error')).toHaveLength(2);
     expect(text).not.toMatch(/[şţŞŢ]/);
   });
+
+  it('says plainly when no offer is on the verified domain (the feed cannot be submitted)', () => {
+    const hints = feedReportHints(
+      report({
+        domain: { expected: 'magazin.ro', onDomain: 0, offDomain: 10, offDomainExamples: ['https://alt.ro/x'] },
+        normalization: { accepted: 0, rejected: 10, rejectReasons: { off_domain: 10 }, warnings: {}, shippingBasis: {} },
+      }),
+    );
+    expect(hints[0]).toMatchObject({ level: 'warn', text: expect.stringMatching(/adresă în afara domeniului verificat \(10\)/) });
+    expect(hints.find((h) => h.level === 'error')?.text).toMatch(/Niciun produs nu are adresa pe domeniul magazin\.ro/);
+  });
 });
 
 describe('dashboardHints', () => {
   it('waits for the first run', () => {
-    expect(dashboardHints({ activeOffers: 0, withGtin: 0, matched: 0, stale: 0, shippingUnknown: 0, lastRun: null })[0]!.text).toMatch(/Prima citire/);
+    expect(dashboardHints({ freshnessHours: 12, activeOffers: 0, withGtin: 0, matched: 0, stale: 0, shippingUnknown: 0, lastRun: null })[0]!.text).toMatch(/Prima citire/);
   });
 
   it('reports failures, off-domain drops, rejects, unmatched offers and stale ones', () => {
     const text = dashboardHints({
+      freshnessHours: 72,
       activeOffers: 100,
       withGtin: 70,
       matched: 40,
@@ -83,7 +95,7 @@ describe('dashboardHints', () => {
     expect(text).toMatch(/5 produse din ultima citire au fost respinse/);
     expect(text).toMatch(/60% dintre oferte nu sunt încă potrivite/);
     expect(text).toMatch(/codul EAN la 30 oferte/);
-    expect(text).toMatch(/5 oferte nu au mai fost confirmate/);
+    expect(text).toMatch(/5 oferte nu au mai fost confirmate de feed în ultimele 72 de ore/);
     expect(text).toMatch(/La 12 oferte nu știm costul livrării/);
   });
 });
@@ -94,6 +106,8 @@ describe('labels', () => {
     expect(Object.keys(REASON_CATEGORIES)).toContain('preturi');
     expect(rejectLabel('price_placeholder')).toMatch(/9\.999\.999/);
     expect(rejectLabel('necunoscut')).toBe('necunoscut');
-    expect(JSON.stringify({ STATUS_LABELS, REASON_CATEGORIES })).not.toMatch(/[şţŞŢ]/);
+    expect(rejectLabel('off_domain')).toMatch(/domeniului verificat/);
+    expect(Object.keys(REPORT_PROBLEM_LABELS).sort()).toEqual(['failed', 'not_checked', 'nothing_listable', 'off_domain_only', 'price_format', 'stale']);
+    expect(JSON.stringify({ STATUS_LABELS, REASON_CATEGORIES, REPORT_PROBLEM_LABELS })).not.toMatch(/[şţŞŢ]/);
   });
 });

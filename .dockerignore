@@ -13,3 +13,4 @@ playwright-report
 test-results
 infra/caddy/certs
 .deploy-history
+handoff

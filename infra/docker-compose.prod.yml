@@ -37,6 +37,18 @@ x-web: &web
     <<: *app-environment
     PORT: '3000'
     HOSTNAME: 0.0.0.0
+    # Least privilege: the internet-facing replicas share the .env file but never get the credentials
+    # only the worker uses (collection vendors, LLM, Icecat, network APIs, the ops bot). Empty values
+    # here override the file. A new worker-only secret belongs in this list.
+    ZYTE_API_KEY: ''
+    OXYLABS_USERNAME: ''
+    OXYLABS_PASSWORD: ''
+    ANTHROPIC_API_KEY: ''
+    ICECAT_API_TOKEN: ''
+    ICECAT_CONTENT_TOKEN: ''
+    TWOPERFORMANT_PASSWORD: ''
+    PROFITSHARE_API_KEY: ''
+    OPS_ALERT_TELEGRAM_BOT_TOKEN: ''
   depends_on:
     postgres:
       condition: service_healthy

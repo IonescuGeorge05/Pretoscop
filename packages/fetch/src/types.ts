@@ -62,7 +62,7 @@ export type FetchErrorCode =
   | 'local_suspend'
   /** Assisted channel: the month's vendor spend reached ASSISTED_MONTHLY_CAP_EUR (M05B). */
   | 'assisted_cap'
-  /** Assisted channel: the vendor refuses our account or this shop's domain (M05B). */
+  /** Assisted channel: the request is out of scope (shop not designated, not a public page of its own host) or the vendor refuses our account or this shop's domain (M05B). */
   | 'assisted_refused';
 
 export interface FetchPoliteOptions {

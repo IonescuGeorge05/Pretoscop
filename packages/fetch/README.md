@@ -244,7 +244,7 @@ pause set while the request waited for its slot); `attempts` then counts the att
 `network_unreachable`, `protocol_error`, `network`, `body_too_large`, `decode_error`,
 `too_many_redirects`, `cross_site_redirect`, `invalid_redirect`, `redirect_disallowed`,
 `channel_change`, `robots_unavailable`, `invalid_policy`, `invalid_request`, `crawl_disabled`,
-`assisted_error`, `non_public_address`, `local_suspend`.
+`assisted_error`, `non_public_address`, `local_suspend`, `assisted_cap`, `assisted_refused`.
 
 Pure helpers are exported too: `detectBlock`, `classifyTransportError`, `detectChallengeRedirect`,
 `parseRetryAfter`, `parseRobotsTxt`, `selectRobotsGroups`, `evaluateRobots`, `normalizeRobotsPath`,

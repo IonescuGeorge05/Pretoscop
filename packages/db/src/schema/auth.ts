@@ -20,6 +20,12 @@ export const users = pgTable(
     role: text('role').$type<UserRole>().notNull().default('user'),
     createdAt: ts('created_at').notNull().defaultNow(),
     updatedAt: ts('updated_at').notNull().defaultNow(),
+    /**
+     * M19 retention: the last sign of life (login, alert created, confirmed or edited, "keep my
+     * account"). Accounts inactive for 24 months get a notice, then are deleted 30 days later.
+     */
+    lastActiveAt: ts('last_active_at').notNull().defaultNow(),
+    retentionNoticeAt: ts('retention_notice_at'),
   },
   (t) => [uniqueIndex('users_email_uq').on(t.email), check('users_role_ck', sql`${t.role} in ('user','admin','merchant')`)],
 );

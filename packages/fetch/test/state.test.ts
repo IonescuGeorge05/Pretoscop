@@ -1,6 +1,6 @@
 import { existsSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { KeyedMutex } from '../src/mutex';
 import { FileDomainStateStore } from '../src/state/file';
@@ -111,7 +111,7 @@ describe('FileDomainStateStore across processes', () => {
     writeFileSync(`${file}.lock`, JSON.stringify({ pid: 2 ** 22 + 12345, at: Date.now() }));
     const store = new FileDomainStateStore(file, { now, lockTimeoutMs: 2000 });
     expect((await store.reserveSlot('shop.ro', 5000)).waitMs).toBe(0);
-    expect(readdirSync(dir).some((f) => f.startsWith(`${file.split('/').pop()}.corrupt-`))).toBe(true);
+    expect(readdirSync(dir).some((f) => f.startsWith(`${basename(file)}.corrupt-`))).toBe(true);
   });
 });
 

@@ -74,7 +74,9 @@ function shopRow(s: ShopConfig) {
  * a second run reports only `unchanged`. The YAML owns configuration; the database owns runtime
  * switches: `shop_sources.kill_switch` is only ever forced on (when the YAML says so), never off,
  * and feature flags are only created (off), never changed. Sources removed from the YAML are
- * disabled, not deleted (their runs and offers keep their history).
+ * disabled, not deleted (their runs and offers keep their history). Merchant feeds created by the
+ * portal (`config.origin = 'merchant'`, M20) are left alone, and shops that exist only in the
+ * database (merchant shops) are never touched.
  */
 export async function syncShops(db: Db, registry: ShopConfig[] = loadShops(), actor = 'system:shops-sync'): Promise<SyncReport> {
   const unknown = registry.flatMap((s) => s.sources).filter((src) => !isKnownParserKey(src.parser_key));
@@ -147,7 +149,9 @@ export async function syncShops(db: Db, registry: ShopConfig[] = loadShops(), ac
         } else report.sources.unchanged++;
       }
       for (const [key, row] of existingSources) {
-        if (row.shopId === shopId && !yamlKeys.has(key) && row.enabled) {
+        // Feeds a merchant registered through the portal (M20) are owned by the portal, not the YAML.
+        const merchantOwned = (row.config as Record<string, unknown> | null)?.origin === 'merchant';
+        if (row.shopId === shopId && !yamlKeys.has(key) && row.enabled && !merchantOwned) {
           await tx.update(shopSources).set({ enabled: false }).where(eq(shopSources.id, row.id));
           report.sources.disabled++;
           report.changes.push(`source ${key}: disabled (removed from YAML)`);

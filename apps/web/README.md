@@ -73,3 +73,45 @@ Local instance: `docker compose -f infra/docker-compose.dev.yml -p pretoscop --p
 CE v3.2.1 with ClickHouse and its own Postgres on http://localhost:8100 (about 2 GB of RAM; not started by `make dev`).
 Register the first account, add the site, then build the web app with the two variables above. When a Content Security
 Policy is added (M16/M18), allow the Plausible origin in `script-src` and `connect-src`.
+
+## Price alerts and accounts (M19)
+
+Behind the flag `alerts.email.enabled` (off by default); with it off the product page keeps the
+"În curând" box and `POST /api/alerts` answers 503.
+
+| Route | What it does |
+|---|---|
+| product page, "Alertă de preț" | `components/alerts/alert-form.tsx`: below a target or any drop of at least 1%, optionally any variant, the unticked consent box with `alertConsent` (current version from `@pretoscop/config/legal-texts`); a plain HTML form without JavaScript |
+| `POST /api/alerts` | validates (`lib/alert-form.ts`, shared with the form), refuses cross-site posts, bodies > 8 KB and the honeypot; 10 requests/hour per daily-salted session; at most 3 confirmation emails per address per day; same answer whether or not the address has an account; logged in with the same verified address → active at once (`confirm_method = 'session'`) |
+| `/alerte/confirmare?a=&t=` + `POST /api/alerts/confirm` | double opt-in: the page only shows the alert and the consent text; the button confirms (mail scanners open links) |
+| `/alerte/dezabonare?a=&t=` / `?u=&t=` + `POST /api/alerts/unsubscribe` | one button, no login; the same URL takes the RFC 8058 one-click POST (`List-Unsubscribe=One-Click`) from mailbox providers; a GET never unsubscribes |
+| `/alerte` | magic-link login (server action, works without JavaScript); list, edit, confirm, delete, stop all; `GET /api/account/export` (JSON); delete the account |
+| `/alerte/rezultat`, `/alerte/pastreaza` | the no-JavaScript result of the form; "keep my account" from the 24-month notice |
+| `POST /api/webhooks/resend` | Svix-signed (RESEND_WEBHOOK_SECRET): complaints and permanent bounces stop the address's email alerts and suppress its hash |
+| `/admin/alerte`, `GET /api/admin/users/{id}/export` | volumes, failures, and data-subject requests (export, delete; audited without the address) |
+
+Evidence: `consent_ip_hash`/`confirm_ip_hash` = `hashWithDailySalt('ip', ip)` (the salt of the
+UTC day of `consent_at`/`confirmed_at`, derived from HASH_SALT_SECRET), so a claimed IP can be
+checked later while the stored value reveals nothing. Links are signed with ALERTS_SECRET
+(`@pretoscop/notify`). E2E: `E2E_SHARED_FIXTURE=0 pnpm exec playwright test e2e/alerts.spec.ts --project=desktop --workers=1`.
+## Merchant portal (M20)
+
+- **Flag**: `merchants.portal.enabled` (off by default) gates new registrations and submissions; approved feeds keep running
+  when it is off.
+- **Merchant pages**: `/pentru-magazine/autentificare` (magic link, role `merchant`), `/pentru-magazine/cont` (steps: company
+  and CUI with checksum → domain proof → feed URL or upload → price format and delivery → terms and submit; then the pending,
+  approved (dashboard), rejected and suspended views), `/pentru-magazine/termeni` (merchant terms, `merchantTerms.v1`).
+  Forms are server actions with redirect-after-post, so they work without JavaScript; `AutoRefresh` only reloads while a
+  worker check runs.
+- **Domain proof** (the abuse guard against listing someone else's feed): an email address on the shop's domain, a DNS TXT
+  record `pretoscop-verificare=<token>` on the apex, or the token in `/.well-known/pretoscop-verificare.txt`; an admin can
+  also verify manually. Approval requires it, and the worker drops feed offers whose URL is not on that domain.
+- **Checks run in the worker** (`merchant.validate`, `merchant.verify_domain`): feed fetches go through `@pretoscop/fetch`
+  as `PretoscopBot-Feed` (robots.txt, 5 s spacing, public addresses only). The web app only enqueues and shows results.
+- **Upload**: `POST /api/merchant/feed-upload` (multipart, same-site, ≤ `FETCH_MAX_BODY_BYTES`) stores the file in the blob
+  store; an approved upload source is observed at upload time and never scheduled.
+- **Admin**: `/admin/comercianti` (queue and detail): approve (creates or attaches the shop and the
+  `<slug>:feed:merchant` source, every 4 hours), reject / suspend with a statement of reasons (category + facts, emailed;
+  P2B art. 4), reinstate, manual domain verification, re-check, run now. Every decision is in `audit_log`.
+- **Development only**: with `FETCH_ALLOW_PRIVATE_HOSTS=true` (refused in staging and production) a feed URL may point to a
+  local IP and port, which the e2e flow uses.

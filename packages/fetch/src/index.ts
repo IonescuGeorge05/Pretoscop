@@ -48,6 +48,14 @@ export {
 export { canonicalUrl, hostKey, normalizeHost, sameSite, siteKey, toOrigin } from './site';
 
 export {
+  NonPublicAddressError,
+  createGuardedDispatcher,
+  isNonPublicAddress,
+  publicOnlyLookup,
+  type GuardedDispatcherOptions,
+} from './guard';
+
+export {
   ACCEPT_ENCODING,
   ACCEPT_LANGUAGE,
   BOT_INFO_URL,

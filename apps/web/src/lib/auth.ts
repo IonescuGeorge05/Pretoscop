@@ -1,5 +1,5 @@
 import 'server-only';
-import { accounts, sessions, users, verifications } from '@pretoscop/db';
+import { accounts, sessions, touchUserActivity, users, verifications } from '@pretoscop/db';
 import { createMailer } from '@pretoscop/mailer';
 import { betterAuth } from 'better-auth';
 import { drizzleAdapter } from 'better-auth/adapters/drizzle';
@@ -42,6 +42,10 @@ function buildAuth() {
       session: {
         create: {
           before: async (session) => ({ data: { ...session, ipAddress: null, userAgent: null } }),
+          // M19 retention: a login is activity (resets the 24-month inactivity clock).
+          after: async (session) => {
+            await touchUserActivity(db(), session.userId).catch(() => undefined);
+          },
         },
       },
     },

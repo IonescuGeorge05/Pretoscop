@@ -29,13 +29,15 @@ export const rollupTouchJob = defineJob<{ productIds: number[] }>({
   name: 'rollup.touch',
   queue: { retryLimit: 2, retryDelay: 60, expireInSeconds: 1800 },
   work: { batchSize: 1, localConcurrency: 1 },
-  handler: async (job, { db, log, services }) => {
+  handler: async (job, { db, boss, log, services }) => {
     const ids = [...new Set(job.data.productIds)].filter((n) => Number.isInteger(n));
     if (ids.length === 0) return;
     const today = bucharestToday();
     await rollupProducts(db, { productIds: ids, from: addDaysIso(today, -1), to: today });
     await computeProductStats(db, ids, today);
     const revalidated = await services.revalidate(ids.map((id) => `product:${id}`));
+    // M19: the alerts watching these products (or their families) are evaluated right away.
+    await boss.send('alerts.evaluate', { productIds: ids });
     log.debug({ products: ids.length, revalidated }, 'rollup touch done');
   },
 });

@@ -612,6 +612,22 @@ storage, RAM, screen, colour, energy class, litres, kilograms, condition, bundle
 every set and prints the table and every miss: `pnpm --filter @pretoscop/core exec vitest run src/corpus.test.ts --silent=false`.
 Label what a careful person reads in the title, never what the code outputs.
 
+## Price alerts (M19, `src/alerts.ts`, also `@pretoscop/core/alerts`)
+
+- `decideAlert(state, best, now)` → `notify` (reason `below_target`, `lower_below_target` or `drop`,
+  with the reference it rests on) | `set_baseline` | `rearm` | `none` (`no_offer`, `not_met`,
+  `cooldown`, `already_notified`, `suspicious`, `invalid`).
+- 'below': at or under the target; afterwards only a further drop of at least 1% under the last
+  notified total, or a new crossing after the total went back above the target (re-armed). No
+  offer (stale shop, out of stock) never re-arms: a crawler outage is not a price change.
+- 'any_drop': at least 1% (`ALERT_MIN_DROP_PERCENT`) under the last total told to the user, or
+  under the best total at confirmation; a later rise does not move the reference up.
+- At most one notification per alert per 24 hours (`ALERT_COOLDOWN_HOURS`); a total under 30% of
+  the cross-shop median (`belowCrossShopFloor`) is a probable mismatch and never notified.
+- `parseTargetPrice(input, currentBestBani)`: Romanian separators ("1.999", "1999,99", "2.000 lei");
+  refuses targets at or above today's best total. `inQuietHours` (22:00–08:00 Europe/Bucharest),
+  `normalizeEmail`, `isPlausibleEmail`, `ALERT_CONFIRM_TTL_DAYS` (7).
+
 ## Known limitations
 
 - Model codes written with spaces ("FFB 8458 BV EE", "W7I HP42 L", "43 HYN 8110 VDQ4K") are not

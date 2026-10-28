@@ -120,6 +120,7 @@ itself refuses those requests.
 | HTTP-200 interstitials: Fastly "Client Challenge" (`/_fs-ch-`, Hornbach), Tencent EdgeOne (`EO_Bot_Ssid`, Fashion Days), Distinct Captcha (evoMAG's hoster), DataDome (`captcha-delivery.com`), PerimeterX (`px-captcha`), Imperva incident page | `blocked`, `challenge`, body never returned | 24 h |
 | Redirect to a CAPTCHA/challenge host, of another site or of the shop's own (`captcha.distinct.ro`, `geo.captcha-delivery.com`, `challenges.cloudflare.com`, `captcha.shop.ro`: any host label exactly `captcha`/`challenge`), or to a challenge path on any host (`/…captcha…`, `/_fs-ch-`, `/cdn-cgi/challenge-platform/`; the query string is not looked at) | `blocked`, `captcha_redirect`, **never followed** | 24 h |
 | Connection reset, HTTP/2 stream reset or GOAWAY (Akamai), TLS failure, connect timeout (cel.ro from abroad) | `blocked`, `transport` | 24 h |
+| Any transport error that surfaces more than 30 s after the request's own timeout (this process was suspended: the machine slept and the shop closed the idle connection) | `local_suspend`, not blocked, retried on a fresh slot | none (no failure counted) |
 | 429 | `blocked`, `http_429` | `Retry-After`, at least 1 h (at most 7 days) |
 | 511 (eMAG-style bot throttling) | `blocked`, `http_429` | `Retry-After`, at least 24 h |
 | 503 without challenge markers | not a block; retried unless `Retry-After` is present | `Retry-After`, at least 1 h, once the call gives up |

@@ -19,7 +19,7 @@ Never in git, never in chat. Rotate after a leak or a departure, and yearly anyw
 | `RESEND_API_KEY`, `ZYTE_API_KEY`, `ANTHROPIC_API_KEY`, network credentials | `.env` | create new in the vendor dashboard, update, deploy, revoke old | none |
 | `OPS_ALERT_TELEGRAM_BOT_TOKEN` | `.env` | BotFather `/revoke`, update, deploy | none |
 | Cloudflare origin certificate | `infra/caddy/certs/` | new certificate in Cloudflare, replace files, `$E exec caddy caddy reload --config /etc/caddy/Caddyfile` | none |
-| GitHub `SSH_DEPLOY_KEY`, GHCR token | GitHub secrets / server | new key pair, update `authorized_keys` and the secret, remove old | none |
+| GitHub `DEPLOY_SSH_KEY` (the CI key), GHCR token | GitHub secrets / server | new key pair, update `authorized_keys` and the secret, remove old | none |
 
 `$C` and `$E`: see `infra/runbooks/incident.md` §0. After rotating, run `infra/scripts/deploy.sh <env>
 <current tag>` so every container reads the new values; confirm `/api/health` and one admin login.

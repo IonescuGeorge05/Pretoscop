@@ -45,7 +45,7 @@ Legend for status: **live** = runs in the prototype today; **planned** = designe
 | Personal data | Event name, path, referrer host, up to 20 short properties, session hash = sha256(daily salt derived from `HASH_SALT_SECRET`, IP, User-Agent), truncated; pseudonymous within one day, unlinkable across days |
 | Recipients | Hetzner (hosting) |
 | Transfers | None |
-| Retention | 13 months; aggregated after 90 days (job pending) |
+| Retention | 13 months; after 90 days the session hash is removed, so only per-event counts remain (job `alerts.retention`, M19) |
 | Security | No raw IP or UA stored; payload size and rate limits on `POST /api/events` |
 | Implementation | `events` table, `apps/web/src/app/api/events/route.ts`, `apps/web/src/lib/privacy.ts` |
 
@@ -85,7 +85,7 @@ The consent choice itself is stored only in the visitor's browser (`localStorage
 
 | Field | Record |
 |---|---|
-| Status | planned (M19) |
+| Status | built (M19); off until `alerts.email.enabled` is turned on (with the public launch) |
 | Purpose | Send the email alerts a person asked for; prove consent |
 | Legal basis | Consent: Art. 6(1)(a) GDPR and Law 506/2004 art. 12 (direct marketing), double opt-in, text `alertConsent.v1` |
 | Data subjects | Alert subscribers |
@@ -94,7 +94,7 @@ The consent choice itself is stored only in the visitor's browser (`localStorage
 | Transfers | Resend (US): DPF or SCCs |
 | Retention | While the alert is active; inactive accounts deleted after 24 months; consent evidence for the duration of consent plus 3 years; suppression list as email hashes indefinitely |
 | Security | Double opt-in, `List-Unsubscribe` in every email, export and delete tools (M19) |
-| Implementation | `users`, `alerts`, `alert_sends` (M19) |
+| Implementation | `users`, `alerts`, `alert_sends`, `consent_records` (evidence ledger keyed by an HMAC of the address, kept 3 years after withdrawal), `email_suppressions` (hashes only); retention job `alerts.retention`: pending requests deleted after 7 days, accounts inactive 24 months warned then deleted 30 days later, evidence pruned after 3 years, sent alerts after 13 months; self-service export and deletion on `/alerte`, admin tool on `/admin/alerte`; complaints and bounces from Resend stop alerts (`/api/webhooks/resend`) |
 
 ### P6. Admin accounts and audit log
 
@@ -137,7 +137,7 @@ The consent choice itself is stored only in the visitor's browser (`localStorage
 | Personal data | Offer, product, shop, timestamp, placement, referrer type, IP hash, UA hash, session hash (daily salt) |
 | Recipients | Hetzner |
 | Transfers | None (affiliate networks receive the click through their own redirect and act as independent controllers; assess in M24) |
-| Retention | 13 months; aggregated after 90 days (docs/03 §10) |
+| Retention | 13 months; after 90 days the IP, UA and session hashes are removed (job `alerts.retention`, M19) |
 | Implementation | `clicks` (M13) |
 
 ### P9. Merchant accounts and feeds
@@ -186,7 +186,7 @@ EU hosting (Hetzner, Germany); TLS everywhere; secrets only in the server `.env`
 
 ## Open items
 
-- Retention jobs: P2 (aggregate after 90 days), P4 (12 months / 3 years), P6 (audit log 3 years), P8 (M13), P9 (3 years after closure).
+- Retention jobs: P4 (12 months / 3 years), P6 (audit log 3 years) and P9 (merchant accounts, 3 years after closure; M20) are still pending; P2 and P8 run in `alerts.retention` (M19). Event properties (P2) stay until the 13-month deletion; an `events_daily` aggregate would let raw rows go after 90 days.
 - Seller-name suppression action for P7 objections (admin).
 - Controller identity once the SRL exists (B4); mailbox provider and its DPA (`dpa-list.md`).
 - Lawyer review of this record together with the public pages (B5).

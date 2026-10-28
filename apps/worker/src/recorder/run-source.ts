@@ -39,6 +39,8 @@ export interface RunOutcome {
   reason?: string;
   /** Offers recorded in this run that need (re)matching. */
   touchedOffers?: number[];
+  /** Matched products whose offers changed price or stock in this run (rollup.touch → alerts). */
+  touchedProducts?: number[];
 }
 
 interface Ctx {
@@ -51,6 +53,8 @@ interface Ctx {
   snapshot: string[];
   /** Offers that need (re)matching after this run (M07 consumes them). */
   touchedOffers: Set<number>;
+  /** Already-matched products with a price event in this run (re-rolled up; their alerts evaluated). */
+  touchedProducts: Set<number>;
   /** Set when the run-level breaker trips: nothing more is recorded. */
   held?: string;
   errors: string[];
@@ -119,6 +123,7 @@ async function ingest(ctx: Ctx, offers: RawOffer[], observedAt: Date): Promise<v
       if (r.eventKind) ctx.stats.changed++;
       if (r.inserted) ctx.stats.newOffers++;
       if (r.needsMatch && r.offerId !== null) ctx.touchedOffers.add(r.offerId);
+      else if (r.eventKind && r.productId) ctx.touchedProducts.add(r.productId);
     } catch (err) {
       ctx.stats.errors++;
       if (ctx.errors.length < SNAPSHOT_SAMPLE_REJECTS) ctx.errors.push(`record ${o.externalId}: ${(err as Error).message}`);
@@ -171,7 +176,10 @@ async function runListing(ctx: Ctx, source: { url: string; parserKey: string; co
       observedAt: observedAt.toISOString(),
     });
     if (parsed.offers.length === 0) {
-      if (ctx.stats.pages === 1) {
+      // A page whose products are all unavailable (VTEX shows them without a price) still lists
+      // them (`meta.items`): that is the end of the priced listing, not a layout change.
+      const items = typeof parsed.meta?.items === 'number' ? parsed.meta.items : 0;
+      if (ctx.stats.pages === 1 && items === 0) {
         ctx.stats.errors++;
         ctx.errors.push(`no offers parsed on the first page ${res.finalUrl} (layout change?)`);
       } else complete = true;
@@ -328,6 +336,16 @@ export async function runSource(deps: RecorderDeps, sourceId: number, opts: RunO
     deps.log.info({ source_id: sourceId, shop: shop.slug, reason: gate.reason }, 'source run gated');
     return { runId: null, status: 'gated', stats: emptyStats(), reason: gate.reason };
   }
+  // A host the fetch layer already paused (403/429/challenge) is not a new failure: no run, no
+  // request, no alert, until the pause ends (the block that set it was alerted when it happened).
+  const host = new URL(source.url).host;
+  const pause = await db.execute<{ until: string; reason: string | null }>(sql`
+    SELECT paused_until::text AS until, pause_reason AS reason FROM fetch_domain_state WHERE host = ${host} AND paused_until > now()`);
+  if (pause.rows[0]) {
+    const reason = `host ${host} paused until ${pause.rows[0].until}${pause.rows[0].reason ? ` (${pause.rows[0].reason})` : ''}`;
+    deps.log.info({ source_id: sourceId, shop: shop.slug, reason }, 'source run gated');
+    return { runId: null, status: 'gated', stats: emptyStats(), reason };
+  }
 
   const channel = source.kind === 'feed' ? 'feed' : shop.accessMode === 'assisted' ? 'assisted' : 'direct';
   const run = await startRun(db, { sourceId, channel, trigger: opts.trigger });
@@ -342,6 +360,7 @@ export async function runSource(deps: RecorderDeps, sourceId: number, opts: RunO
     stats: { ...emptyStats(), rejected: 0, stale: 0, newOffers: 0, pages: 0, discovered: 0, quarantined: 0, offDomain: 0 },
     snapshot: [],
     touchedOffers: new Set<number>(),
+    touchedProducts: new Set<number>(),
     errors: [],
     log,
   };
@@ -446,5 +465,5 @@ export async function runSource(deps: RecorderDeps, sourceId: number, opts: RunO
   }
 
   log.info({ status, stats: ctx.stats, snapshot: snapshotKey }, 'source run finished');
-  return { runId: run.id, status, stats: ctx.stats, touchedOffers: [...ctx.touchedOffers] };
+  return { runId: run.id, status, stats: ctx.stats, touchedOffers: [...ctx.touchedOffers], touchedProducts: [...ctx.touchedProducts] };
 }

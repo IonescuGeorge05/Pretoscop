@@ -1,0 +1,230 @@
+User-agent: *
+Disallow: */discount*
+Disallow: */pret*
+Disallow: *_or_*
+Allow: */sex-Femei_or_Unisex*
+Allow: */sex-Barbati_or_Unisex*
+Allow: */sex-Baieti_or_Unisex*
+Allow: */sex-Fete_or_Unisex*
+Allow: */carti/carte/carti-pentru-copii/filters/book_age_group_fltr-*
+Allow: */carti/filters/autor-*
+Disallow: */filters/*
+Disallow: */AvailableFlag-0_or_1/*
+Disallow: */ViewSocialMediaUserAccount*
+Disallow: *ETACall-GetArrivalTime*
+Allow: /cdn-cgi/image/
+Disallow: /cdn-cgi/
+Allow: /llms.txt
+Disallow: */sex-Femei_or_Unisex*/*_or_*
+Disallow: */sex-Barbati_or_Unisex*/*_or_*
+Disallow: */sex-Baieti_or_Unisex*/*_or_*
+Disallow: */sex-Fete_or_Unisex*/*_or_*
+Disallow: *_or_*/sex-Femei_or_Unisex*
+Disallow: *_or_*/sex-Barbati_or_Unisex*
+Disallow: *GroupSize
+Disallow: */ViewIsProductInWishlists-
+Disallow: */ViewProductReview-
+Disallow: *?sort
+Disallow: *?view=
+Disallow: *?items_per_page=
+Disallow: *login?TargetPipeline
+Disallow: *ViewMiniCart-Status
+Disallow: */my-account*
+Disallow: */login
+Disallow: */mob/
+Disallow: */INTERSHOP/web/WFS/
+Disallow: *SearchTerm=
+
+Sitemap: https://www.elefant.ro/sitemap-sitemapRO
+Sitemap: https://www.elefant.ro/feeds/elefant-sitemapRO-brands.xml
+
+# ─── AI crawlers — explicitly allowed with safe crawl delay ──────────────────
+
+User-agent: GPTBot
+Disallow: */filters/
+Disallow: *?pag=
+Allow: /
+
+User-agent: ChatGPT-User
+Disallow: */filters/
+Disallow: *?pag=
+Allow: /
+
+User-agent: PerplexityBot
+Disallow: */filters/
+Disallow: *?pag=
+Allow: /
+
+User-agent: ClaudeBot
+Disallow: */filters/
+Disallow: *?pag=
+Allow: /
+
+User-agent: Google-Extended
+Disallow: */filters/
+Disallow: *?pag=
+Allow: /
+
+User-agent: Applebot-Extended
+Disallow: */filters/
+Disallow: *?pag=
+Allow: /
+
+# ─── Common Crawl — feeds AI training datasets ───────────────────────────────
+
+User-agent: CCBot
+Disallow: */filters/
+Disallow: *?pag=
+Allow: /
+
+
+# ─── Blocked bots (unchanged) ─────────────────────────────────────────────────
+
+User-agent: spider
+Disallow: /
+
+
+User-agent: crawler
+Disallow: /
+
+
+User-agent: adidxbot
+Disallow: /
+
+
+User-agent: adsbot
+Disallow: /
+
+
+User-agent: aihitbot
+Disallow: /
+
+
+User-agent: applebot
+Disallow: /
+
+
+User-agent: blexbot
+Disallow: /
+
+
+User-agent: blp_bbot
+Disallow: /
+
+
+User-agent: bomborabot
+Disallow: /
+
+
+User-agent: caliperbot
+Disallow: /
+
+
+User-agent: cliqzbot
+Disallow: /
+
+
+User-agent: coccocbot
+Disallow: /
+
+
+User-agent: dotbot
+Disallow: /
+
+
+User-agent: Exabot
+Disallow: /
+
+
+User-agent: ia_archiver
+Disallow: /
+
+
+User-agent: jobs.de-robot
+Disallow: /
+
+
+User-agent: linkdexbot
+Disallow: /
+
+
+User-agent: ltx71
+Disallow: /
+
+
+User-agent: mail.ru_bot
+Disallow: /
+
+
+User-agent: mauibot
+Disallow: /
+
+
+User-agent: mediatoolkitbot
+Disallow: /
+
+
+User-agent: memorybot
+Disallow: /
+
+
+User-agent: mj12bot
+Disallow: /
+
+
+User-agent: moatbot
+Disallow: /
+
+
+User-agent: ntentbot
+Disallow: /
+
+
+User-agent: semrushbot
+Disallow: /
+
+
+User-agent: seznambot
+Disallow: /
+
+
+User-agent: shopit
+Disallow: /
+
+
+User-agent: sirdatabot
+Disallow: /
+
+
+User-agent: smtbot
+Disallow: /
+
+
+User-agent: spbot
+Disallow: /
+
+
+User-agent: turnitinbot
+Disallow: /
+
+
+User-agent: uipbot
+Disallow: /
+
+
+User-agent: uptimerobot
+Disallow: /
+
+
+User-agent: weborama
+Disallow: /
+
+
+User-agent: facebookexternalhit
+Allow: /
+
+User-agent: PetalBot
+Disallow: /
+
+User-agent: Amazonbot
+Disallow: /

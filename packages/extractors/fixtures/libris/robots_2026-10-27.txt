@@ -1,0 +1,89 @@
+User-agent: *
+Disallow: /cart/
+Disallow: /auth/
+Disallow: /account/
+Disallow: /dashboard/
+Disallow: /search?*
+Disallow: /ComandaPas2.jsp
+Disallow: /comandaTa.jsp
+Disallow: /AfiseazaProdus.jsp
+Disallow: /s.jsp
+Disallow: /ax.jsp
+Disallow: /adm2/
+Disallow: /*?ord=
+Disallow: /*&ord=
+Disallow: /*?nav=
+Disallow: /*&nav=
+Disallow: /*?afid=
+Disallow: /*&afid=
+Disallow: /*?rstar=
+Disallow: /*&rstar=
+Disallow: /*?fts_fts=
+Disallow: /*&fts_fts=
+Disallow: /*?iv.fn=
+Disallow: /*&iv.fn=
+Disallow: /*?iv.categ=
+Disallow: /*&iv.categ=
+Disallow: /*?iv.op=
+Disallow: /*&iv.op=
+Disallow: /*?iv.sort=
+Disallow: /*&iv.sort=
+Disallow: /*?iv.df=
+Disallow: /*&iv.df=
+Disallow: /*?fsv_
+Disallow: /*&fsv_
+Disallow: /*?f_
+Disallow: /*&f_
+Disallow: /*?fp=
+Disallow: /*&fp=
+Disallow: /*?rating=
+Disallow: /*&rating=
+Disallow: /*?pnu=
+Disallow: /*&pnu=
+Disallow: /*?iv.q=
+Disallow: /*&iv.q=
+Disallow: /*?psq=
+Disallow: /*&psq=
+Disallow: /*?rt=
+Disallow: /*&rt=
+Disallow: /*?isrc=
+Disallow: /*&isrc=
+Disallow: /*?fbclid=
+Disallow: /*&fbclid=
+Disallow: /*?click_code=
+Disallow: /*&click_code=
+Disallow: /*?rtbhc=
+Disallow: /*&rtbhc=
+Disallow: /*?srsltid=
+Disallow: /*&srsltid=
+Disallow: /*?gclid=
+Disallow: /*&gclid=
+Disallow: /userdocspdf/
+Disallow: /*?utm_
+Disallow: /*&utm_
+
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: BLEXBot
+Disallow: /
+
+User-agent: Yandex
+Disallow: /
+
+User-agent: Baiduspider
+Disallow: /
+
+
+Sitemap: https://www.libris.ro/sitemap-new-url-index.xml?nofilename=on
+Sitemap: https://www.libris.ro/sitemap-autori.xml?nofilename=on&page=1
+Sitemap: https://www.libris.ro/sitemap-categorii.xml?nofilename=on

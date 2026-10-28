@@ -1,0 +1,2 @@
+# The root .gitignore ignores every folder named data/; this snapshot of it is tracked on purpose.
+!data/

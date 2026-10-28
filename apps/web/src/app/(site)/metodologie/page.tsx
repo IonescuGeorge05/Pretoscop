@@ -22,8 +22,8 @@ export default function MethodologyPage() {
       intro={
         <Callout tone="info" icon={<Construction />}>
           <p>
-            Pagina va fi completată înainte de lansare cu exemple concrete și cu metodologia rapoartelor despre reduceri. Regulile de mai jos sunt cele pe care le
-            aplicăm deja.
+            Pagina va fi completată înainte de lansare cu exemple concrete. Regulile de mai jos sunt cele pe care le aplicăm deja, inclusiv în rapoartele
+            despre reduceri.
           </p>
         </Callout>
       }
@@ -140,6 +140,44 @@ export default function MethodologyPage() {
                 decât cel mai mic preț observat de Pretoscop în ultimele 30 de zile (Y lei, la data Z)”. Nu sunt acuzații și nu spun nimic despre intențiile
                 magazinului. Păstrăm observațiile pe care se sprijină fiecare mențiune.
               </p>
+            </>
+          ),
+        },
+        {
+          id: 'rapoarte',
+          title: 'Rapoartele despre reduceri',
+          content: (
+            <>
+              <p>
+                În <Link href="/rapoarte">rapoartele noastre</Link> (de exemplu, după Black Friday) aplicăm aceleași reguli fiecărei oferte observate în perioada
+                analizată:
+              </p>
+              <ul>
+                <li>
+                  <strong>Prețul unei zile</strong> este cel în vigoare la sfârșitul zilei, după ultima noastră observație. Zilele fără observații rămân goale.
+                </li>
+                <li>
+                  <strong>Scădere reală</strong>: cel mai mic preț din perioadă este cu cel puțin 2% sub cel mai mic preț observat la aceeași ofertă în cele 30
+                  de zile dinainte. Între −2% și +2% spunem „fără scădere reală”; peste +2%, „mai scump”. Comparăm doar ofertele pe care le-am observat în cel
+                  puțin 70% din acele 30 de zile.
+                </li>
+                <li>
+                  <strong>Reducere afișată</strong>: magazinul arăta un preț de referință tăiat, mai mare decât prețul de vânzare. Raportăm câte reduceri
+                  afișate nu au fost și scăderi reale față de prețurile observate de noi; nu facem afirmații despre intențiile magazinului.
+                </li>
+                <li>
+                  <strong>Preț crescut înainte, apoi redus</strong>: vârful din cele 30 de zile dinainte (fără ultimele 3) este cu cel puțin 15% peste mediana
+                  lunii anterioare, iar prețul din perioadă este încă la cel puțin 97% din acea mediană. Regula cere 60 de zile de istoric.
+                </li>
+                <li>
+                  Scăderile pe produse folosesc ofertele vândute direct de magazine. Numele vânzătorilor din marketplace nu apar în rapoarte, doar cifre
+                  agregate.
+                </li>
+                <li>
+                  Fiecare raport este verificat de fondatori înainte de publicare (comparăm cifrele cu interogări directe și cu graficele), iar datele complete
+                  (CSV) se pot descărca de pe pagina raportului.
+                </li>
+              </ul>
             </>
           ),
         },

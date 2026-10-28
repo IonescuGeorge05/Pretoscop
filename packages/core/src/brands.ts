@@ -19,8 +19,9 @@
  *    title names a known brand, which is then preferred.
  */
 import { BRAND_SEEDS, type BrandSeed, type LineSeed } from './brands-data';
-import { detectProductKind, type ProductKind } from './product-kind';
+import { explainProductKind, type ProductKind } from './product-kind';
 import { foldLower, normalizeText, slugify } from './text';
+import { guessUnknownBrand, type UnknownBrandRule } from './unknown-brand';
 
 export interface Brand {
   name: string;
@@ -50,6 +51,12 @@ export interface BrandMatch {
   matched?: string;
   /** A different known brand named in the title when the brand field won. */
   conflict?: string;
+  /**
+   * Set when the title names no known brand and an unknown one was read from its form
+   * (`known: false`): `trademark` (word with ®/™, confidence 0.8), `prefix`, `after_noun` or
+   * `segment` (position, 0.6). See `guessUnknownBrand`.
+   */
+  guess?: UnknownBrandRule;
 }
 
 interface LineRecord {
@@ -487,8 +494,22 @@ function scan(tokens: readonly string[]): Mention[] {
   return mentions;
 }
 
+/** "Emulator N64 PSP PS1 PlayStation Sega": what a retro handheld emulates is not its maker. */
+const EMULATION_MARKERS = new Set([
+  'emulator',
+  'emulatoare',
+  'emulatori',
+  'emulatorul',
+  'emulators',
+  'emulare',
+  'emuleaza',
+  'simulator',
+  'simulatoare',
+]);
+
 function compatCut(tokens: readonly string[], mentions: readonly Mention[]): number {
   for (let p = 0; p < tokens.length; p++) {
+    if (EMULATION_MARKERS.has(tokens[p] as string)) return p;
     if (!COMPAT_MARKERS.has(tokens[p] as string)) continue;
     let q = p + 1;
     if (tokens[q] === 'cu' || tokens[q] === 'with') q++;
@@ -518,7 +539,8 @@ export function detectBrandInTitle(
 ): BrandMatch | null {
   const tokens = brandTokens(title);
   if (tokens.length === 0) return null;
-  const kind = detectProductKind(title, categoryHint);
+  const explained = explainProductKind(title, categoryHint);
+  const kind = explained.kind;
   const mentions = scan(tokens);
   const cut = compatCut(tokens, mentions);
   const usable = mentions.filter((m) => {
@@ -534,7 +556,20 @@ export function detectBrandInTitle(
   const weak = usable.filter((m) => m.entry.brand.weak);
   // A component brand alone does not name the maker of a laptop, phone or TV.
   const pick = strong[0] ?? alone[0] ?? (WEAK_HOST_KINDS.has(kind) ? undefined : weak[0]);
-  if (!pick) return null;
+  if (!pick) {
+    const guess = guessUnknownBrand(title, explained, (text) => lookupKnown(text) !== null);
+    if (!guess) return null;
+    const name = titleCaseBrand(guess.text);
+    return {
+      name,
+      slug: slugify(name),
+      confidence: guess.confidence,
+      via: 'title',
+      known: false,
+      matched: guess.text,
+      guess: guess.rule,
+    };
+  }
   const result: BrandMatch = {
     name: pick.entry.brand.name,
     slug: pick.entry.brand.slug,
@@ -573,7 +608,10 @@ export function detectBrand(
     if (fromTitle && fromTitle.slug !== known.brand.slug) result.conflict = fromTitle.name;
     return result;
   }
-  if (fromTitle) return { ...fromTitle, confidence: Math.max(0.5, fromTitle.confidence - 0.05) };
+  // A known brand in the title beats an unknown field; a guessed one does not.
+  if (fromTitle?.known) {
+    return { ...fromTitle, confidence: Math.max(0.5, fromTitle.confidence - 0.05) };
+  }
   const name = titleCaseBrand(fieldText);
   const fieldTokens = brandTokens(fieldText);
   const titleTokens = brandTokens(title).join(' ');

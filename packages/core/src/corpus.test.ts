@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { REAL_LIVE_CORPUS } from './__corpus__/real-live-2026-10-27';
 import { HOLDOUT_CORPUS, REAL_CORPUS, TITLE_CORPUS, type CorpusEntry } from './__corpus__/titles';
 import { detectAccessory } from './accessory';
 import { extractAttributes } from './attributes';
@@ -6,7 +7,7 @@ import { detectBrand } from './brands';
 import { detectBundle } from './bundle';
 import { detectCondition } from './condition';
 import { extractMpnCandidates } from './mpn';
-import { cleanTitleDetailed } from './text';
+import { cleanTitleDetailed, slugify } from './text';
 
 const FIELDS = [
   'brand',
@@ -24,16 +25,22 @@ const FIELDS = [
 ] as const;
 type Field = (typeof FIELDS)[number];
 
+/** Mirrors `normalizeOffer`: the cleaned title plus the shop's breadcrumb when one was recorded. */
 function actual(entry: CorpusEntry): Record<Field, unknown> {
   const cleaned = cleanTitleDetailed(entry.title);
-  const brand = detectBrand(cleaned.title);
-  const attrs = extractAttributes(cleaned.title, { brand: brand?.name ?? null });
+  const category = entry.category ?? null;
+  const brand = detectBrand(cleaned.title, null, category);
+  const attrs = extractAttributes(cleaned.title, {
+    brand: brand?.name ?? null,
+    categoryHint: category,
+  });
   const mpn = extractMpnCandidates(cleaned.title, {
     brand: brand?.name ?? null,
     productCode: cleaned.productCode,
   })[0];
   return {
-    brand: brand?.name ?? null,
+    // Compared by slug: unknown brands keep the seller's casing (BEDEE, Bedee).
+    brand: brand ? slugify(brand.name) : null,
     mpn: mpn?.norm ?? null,
     storageGb: attrs.storageGb,
     ramGb: attrs.ramGb,
@@ -43,15 +50,15 @@ function actual(entry: CorpusEntry): Record<Field, unknown> {
     capacityL: attrs.capacityL,
     capacityKg: attrs.capacityKg,
     condition: detectCondition(cleaned.title).condition,
-    isBundle: detectBundle(cleaned.title).isBundle,
-    isAccessory: detectAccessory(cleaned.title).isAccessory,
+    isBundle: detectBundle(cleaned.title, category).isBundle,
+    isAccessory: detectAccessory(cleaned.title, category).isAccessory,
   };
 }
 
 function expected(entry: CorpusEntry): Record<Field, unknown> {
   const e = entry.expect;
   return {
-    brand: e.brand,
+    brand: e.brand === null ? null : slugify(e.brand),
     mpn: e.mpn ?? null,
     storageGb: e.storageGb,
     ramGb: e.ramGb,
@@ -93,12 +100,13 @@ function evaluate(name: string, corpus: readonly CorpusEntry[]): Record<Field, n
   return Object.fromEntries(FIELDS.map((f) => [f, correct[f] / n])) as Record<Field, number>;
 }
 
-describe('labelled title corpus (see __corpus__/titles.ts)', () => {
-  it('has at least 150 titles, 66 of them real', () => {
+describe('labelled title corpus (see __corpus__/titles.ts and __corpus__/real-live-*.ts)', () => {
+  it('has at least 150 titles, 234 of them real', () => {
     expect(TITLE_CORPUS.length + HOLDOUT_CORPUS.length + REAL_CORPUS.length).toBeGreaterThanOrEqual(
       150,
     );
     expect(REAL_CORPUS.length).toBe(66);
+    expect(REAL_LIVE_CORPUS.length).toBe(168);
   });
 
   it('reaches at least 95% accuracy on every labelled field', () => {
@@ -113,6 +121,11 @@ describe('labelled title corpus (see __corpus__/titles.ts)', () => {
 
   it('keeps the holdout batch at 95% or more (first run before fixes: see the M06 report)', () => {
     const accuracy = evaluate('Holdout corpus', HOLDOUT_CORPUS);
+    for (const f of FIELDS) expect(accuracy[f], f).toBeGreaterThanOrEqual(0.95);
+  });
+
+  it('keeps the live eMAG run (2026-10-27) at 95% or more (before the fixes: see the report)', () => {
+    const accuracy = evaluate('Live eMAG corpus', REAL_LIVE_CORPUS);
     for (const f of FIELDS) expect(accuracy[f], f).toBeGreaterThanOrEqual(0.95);
   });
 });

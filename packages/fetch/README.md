@@ -120,6 +120,7 @@ itself refuses those requests.
 | HTTP-200 interstitials: Fastly "Client Challenge" (`/_fs-ch-`, Hornbach), Tencent EdgeOne (`EO_Bot_Ssid`, Fashion Days), Distinct Captcha (evoMAG's hoster), DataDome (`captcha-delivery.com`), PerimeterX (`px-captcha`), Imperva incident page | `blocked`, `challenge`, body never returned | 24 h |
 | Redirect to a CAPTCHA/challenge host, of another site or of the shop's own (`captcha.distinct.ro`, `geo.captcha-delivery.com`, `challenges.cloudflare.com`, `captcha.shop.ro`: any host label exactly `captcha`/`challenge`), or to a challenge path on any host (`/…captcha…`, `/_fs-ch-`, `/cdn-cgi/challenge-platform/`; the query string is not looked at) | `blocked`, `captcha_redirect`, **never followed** | 24 h |
 | Connection reset, HTTP/2 stream reset or GOAWAY (Akamai), TLS failure, connect timeout (cel.ro from abroad) | `blocked`, `transport` | 24 h |
+| Any transport error that surfaces more than 30 s after the request's own timeout (this process was suspended: the machine slept and the shop closed the idle connection) | `local_suspend`, not blocked, retried on a fresh slot | none (no failure counted) |
 | 429 | `blocked`, `http_429` | `Retry-After`, at least 1 h (at most 7 days) |
 | 511 (eMAG-style bot throttling) | `blocked`, `http_429` | `Retry-After`, at least 24 h |
 | 503 without challenge markers | not a block; retried unless `Retry-After` is present | `Retry-After`, at least 1 h, once the call gives up |
@@ -339,6 +340,22 @@ User-Agent, status, timing, slot wait, block verdict, and the host's robots.txt 
 rule that decided each sample path. `--cached` makes no request at all. Because a founder starts it
 by hand for one request, the demo ignores `CRAWL_ENABLED` (it says so when the switch is off); every
 other rule applies.
+
+## Fixture recorder CLI (M10)
+
+```
+pnpm --filter @pretoscop/fetch record <shop> <name> <url> [--ext html] [--purpose listing] [--out-dir dir] [--max-bytes n]
+scripts/record-fixture.sh <shop> <name> <url> [ext] [--purpose listing]      # same thing
+```
+
+Records one page as `packages/extractors/fixtures/<shop>/<name>_<YYYY-MM-DD>.<ext>` plus
+`.meta.json` (URL, final URL, status, time, User-Agent, content type, size, robots.txt group), through
+`fetchPolite` with every rule above: robots.txt first, the shop's registry policy (`getDomainPolicy`,
+≥ 5 s), the demo's shared state file (so the demo, the recorder and parallel invocations keep the
+interval), block detection. A blocked or challenged response writes nothing and exits 2. The URL's
+host must belong to the named shop, and shops whose registry status is not `active` or whose access
+mode is not `direct` are refused before any request (exit 3). Like the demo, it ignores
+`CRAWL_ENABLED` (started by hand for one page). `--out-dir` writes elsewhere (probes kept out of git).
 
 ## Tests and fixtures
 

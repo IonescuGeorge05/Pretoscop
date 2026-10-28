@@ -15,3 +15,6 @@ export * from './queries/merchants';
 export { and, asc, count, desc, eq, gt, gte, ilike, inArray, isNotNull, isNull, lt, lte, ne, or, sql } from 'drizzle-orm';
 export * from './queries/matching';
 export * from './queries/admin';
+export * from './queries/report';
+export * from './queries/alerts';
+export * from './queries/icecat';

@@ -1,4 +1,4 @@
-import { errors as undiciErrors, type MockAgent } from 'undici';
+import { Dispatcher, errors as undiciErrors, type MockAgent } from 'undici';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PAUSE_BLOCK_MS, SLOT_SAFETY_MARGIN_MS as M } from '../src/fetcher';
 import type { AssistedChannel } from '../src/types';
@@ -295,6 +295,41 @@ describe('blocks and pauses', () => {
     const res = await fetcher.fetchPolite(`${A}/p/1`, { purpose: 'product' });
     expect(res).toMatchObject({ blocked: true, blockReason: 'transport', errorCode: 'connection_reset', attempts: 1 });
     expect((await store.getPause('shop-a.test'))?.reason).toMatch(/^transport/);
+  });
+
+  it('a reset that surfaces after the machine slept is a local suspension: no pause, no failure', async () => {
+    agent = newAgent();
+    shop(A).intercept({ path: '/p/1' }).replyWithError(new undiciErrors.SocketError('other side closed'));
+    shop(A).intercept({ path: '/p/1' }).reply(200, html('ok'), { headers: HTML_HEADERS });
+    // The page request "sleeps" for 10 minutes before the reset arrives (a Mac in idle sleep).
+    let suspend = (): void => undefined;
+    class Suspending extends Dispatcher {
+      constructor(private readonly inner: Dispatcher) {
+        super();
+      }
+      override dispatch(opts: Dispatcher.DispatchOptions, handler: Dispatcher.DispatchHandler): boolean {
+        if (opts.path === '/p/1') suspend();
+        return this.inner.dispatch(opts, handler);
+      }
+      override close(): Promise<void> {
+        return this.inner.close();
+      }
+      override destroy(): Promise<void> {
+        return this.inner.destroy();
+      }
+    }
+    const { fetcher, store, clock, log } = testFetcher({ dispatcher: new Suspending(agent) });
+    let once = true;
+    suspend = () => {
+      if (once) clock.advance(10 * 60_000);
+      once = false;
+    };
+    const res = await fetcher.fetchPolite(`${A}/p/1`, { purpose: 'product' });
+    expect(await store.getPause('shop-a.test')).toBeNull();
+    expect(await store.getFailures('shop-a.test')).toBe(0);
+    expect(log.entries.find((e) => e.errorCode === 'local_suspend')?.error).toMatch(/after 600 s: local suspension/);
+    // Transient: the retry on a fresh slot gets the page.
+    expect(res).toMatchObject({ ok: true, status: 200 });
   });
 
   it('pauses and unpauses by hand', async () => {

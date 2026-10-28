@@ -130,6 +130,18 @@ describe('eMAG listing → offers, events, snapshot, frontier', () => {
     expect(r.stats).toMatchObject({ parsed: 60, upserted: 60, changed: 0 });
     const health = await t.db.execute<{ health: string }>(sql`SELECT health FROM shop_sources WHERE key = 'emag:listing:telefoane-mobile'`);
     expect(health.rows[0]!.health).toBe('ok');
+    expect(r.touchedProducts).toEqual([]);
+  });
+
+  it('a price change on a matched offer reports its product (rollup.touch, then its alerts: M19)', async () => {
+    const p = await t.db.execute<{ id: string }>(sql`INSERT INTO products (slug, title, title_ascii) VALUES ('rec-p', 'rec', 'rec') RETURNING id::text`);
+    const pid = Number(p.rows[0]!.id);
+    const o = await t.db.execute<{ id: string }>(sql`SELECT id::text FROM offers WHERE shop_id = (SELECT id FROM shops WHERE slug = 'emag') ORDER BY id LIMIT 1`);
+    // A stored hash that differs from the page: the next observation is a change.
+    await t.db.execute(sql`UPDATE offers SET product_id = ${pid}, match_status = 'auto', content_hash = 'older-state' WHERE id = ${Number(o.rows[0]!.id)}`);
+    const r = await runSource(deps(), await sourceId('emag:listing:telefoane-mobile'), { trigger: 'manual', maxPages: 1 });
+    expect(r.stats).toMatchObject({ changed: 1 });
+    expect(r.touchedProducts).toEqual([pid]);
   });
 
   it('Tier A product pages add every seller of the most popular products', async () => {
@@ -150,6 +162,9 @@ describe('sitemap source → discovery + product pages', () => {
   it('discovers URLs from the index (include filter) and fetches product pages', async () => {
     requested.length = 0;
     const id = await sourceId('itgalaxy:sitemap:produse');
+    // M10 switched IT Galaxy to category listings and disabled this sweep in the registry; the
+    // sitemap path itself is still what this test covers.
+    await t.db.execute(sql`UPDATE shop_sources SET enabled = true WHERE id = ${id}`);
     // Make the recorded product page the first pick.
     const r1 = await runSource(deps(), id, { trigger: 'manual', budget: 0.0001 });
     expect(r1.stats.discovered).toBeGreaterThan(5000);
@@ -175,5 +190,20 @@ describe('blocks and alerts', () => {
     expect(h.rows[0]).toEqual({ health: 'blocked', consecutive_failures: 2 });
     expect(alert).toHaveBeenCalledWith(expect.stringMatching(/failing twice/), expect.anything());
     blocked = new Set();
+  });
+
+  it('a host the fetch layer already paused is gated: no run, no request, no new failure', async () => {
+    const id = await sourceId('emag:listing:tablete');
+    await t.db.execute(sql`
+      INSERT INTO fetch_domain_state (host, paused_until, pause_reason, pause_set_at, pause_source)
+      VALUES ('www.emag.ro', now() + interval '1 day', 'challenge: test', now(), 'auto')
+      ON CONFLICT (host) DO UPDATE SET paused_until = EXCLUDED.paused_until, pause_reason = EXCLUDED.pause_reason`);
+    const runsBefore = await t.db.execute<{ n: string }>(sql`SELECT count(*)::text AS n FROM ingest_runs WHERE source_id = ${id}`);
+    const r = await runSource(deps(), id, { trigger: 'manual', maxPages: 1 });
+    expect(r).toMatchObject({ runId: null, status: 'gated' });
+    expect(r.reason).toMatch(/www\.emag\.ro paused until .*challenge: test/);
+    const runsAfter = await t.db.execute<{ n: string }>(sql`SELECT count(*)::text AS n FROM ingest_runs WHERE source_id = ${id}`);
+    expect(runsAfter.rows[0]!.n).toBe(runsBefore.rows[0]!.n);
+    await t.db.execute(sql`UPDATE fetch_domain_state SET paused_until = NULL WHERE host = 'www.emag.ro'`);
   });
 });

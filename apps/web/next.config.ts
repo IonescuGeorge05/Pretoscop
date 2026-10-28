@@ -36,7 +36,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   agentRules: false,
-  transpilePackages: ['@pretoscop/config', '@pretoscop/core', '@pretoscop/db', '@pretoscop/storage'],
+  transpilePackages: ['@pretoscop/config', '@pretoscop/core', '@pretoscop/db', '@pretoscop/mailer', '@pretoscop/notify', '@pretoscop/report', '@pretoscop/storage'],
   serverExternalPackages: ['pg', '@aws-sdk/client-s3'],
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];

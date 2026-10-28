@@ -123,6 +123,12 @@ export const EnvSchema = z
     REVALIDATE_TOKEN: z.string().min(16).default(DEV_SECRET),
     HASH_SALT_SECRET: z.string().min(16).default(DEV_SECRET),
 
+    // Price alerts (M19): signs confirmation/unsubscribe links and keys the stable address hash
+    // (suppression list, consent ledger). Never rotate without accepting that both break.
+    ALERTS_SECRET: z.string().min(16).default(DEV_SECRET),
+    // Resend webhook signing secret (`whsec_…`) for bounces and complaints; unset = endpoint off.
+    RESEND_WEBHOOK_SECRET: optionalString,
+
     // Operations alerts (two consecutive source failures, backups, caps)
     OPS_ALERT_TELEGRAM_BOT_TOKEN: optionalString,
     OPS_ALERT_TELEGRAM_CHAT_ID: optionalString,
@@ -134,10 +140,20 @@ export const EnvSchema = z
     LLM_MODEL_DEFAULT: z.string().default('claude-haiku-5-5'),
     LLM_MODEL_ESCALATION: z.string().default('claude-sonnet-5-5'),
 
-    // Icecat (M11)
+    // Icecat (M11). Open Icecat needs only the account name (sent as `shopname`); the tokens are
+    // for Full Icecat and are not used. The job also needs the flag `icecat.enabled` (off).
     ICECAT_USERNAME: optionalString,
     ICECAT_API_TOKEN: optionalString,
     ICECAT_CONTENT_TOKEN: optionalString,
+    ICECAT_BASE_URL: z.string().min(1).default('https://live.icecat.biz/api'),
+    // Languages tried in order: the first one is stored; the next only when the first has no content.
+    ICECAT_LANGS: z.string().min(2).default('RO,EN'),
+    // Datasheet requests per language and month (Open Icecat Fair Use Policy: 1,000,000).
+    ICECAT_MONTHLY_CAP: int(1_000_000),
+    // Products looked up per icecat.sync run (new ones first, then 30-day refreshes).
+    ICECAT_DAILY_BATCH: int(2000),
+    // Minimum interval between two requests to an Icecat host (Icecat allows up to 100 per second).
+    ICECAT_MIN_INTERVAL_MS: int(1000),
 
     // Affiliate networks (M24)
     TWOPERFORMANT_EMAIL: optionalString,
@@ -155,7 +171,7 @@ export const EnvSchema = z
   })
   .superRefine((env, ctx) => {
     if (env.APP_ENV === 'staging' || env.APP_ENV === 'prod') {
-      for (const key of ['BETTER_AUTH_SECRET', 'REVALIDATE_TOKEN', 'HASH_SALT_SECRET'] as const) {
+      for (const key of ['BETTER_AUTH_SECRET', 'REVALIDATE_TOKEN', 'HASH_SALT_SECRET', 'ALERTS_SECRET'] as const) {
         if (env[key] === DEV_SECRET) {
           ctx.addIssue({ code: 'custom', path: [key], message: `${key} must be set outside dev` });
         }

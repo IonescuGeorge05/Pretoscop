@@ -1,7 +1,10 @@
 /**
  * Telegram Bot API client (M27): plain `fetch` against `${apiBase}/bot<token>/<method>` (tests point
  * `apiBase` at a local mock). Outgoing messages are spaced to stay under Telegram's limits: about
- * 30 messages per second overall (we use 25) and one per second per chat.
+ * 30 messages per second overall (we use 25) and one per second per chat. A 429 answer
+ * ("retry after N") holds every further message of this client for N seconds; a message that would
+ * wait longer than `maxWaitMs` fails at once with a local 429 (the caller retries later).
+ * The bot token is part of every request URL: it never appears in an error message.
  */
 export interface TelegramUser {
   id: number;
@@ -15,6 +18,8 @@ export interface TelegramMessage {
   message_id: number;
   chat: { id: number; type: string };
   from?: TelegramUser;
+  /** Unix time (seconds) the message was sent. */
+  date?: number;
   text?: string;
 }
 
@@ -50,6 +55,8 @@ export interface TelegramClientOptions {
   globalIntervalMs?: number;
   /** Minimum spacing between two messages to the same chat (default 1 s). */
   chatIntervalMs?: number;
+  /** Longest a message may wait for its slot before failing with a local 429 (default 30 s). */
+  maxWaitMs?: number;
 }
 
 export interface TelegramClient {
@@ -68,13 +75,21 @@ export function createTelegramClient(o: TelegramClientOptions): TelegramClient {
   const doFetch = o.fetchImpl ?? fetch;
   const globalGap = o.globalIntervalMs ?? 40;
   const chatGap = o.chatIntervalMs ?? 1000;
+  const maxWait = o.maxWaitMs ?? 30_000;
   let nextGlobal = 0;
+  /** Set by a 429: nothing is sent before this time. */
+  let heldUntil = 0;
   const nextByChat = new Map<string, number>();
+  const redact = (text: string) => (o.token ? text.split(o.token).join('<token>') : text);
 
-  /** Reserves the next slot for a chat (synchronous bookkeeping, then the caller waits). */
+  /**
+   * Reserves the next slot for a chat (synchronous bookkeeping, then the caller waits). Throws a
+   * local 429 instead of reserving when the slot is further away than `maxWaitMs`.
+   */
   function reserve(chatId: string): number {
     const now = Date.now();
-    const at = Math.max(now, nextGlobal, nextByChat.get(chatId) ?? 0);
+    const at = Math.max(now, nextGlobal, heldUntil, nextByChat.get(chatId) ?? 0);
+    if (at - now > maxWait) throw new TelegramApiError('sendMessage', 429, 'local rate limit', Math.ceil((at - now) / 1000));
     nextGlobal = at + globalGap;
     nextByChat.set(chatId, at + chatGap);
     if (nextByChat.size > 10_000) for (const [k, v] of nextByChat) if (v < now) nextByChat.delete(k);
@@ -83,14 +98,26 @@ export function createTelegramClient(o: TelegramClientOptions): TelegramClient {
 
   async function call<T>(method: string, params: Record<string, unknown>, opts: { timeoutMs?: number; signal?: AbortSignal } = {}): Promise<T> {
     const timeout = AbortSignal.timeout(opts.timeoutMs ?? 15_000);
-    const res = await doFetch(`${base}/${method}`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(params),
-      signal: opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout,
-    });
+    let res: Response;
+    try {
+      res = await doFetch(`${base}/${method}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(params),
+        redirect: 'error',
+        signal: opts.signal ? AbortSignal.any([opts.signal, timeout]) : timeout,
+      });
+    } catch (err) {
+      const e = err as Error & { cause?: { message?: string } };
+      const cause = e.cause?.message ? `: ${e.cause.message}` : '';
+      throw Object.assign(new Error(redact(`telegram ${method}: ${e.message}${cause}`)), { name: e.name });
+    }
     const body = (await res.json().catch(() => null)) as { ok?: boolean; result?: T; error_code?: number; description?: string; parameters?: { retry_after?: number } } | null;
-    if (!body?.ok) throw new TelegramApiError(method, body?.error_code ?? res.status, body?.description ?? res.statusText, body?.parameters?.retry_after);
+    if (!body?.ok) {
+      const retryAfter = body?.parameters?.retry_after;
+      if ((body?.error_code ?? res.status) === 429 && retryAfter) heldUntil = Math.max(heldUntil, Date.now() + retryAfter * 1000);
+      throw new TelegramApiError(method, body?.error_code ?? res.status, redact(body?.description ?? res.statusText), retryAfter);
+    }
     return body.result as T;
   }
 
@@ -119,7 +146,7 @@ export function createTelegramClient(o: TelegramClientOptions): TelegramClient {
   };
 }
 
-/** Escapes text for Telegram's HTML parse mode. */
+/** Escapes text for Telegram's HTML parse mode (also inside attribute values such as href). */
 export function tgEscape(s: string): string {
-  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

@@ -153,8 +153,14 @@ export interface MockTelegram {
   close(): Promise<void>;
 }
 
-/** A local stand-in for api.telegram.org: records calls, serves queued updates, simulates 403/429. */
-export async function startMockTelegram(token = '123456:TEST-token'): Promise<MockTelegram> {
+/**
+ * A local stand-in for api.telegram.org: records calls, serves queued updates (each gets a
+ * `date` of now unless given), simulates 403/429. Pass a token string (old form) or options; port 0
+ * (default) picks a free port.
+ */
+export async function startMockTelegram(opts: string | { token?: string; port?: number } = {}): Promise<MockTelegram> {
+  const token = (typeof opts === 'string' ? opts : opts.token) ?? '123456:TEST-token';
+  const port = typeof opts === 'string' ? 0 : (opts.port ?? 0);
   const calls: MockTelegramCall[] = [];
   const queue: Array<Record<string, unknown>> = [];
   const blocked = new Set<number | string>();
@@ -197,15 +203,18 @@ export async function startMockTelegram(token = '123456:TEST-token'): Promise<Mo
       }
     });
   });
-  await new Promise<void>((r) => server.listen(0, '127.0.0.1', r));
-  const { port } = server.address() as AddressInfo;
+  await new Promise<void>((r) => server.listen(port, '127.0.0.1', r));
+  const bound = (server.address() as AddressInfo).port;
   return {
-    apiBase: `http://127.0.0.1:${port}`,
+    apiBase: `http://127.0.0.1:${bound}`,
     token,
     calls,
     sent: () => calls.filter((c) => c.method === 'sendMessage').map((c) => c.body as unknown as SentTelegramMessage),
     push: (update) => {
-      queue.push({ update_id: nextUpdateId++, ...update });
+      const u: Record<string, unknown> = { update_id: nextUpdateId++, ...update };
+      const msg = u.message as Record<string, unknown> | undefined;
+      if (msg && msg.date === undefined) u.message = { date: Math.floor(Date.now() / 1000), ...msg };
+      queue.push(u);
     },
     blocked,
     rateLimitNext: (s) => {

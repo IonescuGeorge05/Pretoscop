@@ -75,7 +75,7 @@ export function dealsPostText(drops: VerifiedDrop[], opts: { date: Date; dealsUr
     );
   return [
     `<b>Reduceri verificate de Pretoscop</b> · ${tgEscape(formatLongDate(opts.date))}`,
-    'Prețuri totale (preț + livrare) mai mici decât cel mai mic preț observat de noi în ultimele 30 de zile:',
+    'Prețuri totale (preț + livrare) mai mici decât cel mai mic preț observat de noi în cele 30 de zile dinainte, doar la produse cu cel puțin 14 zile de istoric:',
     '',
     lines.join('\n\n'),
     '',

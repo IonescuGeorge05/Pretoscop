@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { dealsPostText, pushAlertPayload, telegramAlertMessage } from '../src/channel-messages';
 import type { AlertItem } from '../src/email';
-import { createPushSender, generateVapidKeys } from '../src/push';
+import { createPushSender, generateVapidKeys, parsePushSubscription, pushEndpointProblem, pushTopic } from '../src/push';
 import { createTelegramClient, TelegramApiError, tgEscape } from '../src/telegram';
 import { fakeBrowserKeys, startMockPushService, startMockTelegram, type FakeBrowserSubscription, type MockPushService, type MockTelegram } from '../src/testing';
 
@@ -20,7 +20,7 @@ afterAll(async () => {
 });
 
 describe('Web Push (RFC 8291 + 8292, checked by an independent decryptor)', () => {
-  const sender = () => createPushSender({ ...keys, subject: 'mailto:alerte@pretoscop.ro' });
+  const sender = () => createPushSender({ ...keys, subject: 'mailto:alerte@pretoscop.ro', allowLocalEndpoints: true });
 
   it('delivers an encrypted payload the browser can read, with a valid VAPID JWT', async () => {
     const sub = fakeBrowserKeys(`${push.url}/push/a`);
@@ -48,8 +48,77 @@ describe('Web Push (RFC 8291 + 8292, checked by an independent decryptor)', () =
     const other = generateVapidKeys();
     const sub = fakeBrowserKeys(`${push.url}/push/c`);
     browsers.set('/push/c', sub);
-    const r = await createPushSender({ ...other, subject: 'mailto:alerte@pretoscop.ro' }).send(sub, { title: 't', body: 'b', url: 'u' });
+    const r = await createPushSender({ ...other, subject: 'mailto:alerte@pretoscop.ro', allowLocalEndpoints: true }).send(sub, { title: 't', body: 'b', url: 'u' });
     expect(r).toMatchObject({ ok: false, status: 400 });
+  });
+
+  it('sends the Topic header, so a retry replaces an undelivered copy at the push service', async () => {
+    const sub = fakeBrowserKeys(`${push.url}/push/topic`);
+    browsers.set('/push/topic', sub);
+    const topic = pushTopic('alert-sends-abc');
+    expect(topic).toMatch(/^[A-Za-z0-9_-]{32}$/);
+    expect(pushTopic('alert-sends-abc')).toBe(topic);
+    expect(await sender().send(sub, { title: 't', body: 'b', url: 'u' }, { topic })).toMatchObject({ ok: true });
+    expect(push.received.at(-1)!.headers.topic).toBe(topic);
+  });
+
+  it('never posts to an endpoint outside the known push services (SSRF), whatever the database holds', async () => {
+    let called = 0;
+    const fetchImpl = (async () => {
+      called++;
+      return new Response(null, { status: 201 });
+    }) as typeof fetch;
+    const s = createPushSender({ ...keys, subject: 'mailto:alerte@pretoscop.ro', fetchImpl });
+    const sub = fakeBrowserKeys('http://127.0.0.1:1/push/x');
+    const refused = [
+      'http://127.0.0.1:5432/x',
+      'https://169.254.169.254/latest/meta-data',
+      'https://internal.example/push',
+      'https://fcm.googleapis.com:8443/x',
+      'https://user:pw@fcm.googleapis.com/x',
+      'http://fcm.googleapis.com/fcm/send/x',
+    ];
+    for (const endpoint of refused) {
+      expect(await s.send({ ...sub, endpoint }, { title: 't', body: 'b', url: 'u' })).toMatchObject({ ok: false, gone: true, error: expect.stringMatching(/^endpoint refused/) });
+    }
+    expect(called).toBe(0);
+    expect(await s.send({ ...sub, endpoint: 'https://fcm.googleapis.com/fcm/send/abc' }, { title: 't', body: 'b', url: 'u' })).toEqual({ ok: true, status: 201 });
+    expect(called).toBe(1);
+  });
+});
+
+describe('push endpoints and subscriptions', () => {
+  it('accepts the push services of Chrome, Firefox, Safari and Edge only, over https on the default port', () => {
+    const accepted = [
+      'https://fcm.googleapis.com/fcm/send/dGVzdA:APA91b',
+      'https://updates.push.services.mozilla.com/wpush/v2/gAAAAAB',
+      'https://web.push.apple.com/QGh4Jz',
+      'https://wns2-par02p.notify.windows.com/w/?token=BQYAAAB',
+    ];
+    for (const ok of accepted) expect(pushEndpointProblem(ok)).toBeNull();
+    expect(pushEndpointProblem('https://evil.example/fcm.googleapis.com')).toBe('unknown_push_service');
+    expect(pushEndpointProblem('https://fcm.googleapis.com.evil.example/x')).toBe('unknown_push_service');
+    expect(pushEndpointProblem('https://notfcm.googleapis.com/x')).toBe('unknown_push_service');
+    expect(pushEndpointProblem('http://fcm.googleapis.com/x')).toBe('not_https');
+    expect(pushEndpointProblem('https://fcm.googleapis.com:444/x')).toBe('port');
+    expect(pushEndpointProblem(`https://fcm.googleapis.com/${'a'.repeat(1100)}`)).toBe('too_long');
+    expect(pushEndpointProblem('not a url')).toBe('not_a_url');
+    expect(pushEndpointProblem('http://127.0.0.1:3482/push')).toBe('not_https');
+    expect(pushEndpointProblem('http://127.0.0.1:3482/push', { allowLocal: true })).toBeNull();
+    expect(pushEndpointProblem('http://10.0.0.5:3482/push', { allowLocal: true })).toBe('not_https');
+  });
+
+  it('parses PushSubscription.toJSON(): a P-256 key and a 16-byte secret, padding tolerated', () => {
+    const b = fakeBrowserKeys('https://fcm.googleapis.com/fcm/send/abc');
+    const keysOf = (p256dh: string, auth: string) => ({ endpoint: b.endpoint, keys: { p256dh, auth } });
+    expect(parsePushSubscription(keysOf(b.p256dh, b.auth))).toEqual({ endpoint: b.endpoint, p256dh: b.p256dh, auth: b.auth });
+    expect(parsePushSubscription(keysOf(`${b.p256dh}=`, `${b.auth}==`))).toEqual({ endpoint: b.endpoint, p256dh: b.p256dh, auth: b.auth });
+    expect(parsePushSubscription({ endpoint: 'https://evil.example/x', keys: { p256dh: b.p256dh, auth: b.auth } })).toBeNull();
+    expect(parsePushSubscription(keysOf(b.p256dh.slice(0, 40), b.auth))).toBeNull();
+    expect(parsePushSubscription(keysOf(`C${b.p256dh.slice(1)}`, b.auth))).toBeNull(); // not an uncompressed point
+    expect(parsePushSubscription({ endpoint: b.endpoint, keys: { p256dh: b.p256dh } })).toBeNull();
+    expect(parsePushSubscription([b.endpoint])).toBeNull();
+    expect(parsePushSubscription(null)).toBeNull();
   });
 });
 
@@ -88,8 +157,35 @@ describe('Telegram Bot API client', () => {
     expect(Date.now() - t0).toBeLessThan(1500);
   });
 
-  it('escapes the three HTML characters Telegram parses', () => {
-    expect(tgEscape('a < b & c > d')).toBe('a &lt; b &amp; c &gt; d');
+  it('escapes the HTML characters Telegram parses, quotes included (href values)', () => {
+    expect(tgEscape('a < b & c > d "e"')).toBe('a &lt; b &amp; c &gt; d &quot;e&quot;');
+  });
+
+  it('after a 429, holds every message for retry_after; a slot too far away fails at once', async () => {
+    const c = createTelegramClient({ token: tg.token, apiBase: tg.apiBase, chatIntervalMs: 0, globalIntervalMs: 0, maxWaitMs: 2000 });
+    tg.rateLimitNext(1);
+    expect(((await c.sendMessage(21, 'x').catch((e: unknown) => e)) as TelegramApiError).code).toBe(429);
+    const t0 = Date.now();
+    await c.sendMessage(22, 'y'); // another chat waits too: the limit is global
+    expect(Date.now() - t0).toBeGreaterThanOrEqual(900);
+    tg.rateLimitNext(5);
+    await c.sendMessage(23, 'z').catch(() => undefined);
+    const before = tg.calls.length;
+    const local = (await c.sendMessage(24, 'w').catch((e: unknown) => e)) as TelegramApiError;
+    expect(local).toBeInstanceOf(TelegramApiError);
+    expect(local).toMatchObject({ code: 429, retryAfterSec: expect.any(Number) });
+    expect(tg.calls.length).toBe(before); // nothing was sent
+  });
+
+  it('never puts the bot token in an error message', async () => {
+    const c = createTelegramClient({ token: '987654:SECRET-token-value', apiBase: 'http://127.0.0.1:1' });
+    const err = (await c.getMe().catch((e: unknown) => e)) as Error;
+    expect(err.message).toMatch(/^telegram getMe:/);
+    expect(err.message).not.toContain('SECRET-token-value');
+    const wrong = createTelegramClient({ token: '987654:SECRET-token-value', apiBase: tg.apiBase });
+    const unauthorized = (await wrong.getMe().catch((e: unknown) => e)) as TelegramApiError;
+    expect(unauthorized.code).toBe(401);
+    expect(unauthorized.message).not.toContain('SECRET-token-value');
   });
 });
 

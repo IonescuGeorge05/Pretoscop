@@ -5,6 +5,7 @@ import { partitionsJob, requestLogPruneJob } from './maintenance';
 import { backupJob, restoreTestJob, schedulerTickJob, sourceRunJob } from './recorder';
 import { icecatSyncJob } from './icecat';
 import { matchPendingJob } from './matching';
+import { opsAlertJob, opsHeartbeatJob, opsSloCheckJob } from './ops';
 import { merchantValidateJob, merchantVerifyDomainJob } from './merchants';
 import { fxRatesJob, rollupDailyJob, rollupTouchJob } from './rollup';
 import { searchRebuildJob, searchSyncJob } from './search';
@@ -25,6 +26,9 @@ export const jobs: JobDefinition<any>[] = [
   rollupTouchJob,
   fxRatesJob,
   matchPendingJob,
+  opsAlertJob,
+  opsHeartbeatJob,
+  opsSloCheckJob,
   alertsEvaluateJob,
   alertsDeliverJob,
   alertsRetentionJob,

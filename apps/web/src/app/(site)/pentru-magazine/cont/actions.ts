@@ -2,21 +2,34 @@
 
 import { currentVersion, legalDocuments } from '@pretoscop/config/legal-texts';
 import { normalizeShopDomain, validateCui } from '@pretoscop/core';
-import { auditLog, eq, merchants, MERCHANT_FEED_PARSERS, shopSources, shops, sql, type MerchantFeedFormat } from '@pretoscop/db';
+import {
+  auditLog,
+  eq,
+  foreignShopForHost,
+  listingReportProblem,
+  merchants,
+  MERCHANT_FEED_PARSERS,
+  shopSources,
+  shops,
+  sql,
+  type MerchantFeedFormat,
+} from '@pretoscop/db';
+import { createBlobStore } from '@pretoscop/storage';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { db, serverEnv } from '@/lib/db';
 import {
-  CHECK_COOLDOWN_SECONDS,
+  checkRefusal,
   emailVerifies,
   enqueueCheck,
   ensureMerchant,
   merchantOf,
+  overDailyLimit,
   portalOpen,
   PORTAL_PATH,
   requirePortalUser,
   runSourceNow,
-  secondsSince,
+  setMerchantFeedFreshness,
 } from '@/lib/merchant';
 import { mailSubmitted } from '@/lib/merchant-mail';
 
@@ -36,6 +49,14 @@ function field(form: FormData, key: string, max: number): string {
 
 async function audit(actor: string, action: string, id: number, after: Record<string, unknown>) {
   await db().insert(auditLog).values({ actor, action, entity: 'merchants', entityId: String(id), before: null, after });
+}
+
+/** Removes an uploaded feed file that nothing points to any more (best effort). */
+async function dropUpload(key: string | null): Promise<void> {
+  if (!key) return;
+  await createBlobStore(serverEnv())
+    .delete(key)
+    .catch(() => undefined);
 }
 
 /** Step 1: company and shop identity. The domain comes from the website address. */
@@ -81,6 +102,11 @@ export async function saveCompany(form: FormData): Promise<void> {
     })
     .where(eq(merchants.id, m.id));
   await audit(`merchant:${user.id}`, 'merchant.company', m.id, { domain, cui: cui.cui });
+  // The feed report counted offers on the old domain: check the feed again for the new one.
+  if (domainChanged && (m.feedUrl || m.feedUploadKey) && !(await overDailyLimit(m.id, 'feedChecks'))) {
+    await audit(`merchant:${user.id}`, 'merchant.feed_recheck', m.id, { reason: 'domain_changed' });
+    await enqueueCheck('validate', m.id);
+  }
   revalidatePath(PORTAL_PATH);
   back({ ok: 'firma' }, 'pas-2');
 }
@@ -90,7 +116,10 @@ export async function checkDomain(): Promise<void> {
   const user = await requirePortalUser();
   const m = await merchantOf(user.id);
   if (!m?.domain) back({ eroare: 'site' }, 'pas-1');
-  if (secondsSince(m.domainCheck?.requestedAt) < CHECK_COOLDOWN_SECONDS.verifyDomain) back({ eroare: 'asteapta' }, 'pas-2');
+  if (m.domainVerifiedAt) back({ ok: 'domeniu' }, 'pas-2');
+  const refusal = await checkRefusal(m, 'domain');
+  if (refusal) back({ eroare: refusal }, 'pas-2');
+  await audit(`merchant:${user.id}`, 'merchant.domain_check', m.id, { domain: m.domain });
   await enqueueCheck('verifyDomain', m.id);
   revalidatePath(PORTAL_PATH);
   back({ ok: 'domeniu' }, 'pas-2');
@@ -110,22 +139,29 @@ export async function saveFeedUrl(form: FormData): Promise<void> {
     back({ eroare: 'url' }, 'pas-3');
   }
   // Development and e2e only (refused in staging/production): local fixture feed servers on IPs and ports.
-  const local = serverEnv().FETCH_ALLOW_PRIVATE_HOSTS;
+  const env = serverEnv();
+  const local = env.FETCH_ALLOW_PRIVATE_HOSTS || env.FETCH_PRIVATE_ALLOWLIST.length > 0;
   const publicHost = Boolean(normalizeShopDomain(url.hostname)) && (!url.port || ['80', '443'].includes(url.port));
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || !(publicHost || local)) {
     back({ eroare: 'url' }, 'pas-3');
   }
+  // Never steer our bot at a shop we crawl on a stranger's behalf (the worker checks this again).
+  const foreign = await foreignShopForHost(db(), url.hostname, { merchantId: m.id, domain: m.domain, domainVerified: Boolean(m.domainVerifiedAt) });
+  if (foreign) back({ eroare: 'gazda' }, 'pas-3');
   const formatRaw = String(form.get('feedFormat') ?? 'auto');
   const feedFormat = FORMATS.has(formatRaw as MerchantFeedFormat) ? (formatRaw as MerchantFeedFormat) : null;
-  if (secondsSince(m.validation?.requestedAt) < CHECK_COOLDOWN_SECONDS.validate && m.feedUrl === url.toString()) back({ eroare: 'asteapta' }, 'pas-3');
+  const refusal = await checkRefusal(m, 'feed');
+  if (refusal) back({ eroare: refusal }, 'pas-3');
   await db().update(merchants).set({ feedUrl: url.toString(), feedUploadKey: null, feedUploadedAt: null, feedFormat }).where(eq(merchants.id, m.id));
   if (m.status === 'approved' || m.status === 'suspended') {
     // Offers must still link to the verified domain (requireDomain), so a new address needs no new approval.
     await db().execute(sql`
       UPDATE shop_sources SET url = ${url.toString()}, ${feedFormat ? sql`parser_key = ${MERCHANT_FEED_PARSERS[feedFormat]}, format = ${feedFormat},` : sql``}
-        schedule = ${`${m.id % 60} */4 * * *`}, updated_at = now()
+        schedule = ${`${m.id % 60} */4 * * *`}, config = config - 'uploadedAt', updated_at = now()
       WHERE config->>'origin' = 'merchant' AND (config->>'merchantId')::bigint = ${m.id}`);
+    await setMerchantFeedFreshness(m, 'url');
   }
+  if (!m.feedUrl) await dropUpload(m.feedUploadKey);
   await audit(`merchant:${user.id}`, 'merchant.feed_url', m.id, { feedUrl: url.toString(), feedFormat });
   await enqueueCheck('validate', m.id);
   revalidatePath(PORTAL_PATH);
@@ -137,7 +173,9 @@ export async function recheckFeed(): Promise<void> {
   const user = await requirePortalUser();
   const m = await merchantOf(user.id);
   if (!m || (!m.feedUrl && !m.feedUploadKey)) back({ eroare: 'fara_feed' }, 'pas-3');
-  if (secondsSince(m.validation?.requestedAt) < CHECK_COOLDOWN_SECONDS.validate) back({ eroare: 'asteapta' }, 'pas-3');
+  const refusal = await checkRefusal(m, 'feed');
+  if (refusal) back({ eroare: refusal }, 'pas-3');
+  await audit(`merchant:${user.id}`, 'merchant.feed_recheck', m.id, {});
   await enqueueCheck('validate', m.id);
   revalidatePath(PORTAL_PATH);
   back({ ok: 'feed' }, 'pas-3');
@@ -162,6 +200,10 @@ export async function saveSettings(form: FormData): Promise<void> {
   const flat = lei(form, 'flat');
   const lockerFlat = lei(form, 'lockerFlat');
   if (freeOver === 'invalid' || flat === 'invalid' || lockerFlat === 'invalid') back({ eroare: 'livrare' }, 'pas-4');
+  const recheck = Boolean(m.feedUrl || m.feedUploadKey);
+  // The report must be redone with the new settings: refuse while a check would be refused.
+  const refusal = recheck ? await checkRefusal(m, 'feed') : null;
+  if (refusal) back({ eroare: refusal }, 'pas-4');
   const shippingRules = { free_over: freeOver, flat, locker_flat: lockerFlat };
   await db().update(merchants).set({ priceFormat, shippingRules }).where(eq(merchants.id, m.id));
   if (m.status === 'approved' || m.status === 'suspended') {
@@ -177,10 +219,20 @@ export async function saveSettings(form: FormData): Promise<void> {
     }
   }
   await audit(`merchant:${user.id}`, 'merchant.settings', m.id, { priceFormat, shippingRules });
-  if (m.feedUrl || m.feedUploadKey) await enqueueCheck('validate', m.id);
+  if (recheck) await enqueueCheck('validate', m.id);
   revalidatePath(PORTAL_PATH);
   back({ ok: 'setari' }, 'pas-4');
 }
+
+/** Why the last check cannot be submitted, as a portal error code. */
+const SUBMIT_ERRORS = {
+  not_checked: 'verificare_in_curs',
+  stale: 'raport_vechi',
+  failed: 'incomplet',
+  off_domain_only: 'in_afara_domeniului',
+  nothing_listable: 'incomplet',
+  price_format: 'pret',
+} as const;
 
 /** Step 5: accept the merchant terms and send the listing for approval. */
 export async function submitForReview(form: FormData): Promise<void> {
@@ -190,11 +242,9 @@ export async function submitForReview(form: FormData): Promise<void> {
   if (!(await portalOpen())) back({ eroare: 'portal_inchis' }, 'pas-5');
   if (!EDITABLE.has(m.status)) back({ eroare: 'stare' }, 'pas-5');
   if (form.get('accept') !== 'on') back({ eroare: 'termeni' }, 'pas-5');
-  const report = m.validation?.status === 'done' ? m.validation.report : undefined;
-  const ready =
-    m.shopName && m.companyName && m.cui && m.domain && m.domainVerifiedAt && (m.feedUrl || m.feedUploadKey) && report && report.normalization.accepted > 0;
-  if (!ready) back({ eroare: 'incomplet' }, 'pas-5');
-  if (report.priceFormat.needsChoice && !m.priceFormat) back({ eroare: 'pret' }, 'pas-4');
+  if (!(m.shopName && m.companyName && m.cui && m.domain && m.domainVerifiedAt && (m.feedUrl || m.feedUploadKey))) back({ eroare: 'incomplet' }, 'pas-5');
+  const problem = listingReportProblem(m);
+  if (problem) back({ eroare: SUBMIT_ERRORS[problem] }, problem === 'price_format' ? 'pas-4' : 'pas-3');
   await db()
     .update(merchants)
     .set({

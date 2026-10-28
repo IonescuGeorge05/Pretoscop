@@ -20,6 +20,10 @@ const optionalString = z
 
 const DEV_SECRET = 'dev-only-insecure-secret-change-me';
 
+/** Placeholder sender identity (dev defaults): every email must name the real operator in prod. */
+export const PLACEHOLDER_COMPANY_LEGAL_NAME = 'Pretoscop (în curs de înființare)';
+export const PLACEHOLDER_COMPANY_POSTAL_ADDRESS = 'România';
+
 /** `203.0.113.10`, `2001:db8::1`, or a CIDR prefix such as `203.0.113.0/28` or `2001:db8::/64`. */
 export function isIpOrCidr(value: string): boolean {
   const [addr, prefix, ...rest] = value.split('/');
@@ -92,7 +96,17 @@ export const EnvSchema = z
     FETCH_MAX_BODY_BYTES: int(15 * 1024 * 1024),
     /** Lets the worker's fetcher reach private/loopback addresses (local fixture servers). Never in production. */
     FETCH_ALLOW_PRIVATE_HOSTS: bool.default(false),
-
+    /** Exact private `ip:port` targets the guard lets through (e2e fixture servers) while it stays on for the rest. Never in production. */
+    FETCH_PRIVATE_ALLOWLIST: z
+      .string()
+      .default('')
+      .transform((v) =>
+        v
+          .split(',')
+          .map((e) => e.trim())
+          .filter(Boolean),
+      )
+      .pipe(z.array(z.string().regex(/^\d{1,3}(\.\d{1,3}){3}:\d{1,5}$/, 'expected ip:port, e.g. 127.0.0.1:3399'))),
     // Assisted-access channel (M05B, ADR-015)
     ASSISTED_VENDOR: z.enum(['none', 'zyte', 'oxylabs']).default('none'),
     ZYTE_API_KEY: optionalString,
@@ -115,8 +129,8 @@ export const EnvSchema = z
     RESEND_API_KEY: optionalString,
     MAIL_FROM: z.string().default('Pretoscop <noreply@pretoscop.ro>'),
     MAIL_REPLY_TO: z.string().default('contact@pretoscop.ro'),
-    COMPANY_LEGAL_NAME: z.string().default('Pretoscop (în curs de înființare)'),
-    COMPANY_POSTAL_ADDRESS: z.string().default('România'),
+    COMPANY_LEGAL_NAME: z.string().default(PLACEHOLDER_COMPANY_LEGAL_NAME),
+    COMPANY_POSTAL_ADDRESS: z.string().default(PLACEHOLDER_COMPANY_POSTAL_ADDRESS),
 
     // Auth, admin, web internals
     BETTER_AUTH_SECRET: z.string().min(16).default(DEV_SECRET),
@@ -138,10 +152,13 @@ export const EnvSchema = z
     // Resend webhook signing secret (`whsec_…`) for bounces and complaints; unset = endpoint off.
     RESEND_WEBHOOK_SECRET: optionalString,
 
-    // Operations alerts (two consecutive source failures, backups, caps)
+    // Operations alerts (two consecutive source failures, backups, caps, SLO breaches)
     OPS_ALERT_TELEGRAM_BOT_TOKEN: optionalString,
     OPS_ALERT_TELEGRAM_CHAT_ID: optionalString,
     OPS_ALERT_EMAIL: optionalString,
+    // Dead-man's-switch heartbeats (M18): worker alive every 5 min; nightly logical dump.
+    OPS_HEARTBEAT_URL: optionalString,
+    DUMP_HEARTBEAT_URL: optionalString,
 
     // LLM (M22, ADR-011)
     ANTHROPIC_API_KEY: optionalString,
@@ -193,10 +210,48 @@ export const EnvSchema = z
       if (env.FETCH_ALLOW_PRIVATE_HOSTS) {
         ctx.addIssue({ code: 'custom', path: ['FETCH_ALLOW_PRIVATE_HOSTS'], message: 'FETCH_ALLOW_PRIVATE_HOSTS is for local development only' });
       }
+      if (env.FETCH_PRIVATE_ALLOWLIST.length > 0) {
+        ctx.addIssue({ code: 'custom', path: ['FETCH_PRIVATE_ALLOWLIST'], message: 'FETCH_PRIVATE_ALLOWLIST is for local development only' });
+      }
+    }
+    // Production refuses to start without a real sender identity in every email (Law 506/2004
+    // art. 12, Law 365/2002) and, on Resend, without the bounce/complaint webhook (a complaint must
+    // stop the alerts). Staging only warns (`envWarnings`).
+    if (env.APP_ENV === 'prod') {
+      for (const p of emailComplianceProblems(env)) ctx.addIssue({ code: 'custom', path: [p.key], message: p.message });
     }
   });
 
+interface EmailComplianceInput {
+  COMPANY_LEGAL_NAME: string;
+  COMPANY_POSTAL_ADDRESS: string;
+  MAIL_DRIVER: string;
+  RESEND_WEBHOOK_SECRET?: string | undefined;
+}
+
+/** What keeps emails from being compliant outside dev: placeholder sender identity, no bounce webhook. */
+export function emailComplianceProblems(env: EmailComplianceInput): Array<{ key: keyof EmailComplianceInput; message: string }> {
+  const out: Array<{ key: keyof EmailComplianceInput; message: string }> = [];
+  const name = env.COMPANY_LEGAL_NAME.trim();
+  const address = env.COMPANY_POSTAL_ADDRESS.trim();
+  if (name === '' || name === PLACEHOLDER_COMPANY_LEGAL_NAME) {
+    out.push({ key: 'COMPANY_LEGAL_NAME', message: 'COMPANY_LEGAL_NAME must be the legal name of the operator (it is printed in every email)' });
+  }
+  if (address === '' || address === PLACEHOLDER_COMPANY_POSTAL_ADDRESS) {
+    out.push({ key: 'COMPANY_POSTAL_ADDRESS', message: 'COMPANY_POSTAL_ADDRESS must be the full postal address of the operator (it is printed in every email)' });
+  }
+  if (env.MAIL_DRIVER === 'resend' && !env.RESEND_WEBHOOK_SECRET) {
+    out.push({ key: 'RESEND_WEBHOOK_SECRET', message: 'RESEND_WEBHOOK_SECRET must be set with MAIL_DRIVER=resend (bounces and complaints stop alert emails)' });
+  }
+  return out;
+}
+
 export type Env = z.infer<typeof EnvSchema>;
+
+/** Problems that refuse a production start but only warn in staging (logged once per process by `getEnv`). */
+export function envWarnings(env: Env): string[] {
+  return env.APP_ENV === 'staging' ? emailComplianceProblems(env).map((p) => `${p.key}: ${p.message}`) : [];
+}
 
 let cached: Env | undefined;
 
@@ -230,7 +285,10 @@ export function getEnv(source: NodeJS.ProcessEnv = process.env): Env {
     const lines = parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`);
     throw new Error(`Invalid environment:\n${lines.join('\n')}`);
   }
-  if (source === process.env) cached = parsed.data;
+  if (source === process.env) {
+    cached = parsed.data;
+    for (const w of envWarnings(parsed.data)) console.warn(JSON.stringify({ level: 'warn', service: 'config', event: 'env.warning', message: w }));
+  }
   return parsed.data;
 }
 

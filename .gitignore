@@ -20,6 +20,8 @@ test-results/
 .env
 .env.*
 !.env.example
+# server-side deploy history (infra/scripts/deploy.sh)
+.deploy-history
 
 # legal file is kept outside git (docs/12-blocked-shops-strategy.md §0)
 infra/legal/

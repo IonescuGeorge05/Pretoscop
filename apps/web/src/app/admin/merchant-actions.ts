@@ -1,14 +1,27 @@
 'use server';
 
-import { approveMerchant, auditLog, eq, MerchantActionError, merchants, reinstateMerchant, rejectMerchant, shopSources, shops, sql, suspendMerchant } from '@pretoscop/db';
-import { revalidatePath } from 'next/cache';
+import {
+  approveMerchant,
+  auditLog,
+  eq,
+  MerchantActionError,
+  merchants,
+  reinstateMerchant,
+  rejectMerchant,
+  shopSources,
+  shops,
+  sql,
+  suspendMerchant,
+  type TransitionResult,
+} from '@pretoscop/db';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
 import { db } from '@/lib/db';
+import { boss } from '@/lib/jobs';
 import { enqueueCheck, runSourceNow } from '@/lib/merchant';
 import { REASON_CATEGORIES } from '@/lib/merchant-hints';
 import { mailApproved, mailReinstated, mailRejected, mailSuspended } from '@/lib/merchant-mail';
-
 
 function id(form: FormData): number {
   const n = Number(form.get('merchantId'));
@@ -16,7 +29,8 @@ function id(form: FormData): number {
   return n;
 }
 
-function back(merchantId: number, params: Record<string, string>): never {
+/** Back to the merchant page with a known message code (the page never shows free text from the URL). */
+function back(merchantId: number, params: { ok: string } | { eroare: string }): never {
   redirect(`/admin/comercianti/${merchantId}?${new URLSearchParams(params).toString()}`);
 }
 
@@ -42,15 +56,32 @@ async function runMerchantSource(merchantId: number): Promise<void> {
   if (src) await runSourceNow(src.id, src.key, src.slug);
 }
 
+/**
+ * The merchant's offers were just hidden: product pages drop them now (cache tags), and the
+ * products' stats, search documents and alerts are refreshed by the worker (`rollup.touch`).
+ */
+async function refreshProducts(out: TransitionResult): Promise<void> {
+  for (const productId of out.productIds) revalidateTag(`product:${productId}`, { expire: 0 });
+  if (out.productIds.length === 0) return;
+  const b = await boss();
+  for (let i = 0; i < out.productIds.length; i += 500) await b.send('rollup.touch', { productIds: out.productIds.slice(i, i + 500) });
+}
+
+/** Runs a lifecycle step; a refused step returns to the page with its code (never its free text). */
+async function step<T>(merchantId: number, fn: () => Promise<T>): Promise<T> {
+  try {
+    return await fn();
+  } catch (err) {
+    if (err instanceof MerchantActionError) back(merchantId, { eroare: err.code });
+    throw err;
+  }
+}
+
 export async function approveMerchantAction(form: FormData): Promise<void> {
   const admin = await requireAdmin();
   const merchantId = id(form);
-  try {
-    await approveMerchant(db(), merchantId, admin.actor);
-  } catch (err) {
-    if (err instanceof MerchantActionError) back(merchantId, { eroare: err.code, mesaj: err.message });
-    throw err;
-  }
+  const confirm = Number(form.get('confirmShopId'));
+  await step(merchantId, () => approveMerchant(db(), merchantId, admin.actor, Number.isInteger(confirm) && confirm > 0 ? { confirmShopId: confirm } : {}));
   await runMerchantSource(merchantId);
   await mailApproved(await load(merchantId));
   revalidatePath('/admin/comercianti');
@@ -62,12 +93,8 @@ export async function rejectMerchantAction(form: FormData): Promise<void> {
   const merchantId = id(form);
   const reason = statement(form);
   if (!reason) back(merchantId, { eroare: 'motiv' });
-  try {
-    await rejectMerchant(db(), merchantId, reason, admin.actor);
-  } catch (err) {
-    if (err instanceof MerchantActionError) back(merchantId, { eroare: err.code, mesaj: err.message });
-    throw err;
-  }
+  const out = await step(merchantId, () => rejectMerchant(db(), merchantId, reason, admin.actor));
+  await refreshProducts(out);
   await mailRejected(await load(merchantId), reason);
   revalidatePath('/admin/comercianti');
   back(merchantId, { ok: 'respins' });
@@ -78,12 +105,8 @@ export async function suspendMerchantAction(form: FormData): Promise<void> {
   const merchantId = id(form);
   const reason = statement(form);
   if (!reason) back(merchantId, { eroare: 'motiv' });
-  try {
-    await suspendMerchant(db(), merchantId, reason, admin.actor);
-  } catch (err) {
-    if (err instanceof MerchantActionError) back(merchantId, { eroare: err.code, mesaj: err.message });
-    throw err;
-  }
+  const out = await step(merchantId, () => suspendMerchant(db(), merchantId, reason, admin.actor));
+  await refreshProducts(out);
   await mailSuspended(await load(merchantId), reason);
   revalidatePath('/admin/comercianti');
   back(merchantId, { ok: 'suspendat' });
@@ -92,12 +115,8 @@ export async function suspendMerchantAction(form: FormData): Promise<void> {
 export async function reinstateMerchantAction(form: FormData): Promise<void> {
   const admin = await requireAdmin();
   const merchantId = id(form);
-  try {
-    await reinstateMerchant(db(), merchantId, admin.actor);
-  } catch (err) {
-    if (err instanceof MerchantActionError) back(merchantId, { eroare: err.code, mesaj: err.message });
-    throw err;
-  }
+  await step(merchantId, () => reinstateMerchant(db(), merchantId, admin.actor));
+  // The offers come back with this read (and its matching and rollup), not before.
   await runMerchantSource(merchantId);
   await mailReinstated(await load(merchantId));
   revalidatePath('/admin/comercianti');
@@ -111,8 +130,15 @@ export async function verifyDomainManually(form: FormData): Promise<void> {
   const note = String(form.get('note') ?? '').trim().slice(0, 500);
   if (note.length < 10) back(merchantId, { eroare: 'nota' });
   const m = await load(merchantId);
-  await db().update(merchants).set({ domainVerifiedAt: new Date(), verificationMethod: 'admin' }).where(eq(merchants.id, merchantId));
-  await db().insert(auditLog).values({ actor: admin.actor, action: 'merchant.domain_manual', entity: 'merchants', entityId: String(merchantId), before: { domainVerifiedAt: m.domainVerifiedAt }, after: { domain: m.domain, note } });
+  if (!m.domain) back(merchantId, { eroare: 'fara_domeniu' });
+  // Only the domain the admin saw: a domain changed meanwhile is not verified by this click.
+  const domain = String(form.get('domain') ?? '');
+  if (domain !== m.domain) back(merchantId, { eroare: 'domeniu_schimbat' });
+  await db()
+    .update(merchants)
+    .set({ domainVerifiedAt: new Date(), verificationMethod: 'admin' })
+    .where(sql`${merchants.id} = ${merchantId} AND ${merchants.domain} = ${domain} AND ${merchants.domainVerifiedAt} IS NULL`);
+  await db().insert(auditLog).values({ actor: admin.actor, action: 'merchant.domain_manual', entity: 'merchants', entityId: String(merchantId), before: { domainVerifiedAt: m.domainVerifiedAt }, after: { domain, note } });
   back(merchantId, { ok: 'domeniu' });
 }
 

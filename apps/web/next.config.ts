@@ -71,11 +71,14 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: 'standalone',
+  // Release id (set by the image build, M18): two replicas of one release share it, and a browser
+  // holding pages of the previous release gets a full reload instead of mismatched assets.
+  deploymentId: process.env.NEXT_DEPLOYMENT_ID || undefined,
   poweredByHeader: false,
   reactStrictMode: true,
   agentRules: false,
   transpilePackages: ['@pretoscop/config', '@pretoscop/core', '@pretoscop/db', '@pretoscop/icecat', '@pretoscop/mailer', '@pretoscop/notify', '@pretoscop/report', '@pretoscop/search', '@pretoscop/storage'],
-  serverExternalPackages: ['pg', '@aws-sdk/client-s3'],
+  serverExternalPackages: ['pg', '@aws-sdk/client-s3', '@aws-sdk/lib-storage'],
   // What prerendered pages bake in (root metadata: robots and absolute URLs), inlined at build time;
   // src/instrumentation.ts compares them with the running server's environment (M16).
   env: {

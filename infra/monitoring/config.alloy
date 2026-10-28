@@ -1,0 +1,81 @@
+// Grafana Alloy (M18): ships the worker's and Caddy's Prometheus metrics and the containers' logs to
+// Grafana Cloud (free tier: 10k series, 50 GB logs, 14 days). Enabled with COMPOSE_PROFILES=monitoring
+// and the GRAFANA_CLOUD_* values in the production .env (infra/monitoring/README.md).
+
+prometheus.scrape "worker" {
+  targets = [{
+    "__address__" = "worker:9464",
+    "job"         = "pretoscop-worker",
+    "env"         = sys.env("DEPLOY_ENV"),
+  }]
+  scrape_interval = "60s"
+  scrape_timeout  = "20s"
+  forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+prometheus.scrape "caddy" {
+  targets = [{
+    "__address__" = sys.env("CADDY_METRICS_TARGET"),
+    "job"         = "caddy",
+    "env"         = sys.env("DEPLOY_ENV"),
+  }]
+  scrape_interval = "60s"
+  forward_to      = [prometheus.remote_write.grafana_cloud.receiver]
+}
+
+prometheus.remote_write "grafana_cloud" {
+  endpoint {
+    url = sys.env("GRAFANA_CLOUD_PROM_URL")
+
+    basic_auth {
+      username = sys.env("GRAFANA_CLOUD_PROM_USER")
+      password = sys.env("GRAFANA_CLOUD_API_KEY")
+    }
+  }
+}
+
+// Container logs: Docker's json-file logs read from disk (mounted read-only; no docker.sock).
+local.file_match "containers" {
+  path_targets = [{
+    "__path__" = "/var/lib/docker/containers/*/*-json.log",
+    "env"      = sys.env("DEPLOY_ENV"),
+  }]
+}
+
+loki.source.file "containers" {
+  targets    = local.file_match.containers.targets
+  forward_to = [loki.process.containers.receiver]
+}
+
+loki.process "containers" {
+  // Unwrap Docker's {"log": "...", "stream": "...", "time": "..."} envelope.
+  stage.docker {}
+
+  // pino lines are JSON: keep level and service as labels, everything else stays in the line.
+  stage.json {
+    expressions = {
+      level   = "level",
+      service = "service",
+    }
+  }
+
+  stage.labels {
+    values = {
+      level   = "",
+      service = "",
+    }
+  }
+
+  forward_to = [loki.write.grafana_cloud.receiver]
+}
+
+loki.write "grafana_cloud" {
+  endpoint {
+    url = sys.env("GRAFANA_CLOUD_LOKI_URL")
+
+    basic_auth {
+      username = sys.env("GRAFANA_CLOUD_LOKI_USER")
+      password = sys.env("GRAFANA_CLOUD_API_KEY")
+    }
+  }
+}

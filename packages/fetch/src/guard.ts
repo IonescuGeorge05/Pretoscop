@@ -80,18 +80,26 @@ export function publicOnlyLookup(hostname: string, options: LookupOneOptions | L
 export interface GuardedDispatcherOptions {
   /** Development and tests only (local fixture servers): turns the guard off. */
   allowPrivate?: boolean;
+  /**
+   * Development and tests only: exact `ip:port` targets written as IP literals in the URL (e.g.
+   * `127.0.0.1:3399`, a local fixture server) that may be reached while the guard stays on for
+   * every other address, names that resolve to private addresses included.
+   */
+  allowTargets?: readonly string[];
   connectTimeoutMs?: number;
   /** Headers and body timeout of the agent. */
   timeoutMs?: number;
 }
 
-/** An undici Agent that can only reach public internet addresses (unless `allowPrivate`). */
+/** An undici Agent that can only reach public internet addresses (unless `allowPrivate` or `allowTargets`). */
 export function createGuardedDispatcher(opts: GuardedDispatcherOptions = {}): Agent {
   const timeoutMs = opts.timeoutMs ?? 30_000;
   const base = buildConnector({ timeout: opts.connectTimeoutMs ?? 10_000, ...(opts.allowPrivate ? {} : { lookup: publicOnlyLookup }) });
+  const allowed = new Set(opts.allowTargets ?? []);
   const connect: buildConnector.connector = (options, callback) => {
     const host = options.hostname.replace(/^\[|\]$/g, '');
-    if (!opts.allowPrivate && isIP(host) !== 0 && isNonPublicAddress(host)) {
+    const port = options.port || (options.protocol === 'https:' ? '443' : '80');
+    if (!opts.allowPrivate && isIP(host) !== 0 && isNonPublicAddress(host) && !allowed.has(`${host}:${port}`)) {
       callback(new NonPublicAddressError(host), null);
       return;
     }

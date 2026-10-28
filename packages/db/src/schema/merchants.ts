@@ -37,7 +37,7 @@ export interface MerchantPreviewRow {
   warnings: string[];
 }
 
-/** What the feed check found (worker `merchant.validate`); the web turns it into Romanian hints. */
+/** What the feed check found (worker `merchant.feed_check`); the web turns it into Romanian hints. */
 export interface MerchantFeedReport {
   source: 'url' | 'upload';
   fetchedAt: string;
@@ -68,10 +68,19 @@ export interface MerchantFeedReport {
   preview: MerchantPreviewRow[];
 }
 
-/** Result of the last feed check (worker job `merchant.validate`), shown to the merchant and the admin. */
+/** The feed (and shop domain) a check was made for: a result only counts while they are unchanged. */
+export interface MerchantFeedTarget {
+  feedUrl: string | null;
+  feedUploadKey: string | null;
+  domain: string | null;
+}
+
+/** Result of the last feed check (worker job `merchant.feed_check`), shown to the merchant and the admin. */
 export interface MerchantValidation {
   status: 'queued' | 'running' | 'done' | 'failed';
   requestedAt: string;
+  /** What was checked (set by the worker; absent on rows written before it existed). */
+  target?: MerchantFeedTarget;
   finishedAt?: string;
   /** Why the check could not run, in Romanian for the merchant (fetch refused, robots.txt, HTTP error, unknown format). */
   error?: string;
@@ -80,20 +89,23 @@ export interface MerchantValidation {
   report?: MerchantFeedReport;
 }
 
-/** Result of the last domain check (DNS TXT record or file), worker job `merchant.verify_domain`. */
+/** Result of the last domain check (DNS TXT record or file), worker job `merchant.domain_check`. */
 export interface MerchantDomainCheck {
   status: 'queued' | 'running' | 'done';
   requestedAt: string;
   finishedAt?: string;
+  /** The domain that was checked (a result for another domain is never shown or applied). */
+  domain?: string;
   dns?: 'found' | 'missing' | 'error';
-  file?: 'found' | 'missing' | 'blocked' | 'error';
+  /** `skipped`: the domain belongs to a shop we already crawl; only DNS or email prove it. */
+  file?: 'found' | 'missing' | 'blocked' | 'error' | 'skipped';
   detail?: string;
 }
 
 /**
  * A shop that lists itself through the merchant portal (M20, free listing). One profile per user
  * account. Lifecycle: draft (onboarding) → pending (submitted) → approved (feed source created and
- * pulled 6×/day) | rejected; approved → suspended → approved. Rejections and suspensions carry a
+ * pulled 6×/day) | rejected; approved → suspended (offers hidden at once) → approved. Rejections and suspensions carry a
  * statement of reasons (P2B Regulation 2019/1150 art. 4). A merchant may only list offers whose
  * product URLs are on the domain it proved it controls (`domain_verified_at`).
  */

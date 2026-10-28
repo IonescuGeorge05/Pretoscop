@@ -3,6 +3,12 @@
 Use this when a shop objects, a source misbehaves (wrong prices, parse errors, blocks), or before
 maintenance. Every step is reversible and leaves history intact.
 
+On the production server (M18) replace `make psql` with
+`infra/scripts/compose.sh prod exec postgres psql -U pretoscop -d pretoscop`
+(in `/srv/pretoscop/prod`), and "restart the worker" with `... up -d --force-recreate --no-deps worker`
+after editing `.env`. The admin (`/admin/surse`) has the per-source and per-shop kill buttons; every
+click writes an audit row.
+
 ## Levels of stopping (fastest first)
 
 | Scope | How | Effect |

@@ -144,8 +144,16 @@ describe('Telegram bot', () => {
       sql`SELECT purpose, confirm_method, confirmed_at IS NOT NULL AS confirmed FROM consent_records WHERE user_id = ${u.id}`,
     );
     expect(c.rows).toEqual([{ purpose: 'alert_telegram', confirm_method: 'telegram', confirmed: true }]);
+    // The same update seen again (a restart before the acknowledgement): the chat is told it is linked.
     await say(chat, `/start ${token}`);
-    expect(lastTo(chat)?.text).toContain('a expirat sau a fost folosit');
+    expect(lastTo(chat)?.text).toContain('este deja conectat aici');
+    // Another chat with the used token: refused, and nothing changes.
+    await say(chat + 1, `/start ${token}`);
+    expect(lastTo(chat + 1)?.text).toContain('a expirat sau a fost folosit');
+    expect(await telegramLinkByUser(t.db, u.id)).toMatchObject({ chatId: chat });
+    // Something that is no token of ours never reaches the database lookup.
+    await say(chat + 2, '/start not-a-token!');
+    expect(lastTo(chat + 2)?.text).toContain('a expirat sau a fost folosit');
   });
 
   it('a chat that is not linked gets the way to link it, never an alert', async () => {

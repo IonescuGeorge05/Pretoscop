@@ -164,7 +164,14 @@ async function onCommand(deps: BotDeps, chatId: number, text: string): Promise<v
       ? await consumeTelegramLinkToken(deps.db, telegramTokenHash(args), chatId, (email) => emailHash(deps.secret, email))
       : null;
     if (!r) {
-      await reply(deps, chatId, `Linkul de conectare a expirat sau a fost folosit deja. Cere unul nou din pagina Alertele mele: ${deps.links.manage()}`);
+      // A chat already linked (e.g. its own /start seen again after a restart) is told so.
+      await reply(
+        deps,
+        chatId,
+        link?.status === 'active'
+          ? `Contul tău Pretoscop este deja conectat aici.\n\n${HELP}`
+          : `Linkul de conectare a expirat sau a fost folosit deja. Cere unul nou din pagina Alertele mele: ${deps.links.manage()}`,
+      );
       return;
     }
     deps.log?.info({ relinked: r.relinked }, 'telegram chat linked');

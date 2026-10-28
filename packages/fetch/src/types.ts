@@ -56,6 +56,8 @@ export type FetchErrorCode =
   | 'invalid_request'
   | 'crawl_disabled'
   | 'assisted_error'
+  /** The guarded dispatcher refused a private, loopback or otherwise non-public address (SSRF guard, M20). */
+  | 'non_public_address'
   /** A transport error that surfaced long after the request's own timeout: this process was suspended (the machine slept), not refused. */
   | 'local_suspend';
 

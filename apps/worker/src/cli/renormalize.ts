@@ -42,8 +42,9 @@ function printSummary(s: RenormalizeSummary): void {
   console.log(`  raced with recorder   ${s.raced} (skipped; run again)`);
   console.log(`  MPN fields from slugs ${s.urlDerivedMpnFields} (re-read as URL hints)`);
   console.log(
-    `  identity changed      ${s.identityChanged}: ${s.requeued} back to pending, ${s.locked} kept (human decision)`,
+    `  identity changed      ${s.identityChanged}: ${s.requeued} back to pending, ${s.linksKept} kept (link still holds), ${s.locked} kept (human decision)`,
   );
+  console.log(`  products synced       ${s.productsSynced} (matcher-made products following their offer)`);
   console.log('\nColumns changed:');
   for (const [k, n] of Object.entries(s.columns)) console.log(`  ${k.padEnd(22)} ${n}`);
   console.log('\nBefore → after:');
@@ -70,9 +71,9 @@ try {
       if (shown >= sampleLimit) return;
       shown++;
       const parts = Object.entries(c.changes).map(([k, [a, b]]) => `${k}: ${show(a)} → ${show(b)}`);
-      console.log(
-        `#${c.id} ${c.title.slice(0, 70)}\n    ${parts.join('; ')}${c.requeued ? '  [pending]' : c.identityChanged ? '  [kept: human decision]' : ''}`,
-      );
+      const tag = c.requeued ? '  [pending]' : c.identityChanged ? '  [link kept]' : '';
+      const product = c.productSynced ? `  [product #${c.productSynced} follows]` : '';
+      console.log(`#${c.id} ${c.title.slice(0, 70)}\n    ${parts.join('; ')}${tag}${product}`);
     },
   });
   printSummary(summary);

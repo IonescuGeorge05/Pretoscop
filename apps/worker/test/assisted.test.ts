@@ -8,9 +8,10 @@ import { sql } from 'drizzle-orm';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { getEnv } from '@pretoscop/config/env';
 import { createLogger } from '@pretoscop/config/logger';
-import { setFlag } from '@pretoscop/db';
+import { createDb, createPool, setFlag } from '@pretoscop/db';
 import { createTestDatabase, type TestDatabase } from '@pretoscop/db/testing';
-import { createFetcher } from '@pretoscop/fetch';
+import { createFetcher, createGuardedDispatcher } from '@pretoscop/fetch';
+import { MemoryAssistedLedger } from '@pretoscop/fetch/assisted';
 import { FsBlobStore } from '@pretoscop/storage';
 import { createAssistedChannelFromEnv } from '../src/fetch/assisted';
 import { PgAssistedLedger } from '../src/fetch/assisted-ledger';
@@ -22,7 +23,7 @@ import { renderMetrics } from '../src/ops/prometheus';
 import { checkGates } from '../src/recorder/gates';
 import { runSource } from '../src/recorder/run-source';
 import { syncShops } from '../src/registry/sync';
-import { createNormalize } from '../src/services';
+import { createMerchantFetcher, createNormalize } from '../src/services';
 
 // M05B end to end: a designated shop switched to access_mode=assisted, read through the Zyte
 // client against a local mock of the Zyte API (no live vendor call), with the real fetch layer,
@@ -30,6 +31,9 @@ import { createNormalize } from '../src/services';
 
 const FIXTURE = readFileSync(fileURLToPath(new URL('../../../packages/extractors/fixtures/itgalaxy/product_2026-10-27.html', import.meta.url)));
 const LISTING_URL = 'https://altex.ro/televizoare/cpl/';
+// cel.ro's bot check with decoy products, as the vendor would relay it (reconstructed from the research notes).
+const CELCAPTCHA = readFileSync(fileURLToPath(new URL('../../../packages/fetch/test/fixtures/blocks/cel_celcaptcha_decoy_from-research-notes.html', import.meta.url)));
+const CEL_URL = 'https://www.cel.ro/placi-video/';
 
 let t: TestDatabase;
 let api: Server;
@@ -44,6 +48,9 @@ function zyteAnswer(url: string): { status: number; body: unknown } {
   }
   if (url === LISTING_URL) {
     return { status: 200, body: { url, statusCode: 200, httpResponseHeaders: [{ name: 'Content-Type', value: 'text/html; charset=utf-8' }], httpResponseBody: FIXTURE.toString('base64') } };
+  }
+  if (url === CEL_URL) {
+    return { status: 200, body: { url, statusCode: 200, httpResponseHeaders: [{ name: 'Content-Type', value: 'text/html; charset=utf-8' }], httpResponseBody: CELCAPTCHA.toString('base64') } };
   }
   return { status: 520, body: { type: '/download/temporary-error', title: 'Temporary Download Error', status: 520 } };
 }
@@ -179,16 +186,97 @@ describe('assisted shop: a recorder run through the vendor', () => {
     expect(vendorCalls.length).toBe(before);
   });
 
-  it('the ledger arithmetic matches the shared formula (rendered tier, billable only)', async () => {
+  it('the ledger arithmetic matches the shared formula (rendered tier, unbilled calls given back)', async () => {
     const ledger = new PgAssistedLedger(t.db);
+    const memory = new MemoryAssistedLedger();
     const pricing = { httpCentsPer1k: 115, renderCentsPer1k: 1448 };
-    for (let i = 0; i < 3; i++) await ledger.record({ day: '2026-11-03', shopSlug: 'flanco', vendor: 'zyte', rendered: true, billable: i < 2, pricing });
+    const entry = { day: '2026-11-03', shopSlug: 'flanco', vendor: 'zyte', rendered: true, pricing };
+    for (const l of [ledger, memory]) {
+      for (let i = 0; i < 3; i++) {
+        expect(await l.reserve(entry, '2026-11-01', 100_00)).toBe(true);
+        if (i === 2) await l.release(entry); // the vendor did not bill the third call
+      }
+    }
     const row = await t.db.execute<{ requests: number; rendered_requests: number; successes: number; cost_cents: number }>(sql`
       SELECT requests, rendered_requests, successes, cost_cents FROM access_costs WHERE day = '2026-11-03'`);
     expect(row.rows[0]).toEqual({ requests: 3, rendered_requests: 3, successes: 2, cost_cents: 3 });
+    expect([...memory.rows.values()][0]).toMatchObject({ requests: 3, renderedRequests: 3, successes: 2, costCents: 3 });
     expect(await ledger.monthToDateCents('2026-11-01')).toBe(3);
-    await expect(ledger.record({ day: '2026-11-03', shopSlug: 'no-such-shop', vendor: 'zyte', rendered: false, billable: true, pricing })).rejects.toThrow(/unknown shop/);
+    // A booking that would pass the cap books nothing.
+    expect(await ledger.reserve(entry, '2026-11-01', 4)).toBe(false);
+    expect(await ledger.monthToDateCents('2026-11-01')).toBe(3);
+    await expect(ledger.reserve({ ...entry, shopSlug: 'no-such-shop' }, '2026-11-01', 100_00)).rejects.toThrow(/unknown shop/);
     await t.db.execute(sql`DELETE FROM access_costs WHERE day = '2026-11-03'`);
+  });
+
+  it('concurrent bookings from several connections never pass the cap together (advisory lock)', async () => {
+    const pools = Array.from({ length: 4 }, () => createPool(t.url, 4));
+    try {
+      const ledgers = pools.map((p) => new PgAssistedLedger(createDb(p)));
+      // One cent per call (rounded up), cap 7 cents: exactly 7 of 24 simultaneous bookings fit.
+      const pricing = { httpCentsPer1k: 1000, renderCentsPer1k: 1000 };
+      const shops = ['altex', 'flanco', 'cel', 'pcgarage'];
+      const results = await Promise.all(
+        Array.from({ length: 24 }, (_, i) => ledgers[i % 4]!.reserve({ day: '2026-11-04', shopSlug: shops[i % 4]!, vendor: 'zyte', rendered: false, pricing }, '2026-11-04', 7)),
+      );
+      expect(results.filter(Boolean)).toHaveLength(7);
+      expect(await ledgers[0]!.monthToDateCents('2026-11-04')).toBe(7);
+    } finally {
+      await Promise.all(pools.map((p) => p.end()));
+      await t.db.execute(sql`DELETE FROM access_costs WHERE day = '2026-11-04'`);
+    }
+  });
+});
+
+describe('assisted shop: scope and composition in the worker', () => {
+  it('eMAG set to assisted in the database is still off for the fetch layer, and the channel refuses it', async () => {
+    const emag = await shopId('emag');
+    const before = await t.db.execute<{ access_mode: string }>(sql`SELECT access_mode FROM shops WHERE id = ${emag}`);
+    await t.db.execute(sql`UPDATE shops SET access_mode = 'assisted' WHERE id = ${emag}`);
+    try {
+      expect((await createPolicyResolver(t.db, 0)('www.emag.ro')).accessMode).toBe('off');
+      const { channel } = createAssistedChannelFromEnv(testEnv(), t.db, log);
+      expect(await channel!.check({ shopSlug: 'emag', host: 'www.emag.ro', purpose: 'listing', url: 'https://www.emag.ro/telefoane/c' })).toMatchObject({
+        code: 'assisted_refused',
+        detail: expect.stringMatching(/ADR-013/),
+      });
+    } finally {
+      await t.db.execute(sql`UPDATE shops SET access_mode = ${before.rows[0]!.access_mode} WHERE id = ${emag}`);
+    }
+  });
+
+  it('only the shop\'s own web host: an internal API subdomain is refused before any vendor call', async () => {
+    const before = vendorCalls.length;
+    const res = await deps(testEnv()).fetcher.fetchPolite('https://fenrir.altex.ro/catalog/products', { purpose: 'listing', shopSlug: 'altex' });
+    expect(res).toMatchObject({ skipped: 'assisted_unavailable', errorCode: 'assisted_refused', attempts: 0 });
+    expect(vendorCalls.length).toBe(before);
+  });
+
+  it('the merchant fetcher never reaches an assisted shop (no vendor call, no direct request)', async () => {
+    const before = vendorCalls.length;
+    const merchant = createMerchantFetcher(testEnv(), t.db, log, {
+      dispatcher: createGuardedDispatcher({ allowPrivate: false }),
+      requestLog: { write: () => undefined },
+      stateStore: new PgDomainStateStore(t.db),
+    });
+    const res = await merchant.fetchPolite('https://altex.ro/feed.xml', { purpose: 'feed' });
+    expect(res).toMatchObject({ skipped: 'assisted_unavailable', attempts: 0 });
+    expect(vendorCalls.length).toBe(before);
+  });
+
+  it('a challenge page relayed by the vendor (cel.ro\'s "Verificare rapida" with decoy products) records nothing', async () => {
+    const cel = await shopId('cel');
+    await t.db.execute(sql`UPDATE shops SET status = 'active', access_mode = 'assisted', legal_basis_ref = 'opinion' WHERE id = ${cel}`);
+    const src = await t.db.execute<{ id: string }>(sql`
+      INSERT INTO shop_sources (shop_id, key, kind, url, parser_key, enabled, config)
+      VALUES (${cel}, 'cel:listing:placi-video', 'listing', ${CEL_URL}, 'jsonld-product', true, '{"max_pages": 1}'::jsonb)
+      RETURNING id::text`);
+    const r = await runSource(deps(testEnv()), Number(src.rows[0]!.id), { trigger: 'manual' });
+    expect(r.stats.parsed).toBe(0);
+    expect(r.stats.blocked).toBeGreaterThanOrEqual(1);
+    const offers = await t.db.execute<{ n: string }>(sql`SELECT count(*)::text n FROM offers WHERE shop_id = ${cel}`);
+    expect(offers.rows[0]!.n).toBe('0');
+    await t.db.execute(sql`UPDATE shop_sources SET kill_switch = true WHERE shop_id = ${cel}`);
   });
 });
 
@@ -230,7 +318,8 @@ describe('assisted shop: health, alerts, auto-pause', () => {
     const today = bucharestDayOf(new Date());
     await t.db.execute(sql`
       INSERT INTO access_costs (day, shop_id, vendor, requests, rendered_requests, successes, cost_cents)
-      VALUES (${today}::date, ${await shopId('cel')}, 'zyte', 100, 0, 100, 84)`);
+      VALUES (${today}::date, ${await shopId('cel')}, 'zyte', 100, 0, 100, 84)
+      ON CONFLICT (day, shop_id, vendor) DO UPDATE SET cost_cents = 84`);
     let keys = (await assistedSloAlerts(t.db, env)).map((a) => a.key);
     expect(keys).toEqual(expect.arrayContaining([`assisted-spend-80:${today.slice(0, 8)}01`, 'assisted-success:altex']));
     await t.db.execute(sql`UPDATE access_costs SET cost_cents = 200 WHERE day = ${today}::date AND vendor = 'zyte' AND shop_id = ${await shopId('cel')}`);

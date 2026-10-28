@@ -149,7 +149,7 @@ export function createServices(env: Env, db: Db, log: Logger): Services & { clos
   const state = new PgDomainStateStore(db);
   // Assisted-access channel (M05B): the crawler fetcher only, and only with a configured vendor; otherwise
   // the fetch layer refuses every assisted host (`assisted_unavailable`). Merchant requests never use it.
-  const assisted = createAssistedChannelFromEnv(env, db, log);
+  const assisted = createAssistedChannelFromEnv(env, db, log, dispatcher);
   log.info({ assisted: assisted.channel ? 'on' : 'off', detail: assisted.reason }, 'assisted-access channel');
   const fetcher = createFetcher({
     ...fetcherDeps(env, db, log, { dispatcher, requestLog, stateStore: state }),

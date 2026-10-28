@@ -12,6 +12,8 @@ export type {
 } from './types';
 export {
   createAssistedChannel,
+  maxCallCents,
+  renderablePurpose,
   type AssistedChannelHandle,
   type AssistedChannelOptions,
   type AssistedCheckContext,
@@ -26,5 +28,6 @@ export {
   zytePricing,
   type ZyteTier,
 } from './pricing';
+export { ASSISTED_PURPOSES, NON_PUBLIC_SEGMENTS, assistedScopeRefusal, nonPublicSegment, type ScopeInput } from './scope';
 export { ZYTE_API_URL, createZyteClient, mapZyteAnswer, zyteRequestBody, type ZyteClientOptions } from './zyte';
 export { createOxylabsClient, type OxylabsClientOptions } from './oxylabs';

@@ -207,13 +207,20 @@ export interface AssistedFetchResponse {
 
 /** Hook implemented by M05B (`packages/fetch/src/assisted`, `createAssistedChannel`). */
 export interface AssistedChannel {
+  /**
+   * Sends one request through the vendor. A call that is refused before it is sent (out of scope,
+   * monthly cap, vendor refusing us) throws `FetchError` with code `assisted_cap` or
+   * `assisted_refused`: the fetcher skips the request (`assisted_unavailable`) and counts no
+   * failure against the shop.
+   */
   fetch(url: string, request: AssistedFetchRequest): Promise<AssistedFetchResponse>;
   /**
    * Called inside the fetcher's gate for every assisted request, before a slot is reserved or the
-   * daily budget is counted (and again right before sending): a refusal (monthly cap reached,
-   * vendor refusing us) skips the request with `skipped: 'assisted_unavailable'` and its code.
+   * daily budget is counted (and again right before sending): a refusal (shop not designated, page
+   * out of scope, monthly cap reached, vendor refusing us) skips the request with
+   * `skipped: 'assisted_unavailable'` and its code.
    */
-  check?(ctx: { shopSlug?: string; host: string; purpose: FetchPurpose }): Promise<{ code: FetchErrorCode; detail: string } | null>;
+  check?(ctx: { shopSlug?: string; host: string; purpose: FetchPurpose; url?: string }): Promise<{ code: FetchErrorCode; detail: string } | null>;
 }
 
 /** robots.txt decision summary for one origin, as `robotsFor()` returns it. */

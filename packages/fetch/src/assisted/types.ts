@@ -58,9 +58,15 @@ export interface AssistedPricing {
   renderCentsPer1k: number;
 }
 
-/** Per-shop settings of the channel (shop registry `crawl_policy.assisted_*`). */
+/** Per-shop settings of the channel (shop registry `domain`, `crawl_policy.assisted_*`). */
 export interface AssistedShopSettings {
   pricing: AssistedPricing;
   /** Exit country passed to the vendor; unset = vendor's choice. */
   country?: string;
+  /**
+   * The shop's own web hosts (registry domain and `www.` of it): the only hosts the channel reads
+   * for this shop (no subdomains, no internal API hosts such as `fenrir.altex.ro`). Unset skips
+   * the check (tests); the worker always sets it.
+   */
+  hosts?: readonly string[];
 }

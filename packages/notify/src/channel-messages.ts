@@ -53,13 +53,13 @@ export function pushAlertPayload(items: AlertItem[], opts: { manageUrl: string; 
   };
 }
 
-/** A verified drop for the daily channel post: today's total under our own 30-day minimum. */
+/** A verified drop for the daily channel post (M15 rules): today's total under our own 30-day minimum. */
 export interface VerifiedDrop {
   productTitle: string;
   productUrl: string;
   totalBani: number;
   shopName: string;
-  /** Lowest daily total we observed in the 30 days before today. */
+  /** Lowest daily total we observed in the 30 days before the new price level (M15 reference). */
   min30Bani: number;
   /** Whole percent under `min30Bani`. */
   dropPct: number;
@@ -71,11 +71,11 @@ export function dealsPostText(drops: VerifiedDrop[], opts: { date: Date; dealsUr
     .slice(0, 10)
     .map(
       (d, i) =>
-        `${i + 1}. <a href="${tgEscape(d.productUrl)}">${tgEscape(shorten(d.productTitle, 80))}</a>\n   ${tgEscape(lei(d.totalBani))} la ${tgEscape(d.shopName)} · cu ${d.dropPct}% sub minimul din 30 de zile (${tgEscape(lei(d.min30Bani))})`,
+        `${i + 1}. <a href="${tgEscape(d.productUrl)}">${tgEscape(shorten(d.productTitle, 80))}</a>\n   ${tgEscape(lei(d.totalBani))}${d.shopName ? ` la ${tgEscape(d.shopName)}` : ''} · cu ${d.dropPct}% sub minimul din 30 de zile (${tgEscape(lei(d.min30Bani))})`,
     );
   return [
     `<b>Reduceri verificate de Pretoscop</b> · ${tgEscape(formatLongDate(opts.date))}`,
-    'Prețuri totale (preț + livrare) mai mici decât cel mai mic preț observat de noi în cele 30 de zile dinainte, doar la produse cu cel puțin 14 zile de istoric:',
+    'Prețul total (preț + livrare) a scăzut azi cu cel puțin 3% sub cel mai mic preț observat de noi în cele 30 de zile dinainte (cu cel puțin 14 zile observate):',
     '',
     lines.join('\n\n'),
     '',

@@ -5,6 +5,7 @@ import { requireAdmin } from '@/lib/auth';
 const nav = [
   ['/admin', 'Panou'],
   ['/admin/surse', 'Surse'],
+  ['/admin/acces-asistat', 'Acces asistat'],
   ['/admin/rulari', 'Rulări'],
   ['/admin/potriviri', 'Potriviri'],
   ['/admin/produse', 'Produse'],
@@ -13,6 +14,7 @@ const nav = [
   ['/admin/carantina', 'Carantină'],
   ['/admin/alerte', 'Alerte'],
   ['/admin/comercianti', 'Magazine partenere'],
+  ['/admin/contactari', 'Contactări'],
   ['/admin/flaguri', 'Flaguri'],
   ['/admin/audit', 'Audit'],
 ] as const;

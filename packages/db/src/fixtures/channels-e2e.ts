@@ -50,6 +50,14 @@ async function observe(db: Db, shopId: number, key: string, lei: number, observe
   return r.offerId!;
 }
 
+/**
+ * Fixture products stay provisional (never indexed, never in sitemaps): stats computation clears the
+ * flag at 2 live offers (M07), so it is set again after every computeProductStats.
+ */
+async function keepProvisional(db: Db, productId: number): Promise<void> {
+  await db.execute(sql`UPDATE products SET provisional = true WHERE id = ${productId}`);
+}
+
 export async function setChannelFlags(db: Db, values: Record<string, boolean>): Promise<void> {
   for (const [key, enabled] of Object.entries(values)) {
     if (!(CHANNEL_FLAGS as readonly string[]).includes(key)) continue;
@@ -74,10 +82,10 @@ export async function createChannelsFixture(db: Db): Promise<E2eChannelsFixture>
   const productId = await decideManually(db, ids.a!, { kind: 'new_product' }, 'e2e-fixture');
   if (!productId) throw new Error('e2e channels fixture: product not created');
   await decideManually(db, ids.b!, { kind: 'accept', productId }, 'e2e-fixture');
-  await db.execute(sql`UPDATE products SET provisional = true WHERE id = ${productId}`);
   const today = bucharestToday();
   await rollupProducts(db, { productIds: [productId], from: addDaysIso(today, -1), to: today });
   await computeProductStats(db, [productId], today);
+  await keepProvisional(db, productId);
   await setChannelFlags(db, Object.fromEntries(CHANNEL_FLAGS.map((k) => [k, true])));
   const p = await db.execute<{ slug: string }>(sql`SELECT slug FROM products WHERE id = ${productId}`);
   return { productId, slug: p.rows[0]!.slug, flagsWere };
@@ -92,6 +100,7 @@ export async function channelsFixturePrice(db: Db, key: string, lei: number): Pr
   const today = bucharestToday();
   await rollupProducts(db, { productIds: [Number(row.product_id)], from: today, to: today });
   await computeProductStats(db, [Number(row.product_id)], today);
+  await keepProvisional(db, Number(row.product_id));
   return { offerId };
 }
 

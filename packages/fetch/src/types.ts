@@ -1,6 +1,7 @@
 import type { DomainPolicy } from '@pretoscop/config/policy';
 import type { Dispatcher } from 'undici';
 import type { DomainStateStore } from './state/types';
+import type { RequestSigner } from './signing';
 
 /** Why a request is made. Drives the Accept header, the User-Agent (feeds) and some policy rules. */
 export type FetchPurpose = 'robots' | 'sitemap' | 'listing' | 'product' | 'feed' | 'probe';
@@ -56,10 +57,16 @@ export type FetchErrorCode =
   | 'invalid_request'
   | 'crawl_disabled'
   | 'assisted_error'
+  /** A tool's own request cap (M21 `shops:probe`): the request was never sent. */
+  | 'request_cap'
   /** The guarded dispatcher refused a private, loopback or otherwise non-public address (SSRF guard, M20). */
   | 'non_public_address'
   /** A transport error that surfaced long after the request's own timeout: this process was suspended (the machine slept), not refused. */
-  | 'local_suspend';
+  | 'local_suspend'
+  /** Assisted channel: the month's vendor spend reached ASSISTED_MONTHLY_CAP_EUR (M05B). */
+  | 'assisted_cap'
+  /** Assisted channel: the request is out of scope (shop not designated, not a public page of its own host) or the vendor refuses our account or this shop's domain (M05B). */
+  | 'assisted_refused';
 
 export interface FetchPoliteOptions {
   /** Shop registry slug, for logs and the request log. Defaults to the policy's `shopSlug`. */
@@ -201,9 +208,22 @@ export interface AssistedFetchResponse {
   bytes?: number;
 }
 
-/** Hook implemented by M05B (`packages/fetch/assisted`). */
+/** Hook implemented by M05B (`packages/fetch/src/assisted`, `createAssistedChannel`). */
 export interface AssistedChannel {
+  /**
+   * Sends one request through the vendor. A call that is refused before it is sent (out of scope,
+   * monthly cap, vendor refusing us) throws `FetchError` with code `assisted_cap` or
+   * `assisted_refused`: the fetcher skips the request (`assisted_unavailable`) and counts no
+   * failure against the shop.
+   */
   fetch(url: string, request: AssistedFetchRequest): Promise<AssistedFetchResponse>;
+  /**
+   * Called inside the fetcher's gate for every assisted request, before a slot is reserved or the
+   * daily budget is counted (and again right before sending): a refusal (shop not designated, page
+   * out of scope, monthly cap reached, vendor refusing us) skips the request with
+   * `skipped: 'assisted_unavailable'` and its code.
+   */
+  check?(ctx: { shopSlug?: string; host: string; purpose: FetchPurpose; url?: string }): Promise<{ code: FetchErrorCode; detail: string } | null>;
 }
 
 /** robots.txt decision summary for one origin, as `robotsFor()` returns it. */
@@ -284,4 +304,9 @@ export interface FetcherDeps {
   connectTimeoutMs?: number;
   /** Retries of transient failures (5xx without challenge markers, timeouts). Default 2 extra attempts, 10 s base back-off. */
   retry?: { maxRetries?: number; baseDelayMs?: number };
+  /**
+   * Web Bot Auth signer (M21, `./signing`). Default: from env (`WEB_BOT_AUTH=1` +
+   * `WEB_BOT_AUTH_PRIVATE_KEY`), else none. `null` turns signing off whatever the env says.
+   */
+  signer?: RequestSigner | null;
 }

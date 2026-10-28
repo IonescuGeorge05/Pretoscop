@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./attribution": "./src/attribution.ts",
     "./map": "./src/map.ts",
     "./mock": "./src/mock.ts"
   },

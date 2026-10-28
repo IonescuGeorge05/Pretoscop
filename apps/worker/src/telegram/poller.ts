@@ -68,7 +68,7 @@ export async function releasePollLock(client: LockClient): Promise<void> {
 }
 
 /**
- * Long polling (getUpdates, 25 s) for the Telegram bot (ADR-022). Long polling needs no public URL
+ * Long polling (getUpdates, 25 s) for the Telegram bot (ADR-024). Long polling needs no public URL
  * and no inbound route through Cloudflare and Caddy, and keeps every message the bot sends in the
  * single worker process (ADR-021), so one rate limiter covers Telegram's 30 messages per second.
  * Telegram allows one consumer per bot, hence the session-level advisory lock on a dedicated

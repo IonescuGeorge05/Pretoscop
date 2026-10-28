@@ -7,7 +7,7 @@ export const metadata: Metadata = {
   title: 'Despre Pretoscop',
   description:
     'Cine construiește Pretoscop, comparatorul de prețuri pentru magazinele online din România, ce vrea să rezolve și principiile după care funcționează.',
-  alternates: { canonical: '/despre' },
+  alternates: { canonical: '/despre', languages: { 'ro-RO': '/despre' } },
 };
 
 const PRINCIPLES = [

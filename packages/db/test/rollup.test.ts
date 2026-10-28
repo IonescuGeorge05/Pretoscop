@@ -135,6 +135,27 @@ describe('product stats, verdicts and history', () => {
     expect(h.series.shops.dedeman).toHaveLength(21);
     expect(h.stats).toMatchObject({ verdict: 'good_price', current: 900, observationsDays: 21 });
   });
+
+  it('a provisional product stops being provisional at two live offers, and stays so (M07 rule)', async () => {
+    const p = await product('p-provisional');
+    await t.db.execute(sql`UPDATE products SET provisional = true WHERE id = ${p}`);
+    const provisional = async () =>
+      (await t.db.execute<{ provisional: boolean }>(sql`SELECT provisional FROM products WHERE id = ${p}`)).rows[0]!.provisional;
+
+    await recordObservation(t.db, obs(dedeman, 'P1', at(0), 120));
+    await link('P1', p);
+    await computeProductStats(t.db, [p]);
+    expect(await provisional()).toBe(true); // one offer: still provisional
+
+    await recordObservation(t.db, obs(emag, 'P2', at(0), 118));
+    await link('P2', p);
+    await computeProductStats(t.db, [p]);
+    expect(await provisional()).toBe(false); // a second live offer corroborates the product
+
+    await t.db.execute(sql`UPDATE offers SET active = false WHERE external_id = 'P2'`);
+    await computeProductStats(t.db, [p]);
+    expect(await provisional()).toBe(false); // never goes back
+  });
 });
 
 describe('anomaly guard', () => {

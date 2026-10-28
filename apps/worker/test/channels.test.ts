@@ -14,7 +14,6 @@ import {
   seedDev,
   setFlag,
   telegramLinkByUser,
-  verifiedDrops,
 } from '@pretoscop/db';
 import { createTestDatabase, type TestDatabase } from '@pretoscop/db/testing';
 import { alertLinks, createPushSender, createTelegramClient, generateVapidKeys, type TelegramClient } from '@pretoscop/notify';
@@ -391,43 +390,52 @@ describe('Web Push delivery', () => {
 });
 
 describe('daily deals post', () => {
-  it('posts verified drops once a day and nothing on a day without them', async () => {
+  const daily = async (productId: number, fromDaysAgo: number, toDaysAgo: number, lei: number) => {
     const today = bucharestToday();
-    const p = await product('Televizor Testoscop 55" QLED');
-    const offerId = await observe(p.id, `deal-${p.id}`, 2000);
-    for (let d = 20; d >= 1; d--) {
-      await t.db.execute(sql`INSERT INTO product_daily (product_id, day, min_total_price, offer_count, in_stock_count) VALUES (${p.id}, ${addDaysIso(today, -d)}::date, 2400, 1, 1)`);
+    for (let d = fromDaysAgo; d >= toDaysAgo; d--) {
+      await t.db.execute(sql`INSERT INTO product_daily (product_id, day, min_total_price, offer_count, in_stock_count) VALUES (${productId}, ${addDaysIso(today, -d)}::date, ${lei}, 1, 1)`);
     }
-    await t.db.execute(sql`
+  };
+  const stats = (productId: number, offerId: number, lei: number, days: number) =>
+    t.db.execute(sql`
       INSERT INTO product_stats (product_id, current_min_total, current_min_offer_id, observations_days, median_90d, verdict)
-      VALUES (${p.id}, 2000, ${offerId}, 20, 2400, 'good_price')`);
-    const drops = await verifiedDrops(t.db, { today });
-    expect(drops.find((d) => d.productId === p.id)).toMatchObject({ totalBani: 200_000, min30Bani: 240_000, dropPct: 16, shopName: 'Dedeman' });
+      VALUES (${productId}, ${lei}, ${offerId}, ${days}, 2400, 'good_price')`);
 
-    // The M08 rules: no badge (no post) under 14 observed days or without the 'good_price' verdict.
-    const young = await product('Produs cu istoric scurt');
-    const youngOffer = await observe(young.id, `deal-young-${young.id}`, 2000);
-    for (let d = 10; d >= 1; d--) {
-      await t.db.execute(sql`INSERT INTO product_daily (product_id, day, min_total_price, offer_count, in_stock_count) VALUES (${young.id}, ${addDaysIso(today, -d)}::date, 2400, 1, 1)`);
-    }
-    await t.db.execute(sql`
-      INSERT INTO product_stats (product_id, current_min_total, current_min_offer_id, observations_days, median_90d, verdict)
-      VALUES (${young.id}, 2000, ${youngOffer}, 10, 2400, 'insufficient_data')`);
-    expect((await verifiedDrops(t.db, { today, minObservationDays: 3 })).map((d) => d.productId)).not.toContain(young.id);
-    await t.db.execute(sql`UPDATE product_stats SET observations_days = 20, verdict = 'usual' WHERE product_id = ${young.id}`);
-    expect((await verifiedDrops(t.db, { today })).map((d) => d.productId)).not.toContain(young.id);
-
+  it('posts the verified drops of the day (M15 rules) once a day, and nothing on a day without them', async () => {
     await setFlag(t.db, 'telegram.deals.enabled', true);
     const env = { ...getEnv({}), TELEGRAM_DEALS_CHAT_ID: '@pretoscop_test' };
     const ctx = { db: t.db, env, log, services: { alerts: { telegram, links } } } as unknown as JobContext;
-    const before = tgMock.sent().length;
-    await telegramDealsJob.handler({ id: 'j1', name: 'telegram.deals', data: {} } as never, ctx);
-    await telegramDealsJob.handler({ id: 'j2', name: 'telegram.deals', data: {} } as never, ctx); // delivered twice
-    const posts = tgMock.sent().slice(before);
-    expect(posts).toHaveLength(1);
-    expect(posts[0]!.chat_id).toBe('@pretoscop_test');
-    expect(posts[0]!.text).toContain('Televizor Testoscop 55&quot; QLED');
-    expect(posts[0]!.text).toContain('cu 16% sub minimul din 30 de zile (2.400,00 lei)');
-    expect(posts[0]!.text).toContain(`${BASE}/p/${p.slug}`);
+    const run = (id: string) => telegramDealsJob.handler({ id, name: 'telegram.deals', data: {} } as never, ctx);
+    const posts = () => tgMock.sent().filter((m) => m.chat_id === '@pretoscop_test');
+
+    // No drop yet: no post, and the day is not claimed.
+    await run('j0');
+    expect(posts()).toHaveLength(0);
+    expect((await t.db.execute(sql`SELECT 1 FROM channel_posts WHERE channel = 'telegram:deals'`)).rows).toHaveLength(0);
+
+    // A drop that started today: 20 observed days at 2.400 lei, 2.000 lei now.
+    const p = await product('Televizor Testoscop 55" QLED');
+    await daily(p.id, 20, 1, 2400);
+    await stats(p.id, await observe(p.id, `deal-${p.id}`, 2000), 2000, 20);
+    // Not posted: under 14 observed days (no badge), and a drop that started three days ago.
+    const young = await product('Produs cu istoric scurt');
+    await daily(young.id, 10, 1, 2400);
+    await stats(young.id, await observe(young.id, `deal-young-${young.id}`, 2000), 2000, 20);
+    const old = await product('Produs redus de trei zile');
+    await daily(old.id, 25, 4, 2400);
+    await daily(old.id, 3, 1, 2000);
+    await stats(old.id, await observe(old.id, `deal-old-${old.id}`, 2000), 2000, 25);
+
+    await run('j1');
+    await run('j2'); // delivered twice
+    expect(posts()).toHaveLength(1);
+    const text = posts()[0]!.text;
+    expect(text).toContain('Televizor Testoscop 55&quot; QLED');
+    expect(text).toContain('2.000,00 lei la Dedeman · cu 16% sub minimul din 30 de zile (2.400,00 lei)');
+    expect(text).toContain(`${BASE}/p/${p.slug}`);
+    expect(text).toContain('/reduceri">Toate reducerile</a>');
+    expect(text).not.toContain('Produs cu istoric scurt');
+    expect(text).not.toContain('Produs redus de trei zile');
+    expect(text).not.toContain('/out/');
   });
 });

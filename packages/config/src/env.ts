@@ -13,6 +13,16 @@ const bool = z
   .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.trim().toLowerCase())));
 
 const int = (def: number) => z.coerce.number().int().default(def);
+
+/** Shape of a base64url Ed25519 seed (`WEB_BOT_AUTH_PRIVATE_KEY`); the key itself is read in @pretoscop/fetch. */
+const WEB_BOT_AUTH_KEY_FORMAT = /^[A-Za-z0-9_-]{43}=?$/;
+/** RFC 9421 Appendix B.1.4 "test-key-ed25519" (seed and PKCS#8 body): fine in tests, refused in staging/prod. */
+const RFC9421_TEST_KEY_MARKERS = ['n4Ni-HpISpVObnQMW0wOhCKROaIKqKtW_2ZYb2p9KcU', 'MC4CAQAwBQYDK2VwBCIEIJ+DYvh6SEqVTm50DFtMDoQikTmiCqirVv9mWG9qfSnF'];
+/** An https URL, or http on a loopback host (local tests): what a Web Bot Auth Signature-Agent may be. */
+const SIGNATURE_AGENT_URL = /^(https:\/\/[^\s/]+|http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?)(\/|$)/i;
+function isPublishedTestKey(key: string): boolean {
+  return RFC9421_TEST_KEY_MARKERS.some((m) => key.includes(m));
+}
 const optionalString = z
   .string()
   .optional()
@@ -72,10 +82,19 @@ export const EnvSchema = z
     // Where the worker reaches the web app for cache revalidation (defaults to PUBLIC_BASE_URL).
     WEB_INTERNAL_URL: optionalString,
     SITE_INDEXABLE: bool.default(false),
+    // Server-side analytics rows (events table: searches, product views). The e2e suite turns them off.
+    EVENTS_ENABLED: bool.default(true),
 
     // Search
     MEILI_URL: z.string().min(1).default('http://localhost:7700'),
     MEILI_MASTER_KEY: z.string().min(1).default('dev-master-key-change-me-0123456789'),
+    // Search-only key for the web app (M14); the master key is used when it is empty (dev).
+    MEILI_SEARCH_KEY: optionalString,
+    // Prefix of every index name (`products`, `categories`, `brands`, `pretoscop_sync`); e2e appends `e2e_`.
+    MEILI_INDEX_PREFIX: z
+      .string()
+      .regex(/^[a-z0-9_-]{0,32}$/, 'use [a-z0-9_-], at most 32 characters')
+      .default(''),
 
     // Crawler identity and politeness (CLAUDE.md non-negotiable rules)
     BOT_INFO_URL: z.string().min(1).default('https://pretoscop.ro/bot'),
@@ -87,6 +106,14 @@ export const EnvSchema = z
     FETCH_MAX_BODY_BYTES: int(15 * 1024 * 1024),
     /** Lets the worker's fetcher reach private/loopback addresses (local fixture servers). Never in production. */
     FETCH_ALLOW_PRIVATE_HOSTS: bool.default(false),
+    /** Web Bot Auth (M21): the fetcher signs requests (RFC 9421, Ed25519). Off by default. */
+    WEB_BOT_AUTH: bool.default(false),
+    /**
+     * Ed25519 private key for Web Bot Auth and the key directory: base64url seed (from
+     * `pnpm --filter @pretoscop/fetch bot-auth:keygen`) or PKCS#8 PEM. Secret: environment only.
+     */
+    WEB_BOT_AUTH_PRIVATE_KEY: optionalString,
+
     /** Exact private `ip:port` targets the guard lets through (e2e fixture servers) while it stays on for the rest. Never in production. */
     FETCH_PRIVATE_ALLOWLIST: z
       .string()
@@ -103,7 +130,15 @@ export const EnvSchema = z
     ZYTE_API_KEY: optionalString,
     OXYLABS_USERNAME: optionalString,
     OXYLABS_PASSWORD: optionalString,
-    ASSISTED_MONTHLY_CAP_EUR: z.coerce.number().default(150),
+    ASSISTED_MONTHLY_CAP_EUR: z.coerce.number().min(0).default(150),
+    // EUR per USD for the cost estimate of USD-priced vendors (rounded up on purpose).
+    ASSISTED_EUR_PER_USD: z.coerce.number().positive().default(0.9),
+    // Zyte API endpoint (tests point it at a mock server). The API key travels with every call: https
+    // only, except a local mock on a loopback host in development.
+    ZYTE_API_URL: z
+      .string()
+      .default('https://api.zyte.com/v1/extract')
+      .refine(isVendorEndpoint, 'ZYTE_API_URL must be an https URL (http only for a local mock on 127.0.0.1, ::1 or localhost)'),
 
     // Blob storage (R2 in production, local filesystem in dev)
     BLOB_DRIVER: z.enum(['fs', 's3']).default('fs'),
@@ -222,7 +257,22 @@ export const EnvSchema = z
     if (env.TELEGRAM_BOT_USERNAME !== undefined && !/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(env.TELEGRAM_BOT_USERNAME)) {
       ctx.addIssue({ code: 'custom', path: ['TELEGRAM_BOT_USERNAME'], message: 'TELEGRAM_BOT_USERNAME is the bot username without @ (5–32 letters, digits, _)' });
     }
+    // Never echo the key itself in an error message.
+    const key = env.WEB_BOT_AUTH_PRIVATE_KEY;
+    if (env.WEB_BOT_AUTH && !key) {
+      ctx.addIssue({ code: 'custom', path: ['WEB_BOT_AUTH_PRIVATE_KEY'], message: 'WEB_BOT_AUTH is on but WEB_BOT_AUTH_PRIVATE_KEY is not set' });
+    }
+    if (key && !WEB_BOT_AUTH_KEY_FORMAT.test(key) && !key.startsWith('-----BEGIN')) {
+      ctx.addIssue({ code: 'custom', path: ['WEB_BOT_AUTH_PRIVATE_KEY'], message: 'WEB_BOT_AUTH_PRIVATE_KEY must be a base64url Ed25519 seed (43 characters) or a PKCS#8 PEM block' });
+    }
+    // The Signature-Agent (origin of BOT_INFO_URL) must be https; plain http only on a loopback host (local tests).
+    if (env.WEB_BOT_AUTH && !SIGNATURE_AGENT_URL.test(env.BOT_INFO_URL.trim())) {
+      ctx.addIssue({ code: 'custom', path: ['BOT_INFO_URL'], message: 'WEB_BOT_AUTH needs an https BOT_INFO_URL (its origin is the Signature-Agent that serves the key directory)' });
+    }
     if (env.APP_ENV === 'staging' || env.APP_ENV === 'prod') {
+      if (key && isPublishedTestKey(key)) {
+        ctx.addIssue({ code: 'custom', path: ['WEB_BOT_AUTH_PRIVATE_KEY'], message: 'WEB_BOT_AUTH_PRIVATE_KEY is the public RFC 9421 test key; generate a real one' });
+      }
       for (const key of ['BETTER_AUTH_SECRET', 'REVALIDATE_TOKEN', 'HASH_SALT_SECRET', 'ALERTS_SECRET'] as const) {
         if (env[key] === DEV_SECRET) {
           ctx.addIssue({ code: 'custom', path: [key], message: `${key} must be set outside dev` });
@@ -238,6 +288,9 @@ export const EnvSchema = z
       if (!env.TELEGRAM_API_BASE.startsWith('https://')) {
         ctx.addIssue({ code: 'custom', path: ['TELEGRAM_API_BASE'], message: 'TELEGRAM_API_BASE must be https outside dev (the bot token is in the URL)' });
       }
+      if (!env.ZYTE_API_URL.startsWith('https://')) {
+        ctx.addIssue({ code: 'custom', path: ['ZYTE_API_URL'], message: 'ZYTE_API_URL must be https outside development' });
+      }
     }
     // Production refuses to start without a real sender identity in every email (Law 506/2004
     // art. 12, Law 365/2002) and, on Resend, without the bounce/complaint webhook (a complaint must
@@ -246,6 +299,17 @@ export const EnvSchema = z
       for (const p of emailComplianceProblems(env)) ctx.addIssue({ code: 'custom', path: [p.key], message: p.message });
     }
   });
+
+/** An https URL, or http to a loopback host (a local mock of a vendor API). */
+export function isVendorEndpoint(value: string): boolean {
+  try {
+    const u = new URL(value);
+    if (u.protocol === 'https:') return true;
+    return u.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(u.hostname);
+  } catch {
+    return false;
+  }
+}
 
 interface EmailComplianceInput {
   COMPANY_LEGAL_NAME: string;

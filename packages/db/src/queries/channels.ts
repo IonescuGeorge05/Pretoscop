@@ -1,9 +1,8 @@
 import { createHash } from 'node:crypto';
-import { foldLower, VERDICT_MIN_DAYS } from '@pretoscop/core';
+import { foldLower } from '@pretoscop/core';
 import { sql } from 'drizzle-orm';
 import type { Db } from '../client';
 import { numericToBani } from '../money';
-import { ELIGIBLE_ALERT_OFFER } from './alerts';
 
 /**
  * Push and Telegram channels (M27). Each channel's consent lives with it (text version and time)
@@ -326,54 +325,7 @@ export async function searchProductsForBot(db: Exec, query: string, limit = 5): 
 // ---------------------------------------------------------------------------------------------
 // Daily deals post
 
-export interface VerifiedDropRow {
-  productId: number;
-  slug: string;
-  title: string;
-  totalBani: number;
-  shopName: string;
-  min30Bani: number;
-  dropPct: number;
-}
-
-/**
- * Today's verified drops, by the M08 rules the product page uses (M15's deals rules are not merged
- * yet): verdict 'good_price' (today's best total is the lowest of the last 30 days), at least
- * `VERDICT_MIN_DAYS` (14) observed days (no badge on a shorter history), and today's total at least
- * `minDropPct` under the lowest daily total we observed in the 30 days before today. The offer must
- * be one an alert may speak about (`ELIGIBLE_ALERT_OFFER`: in stock, shop-sold, matched, trusted
- * shop, checked within the shop's freshness SLO, no pending quarantine), never on a provisional
- * product and never under 30% of the 90-day median (probable mismatch). Biggest drops first.
- */
-export async function verifiedDrops(db: Exec, opts: { today: string; limit?: number; minDropPct?: number; minObservationDays?: number }): Promise<VerifiedDropRow[]> {
-  const minDays = Math.max(opts.minObservationDays ?? VERDICT_MIN_DAYS, VERDICT_MIN_DAYS);
-  const r = await db.execute<{ id: string; slug: string; title: string; cur: string; shop: string; prev: string }>(sql`
-    WITH prev AS (
-      SELECT product_id, min(min_total_price) AS m FROM product_daily
-      WHERE day >= ${opts.today}::date - 30 AND day < ${opts.today}::date AND min_total_price IS NOT NULL
-      GROUP BY product_id
-    )
-    SELECT p.id::text, p.slug, p.title, ps.current_min_total::text AS cur, s.name AS shop, prev.m::text AS prev
-    FROM product_stats ps
-    JOIN products p ON p.id = ps.product_id
-    JOIN prev ON prev.product_id = ps.product_id
-    JOIN offers o ON o.id = ps.current_min_offer_id
-    JOIN shops s ON s.id = o.shop_id
-    WHERE p.status = 'active' AND NOT p.provisional AND ps.current_min_total IS NOT NULL
-      AND ps.verdict = 'good_price'
-      AND ps.observations_days >= ${minDays}
-      AND ${ELIGIBLE_ALERT_OFFER}
-      AND o.total_price = ps.current_min_total
-      AND ps.current_min_total * 100 <= prev.m * (100 - ${opts.minDropPct ?? 5})
-      AND (ps.median_90d IS NULL OR ps.current_min_total >= ps.median_90d * 0.3)
-    ORDER BY (prev.m - ps.current_min_total) / prev.m DESC, p.id
-    LIMIT ${opts.limit ?? 10}`);
-  return r.rows.map((x) => {
-    const total = numericToBani(x.cur)!;
-    const prev = numericToBani(x.prev)!;
-    return { productId: Number(x.id), slug: x.slug, title: x.title, totalBani: total, shopName: x.shop, min30Bani: prev, dropPct: Math.floor(((prev - total) * 100) / prev) };
-  });
-}
+// The drops themselves come from M15's `getDeals` (queries/deals.ts), the rules of /reduceri.
 
 /** Claims today's post for a channel (idempotent: a second claim the same day returns false). */
 export async function claimChannelPost(db: Exec, channel: string, day: string): Promise<boolean> {

@@ -195,6 +195,21 @@ The consent choice itself is stored only in the visitor's browser (`localStorage
 | Retention | Rolling window (35 days proposed; confirm in M18); deletions propagate when old backups expire |
 | Security | Encryption at rest (R2 default), scoped API tokens, weekly restore test |
 
+### P12. Retailer outreach
+
+| Field | Record |
+|---|---|
+| Status | live (M21, `/admin/contactari`) |
+| Purpose | Asking shops for a product feed or for allowlisting PretoscopBot, and keeping track of their answers |
+| Legal basis | Art. 6(1)(f): legitimate interest in B2B contact about listing the shop; the shop can object at any time |
+| Data subjects | Shop staff behind a business channel. Mostly none (role addresses, contact forms, switchboards); a named business address of the shop (e.g. first.last@shop.ro) can occur and is erased on request |
+| Personal data | The business contact channel (`contact`: a role address, a form, a switchboard), the dates, the answer summary; the admin who logged it |
+| Recipients | Hetzner (database); the email provider the founders send from |
+| Transfers | None beyond the mailbox provider (`dpa-list.md`) |
+| Retention | While the shop is in the registry; deleted with the shop, or at once on request (confirmed delete in `/admin/contactari`) |
+| Security | Admin only (magic link + email allowlist); every change in `audit_log`, which records which fields were set but never the contact or the answer; the form refuses names and free-mailbox addresses (business channels only: role address, form URL, switchboard); guidance to never store guessed personal addresses (`infra/bot-program/outreach-templates.md`) |
+| Implementation | `outreach` (migration 0018), `/admin/contactari` |
+
 ## Technical and organisational measures (Art. 32, summary)
 
 EU hosting (Hetzner, Germany); TLS everywhere; secrets only in the server `.env`, never in git; admin behind magic-link auth, an email allowlist and (from M18) Cloudflare Access, every admin mutation in `audit_log`; no raw IP addresses in the database (daily-salted hashes); rate limits on public endpoints; least-privilege API keys with spend limits; dependency audit in CI; nightly backups with restore tests (M18); breach playbook in `docs/07-legal-compliance-checklist.md` §9 (ANSPDCP notification within 72 hours where required).

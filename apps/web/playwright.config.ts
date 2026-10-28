@@ -1,6 +1,7 @@
 import { generateKeyPairSync } from 'node:crypto';
 import { defineConfig, devices } from '@playwright/test';
 import { E2E_TELEGRAM } from './e2e/channels-env';
+import { E2E_SEARCH_PREFIX } from './e2e/fixture';
 
 const PORT = Number(process.env.E2E_PORT ?? 3200);
 
@@ -41,14 +42,17 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
+    // The e2e search indexes (global setup; this checkout's prefix + `e2e_`), no analytics rows from
+    // test traffic, and a test affiliate code so M24's quicklinks can be checked (no real account exists).
     env: {
       PUBLIC_BASE_URL: `http://localhost:${PORT}`,
-      // A test affiliate code so M24's quicklinks can be checked (no real account exists).
+      MEILI_INDEX_PREFIX: E2E_SEARCH_PREFIX,
+      EVENTS_ENABLED: 'false',
       TWOPERFORMANT_UNIQUE_CODE: 'e2e-aff',
-      // M27: test VAPID keys and a mock bot, so /alerte offers both channels (flags decide the rest).
+      // M27: test VAPID keys, so /alerte offers browser notifications (flags decide the rest), and
+      // the bot's username (the token is worker-only).
       VAPID_PUBLIC_KEY: vapid.publicKey,
       VAPID_PRIVATE_KEY: vapid.privateKey,
-      // The web only needs the bot's username (the token is worker-only).
       TELEGRAM_BOT_USERNAME: E2E_TELEGRAM.username,
     },
   },

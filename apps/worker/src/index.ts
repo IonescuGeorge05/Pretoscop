@@ -41,7 +41,7 @@ const health = startHealthServer({
   },
   metrics: () => metrics.collect(),
 });
-// M27: the Telegram bot (long polling, ADR-022), when TELEGRAM_BOT_TOKEN is set; it reads and
+// M27: the Telegram bot (long polling, ADR-024), when TELEGRAM_BOT_TOKEN is set; it reads and
 // answers nothing while the flag alerts.telegram.enabled is off. One process at a time holds the
 // advisory lock. It shares the Telegram client (and its rate limiter) with alert delivery.
 const telegram = services.alerts.telegram;

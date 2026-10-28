@@ -102,6 +102,38 @@ describe('getEnv', () => {
     expect(() => getEnv({ BOT_EGRESS_IPS: '256.1.1.1' })).toThrow(/BOT_EGRESS_IPS/);
   });
 
+  it('keeps Web Bot Auth off by default and refuses signing without a well-formed key, never echoing it', () => {
+    expect(getEnv({}).WEB_BOT_AUTH).toBe(false);
+    expect(getEnv({}).WEB_BOT_AUTH_PRIVATE_KEY).toBeUndefined();
+    expect(() => getEnv({ WEB_BOT_AUTH: 'true' })).toThrow(/WEB_BOT_AUTH is on but WEB_BOT_AUTH_PRIVATE_KEY is not set/);
+    const secret = 'abc-not-a-key-0123456789';
+    let message = '';
+    try {
+      getEnv({ WEB_BOT_AUTH_PRIVATE_KEY: secret });
+    } catch (err) {
+      message = (err as Error).message;
+    }
+    expect(message).toMatch(/must be a base64url Ed25519 seed/);
+    expect(message).not.toContain(secret);
+    const seed = 'A'.repeat(43);
+    expect(getEnv({ WEB_BOT_AUTH: '1', WEB_BOT_AUTH_PRIVATE_KEY: seed })).toMatchObject({ WEB_BOT_AUTH: true, WEB_BOT_AUTH_PRIVATE_KEY: seed });
+  });
+
+  it('signs only for an https Signature-Agent (http on loopback for local tests)', () => {
+    const seed = 'A'.repeat(43);
+    expect(() => getEnv({ WEB_BOT_AUTH: '1', WEB_BOT_AUTH_PRIVATE_KEY: seed, BOT_INFO_URL: 'http://pretoscop.ro/bot' })).toThrow(/https BOT_INFO_URL/);
+    expect(() => getEnv({ WEB_BOT_AUTH: '1', WEB_BOT_AUTH_PRIVATE_KEY: seed, BOT_INFO_URL: 'http://localhost.evil.example/bot' })).toThrow(/https BOT_INFO_URL/);
+    expect(getEnv({ WEB_BOT_AUTH: '1', WEB_BOT_AUTH_PRIVATE_KEY: seed, BOT_INFO_URL: 'http://localhost:3450/bot' }).WEB_BOT_AUTH).toBe(true);
+    // Signing off: any BOT_INFO_URL is accepted as before.
+    expect(getEnv({ BOT_INFO_URL: 'http://pretoscop.test/bot' }).WEB_BOT_AUTH).toBe(false);
+  });
+
+  it('accepts the public RFC 9421 test key in dev only', () => {
+    const testKey = 'n4Ni-HpISpVObnQMW0wOhCKROaIKqKtW_2ZYb2p9KcU';
+    expect(getEnv({ WEB_BOT_AUTH_PRIVATE_KEY: testKey }).WEB_BOT_AUTH_PRIVATE_KEY).toBe(testKey);
+    expect(() => getEnv({ APP_ENV: 'staging', WEB_BOT_AUTH_PRIVATE_KEY: testKey })).toThrow(/public RFC 9421 test key/);
+  });
+
   it('parses the e2e fixture allowlist of the SSRF guard, and refuses it (and the open switch) outside development', () => {
     expect(getEnv({}).FETCH_PRIVATE_ALLOWLIST).toEqual([]);
     expect(getEnv({ FETCH_PRIVATE_ALLOWLIST: ' 127.0.0.1:3399 ,' }).FETCH_PRIVATE_ALLOWLIST).toEqual(['127.0.0.1:3399']);
@@ -115,6 +147,23 @@ describe('getEnv', () => {
     };
     expect(() => getEnv({ ...prod, FETCH_PRIVATE_ALLOWLIST: '127.0.0.1:3399' })).toThrow(/FETCH_PRIVATE_ALLOWLIST is for local development only/);
     expect(() => getEnv({ ...prod, FETCH_ALLOW_PRIVATE_HOSTS: 'true' })).toThrow(/FETCH_ALLOW_PRIVATE_HOSTS is for local development only/);
+  });
+
+  it('keeps the assisted channel off by default and its vendor endpoint on https (M05B)', () => {
+    const env = getEnv({});
+    expect(env).toMatchObject({ ASSISTED_VENDOR: 'none', ASSISTED_MONTHLY_CAP_EUR: 150, ZYTE_API_URL: 'https://api.zyte.com/v1/extract' });
+    expect(getEnv({ ZYTE_API_URL: 'http://127.0.0.1:4010/v1/extract' }).ZYTE_API_URL).toBe('http://127.0.0.1:4010/v1/extract');
+    expect(() => getEnv({ ZYTE_API_URL: 'http://api.zyte.com/v1/extract' })).toThrow(/ZYTE_API_URL must be an https URL/);
+    expect(() => getEnv({ ZYTE_API_URL: 'not a url' })).toThrow(/ZYTE_API_URL/);
+    expect(() => getEnv({ ASSISTED_MONTHLY_CAP_EUR: '-1' })).toThrow(/ASSISTED_MONTHLY_CAP_EUR/);
+    const prod = {
+      APP_ENV: 'prod',
+      BETTER_AUTH_SECRET: 'a'.repeat(32),
+      REVALIDATE_TOKEN: 'b'.repeat(32),
+      HASH_SALT_SECRET: 'c'.repeat(32),
+      ALERTS_SECRET: 'd'.repeat(32),
+    };
+    expect(() => getEnv({ ...prod, ZYTE_API_URL: 'http://127.0.0.1:4010/v1/extract' })).toThrow(/ZYTE_API_URL must be https outside development/);
   });
 });
 

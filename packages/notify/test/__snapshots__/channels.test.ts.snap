@@ -58,7 +58,7 @@ Oprești alertele cu /oprire.",
 
 exports[`channel message formats (snapshots) > daily deals post: verified drops only, numbers and dates, links to Pretoscop 1`] = `
 "<b>Reduceri verificate de Pretoscop</b> · 6 noiembrie 2026
-Prețuri totale (preț + livrare) mai mici decât cel mai mic preț observat de noi în cele 30 de zile dinainte, doar la produse cu cel puțin 14 zile de istoric:
+Prețul total (preț + livrare) a scăzut azi cu cel puțin 3% sub cel mai mic preț observat de noi în cele 30 de zile dinainte (cu cel puțin 14 zile observate):
 
 1. <a href="https://pretoscop.ro/p/televizor-samsung-55-7">Televizor Samsung 55&quot; QLED</a>
    2.499,00 lei la forit · cu 13% sub minimul din 30 de zile (2.899,00 lei)

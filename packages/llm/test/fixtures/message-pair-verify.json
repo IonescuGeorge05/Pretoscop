@@ -1,0 +1,33 @@
+{
+  "id": "msg_01XFDUDYJgAACzvnptvVoYEL",
+  "type": "message",
+  "role": "assistant",
+  "model": "claude-haiku-5-5",
+  "content": [
+    {
+      "type": "thinking",
+      "thinking": "",
+      "signature": "EqQBCkYIBhgCKkBz0documentedshapeonlyQmFzZTY0U2lnbmF0dXJl"
+    },
+    {
+      "type": "text",
+      "text": "{\"same_product\":true,\"confidence\":0.94,\"conflicting_attributes\":[],\"reason\":\"Same model S25, 256 GB and 12 GB RAM; navy is dark blue.\"}",
+      "citations": null
+    }
+  ],
+  "stop_reason": "end_turn",
+  "stop_sequence": null,
+  "stop_details": null,
+  "usage": {
+    "input_tokens": 214,
+    "output_tokens": 61,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 1893,
+    "cache_creation": { "ephemeral_5m_input_tokens": 0, "ephemeral_1h_input_tokens": 0 },
+    "inference_geo": "global",
+    "output_tokens_details": { "thinking_tokens": 18 },
+    "server_tool_use": null,
+    "service_tier": "standard",
+    "speed": null
+  }
+}

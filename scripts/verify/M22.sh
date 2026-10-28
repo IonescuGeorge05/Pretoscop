@@ -43,9 +43,9 @@ pnpm turbo run test "${PACKAGES[@]}" --concurrency=2 --output-logs=errors-only -
 ok "green"
 
 step "the contract's checks, by name: cap stops calls at 100 %, recorded-shape responses, no Icecat data or seller names sent"
-(cd packages/llm && pnpm exec vitest run --reporter=verbose -t "cap|documented|Icecat|seller|retries|batch price|canceled" 2>&1 | grep -E '✓|×|Tests ' | sed 's/^/   /')
-(cd apps/worker && pnpm exec vitest run test/llm.test.ts --reporter=verbose 2>&1 | grep -E '✓|×|Tests ' | sed 's/^/   /')
-(cd packages/db && pnpm exec vitest run test/llm.test.ts --reporter=verbose -t "cap|seller|human|reject" 2>&1 | grep -E '✓|×|Tests ' | sed 's/^/   /')
+(cd packages/llm && pnpm exec vitest run --reporter=verbose -t "cap|documented|Icecat|seller|retries|batch price|canceled" 2>&1 | grep -E '^ +(✓|×) |Tests ' | sed 's/^/   /')
+(cd apps/worker && pnpm exec vitest run test/llm.test.ts --reporter=verbose 2>&1 | grep -E '^ +(✓|×) |Tests ' | sed 's/^/   /')
+(cd packages/db && pnpm exec vitest run test/llm.test.ts --reporter=verbose -t "cap|seller|human|reject" 2>&1 | grep -E '^ +(✓|×) |Tests ' | sed 's/^/   /')
 ok "named checks green"
 
 step "M07 eval on the extended set (≥ 500 labelled pairs) still passes"

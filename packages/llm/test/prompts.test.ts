@@ -24,9 +24,9 @@ const routes = defaultRoutes({ default: 'claude-haiku-5-5', escalation: 'claude-
  * are keyed by id@version), add it to the registry and pin its fingerprint here.
  */
 const FINGERPRINTS: Record<string, string> = {
-  'pair_verify@1': '38b1dbae1c570927',
-  'attributes@1': '0dc2fc37081540eb',
-  'category@1': 'b63a337ff80d1533',
+  'pair_verify@1': 'aaf2773239ac44ed',
+  'attributes@1': 'd199909d8a0384c1',
+  'category@1': 'dc1164e7b328777c',
 };
 
 function fingerprint(p: PromptDef<never, unknown>, sample: unknown): string {

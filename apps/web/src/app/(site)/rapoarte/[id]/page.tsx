@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation';
 import { Container } from '@/components/ui/container';
 import { findReport, PLANNED, PUBLISHED } from '@/content/reports';
 import { formatDate } from '@/lib/format';
+import { robotsFor } from '@/lib/seo';
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -24,8 +25,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return {
     title: r?.title ?? p?.title ?? 'Raport',
     description: r ? `Cât de reale au fost reducerile între ${formatDate(r.window.from)} și ${formatDate(r.window.to)}, din prețurile observate de Pretoscop.` : p?.summary,
-    alternates: { canonical: `/rapoarte/${id}` },
-    robots: r ? undefined : { index: false, follow: true },
+    alternates: { canonical: `/rapoarte/${id}`, languages: { 'ro-RO': `/rapoarte/${id}` } },
+    // Approved reports follow the site (closed while SITE_INDEXABLE=false); planned ones are never indexed.
+    robots: robotsFor(!!r),
   };
 }
 

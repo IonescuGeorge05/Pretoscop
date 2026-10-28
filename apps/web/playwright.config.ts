@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test';
+import { E2E_SEARCH_PREFIX } from './e2e/fixture';
 
 const PORT = Number(process.env.E2E_PORT ?? 3200);
 
@@ -22,7 +23,13 @@ export default defineConfig({
     url: `http://localhost:${PORT}`,
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
-    // A test affiliate code so M24's quicklinks can be checked (no real account exists).
-    env: { PUBLIC_BASE_URL: `http://localhost:${PORT}`, TWOPERFORMANT_UNIQUE_CODE: 'e2e-aff' },
+    // The e2e search indexes (global setup; this checkout's prefix + `e2e_`), no analytics rows from
+    // test traffic, and a test affiliate code so M24's quicklinks can be checked (no real account exists).
+    env: {
+      PUBLIC_BASE_URL: `http://localhost:${PORT}`,
+      MEILI_INDEX_PREFIX: E2E_SEARCH_PREFIX,
+      EVENTS_ENABLED: 'false',
+      TWOPERFORMANT_UNIQUE_CODE: 'e2e-aff',
+    },
   },
 });

@@ -27,6 +27,7 @@ import { canonicalUrl, hostKey, normalizeHost, sameSite, toOrigin } from './site
 import type { DomainPause, DomainStateStore, RobotsCacheEntry } from './state/types';
 import { bucharestDay, isWithinAllowedHours } from './time';
 import { httpGet } from './transport';
+import { signerFromEnv, type RequestSigner } from './signing';
 import type {
   AssistedChannel,
   AssistedFetchResponse,
@@ -286,6 +287,8 @@ class PoliteFetcher implements Fetcher {
   private readonly ownDispatcher: Agent | null;
   private readonly pageUserAgent: string;
   private readonly feedUserAgent: string;
+  /** Web Bot Auth (M21): adds Signature-Agent, Signature-Input and Signature to direct requests. */
+  private readonly signer: RequestSigner | undefined;
   private readonly defaultTimeoutMs: number;
   private readonly defaultMaxBytes: number;
   private readonly maxRetries: number;
@@ -325,6 +328,7 @@ class PoliteFetcher implements Fetcher {
       this.pageUserAgent = buildUserAgent('page', infoUrl);
       this.feedUserAgent = buildUserAgent('feed', infoUrl);
     }
+    this.signer = deps.signer === undefined ? signerFromEnv(process.env, infoUrl) : (deps.signer ?? undefined);
 
     if (deps.dispatcher) {
       this.dispatcher = deps.dispatcher;
@@ -507,12 +511,19 @@ class PoliteFetcher implements Fetcher {
    * crawl window, daily budget (peeked, not consumed). Checked when a call starts and again for
    * every request, under the host lock, before and after the slot wait.
    */
-  private async denial(ctx: CallContext, host: string, policy: DomainPolicy, peekBudget: boolean): Promise<Denial | null> {
+  private async denial(ctx: CallContext, url: URL, host: string, policy: DomainPolicy, peekBudget: boolean): Promise<Denial | null> {
     if (!this.crawlEnabled) {
       return { skipped: 'access_off', error: 'crawling is disabled (CRAWL_ENABLED=false)', errorCode: 'crawl_disabled' };
     }
     const access = this.accessSkip(policy, ctx.purpose);
     if (access) return { skipped: access };
+    // Assisted channel (M05B): money and vendor state are checked before any slot or budget is
+    // used, so a request refused for the monthly cap costs nothing and counts nothing.
+    const assistedHop = ctx.chainChannel === 'assisted' || (ctx.chainChannel === undefined && policy.accessMode === 'assisted');
+    if (assistedHop && this.assisted?.check) {
+      const refusal = await this.assisted.check({ shopSlug: ctx.shopSlug ?? policy.shopSlug, host, purpose: ctx.purpose, url: url.href });
+      if (refusal) return { skipped: 'assisted_unavailable', error: refusal.detail, errorCode: refusal.code };
+    }
     const pause = await this.store.getPause(host);
     if (pause) return { skipped: 'paused', blocked: true, blockReason: 'paused', blockDetail: describePause(pause) };
     if (ctx.checkHours) {
@@ -534,7 +545,7 @@ class PoliteFetcher implements Fetcher {
   }
 
   private async gate(ctx: CallContext, url: URL, host: string, policy: DomainPolicy): Promise<FetchResult | null> {
-    const denial = await this.denial(ctx, host, policy, true);
+    const denial = await this.denial(ctx, url, host, policy, true);
     return denial ? this.skipResult(ctx, url, host, channelOf(policy), denial) : null;
   }
 
@@ -693,14 +704,14 @@ class PoliteFetcher implements Fetcher {
   private async sendUnderLock(url: URL, ctx: CallContext, truncate: boolean): Promise<HopOutcome> {
     const host = hostKey(url);
     let policy = await this.policy(host);
-    let denial = (await this.denial(ctx, host, policy, true)) ?? this.channelDenial(ctx, policy);
+    let denial = (await this.denial(ctx, url, host, policy, true)) ?? this.channelDenial(ctx, policy);
     if (denial) return { kind: 'skip', url, channel: this.hopChannel(ctx, policy), waitMs: 0, ...denial };
 
     const slot = await this.store.reserveSlot(host, this.intervalFor(url, policy, ctx));
     if (slot.waitMs > 0) {
       await this.sleep(slot.waitMs, ctx.opts.signal);
       policy = await this.policy(host);
-      denial = (await this.denial(ctx, host, policy, false)) ?? this.channelDenial(ctx, policy);
+      denial = (await this.denial(ctx, url, host, policy, false)) ?? this.channelDenial(ctx, policy);
       if (denial) return { kind: 'skip', url, channel: this.hopChannel(ctx, policy), waitMs: slot.waitMs, ...denial };
     }
     const channel = this.hopChannel(ctx, policy);
@@ -713,14 +724,17 @@ class PoliteFetcher implements Fetcher {
       return this.assistedHop(url, render, ctx, startedAt, slot.waitMs);
     }
     try {
+      const headers = buildRequestHeaders({
+        userAgent: ctx.purpose === 'feed' ? this.feedUserAgent : this.pageUserAgent,
+        purpose: ctx.purpose,
+        accept: ctx.opts.accept,
+        etag: ctx.opts.etag,
+        lastModified: ctx.opts.lastModified,
+      });
+      // Signed per hop: a redirect to another host gets a signature for that host's authority.
+      if (this.signer) Object.assign(headers, this.signer.sign(url));
       const res = await httpGet(url.href, {
-        headers: buildRequestHeaders({
-          userAgent: ctx.purpose === 'feed' ? this.feedUserAgent : this.pageUserAgent,
-          purpose: ctx.purpose,
-          accept: ctx.opts.accept,
-          etag: ctx.opts.etag,
-          lastModified: ctx.opts.lastModified,
-        }),
+        headers,
         dispatcher: this.dispatcher,
         timeoutMs: ctx.timeoutMs,
         maxBytes: ctx.maxBytes,
@@ -838,6 +852,12 @@ class PoliteFetcher implements Fetcher {
       if (r.error || r.status === 0) hop.vendorError = r.error ?? 'assisted vendor returned no response';
       return hop;
     } catch (error) {
+      // The channel refused before sending (scope, monthly cap, vendor refusing us; e.g. another
+      // shop's call took the last of the cap between the gate and now): nothing reached the vendor
+      // or the shop, so this is a skip, never a failure of the shop.
+      if (error instanceof FetchError && (error.fetchCode === 'assisted_cap' || error.fetchCode === 'assisted_refused')) {
+        return { kind: 'skip', url, channel, waitMs, skipped: 'assisted_unavailable', error: error.message, errorCode: error.fetchCode };
+      }
       const aborted = Boolean(ctx.opts.signal?.aborted);
       const wrapped =
         error instanceof FetchError
@@ -941,7 +961,7 @@ class PoliteFetcher implements Fetcher {
       if (!chainHosts.includes(host)) chainHosts.push(host);
       if (hop > 0) {
         // A redirect target: no request at all when its host is paused or off, or robots.txt says no.
-        const denial = (await this.denial(ctx, host, policy, true)) ?? this.channelDenial(ctx, policy);
+        const denial = (await this.denial(ctx, current, host, policy, true)) ?? this.channelDenial(ctx, policy);
         if (denial) {
           return done(await this.skipResult(ctx, current, host, this.hopChannel(ctx, policy), denial, { robotsGroup, hop }));
         }
@@ -1449,6 +1469,9 @@ class PoliteFetcher implements Fetcher {
       };
     }
     if (result.errorCode === 'too_many_redirects') return failed('too_many_redirects', result.error ?? 'too many redirects');
+    // A tool's own request cap stopped it (M21 shops:probe): nothing reached the site, so nothing is
+    // remembered in the shared state (a cached "unreachable" would stop the recorder on that host).
+    if (result.errorCode === 'request_cap') return null;
     const status = result.status;
     if (status === 0) return failed('unreachable', result.error ?? 'no response');
     if (status >= 200 && status < 300) {

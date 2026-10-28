@@ -13,7 +13,10 @@ export function generateMetadata(): Metadata {
     applicationName: t('site.name'),
     robots: env.SITE_INDEXABLE ? { index: true, follow: true } : { index: false, follow: false },
     openGraph: { siteName: t('site.name'), locale: 'ro_RO', type: 'website' },
-    alternates: { languages: { ro: '/' } },
+    twitter: { card: 'summary_large_image' },
+    // No site-wide alternates: each page declares its own canonical and hreflang ro-RO (M16).
+    // TDM reservation (Law 8/1996 art. 36², Directive 2019/790 art. 4(3)), also in /.well-known/tdmrep.json.
+    other: { 'tdm-reservation': '1' },
   };
 }
 

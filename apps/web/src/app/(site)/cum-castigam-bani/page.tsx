@@ -11,7 +11,7 @@ export const metadata: Metadata = {
   title: 'Cum câștigăm bani',
   description:
     'Modelul de afaceri Pretoscop, spus direct: azi nu avem venituri; pe viitor, comisioane de afiliere marcate, plasări promovate etichetate și analize de preț pentru firme. Nu vindem date personale.',
-  alternates: { canonical: '/cum-castigam-bani' },
+  alternates: { canonical: '/cum-castigam-bani', languages: { 'ro-RO': '/cum-castigam-bani' } },
 };
 
 // The partner list below is read from affiliate_programs (M24); refreshed hourly.

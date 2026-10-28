@@ -164,6 +164,7 @@ export * from './discount';
 export * from './anomaly';
 export * from './taxonomy';
 export * from './matching';
+export * from './seo';
 export * from './matching-eval';
 
 // M19: price-alert rules (decisions in bani, target parsing, quiet hours, email checks)
@@ -181,6 +182,8 @@ export {
   shopSlugFromDomain,
 } from './merchant';
 export * from './affiliate';
+export * from './deals';
+export * from './sitemap';
 
 // M22: gray-zone policy with LLM verification
 export * from './llm-policy';

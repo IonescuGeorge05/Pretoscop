@@ -4,14 +4,18 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./assisted": "./src/assisted/index.ts",
+    "./signing": "./src/signing.ts"
   },
   "scripts": {
     "lint": "eslint src test",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "demo": "tsx src/cli/demo.ts",
-    "record": "tsx src/cli/record.ts"
+    "record": "tsx src/cli/record.ts",
+    "assisted:demo": "tsx src/cli/assisted-demo.ts",
+    "bot-auth:keygen": "tsx src/cli/bot-auth-keygen.ts"
   },
   "dependencies": {
     "@pretoscop/config": "workspace:*",

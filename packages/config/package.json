@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./assisted": "./src/assisted.ts",
     "./env": "./src/env.ts",
     "./legal-texts": "./src/legal-texts.ts",
     "./logger": "./src/logger.ts",

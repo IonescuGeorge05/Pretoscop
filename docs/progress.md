@@ -1,4 +1,4 @@
-# Pretoscop — Progress tracker
+| M16 | SEO: structured data, sitemaps, performance | review | `mod/M16-seo` (merged into `daniel`) | | Server-rendered 404s, robots (Icecat AI block), sitemaps, JSON-LD; JS budget needs a founder decision || M15 | Deals page and discount verdict UI | review | `mod/M15-deals` (merged into `daniel`) | | No real drops before ~10 Nov (14 days of history needed); stricter badge rule after review || M14 | Search, category, brand and shop pages | review | `mod/M14-search` (merged into `daniel`) | | Meilisearch on the real catalogue (2,679 products); reviewed independently || M05B | Assisted-access channel for blocked shops (prototype) | review | `mod/M05B-assisted` (merged into `daniel`) | | Shipped off (no shop assisted, no vendor); cap booked before every call; shop extractors wait for A10 (vendor account, written legal opinion) |# Pretoscop — Progress tracker
 
 Single page the founders read to supervise the build. The implementing agent updates it at the start and end of every module. Statuses: `todo` → `in_progress` → `review` (founder verifies with the module's checklist) → `done`, or `blocked` (say on what). Phase gates (G0–G4) require explicit founder approval before the next phase starts.
 
@@ -92,6 +92,8 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 | | Company: SRL formation date | | pending |
 | 2026-10-27 | eMAG product pages (Tier A) after a CAPTCHA | keep Tier A off and rely on listings / retry Tier A at a slower pace after asking eMAG / stop eMAG entirely | **Pending founder decision.** Listing pages were fine (≈ 200 pages, 5 s apart); at 21:45 UTC eMAG answered the 6th product-page request (5 s apart) with a CAPTCHA (HTTP 511). The fetch layer paused www.emag.ro for 24 h (until 28 Oct 21:45 UTC), so the 28 Oct night has no eMAG observations (a gap, shown as a gap). The lead switched the Tier A source off (kill switch, audited) so the next pause does not also stop listings; nothing was retried or worked around |
 | 2026-10-28 | Development and recording machine; pushing | keep the Mac / move to Daniel's Windows laptop; push only when asked / push as modules pass | **Decided by Daniel:** the build and the recorder move to his Windows laptop (Docker Desktop installed; the recorder runs there from 28 Oct, eMAG product pages stay off); `daniel` and every module branch are pushed to GitHub as soon as their verify passes; the old machine's `.env`, `data/` and a dump without login data were published under `handoff/` (checked: no keys, no emails, no rows from the user, session, audit, click or consent tables) |
+| 2026-10-28 | JavaScript budget on product pages (M16) | keep "JS < 150 kB" and cut framework code / accept the framework shell (151 kB with React 19 + Next 16) and budget each page own JS (< 20 kB) with LCP < 2.5 s on a throttled phone | **Pending founder decision.** Today: shell 151 kB, product page 166 kB with the alert form (own 15 kB), uPlot 21 kB loaded near the chart; LCP 744 ms in the throttled e2e. The M16 test enforces the second option until you decide |
+| 2026-10-28 | Are single-offer products from tier-1 shops (eMAG, Dedeman) provisional? (M07/M16) | yes, like every matcher-made product (MATCHING.md, docs/03: noindex until ≥ 2 offers, Icecat specs or a human check) / no, as the M07 code does (trusted shops create indexable products; they become indexable after 14 days of history) | **Pending founder decision.** The code and the docs disagree; nothing changed yet. The lead fixed the other half on 28 Oct (provisional now clears at 2 live offers, as documented) |
 | 2026-10-28 | Recording Mac sleeping on battery (operations note) | keep the Mac plugged in and awake / move the recorder to the VPS (M18) | **Needs Daniel.** From about 00:29 UTC the Mac was on battery (66 % → 61 %) and in idle sleep with short maintenance wakes. Requests in flight broke as "connection reset" and the fetch layer paused six shops for 24 h. The lead matched each reset to a sleep or wake in `pmset -g log` and lifted five pauses (audited: `fetch.unpause`); Flip stays paused (its reset matches no sleep event). Two fixes: `caffeinate -i` for 4 h from ~07:15 UTC, and since `4d46a06` a transport error that surfaces > 30 s after its own timeout counts as a local suspension (no pause). Please keep the Mac on power with the lid open, or run the recorder on a server |
 | 2026-10-27 | Blocked shops policy (`12-blocked-shops-strategy.md` §0) | identity + feeds + partnerships only / assisted-access channel for the prototype / exclude | **Decided: assisted-access channel for the prototype**, after legal advice (verbal); written opinion to be filed (A10); exit per shop to feed or allowlist; eMAG excluded from this decision |
 
@@ -524,3 +526,103 @@ Risks / open questions:
 - Merchants still pending from before the fixes must be re-checked before approval.
 - Merchants verified through a subdomain mailbox before the fix stay verified, since domains are never re-verified.
 Next module: M21 (built on M20), then M25 and M28 (merchant accounts).
+
+### M14 — Search, category, brand and shop pages — 2026-10-28
+(Implemented by a delegated Opus agent before the machine move; finished, independently reviewed (read-only Opus review) and verified by a second Opus agent on the Windows laptop; merged and re-verified by the lead. The original report was lost in the move.)
+Scope delivered:
+- `@pretoscop/search`:
+  - Meilisearch client and index settings: about 290 Romanian synonym entries, stop words, typo tolerance off on model codes and numbers;
+  - document builder, query parsing (`cauta` parameters, barcode path) and a CLI;
+  - jobs `search.sync` (every minute) and `search.rebuild` (05:00), with a PostgreSQL advisory lock per index set so two writers never interleave;
+  - the incremental sync also re-indexes offers that crossed their shop's freshness SLO and every product of a shop whose status or SLO changed;
+  - per-checkout index prefixes (`MEILI_INDEX_PREFIX`).
+- Pages:
+  - `/cauta` with facets and sorts (works without JavaScript);
+  - `/api/suggest` and the header combobox (each option is a link, options grouped and labelled, keyboard and focus handling);
+  - `/c`, `/categorii`, `/b` (including brand × category pages), `/magazin` and `/magazine`;
+  - empty states and pagination (`…/0` redirects to page 1), Romanian plurals.
+Out of scope / deferred: database indexes on the `updated_at`/`created_at` columns the change detection scans (needs a migration); the nightly rollup touches every `product_stats` row, so the minute sync re-indexes the whole catalogue once a night; the manual "change in admin → searchable within 2 minutes" check is covered by integration tests only.
+Deviations from plan: the writer lock, staleness/shop-state re-indexing and index prefixes are additions; provisional products are never indexable (the rule now lives in `@pretoscop/core`).
+Verification: `make verify M=14` on `daniel` → lint/typecheck/tests green (search 42 tests including the acceptance queries); the dev index rebuilt from the real catalogue (2,679 documents, 48 categories, 70 brands, ≈ 1.1 s); founder queries on real data: "televizor samsung 55" 13 results, "iphone 17 pro 256" 13 (the 256 GB Pro first), "ps5" 11, "frigider side by side" 23 (relaxed "closest results"), "tigaie" 0; production build; Playwright 20 passed, 2 skipped (desktop-only API checks on mobile).
+Founder checklist: `scripts/verify/M14.checklist.md`.
+Human tasks needed: none.
+Risks / open questions: change detection without indexes at scale; the nightly full re-index; the index policy for provisional products (see M16 and the decisions log).
+Next module: M15.
+
+### M15 — Deals page and discount verdict UI — 2026-10-28
+(Implemented by a delegated Opus agent before the machine move; finished, independently reviewed and verified by a second Opus agent; merged and re-verified by the lead.)
+Scope delivered:
+- Core rules `verifiedDrop`, `newAllTimeLow`, `atThirtyDayLow` and the `getDeals(window, category)` query.
+- `/reduceri` (ISR 15 min): category tabs with exact counts, CSS-only filters that work without JavaScript, and a "Minime 30 de zile" section.
+- Badges on product pages and listings ("−X % față de minimul din 30 de zile", "Minim istoric", "la minimul din 30 de zile"); the factual reference-price note; methodology text (version 0.3); the merchant correction link; badge rules in `packages/core/README.md`.
+- Fixed after the independent review:
+  - **False badges (high):** badges could appear after a partial rebound (1.200 → 800 → 1.000 lei) or after an intraday rise. New rule 5: no badge when we observed a lower price since the level started; today's minimum counts.
+  - One price basis everywhere: `product_stats.current_min_total`, the badge shown only while a fresh shop-sold offer sells at exactly that total.
+  - No drop or all-time-low badges on provisional products.
+  - Listing percentages are floored, so they never exceed the product page's.
+  - Deals are computed uncapped, then filtered per tab.
+  - Romanian wording ("Am observat prețul mai mic începând cu …", plurals).
+Out of scope / deferred: the deals `ItemList` is not filtered by indexability (documented).
+Deviations from plan: rule 5 is stricter than the docs/03 wording; the product page uses the rollup basis.
+Verification: `make verify M=15` on `daniel` → green (core deals 14 tests, db `getDeals` 5): no badge under 14 days, 3 % floor, 30-day reference before the drop, raise-then-cut and partial rebounds ignored, provisional excluded; `deals:show` on the dev database: history since 2026-10-27, 0 products with ≥ 14 days, so 0 drops (as expected); production build; Playwright 10 passed.
+Founder checklist: `scripts/verify/M15.checklist.md`.
+Human tasks needed: none.
+Risks / open questions: no real drops can appear before about 10 Nov 2026 (14 days of history needed).
+Next module: M16.
+
+### M16 — SEO, structured data, sitemaps, performance — 2026-10-28
+(The earlier agent stopped mid-work for the machine move; a second Opus agent finished it, had it independently reviewed and verified it; merged and re-verified by the lead.)
+Scope delivered:
+- **Server-rendered 404s.** A `notFound()` thrown during rendering escaped React's server render, and Next 16 sent an empty `<html id="__next_error__">` filled only by JavaScript. Pages now render their 404 content inside `NotFoundResponse`, which keeps the 404 status and `noindex` with the message in the HTML. Tested on 9 routes, with and without JavaScript.
+- **robots.txt:**
+  - prototype: `Disallow: /`;
+  - open site: everything except `/out/`, `/admin`, `/api/`;
+  - AI crawlers refused site-wide, including `ICECAT_ROBOTS_DISALLOW_AGENTS` (the M11 / Open Icecat requirement, via a new `@pretoscop/icecat/attribution` export);
+  - checked with our RFC 9309 parser from M02;
+  - TDM reservation in a header, a meta tag and `/.well-known/tdmrep.json`.
+- **Sitemaps:**
+  - `/sitemap.xml` index;
+  - `pages.xml`: approved reports with their approval dates, never planned ones; legal pages; `/reduceri` tabs only while they have drops;
+  - the `sitemap.build` job (05:30 and at worker start) writes `products-{n}.xml` (indexable products only, `lastmod` = last price change) plus categories, brands, shops and a manifest (published before old files are deleted).
+- **JSON-LD:** `Product` + `AggregateOffer` over one consistent offer set (no Product markup without a live offer; unknown availability and unnamed marketplace sellers left out); `BreadcrumbList`, `ItemList`, `Organization`, `WebSite` + `SearchAction`; a validator with 10 fixtures (17 tests).
+- **Metadata:** canonical and `hreflang ro-RO` everywhere; 308 redirects for wrong slugs and merged products; the static Open Graph image restored on product and browse pages; CSP; a start-up check that stops a staging/production server whose build-time `SITE_INDEXABLE`/`PUBLIC_BASE_URL` differ from runtime.
+- **Performance:** uPlot imported only near the viewport, with its height reserved; the alert form in its own chunk; an e2e budget test under DevTools mobile throttling.
+- `scripts/verify/M16.sh` (including a second server start with `SITE_INDEXABLE=true`), the checklist, an "SEO rules" section in the web README, a mobile `lighthouserc.json`.
+Out of scope / deferred: Lighthouse CI not run (needs network for `@lhci/cli`; the throttled-LCP Playwright test replaces it); the Google Rich Results Test (founder step at launch); `tdm-policy` points at an HTML anchor, not an ODRL policy; tailwind-merge still in client bundles (8.5 kB).
+Deviations from plan:
+- **JS budget not met literally.** The site shell alone is 151 kB compressed (React 19 + Next 16; M12 already warned). Product pages load 166 kB with the alert form, of which the page's own share is 15 kB; uPlot adds 21 kB when the chart is reached. The test enforces "own < 20 kB" and LCP < 2.5 s instead. **Founder decision** (decisions log).
+- 308 instead of 301; `hreflang="ro-RO"`; sitemap files at `/sitemaps/products-{n}.xml`; a home-grown JSON-LD validator; `/cauta` stays crawlable so its `noindex, follow` is seen; no family pages.
+- It touched other modules' files: M13 (chart, product spec), M19 (alert-form wrapper), M23 (planned-report robots), M12 (root not-found, lighthouserc), M11 (export map), `next.config` (CSP, env).
+Verification: `make verify M=16` on `daniel` → green; build; Playwright 11 passed, 3 skipped (device-specific checks); budget line "LCP 744 ms; shell 151 kB, product page 166 kB (own 15 kB), uPlot 21 kB"; open-site checks (robots groups, Icecat agents, `Sitemap:` line, indexable/thin/provisional product meta, search `noindex, follow`, server-rendered 404, sitemap index); dev sitemaps rebuilt (products-1: 147 URLs, categories 6, brands 20, shops 7).
+Founder checklist: `scripts/verify/M16.checklist.md`.
+Human tasks needed: B6 (Search Console, submit `/sitemap.xml`) and A1 at launch; decide the JS budget; build the production web image with `SITE_INDEXABLE=true` at launch (the server refuses to start otherwise).
+Risks / open questions:
+- `NotFoundResponse` relies on Next 16 setting the 404 status from a Suspense-boundary error during prerendering (ISR routes; guarded by the e2e).
+- Search sync at scale (see M14).
+- `apps/web/e2e/legal.spec.ts` falls back to the main database when `DATABASE_URL` is not exported (read-only queries).
+- Only 147 of 2,679 products were indexable on 28 Oct. The lead fixed one cause the same day (M07 below); the eMAG/tier-1 rule is a founder decision (decisions log).
+Next module: M18 (done), M26.
+
+M07 follow-up (28 Oct, lead): `computeProductStats` now clears `products.provisional` once a product has two live offers. MATCHING.md, docs/03 and the schema all said "provisional until ≥ 2 offers, Icecat specs or a human check", but only the last two were implemented. On 28 Oct, 1,969 of 2,679 products were provisional, 11 of them with two or more live offers. The regression test fails without the change. Existing products are cleared at their next rollup, which needs the recorder rebuilt from `daniel` (the running recorder image predates the fix).
+
+### M05B — Assisted-access channel for blocked shops (prototype) — 2026-10-28
+(Built by a delegated Opus agent on top of an early M18 before the machine move; finished and verified by a second Opus agent on the Windows laptop; merged and re-verified by the lead.)
+Status: **shipped off.** No shop has `access_mode: assisted`, `ASSISTED_VENDOR=none`, flag `assisted.enabled` off; no live vendor or shop request was made.
+Scope delivered:
+- `packages/fetch` `assisted/`: `AssistedClient` with a Zyte implementation (HTTP tier by default, browser tier per shop) and an Oxylabs stub; vendor status mapping (success, blocked, timeout, quota/rate, refused); the Zyte endpoint must be https and goes through the worker's SSRF-guarded dispatcher.
+- Routing inside `fetchPolite` by `shops.access_mode`, with the same per-domain interval, concurrency 1, daily budget and windows as direct requests; robots.txt read through the channel and obeyed.
+- Scope guard applied before any slot, budget or vendor call: designated shops only, never eMAG; purposes robots/sitemap/listing/product only; the shop's own host only; no login, account, cart, checkout or API paths.
+- `access_costs` ledger with the monthly hard cap (`ASSISTED_MONTHLY_CAP_EUR`) and an 80 % warning. Every vendor call is booked at its full price before it is sent, under an advisory lock, so concurrent calls cannot pass the cap; the concurrency test fails without the lock.
+- Per-shop success-rate metric with auto-pause below 80 % over 7 days (`assisted.health`, kill switches + audit row); per-shop kill switch; `ingest_runs.channel` provenance with `source_tier` 1.
+- `/admin/acces-asistat` (designated shops, cap, spend, switches; `access_mode` and `legal_basis_ref` read-only — they change only in the YAML in git); runbook `infra/runbooks/assisted-access.md`; alert rules `AssistedSpendNearCap` (fixed to match per environment) with promtool cases; ADR-022.
+- cel.ro's bot check ("Verificare rapida", `validate_celcaptcha`) is now detected as a challenge on both channels, so its decoy JSON-LD is never ingested.
+Out of scope / deferred:
+- extractors and fixtures for Altex, Media Galaxy, Flanco, PC Garage and cel.ro: fixtures must be recorded through the channel, which needs the vendor account (A10); the research notes hold only fragments, so no parser was guessed and nothing was fetched;
+- the shops' sources and schedules: their `status`/`access_mode` are founder decisions;
+- the two-day live run (needs A10).
+Deviations from plan: robots.txt for an assisted shop is always read through the channel (trying direct first would provoke the block and pause the host); hosts limited to `<domain>`/`www.<domain>`; the cap refuses a call that could not fit at its highest price (≤ ≈ 2 cents of headroom unused).
+Verification: `make verify M=05B` on `daniel` (see the run on 28 Oct) → migrated database with `access_costs`; lint/typecheck/tests green (fetch 298 tests); no YAML or database shop on assisted, flag off, vendor none, eMAG never; vendor requests carry only url + tier; robots.txt first, 5 s between pages, the third page refused at the cap before reaching the vendor, spend never above the cap; production build; Playwright 2/2 (admin page lists the seven designated shops and the cap; a shop stop is audited; visitors refused). M18's static checks on the touched files: promtool rules and tests pass.
+Founder checklist: `scripts/verify/M05B.checklist.md`.
+Human tasks needed: A10 (Zyte account with a spend limit; check one real answer on toscrape.com; the written legal opinion naming the vendor and the shops); to record fixtures, a founder sets one shop to `status: active`, `access_mode: assisted` with a `legal.basis_ref` and one on-demand source.
+Risks / open questions: vendor answer shapes and prices are synthetic until the first real call; the cel.ro challenge markers come from research notes, not a recorded page; the path deny-list fails safe (may refuse a legitimate page whose path segment is a word such as `cont`); auto-pause needs ≥ 20 assisted requests a day for 7 days; the prototype's legal clearance needs written re-confirmation before Gate G2 (docs/12 §0).
+Next module: the founders' A10, then per-shop activation.

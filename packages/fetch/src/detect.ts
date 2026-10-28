@@ -21,6 +21,7 @@ export type BlockVendor =
   | 'fastly'
   | 'edgeone'
   | 'distinct'
+  | 'celcaptcha'
   | 'datadome'
   | 'perimeterx'
   | 'imperva'
@@ -100,6 +101,9 @@ function errorChain(error: unknown): ErrorLike[] {
   return chain;
 }
 
+/** `code` of the error `CappedDispatcher` throws when a tool's request cap is reached. */
+export const REQUEST_CAP_ERROR_CODE = 'ERR_PRETOSCOP_REQUEST_CAP';
+
 /** Classifies an error thrown while connecting, sending or reading a response. */
 export function classifyTransportError(error: unknown): TransportErrorClass {
   const chain = errorChain(error);
@@ -140,6 +144,8 @@ export function classifyTransportError(error: unknown): TransportErrorClass {
     if (own === 'aborted' || own === 'body_too_large' || own === 'decode_error') return neutral(own);
     return failure(own, true);
   }
+  // A tool's own request cap (`CappedDispatcher`, M21 shops:probe): nothing was sent.
+  if (has(REQUEST_CAP_ERROR_CODE)) return neutral('request_cap');
   // A request we could not even build (bad header value): our fault, not the shop's.
   if (has('UND_ERR_INVALID_ARG', 'ERR_INVALID_CHAR', 'ERR_INVALID_HTTP_TOKEN')) return neutral('invalid_request');
   // The SSRF guard (guard.ts) refused a private/loopback address: our refusal, never retried.
@@ -252,6 +258,16 @@ const MARKERS: Marker[] = [
     strong: true,
     test: (_html, lower) =>
       lower.includes('distinct captcha') || lower.includes('distinct traffic filter') || lower.includes('captcha.distinct.ro'),
+  },
+  {
+    // cel.ro's own bot check (docs/research/notes/gaps2_retailers.md §3): a POST form with
+    // action=validate_celcaptcha and reCAPTCHA, "Verificare rapida ... nu de un robot". The same page
+    // carries JSON-LD with decoy products (random hex names, fake prices): never data.
+    vendor: 'celcaptcha',
+    detail: 'cel.ro bot check ("Verificare rapida", validate_celcaptcha); its structured data is decoy',
+    strong: true,
+    test: (_html, lower) =>
+      lower.includes('validate_celcaptcha') || (lower.includes('verificare rapid') && /nu de (un )?robot/.test(lower)),
   },
   {
     vendor: 'datadome',

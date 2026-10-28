@@ -7,7 +7,7 @@ import { formatDate } from '@/lib/format';
 export const metadata: Metadata = {
   title: 'Rapoarte',
   description: 'Rapoartele Pretoscop despre reduceri, calculate din prețurile observate zilnic la magazinele din România.',
-  alternates: { canonical: '/rapoarte' },
+  alternates: { canonical: '/rapoarte', languages: { 'ro-RO': '/rapoarte' } },
 };
 
 const pct = (x: number | null) => (x === null ? '—' : `${Math.round(x * 100)}%`);

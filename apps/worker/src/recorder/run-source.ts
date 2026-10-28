@@ -145,6 +145,12 @@ function fetchOutcome(ctx: Ctx, res: Awaited<ReturnType<RecorderDeps['fetcher'][
       ctx.errors.push(`robots.txt disallows ${res.finalUrl}`);
       return 'skip';
     }
+    if (res.skipped === 'assisted_unavailable') {
+      // Monthly cap reached or vendor refusing (M05B): the run failed, it did not "succeed empty".
+      ctx.stats.errors++;
+      ctx.errors.push(`assisted channel unavailable${res.error ? `: ${res.error}` : ''}`);
+      return 'stop';
+    }
     ctx.errors.push(`skipped: ${res.skipped}`);
     return 'stop';
   }

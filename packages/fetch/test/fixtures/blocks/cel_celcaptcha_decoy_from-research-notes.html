@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<!--
+  Not a recorded page. Reconstructed from docs/research/notes/gaps2_retailers.md §3 ("cel.ro: Bot check
+  and decoy data"), which describes two Wayback captures: the 2026-07-20 homepage (in-house "celcaptcha"
+  page: "Verificare rapida", POST form with action=validate_celcaptcha, a Google reCAPTCHA v2 widget,
+  a cel_id cookie) and the 2026-02-01 /placi-video/ capture (the same text plus JSON-LD with 15 synthetic
+  Product records such as "Husa Pro b6fc26eb", sku "8dd554e7ba", 945 RON, brand "oem", and
+  "Carcasa Elegance f58373a6", 1059 RON, under a "Placi video > Geforce RTX 3050" breadcrumb).
+  Markup, layout and the other decoy records are invented; the site key is a placeholder.
+-->
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Placi video - cel.ro</title>
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"BreadcrumbList","itemListElement":[
+{"@type":"ListItem","position":1,"name":"Placi video","item":"https://www.cel.ro/placi-video/"},
+{"@type":"ListItem","position":2,"name":"Geforce RTX 3050","item":"https://www.cel.ro/placi-video/geforce-rtx-3050/"}]}
+</script>
+<script type="application/ld+json">
+[{"@context":"https://schema.org","@type":"Product","name":"Husa Pro b6fc26eb","sku":"8dd554e7ba","brand":{"@type":"Brand","name":"oem"},"offers":{"@type":"Offer","price":"945","priceCurrency":"RON","availability":"https://schema.org/InStock"}},
+{"@context":"https://schema.org","@type":"Product","name":"Carcasa Elegance f58373a6","sku":"3c9a0f12e4","brand":{"@type":"Brand","name":"oem"},"offers":{"@type":"Offer","price":"1059","priceCurrency":"RON","availability":"https://schema.org/InStock"}},
+{"@context":"https://schema.org","@type":"Product","name":"Suport Smart 9e41d07a","sku":"a17b5c33d9","brand":{"@type":"Brand","name":"oem"},"offers":{"@type":"Offer","price":"1426","priceCurrency":"RON","availability":"https://schema.org/InStock"}}]
+</script>
+</head>
+<body>
+<div class="celcaptcha-box">
+  <h1>Verificare rapida</h1>
+  <p>Facem aceasta verificare pentru a ne asigura ca accesul este facut de o persoana, nu de un robot.</p>
+  <form method="post" action="/">
+    <input type="hidden" name="action" value="validate_celcaptcha">
+    <div class="g-recaptcha" data-sitekey="SYNTHETIC-SITE-KEY"></div>
+    <button type="submit">Continua</button>
+  </form>
+</div>
+</body>
+</html>

@@ -82,6 +82,12 @@ const fixtureCases: FixtureCase[] = [
     expect: { blocked: true, reason: 'challenge', vendor: 'distinct' },
   },
   {
+    name: 'cel.ro "Verificare rapida" bot check with decoy JSON-LD products, served with 200',
+    file: 'cel_celcaptcha_decoy_from-research-notes.html',
+    status: 200,
+    expect: { blocked: true, reason: 'challenge', vendor: 'celcaptcha' },
+  },
+  {
     name: 'Fastly "Client Challenge" interstitial (Hornbach) served with 200',
     file: 'fastly_client_challenge_200_synthetic.html',
     status: 200,
@@ -135,6 +141,17 @@ describe('detectBlock on fixture pages', () => {
     expect(d.reason).toBe(c.expect.reason);
     expect(d.vendor).toBe(c.expect.vendor);
     expect(d.detail).toBeTruthy();
+  });
+
+  it('cel.ro: the bot check is recognised on a large page too, and its words alone in normal text are not', () => {
+    const decoy = readFixture('blocks', 'cel_celcaptcha_decoy_from-research-notes.html');
+    const padded = decoy.replace('</body>', `<div>` + 'x'.repeat(200_000) + '</div></body>');
+    expect(detectBlock({ status: 200, contentType: HTML, body: padded })).toMatchObject({ blocked: true, reason: 'challenge', vendor: 'celcaptcha' });
+    const normal =
+      '<!doctype html><html><head><title>Placi video - cel.ro</title></head><body>' +
+      '<p>Verificare rapida a stocului in magazin.</p><span class="price"><span class="value">1549</span> <span class="currency">lei</span></span>' +
+      '<form><div class="g-recaptcha"></div>Confirma ca nu esti un robot pentru newsletter.</form></body></html>';
+    expect(detectBlock({ status: 200, contentType: HTML, body: normal + 'x'.repeat(70_000) }).blocked).toBe(false);
   });
 
   it('gives the Akamai reference in the detail', () => {

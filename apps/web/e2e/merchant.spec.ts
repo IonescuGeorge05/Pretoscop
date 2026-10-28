@@ -125,6 +125,23 @@ async function adminPage(browser: Browser): Promise<Page> {
   return page;
 }
 
+/**
+ * Catalog products with two of the feed's GTINs, so matching puts the offers on product pages (the
+ * test brand is unknown to the catalog, so the matcher would not create products for them). Kept
+ * between runs: a later run's offers match them again.
+ */
+async function seedProducts(): Promise<void> {
+  for (const [gtin, title, ascii] of [
+    ['05940000000011', 'Căști wireless Testoscop Aero 2 (produs de test E2E)', 'Casti wireless Testoscop Aero 2 (produs de test E2E)'],
+    ['05940000000028', 'Boxă portabilă Testoscop Boom 3 (produs de test E2E)', 'Boxa portabila Testoscop Boom 3 (produs de test E2E)'],
+  ] as const) {
+    if ((await query(`SELECT 1 FROM product_gtins WHERE gtin14 = $1`, [gtin])).length > 0) continue;
+    const [p] = await query<{ id: string }>(`INSERT INTO products (slug, title, title_ascii) VALUES ($1, $2, $3) RETURNING id::text`, [`e2e-testoscop-${gtin}-tmp`, title, ascii]);
+    await query(`UPDATE products SET slug = 'e2e-testoscop-' || id WHERE id = $1`, [p!.id]);
+    await query(`INSERT INTO product_gtins (gtin14, product_id, source) VALUES ($1, $2, 'manual')`, [gtin, p!.id]);
+  }
+}
+
 /** Lets the next feed check start now (the portal allows one per 30 s). */
 async function skipCheckCooldown(): Promise<void> {
   await query(`UPDATE merchants SET validation = jsonb_set(validation, '{requestedAt}', to_jsonb($2::text)) WHERE contact_email = $1`, [
@@ -146,6 +163,7 @@ test.describe('merchant portal', () => {
     });
     await new Promise<void>((resolve) => internal.listen(0, '127.0.0.1', resolve));
     await cleanup();
+    await seedProducts();
     await query(`UPDATE feature_flags SET enabled = true WHERE key IN ('merchants.portal.enabled', 'crawl.enabled')`);
   });
 
@@ -250,7 +268,7 @@ test.describe('merchant portal', () => {
       .not.toBe('');
     const buyer = await (await browser.newContext()).newPage();
     await buyer.goto(`/p/${slug}`);
-    await ui(buyer.getByText('Testoscop Shop').first()).toBeVisible();
+    await ui(buyer.getByText('Testoscop Shop').filter({ visible: true }).first()).toBeVisible();
 
     // Suspension with a statement of reasons hides the offer at once.
     await admin.goto(merchantUrl.replace(/\?.*$/, ''));

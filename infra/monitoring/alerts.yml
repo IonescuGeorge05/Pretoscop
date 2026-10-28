@@ -122,7 +122,9 @@ groups:
   - name: pretoscop-assisted
     rules:
       - alert: AssistedSpendNearCap
-        expr: (pretoscop_assisted_spend_month_cents >= 0.8 * pretoscop_assisted_cap_cents) and on () (pretoscop_assisted_cap_cents > 0)
+        expr: |
+          (pretoscop_assisted_spend_month_cents >= on (env) 0.8 * pretoscop_assisted_cap_cents)
+          and on (env) (pretoscop_assisted_cap_cents > 0)
         for: 5m
         labels: { severity: warning }
         annotations:

@@ -1,6 +1,7 @@
 import { ASSISTED_DESIGNATED_SHOPS } from '@pretoscop/config';
 import { sql } from '@pretoscop/db';
 import { Health, Section, Stat, Table, Td } from '@/components/admin/ui';
+import { requireAdmin } from '@/lib/auth';
 import { db, serverEnv } from '@/lib/db';
 import { formatDateTime, formatRelative } from '@/lib/format';
 import { setFlagAction, setShopKill } from '../../actions';
@@ -13,6 +14,8 @@ const euro = (cents: number) => `€${(cents / 100).toFixed(2)}`;
  * they change only in the registry YAML, reviewed in git (M04).
  */
 export default async function AssistedAccessPage() {
+  // Each admin page checks the session itself: the layout guard does not stop a segment from rendering.
+  await requireAdmin();
   const env = serverEnv();
   const d = db();
   const designated = sql.join(ASSISTED_DESIGNATED_SHOPS.map((s) => sql`${s}`), sql`, `);
@@ -115,7 +118,9 @@ export default async function AssistedAccessPage() {
                     <form action={setShopKill}>
                       <input type="hidden" name="shopId" value={s.id} />
                       <input type="hidden" name="on" value="0" />
-                      <button className="rounded bg-surface px-2 py-1 text-xs font-semibold ring-1 ring-line">Repornește</button>
+                      <button className="rounded bg-surface px-2 py-1 text-xs font-semibold ring-1 ring-line" data-testid={`assisted-unkill-${s.slug}`}>
+                        Repornește
+                      </button>
                     </form>
                   </div>
                 </Td>
@@ -127,7 +132,7 @@ export default async function AssistedAccessPage() {
       <Section title="Evenimente (opriri, auto-pauze, flag)">
         <Table head={['Când', 'Cine', 'Ce', 'Magazin']}>
           {events.rows.map((e, i) => (
-            <tr key={`${e.ts}-${i}`}>
+            <tr key={`${e.ts}-${i}`} data-testid="assisted-event">
               <Td className="text-xs">{formatRelative(e.ts)}<br />{formatDateTime(e.ts)}</Td>
               <Td className="text-xs">{e.actor}</Td>
               <Td className="font-mono text-xs">{e.action}</Td>

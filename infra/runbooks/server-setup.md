@@ -17,11 +17,15 @@ Internet ─▶ Cloudflare (DNS, cache, WAF, Access) ─▶ server :443 (firewal
 1. Hetzner Robot: order the server with Ubuntu 24.04; add your SSH key. Set the IPv4's reverse DNS
    to `crawl-1.bot.pretoscop.ro` (Robot → IPs → rDNS) and create the matching A record in
    Cloudflare as **DNS only** (grey cloud): the crawler's identity (`docs/12` layer 1, M21).
-2. As root on the server: copy `infra/server/bootstrap.sh` and the deploy user's public key, then
-   `bash bootstrap.sh git@github.com:OWNER/pretoscop.git deploy_key.pub`. It installs Docker,
-   creates the `deploy` user, locks SSH to keys, and lets only Cloudflare reach ports 80/443.
-3. GitHub: add a read-only **deploy key** for the server (`ssh-keygen -t ed25519` as `deploy`,
-   public part in repo Settings → Deploy keys) so `/srv/pretoscop/{prod,staging}` can `git fetch`.
+2. On your laptop: `ssh-keygen -t ed25519 -f pretoscop_ci` (the CI key: the private half becomes the
+   GitHub secret `DEPLOY_SSH_KEY`, B11). Put `pretoscop_ci.pub` and both founders' public keys in one
+   file, `deploy_keys.pub`.
+3. As root on the server: copy `infra/server/bootstrap.sh` and `deploy_keys.pub`, then
+   `bash bootstrap.sh https://github.com/OWNER/Pretoscop.git deploy_keys.pub` (a private repository:
+   `git@github.com:OWNER/Pretoscop.git`; the first run then prints the server's read-only deploy key
+   and stops: add it in GitHub → Settings → Deploy keys and run it again). It installs Docker, creates
+   the `deploy` user (docker group, no sudo), allows SSH by key only (root too: `ssh root@` with your
+   key for system maintenance), and lets only Cloudflare reach ports 80/443. Re-running it is safe.
 4. GHCR: a fine-grained token with `read:packages`, then as `deploy`:
    `echo <token> | docker login ghcr.io -u <github-user> --password-stdin`.
 

@@ -22,7 +22,7 @@ df -h /; free -g; uptime                        # disk, memory, load
 | Cloudflare status page / dashboard shows errors 52x | 521/522: origin unreachable → server or Caddy down (below). 502: Caddy up, web down. 525/526: certificate (origin cert expired or `CADDY_TLS` wrong) |
 | `$E ps` caddy not running | `$E up -d`; `$E logs caddy` |
 | `$C ps` web-1/web-2 unhealthy or restarting | `$C logs web-1`; database reachable? (`/api/health` returns 503 when not). Recent deploy → `infra/scripts/rollback.sh prod` |
-| postgres not healthy | `$C logs postgres`: disk full (§3), crash loop after an image change (roll back the image tag), recovery in progress (wait) |
+| postgres not healthy | `$C logs postgres`: disk full (§3), crash loop after a database image change (`POSTGRES_IMAGE_TAG=18-<previous release tag>` in `.env`, then `RECREATE_DATA_SERVICES=1 infra/scripts/deploy.sh prod <current tag>`), recovery in progress (wait) |
 | postgres log says `untracked child process (PID …) exited with exit code 2` then `terminating any other active server processes` | a process re-parented to the postmaster died (in dev on 2026-10-27: a timed-out shell-form health check while PostgreSQL ran as PID 1). Every long-running service in our compose files runs under an init process (`init: true`) with exec-form health checks and 10 s timeouts; if a server-local override removed either, restore it |
 | server not reachable at all | Hetzner Robot → reset; if the hardware is gone: `restore.md` → "The server is lost" |
 
@@ -39,7 +39,8 @@ df -h /; free -g; uptime                        # disk, memory, load
 ## 3. Disk almost full
 
 ```bash
-docker system df; sudo du -xh --max-depth=2 /var/lib/docker | sort -h | tail
+docker system df
+ssh root@<server> 'du -xh --max-depth=2 /var/lib/docker | sort -h | tail'   # deploy has no sudo
 $C exec postgres psql -U pretoscop -d pretoscop -c "select pg_size_pretty(pg_database_size('pretoscop'))"
 $C exec postgres du -sh /var/lib/postgresql/18/docker/pg_wal   # large → WAL archiving is failing (restore.md)
 ```

@@ -9,6 +9,8 @@ import { matchPendingJob } from './matching';
 import { opsAlertJob, opsHeartbeatJob, opsSloCheckJob } from './ops';
 import { merchantValidateJob, merchantVerifyDomainJob } from './merchants';
 import { fxRatesJob, rollupDailyJob, rollupTouchJob } from './rollup';
+import { searchRebuildJob, searchSyncJob } from './search';
+import { sitemapBuildJob } from './sitemap';
 import type { JobDefinition } from './types';
 
 /** Every job the worker runs. Later modules append their definitions here. */
@@ -36,5 +38,8 @@ export const jobs: JobDefinition<any>[] = [
   icecatSyncJob,
   merchantValidateJob,
   merchantVerifyDomainJob,
+  searchSyncJob,
+  searchRebuildJob,
+  sitemapBuildJob,
   extractorCanaryJob,
 ];

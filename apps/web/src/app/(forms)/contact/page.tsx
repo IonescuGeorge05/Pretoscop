@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   title: 'Contact',
   description:
     'Scrie-ne: întrebări, erori de preț, cereri ale magazinelor de oprire a colectării, sesizări privind conținut ilegal (DSA) și solicitări privind datele personale.',
-  alternates: { canonical: '/contact' },
+  alternates: { canonical: '/contact', languages: { 'ro-RO': '/contact' } },
 };
 
 function AsideBlock({ icon, title, children }: { icon: ReactNode; title: string; children: ReactNode }) {

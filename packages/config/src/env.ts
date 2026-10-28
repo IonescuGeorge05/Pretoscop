@@ -82,10 +82,19 @@ export const EnvSchema = z
     // Where the worker reaches the web app for cache revalidation (defaults to PUBLIC_BASE_URL).
     WEB_INTERNAL_URL: optionalString,
     SITE_INDEXABLE: bool.default(false),
+    // Server-side analytics rows (events table: searches, product views). The e2e suite turns them off.
+    EVENTS_ENABLED: bool.default(true),
 
     // Search
     MEILI_URL: z.string().min(1).default('http://localhost:7700'),
     MEILI_MASTER_KEY: z.string().min(1).default('dev-master-key-change-me-0123456789'),
+    // Search-only key for the web app (M14); the master key is used when it is empty (dev).
+    MEILI_SEARCH_KEY: optionalString,
+    // Prefix of every index name (`products`, `categories`, `brands`, `pretoscop_sync`); e2e appends `e2e_`.
+    MEILI_INDEX_PREFIX: z
+      .string()
+      .regex(/^[a-z0-9_-]{0,32}$/, 'use [a-z0-9_-], at most 32 characters')
+      .default(''),
 
     // Crawler identity and politeness (CLAUDE.md non-negotiable rules)
     BOT_INFO_URL: z.string().min(1).default('https://pretoscop.ro/bot'),

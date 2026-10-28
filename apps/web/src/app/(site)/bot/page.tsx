@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   title: 'PretoscopBot, robotul Pretoscop',
   description:
     'Cum funcționează PretoscopBot, robotul care citește prețurile pentru Pretoscop: User-Agent, adrese IP, ritmul cererilor, robots.txt, ce colectează și cum îl blochezi sau ne ceri să ne oprim.',
-  alternates: { canonical: '/bot' },
+  alternates: { canonical: '/bot', languages: { 'ro-RO': '/bot' } },
 };
 
 const ROBOTS_STOP = `# Oprește complet PretoscopBot

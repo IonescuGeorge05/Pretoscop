@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, formatDateTime, formatLei, formatLeiNumeric, formatLeiShort, formatRelative, plural, toBani } from '../format';
+import { formatDate, formatDateTime, formatLei, formatLeiNumeric, formatLeiShort, formatRelative, inSentence, plural, toBani } from '../format';
 
 describe('Romanian formatting', () => {
   it('formats lei with dot thousands and comma decimals', () => {
@@ -38,5 +38,14 @@ describe('Romanian formatting', () => {
     expect(plural(3, 'magazin', 'magazine')).toBe('3 magazine');
     expect(plural(25, 'magazin', 'magazine')).toBe('25 de magazine');
     expect(plural(101, 'ofertă', 'oferte')).toBe('101 oferte');
+  });
+
+  it('puts category names inside a sentence without breaking acronyms', () => {
+    expect(inSentence('Telefoane mobile')).toBe('telefoane mobile');
+    expect(inSentence('Laptopuri și PC')).toBe('laptopuri și PC');
+    expect(inSentence('TV și audio')).toBe('TV și audio');
+    expect(inSentence('SSD și hard disk-uri')).toBe('SSD și hard disk-uri');
+    expect(plural(1, 'marcă', 'mărci')).toBe('1 marcă');
+    expect(plural(20, 'marcă', 'mărci')).toBe('20 de mărci');
   });
 });

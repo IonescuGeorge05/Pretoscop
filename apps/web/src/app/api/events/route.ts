@@ -1,6 +1,6 @@
 import { events } from '@pretoscop/db';
-import { db } from '@/lib/db';
-import { clientIp, hashWithDailySalt } from '@/lib/privacy';
+import { db, serverEnv } from '@/lib/db';
+import { clientIp, hashWithDailySalt, isBot } from '@/lib/privacy';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -55,6 +55,8 @@ export async function POST(req: Request): Promise<Response> {
   }
   const session = hashWithDailySalt(clientIp(req.headers), req.headers.get('user-agent'));
   if (!allow(session)) return new Response('rate limited', { status: 429 });
+  // Crawlers that run JavaScript (and Lighthouse) would inflate popularity; tests store nothing.
+  if (!serverEnv().EVENTS_ENABLED || isBot(req.headers.get('user-agent'))) return new Response(null, { status: 204, headers: { 'cache-control': 'no-store' } });
 
   await db()
     .insert(events)

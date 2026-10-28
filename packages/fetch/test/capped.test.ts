@@ -28,7 +28,7 @@ describe('CappedDispatcher', () => {
     }
     expect(capped.requests).toBe(3);
     expect(starts).toHaveLength(3);
-    for (let i = 1; i < starts.length; i++) expect(starts[i]! - starts[i - 1]!).toBeGreaterThanOrEqual(118);
+    for (let i = 1; i < starts.length; i++) expect(starts[i]! - starts[i - 1]!).toBeGreaterThanOrEqual(119);
 
     const err = await request('https://d.test/', { dispatcher: capped }).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(RequestCapError);

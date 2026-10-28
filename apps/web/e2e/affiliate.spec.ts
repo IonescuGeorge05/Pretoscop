@@ -10,6 +10,7 @@ async function revalidate(request: APIRequestContext, productId: number) {
 
 test('allowed program: labelled affiliate link with our click id; forbidden after sync: plain link', async ({ page, request }) => {
   test.skip(test.info().project.name !== 'desktop', 'one run is enough');
+  test.setTimeout(180_000); // three fixture CLI runs and two cache refreshes
   const f = fixture();
   const forit = f.offers.forit!;
   const { flagWas } = fixtureCli('affiliate-allow') as { flagWas: boolean };

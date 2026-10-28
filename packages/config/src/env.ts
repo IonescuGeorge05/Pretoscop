@@ -55,7 +55,11 @@ export const EnvSchema = z
     ZYTE_API_KEY: optionalString,
     OXYLABS_USERNAME: optionalString,
     OXYLABS_PASSWORD: optionalString,
-    ASSISTED_MONTHLY_CAP_EUR: z.coerce.number().default(150),
+    ASSISTED_MONTHLY_CAP_EUR: z.coerce.number().min(0).default(150),
+    // EUR per USD for the cost estimate of USD-priced vendors (rounded up on purpose).
+    ASSISTED_EUR_PER_USD: z.coerce.number().positive().default(0.9),
+    // Zyte API endpoint (tests point it at a mock server).
+    ZYTE_API_URL: z.string().default('https://api.zyte.com/v1/extract'),
 
     // Blob storage (R2 in production, local filesystem in dev)
     BLOB_DRIVER: z.enum(['fs', 's3']).default('fs'),

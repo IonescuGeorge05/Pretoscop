@@ -39,6 +39,10 @@ export interface CrawlPolicyJson {
   freshness_slo_hours?: number;
   respect_crawl_delay?: boolean;
   assisted_render?: boolean;
+  /** Assisted channel (M05B): vendor price tier of the domain (Zyte 1–5; unset = 5). */
+  assisted_tier?: number;
+  /** Assisted channel: vendor exit country (ISO alpha-2; unset = vendor's choice). */
+  assisted_country?: string;
 }
 
 export const shops = pgTable(

@@ -85,6 +85,27 @@ sources:
     expect(() => parseShopYaml(base.replace('access_mode: direct', 'access_mode: assisted'), 'demo.yaml')).toThrow(/legal\.basis_ref/);
   });
 
+  // M05B: the channel can only ever be switched on for the shops the founders designated.
+  const designated = base
+    .replaceAll('demo', 'altex')
+    .replace('access_mode: direct', 'access_mode: assisted')
+    .replace('legal: {}', 'legal:\n  basis_ref: "infra/legal/2026-10-27-assisted-access-opinion.pdf"');
+
+  it('accepts assisted access for a designated shop with a legal basis, tier and country', () => {
+    const s = parseShopYaml(designated.replace('legal:\n', 'crawl_policy:\n  assisted_tier: 3\n  assisted_country: RO\nlegal:\n'), 'altex.yaml');
+    expect(s).toMatchObject({ access_mode: 'assisted', crawl_policy: { assisted_tier: 3, assisted_country: 'RO' } });
+  });
+
+  it('refuses assisted access for any shop not designated (eMAG included)', () => {
+    expect(() => parseShopYaml(designated.replaceAll('altex', 'dedeman'), 'dedeman.yaml')).toThrow(/limited to the shops designated/);
+    expect(() => parseShopYaml(designated.replaceAll('altex', 'emag'), 'emag.yaml')).toThrow(/eMAG never: ADR-013/);
+  });
+
+  it('validates the assisted tier and country', () => {
+    expect(() => parseShopYaml(designated.replace('legal:\n', 'crawl_policy:\n  assisted_tier: 6\nlegal:\n'), 'altex.yaml')).toThrow(/assisted_tier/);
+    expect(() => parseShopYaml(designated.replace('legal:\n', 'crawl_policy:\n  assisted_country: ro\nlegal:\n'), 'altex.yaml')).toThrow(/alpha-2/);
+  });
+
   it('refuses enabled sources on a blocked shop', () => {
     expect(() =>
       parseShopYaml(base.replace('status: active', 'status: blocked').replace('schedule: "0 3 * * *"', 'schedule: "0 3 * * *"\n    enabled: true'), 'demo.yaml'),

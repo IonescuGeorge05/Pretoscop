@@ -181,3 +181,6 @@ export {
   shopSlugFromDomain,
 } from './merchant';
 export * from './affiliate';
+
+// M22: gray-zone policy with LLM verification
+export * from './llm-policy';

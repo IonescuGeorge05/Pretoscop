@@ -135,3 +135,113 @@ export function rewriteTitle(title: string, seed: number): string {
   if (pick(5)) t = t.replace(/\s*\b5G\b\s*,?/i, ' ');
   return t.replace(/\s{2,}/g, ' ').trim();
 }
+
+// ---------------------------------------------------------------------------------------------
+// M22: the same harness with LLM verification of the gray zone.
+
+/** The LLM's answer for one labelled pair; null when the call failed or the answer was unusable. */
+export interface LlmEvalAnswer {
+  same: boolean;
+  confidence: number;
+  conflictingAttributes: string[];
+}
+
+export interface LlmGrayStats {
+  /** Pairs the rules left to a human (or every pair, with scope 'all'). */
+  asked: number;
+  /** Asked pairs without a usable answer (they stay with a human). */
+  unanswered: number;
+  llmAccepts: number;
+  llmCorrectAccepts: number;
+  /** Correct LLM accepts / LLM accepts (1 when none). */
+  llmAcceptPrecision: number;
+  /** Correct LLM accepts / positives asked. */
+  llmAcceptRecall: number;
+  llmRejects: number;
+  llmCorrectRejects: number;
+  llmRejectPrecision: number;
+  /** Asked pairs the LLM decided (accept or reject): the review queue shrinks by this share. */
+  decidedShare: number;
+  /** LLM accepts of negatives (the costly error). */
+  falseAccepts: string[];
+}
+
+export interface LlmThresholdReport {
+  threshold: number;
+  /** Rules + LLM, as the matcher would route with this threshold. */
+  combined: EvalStats;
+  bySource: Partial<Record<LabelSource, EvalStats>>;
+  gray: LlmGrayStats;
+}
+
+/**
+ * Routes every pair with the rules, then lets the LLM answer decide the gray zone (scope 'gray', the
+ * production policy) or every pair (scope 'all', the LLM alone), at each confidence threshold.
+ * A pair is accepted only when the LLM says "same" with confidence ≥ t and names no conflicting
+ * attribute, and rule conflicts are never overridden; "different" with confidence ≥ t rejects.
+ */
+export function evaluateWithLlm(
+  pairs: EvalPair[],
+  answers: ReadonlyMap<string, LlmEvalAnswer | null>,
+  opts: { thresholds: number[]; scope?: 'gray' | 'all' },
+): LlmThresholdReport[] {
+  const scope = opts.scope ?? 'gray';
+  const routed = pairs.map((p) => ({ p, r: routePair(p) }));
+  return opts.thresholds.map((t) => {
+    const outcomes: EvalOutcome[] = [];
+    const gray = { asked: 0, unanswered: 0, accepts: [] as EvalPair[], rejects: [] as EvalPair[], positives: 0 };
+    for (const { p, r } of routed) {
+      let route: EvalRoute = r.route;
+      const ask = scope === 'all' ? r.conflicts.length === 0 : r.route === 'review';
+      if (ask) {
+        gray.asked++;
+        if (p.same) gray.positives++;
+        const a = answers.get(p.id);
+        if (!a) {
+          gray.unanswered++;
+          if (scope === 'all') route = 'review';
+        } else if (a.same && a.confidence >= t && a.conflictingAttributes.length === 0) {
+          route = 'accept';
+          gray.accepts.push(p);
+        } else if (!a.same && a.confidence >= t) {
+          route = 'reject';
+          gray.rejects.push(p);
+        } else route = 'review';
+      }
+      outcomes.push({ id: p.id, route, score: r.score, via: ask && route !== 'review' ? `llm:${r.via}` : r.via, conflicts: r.conflicts, same: p.same, source: p.source });
+    }
+    const bySource: Partial<Record<LabelSource, EvalStats>> = {};
+    for (const src of ['human', 'gtin', 'mpn', 'family', 'synthetic'] as const) {
+      const sub = outcomes.filter((o) => o.source === src);
+      if (sub.length) bySource[src] = stats(sub);
+    }
+    const correctAccepts = gray.accepts.filter((p) => p.same).length;
+    const correctRejects = gray.rejects.filter((p) => !p.same).length;
+    return {
+      threshold: t,
+      combined: stats(outcomes),
+      bySource,
+      gray: {
+        asked: gray.asked,
+        unanswered: gray.unanswered,
+        llmAccepts: gray.accepts.length,
+        llmCorrectAccepts: correctAccepts,
+        llmAcceptPrecision: gray.accepts.length ? correctAccepts / gray.accepts.length : 1,
+        llmAcceptRecall: gray.positives ? correctAccepts / gray.positives : 1,
+        llmRejects: gray.rejects.length,
+        llmCorrectRejects: correctRejects,
+        llmRejectPrecision: gray.rejects.length ? correctRejects / gray.rejects.length : 1,
+        decidedShare: gray.asked ? (gray.accepts.length + gray.rejects.length) / gray.asked : 0,
+        falseAccepts: gray.accepts.filter((p) => !p.same).map((p) => p.id),
+      },
+    };
+  });
+}
+
+/** The pairs the LLM must answer for `evaluateWithLlm` (gray zone, or every pair without a rule conflict). */
+export function pairsToAsk(pairs: EvalPair[], scope: 'gray' | 'all' = 'gray'): EvalPair[] {
+  return pairs.filter((p) => {
+    const r = routePair(p);
+    return scope === 'all' ? r.conflicts.length === 0 : r.route === 'review';
+  });
+}

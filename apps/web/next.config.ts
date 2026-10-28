@@ -39,8 +39,12 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   agentRules: false,
-  transpilePackages: ['@pretoscop/config', '@pretoscop/core', '@pretoscop/db', '@pretoscop/mailer', '@pretoscop/notify', '@pretoscop/report', '@pretoscop/storage'],
+  transpilePackages: ['@pretoscop/config', '@pretoscop/core', '@pretoscop/db', '@pretoscop/mailer', '@pretoscop/notify', '@pretoscop/report', '@pretoscop/search', '@pretoscop/storage'],
   serverExternalPackages: ['pg', '@aws-sdk/client-s3', '@aws-sdk/lib-storage'],
+  async redirects() {
+    // `/c` alone has no page: the category index lives at /categorii.
+    return [{ source: '/c', destination: '/categorii', permanent: true }];
+  },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },

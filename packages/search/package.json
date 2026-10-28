@@ -1,0 +1,20 @@
+{
+  "name": "@pretoscop/search",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./sync": "./src/sync.ts"
+  },
+  "scripts": {
+    "lint": "eslint src test",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@pretoscop/config": "workspace:*",
+    "@pretoscop/core": "workspace:*",
+    "@pretoscop/db": "workspace:*"
+  }
+}

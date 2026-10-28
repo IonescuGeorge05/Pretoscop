@@ -82,6 +82,17 @@ export function formatRelative(d: Date | string | number, now: Date = new Date()
   return formatDate(d);
 }
 
+/**
+ * A name inside a sentence: "Telefoane mobile" → "telefoane mobile", while a leading acronym stays
+ * as written ("TV și audio", "SSD și hard disk-uri"), and so does the rest ("Laptopuri și PC" →
+ * "laptopuri și PC").
+ */
+export function inSentence(name: string): string {
+  const first = name.split(/\s/)[0] ?? '';
+  if (first.length > 1 && first === first.toLocaleUpperCase('ro-RO')) return name;
+  return name.charAt(0).toLocaleLowerCase('ro-RO') + name.slice(1);
+}
+
 /** Romanian plural forms: 1 magazin, 2 magazine, 20 de magazine. */
 export function plural(n: number, one: string, few: string, many = `de ${few}`): string {
   if (n === 1) return `1 ${one}`;

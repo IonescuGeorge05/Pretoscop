@@ -9,6 +9,7 @@ import { ProductImage } from '@/components/product/product-image';
 import { IcecatCredit } from '@/components/product/icecat-credit';
 import { keySpecs } from '@/components/product/specs';
 import { SummaryCard } from '@/components/product/summary-card';
+import { ViewBeacon } from '@/components/product/view-beacon';
 import { Container } from '@/components/ui/container';
 import { alertConsent, alertsEnabled } from '@/lib/alerts';
 import { serverEnv } from '@/lib/db';
@@ -98,6 +99,7 @@ export default async function ProductPage({ params }: Props) {
 
   return (
     <Container className="py-6">
+      <ViewBeacon productId={p.id} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd(p)).replace(/</g, '\\u003c') }} />
       <nav aria-label="Navigare ierarhică" className="mb-3 text-sm text-muted">
         <ol className="flex flex-wrap items-center gap-1">

@@ -16,6 +16,7 @@ const columns = [
   {
     title: 'Magazine',
     links: [
+      ['/magazine', t('footer.shops')],
       ['/pentru-magazine', t('footer.merchants')],
       ['/bot', t('footer.bot')],
       ['/contact', t('footer.contact')],

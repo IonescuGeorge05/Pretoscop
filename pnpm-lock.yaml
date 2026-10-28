@@ -59,6 +59,9 @@ importers:
       '@pretoscop/report':
         specifier: workspace:*
         version: link:../../packages/report
+      '@pretoscop/search':
+        specifier: workspace:*
+        version: link:../../packages/search
       '@pretoscop/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -150,6 +153,9 @@ importers:
       '@pretoscop/report':
         specifier: workspace:*
         version: link:../../packages/report
+      '@pretoscop/search':
+        specifier: workspace:*
+        version: link:../../packages/search
       '@pretoscop/storage':
         specifier: workspace:*
         version: link:../../packages/storage
@@ -294,6 +300,18 @@ importers:
       '@pretoscop/core':
         specifier: workspace:*
         version: link:../core
+
+  packages/search:
+    dependencies:
+      '@pretoscop/config':
+        specifier: workspace:*
+        version: link:../config
+      '@pretoscop/core':
+        specifier: workspace:*
+        version: link:../core
+      '@pretoscop/db':
+        specifier: workspace:*
+        version: link:../db
 
   packages/storage:
     dependencies:

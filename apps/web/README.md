@@ -62,6 +62,34 @@ Next.js 16 (App Router): public site, admin, API routes and click-out. Romanian 
   the choice and re-opens the banner (reloading the page when Plausible is already running); `/cookies` has the
   "Schimbă preferințele" control.
 
+## Search and browse (M14)
+
+- **Routes**: `/cauta` (dynamic, always noindex; facets as nofollow links, price as one GET form; a barcode that names
+  one product redirects to it), `/api/suggest` (autocomplete JSON, prices pre-formatted, `public, s-maxage=300`),
+  `/c/{root}[/{leaf}][/{page}]`, `/categorii`, `/b/{brand}[/{category}][/{page}]` (brand × category landing pages),
+  `/magazin/{shop}[/{page}]`, `/magazine`. A trailing number is the page; page 1 never has one (308 to the bare URL);
+  `/c/{leaf}` and `/c` redirect to the canonical path.
+- **Data**: listings come from Meilisearch (`src/lib/search.ts`: one keep-alive client, `MEILI_SEARCH_KEY` when set,
+  index names from `MEILI_INDEX_PREFIX`); the category tree, brands and shop facts from PostgreSQL (`src/lib/catalog.ts`).
+  Listing prices are the search document's lowest total among new, in-stock live offers (they lag the product page by at
+  most the one-minute sync).
+- **Rendering**: browse pages are ISR (1 h) through `generateStaticParams() → []`; the param-less ones (`/categorii`,
+  `/magazine`) use an optional catch-all for the same reason: **nothing data-backed renders during `next build`**, so
+  the build needs neither the database nor the index. Do not add a site-wide `loading.tsx` (M17 note).
+- **Index policy**: pages decide with `robotsFor(indexable)` (`src/lib/seo.ts`); everything is noindex while
+  `SITE_INDEXABLE=false`. Category and brand pages are indexable with at least one indexable product, brand × category
+  pages from `BRAND_CATEGORY_MIN_PRODUCTS` (3), shop pages when the shop is covered. ItemList JSON-LD lists only
+  indexable product URLs.
+- **Search box**: `SearchBox` (server wrapper with the strings) → `SearchBoxClient`, an ARIA 1.2 combobox (150 ms pause,
+  arrow keys, Enter opens the highlighted suggestion, Escape closes) on top of a plain GET form that works without
+  JavaScript. On `/cauta` it shows the query, read from the URL after hydration.
+- **Analytics**: `/cauta` logs `search` events (query ≤ 100 characters, hit count, matching mode; no cookies, daily-salted
+  session hash) and product pages send one `product_view` beacon; both feed popularity. `EVENTS_ENABLED=false` stores
+  nothing (the e2e suite sets it), and bot user agents are never stored.
+- **e2e**: global setup creates the throwaway fixture (including the Testoscop brand set) and builds an `e2e_` index from
+  the dev database; teardown removes both. The web server under test runs with `MEILI_INDEX_PREFIX=e2e_`. Run after
+  `next build` and never with another server on the e2e port (Playwright would reuse it).
+
 ## Plausible (self-hosted, after consent)
 
 | Variable | Example | Notes |

@@ -29,8 +29,8 @@ export default function MerchantsPage() {
             de la lansare, plănuită la începutul anului 2027.
           </p>
           <p className="mt-3">
-            <Link href="/contact?subiect=merchant" className={cn(buttonVariants({ size: 'md' }), 'font-semibold! text-white! no-underline!')}>
-              Vreau să fiu listat
+            <Link href="/pentru-magazine/cont" className={cn(buttonVariants({ size: 'md' }), 'font-semibold! text-white! no-underline!')}>
+              Înregistrează magazinul
               <ArrowRight className="size-4" aria-hidden />
             </Link>
           </p>
@@ -44,14 +44,18 @@ export default function MerchantsPage() {
             <>
               <ol>
                 <li>
-                  Ne scrii prin <Link href="/contact?subiect=merchant">formularul de contact</Link> (subiectul „Colaborare magazin”) și ne trimiți adresa
-                  feed-ului de produse.
+                  Îți creezi <Link href="/pentru-magazine/cont">contul magazinului</Link> cu un link primit pe email și completezi datele firmei (inclusiv CUI-ul).
                 </li>
-                <li>Verificăm feed-ul și potrivim produsele tale cu cele din catalogul nostru, după codul EAN, codul producătorului și titlu.</li>
-                <li>Ofertele tale vor apărea pe paginile de produs, cu prețul total, disponibilitatea și momentul ultimei actualizări.</li>
+                <li>
+                  Dovedești că administrezi domeniul site-ului: cu o adresă de email pe domeniu, cu o înregistrare DNS sau cu un fișier de verificare. Așa nimeni nu
+                  poate lista produsele altui magazin.
+                </li>
+                <li>Adaugi adresa feed-ului (sau încarci fișierul); îl verificăm pe loc și îți arătăm primele 20 de oferte exact cum le-am afișa.</li>
+                <li>Trimiți cererea; după aprobare citim feed-ul de 6 ori pe zi, gratuit, și potrivim produsele cu catalogul după EAN, codul producătorului și titlu.</li>
               </ol>
               <p>
-                Până la lansarea portalului pentru magazine, în care îți vei putea adăuga singur feed-ul și vedea statistici, configurăm noi feed-ul pentru tine.
+                În cont vezi ofertele afișate, cât de multe sunt potrivite cu produse, clicurile din ultimele 30 de zile și sugestii pentru feed. Preferi să te ajutăm
+                noi? <Link href="/contact?subiect=merchant">Scrie-ne</Link>. Condițiile sunt în <Link href="/pentru-magazine/termeni">Termenii pentru magazine</Link>.
               </p>
             </>
           ),

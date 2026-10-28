@@ -103,8 +103,22 @@
     {
       "idx": 14,
       "version": "7",
-      "when": 1793143987197,
-      "tag": "0014_commissions",
+      "when": 1793138033826,
+      "tag": "0014_alerts",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1793179199269,
+      "tag": "0015_merchants",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793179425583,
+      "tag": "0016_commissions",
       "breakpoints": true
     }
   ]

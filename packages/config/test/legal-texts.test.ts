@@ -25,7 +25,7 @@ describe('consent texts', () => {
   it('publishes alertConsent.v1 and analyticsConsent.v1, and currentVersion points at them', () => {
     expect(legalTexts.alertConsent.v1.key).toBe('alertConsent.v1');
     expect(legalTexts.analyticsConsent.v1.key).toBe('analyticsConsent.v1');
-    expect(currentVersion).toEqual({ alertConsent: 'alertConsent.v1', analyticsConsent: 'analyticsConsent.v1' });
+    expect(currentVersion).toEqual({ alertConsent: 'alertConsent.v1', analyticsConsent: 'analyticsConsent.v1', merchantTerms: 'merchantTerms.v1' });
     expect(currentConsentText('alertConsent')).toBe(legalTexts.alertConsent.v1);
     expect(currentConsentText('analyticsConsent')).toBe(legalTexts.analyticsConsent.v1);
   });
@@ -58,6 +58,13 @@ describe('consent texts', () => {
     expect(t.link.href.startsWith('/confidentialitate')).toBe(true);
   });
 
+  it('the merchant terms checkbox covers the right to represent the shop and feed accuracy', () => {
+    const t = legalTexts.merchantTerms.v1;
+    expect(t.text).toMatch(/dreptul să reprezint/);
+    expect(t.text).toMatch(/corecte și actualizate/);
+    expect(t.link.href).toBe('/pentru-magazine/termeni');
+  });
+
   it('the analytics banner offers Accept and Reject and links to the cookie page', () => {
     const t = legalTexts.analyticsConsent.v1;
     expect(t.acceptLabel).toBe('Accept');
@@ -79,14 +86,14 @@ describe('consent texts', () => {
 describe('legal documents', () => {
   it('every page has a path, a semantic version and an ISO date', () => {
     for (const doc of Object.values(legalDocuments)) {
-      expect(doc.path).toMatch(/^\/[a-z-]+$/);
+      expect(doc.path).toMatch(/^(\/[a-z-]+)+$/);
       expect(doc.version).toMatch(/^\d+\.\d+$/);
       expect(doc.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     }
     const legal = Object.values(legalDocuments)
       .filter((d) => d.kind === 'legal')
       .map((d) => d.path);
-    expect(legal).toEqual(['/termeni', '/confidentialitate', '/cookies', '/accesibilitate']);
+    expect(legal).toEqual(['/termeni', '/confidentialitate', '/cookies', '/accesibilitate', '/pentru-magazine/termeni']);
   });
 
   it('is exported from the package root as well', () => {

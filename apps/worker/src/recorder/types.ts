@@ -19,6 +19,8 @@ export interface FetchLike {
     finalUrl: string;
     channel: 'direct' | 'assisted';
     error?: string;
+    errorCode?: string;
+    contentType?: string | null;
   }>;
 }
 

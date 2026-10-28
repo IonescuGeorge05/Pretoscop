@@ -233,3 +233,34 @@ describe('channel message formats (snapshots)', () => {
     expect(text).not.toContain('/out/');
   });
 });
+
+describe('Telegram length limit (4096 characters)', () => {
+  const balanced = (t: string) => {
+    for (const tag of ['a', 'b', 'i']) expect(t.split(`<${tag}${tag === 'a' ? ' ' : '>'}`).length).toBe(t.split(`</${tag}>`).length);
+  };
+
+  it('a long digest keeps whole blocks, counts the rest and keeps the footer', () => {
+    const many = Array.from({ length: 40 }, (_, k) => item({ alertId: 100 + k, productTitle: `Produs cu un titlu foarte lung numărul ${k} ${'x'.repeat(80)}` }));
+    const { text } = telegramAlertMessage(many, { manageUrl: 'https://pretoscop.ro/alerte' });
+    expect(text.length).toBeLessThanOrEqual(4000);
+    expect(text).toMatch(/… și încă \d+ alerte în <a href="https:\/\/pretoscop\.ro\/alerte">Alertele mele<\/a>\./);
+    expect(text.endsWith('Oprești alertele cu /oprire.')).toBe(true);
+    balanced(text);
+  });
+
+  it('a long deals post stays under the limit too', () => {
+    const drops = Array.from({ length: 10 }, (_, k) => ({
+      productTitle: `Televizor ${'y'.repeat(120)} ${k}`,
+      productUrl: `https://pretoscop.ro/p/${'televizor-'.repeat(30)}${k}`,
+      totalBani: 199_900,
+      shopName: 'Magazin cu nume lung '.repeat(5),
+      min30Bani: 229_900,
+      dropPct: 13,
+    }));
+    const text = dealsPostText(drops, { date: new Date('2026-11-06T07:15:00Z'), dealsUrl: 'https://pretoscop.ro/reduceri' });
+    expect(text.length).toBeLessThanOrEqual(4000);
+    expect(text).toContain('pe pagina de reduceri.');
+    expect(text).toContain('Toate reducerile</a>');
+    balanced(text);
+  });
+});

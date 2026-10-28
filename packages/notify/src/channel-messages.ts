@@ -9,22 +9,46 @@ import { tgEscape, type InlineButton } from './telegram';
  * numbers, the time of Pretoscop's last check, a click-out through /out (M27).
  */
 
-const TELEGRAM_MAX = 3800; // under Telegram's 4096-character limit, room for the footer
+/** Telegram refuses a message over 4096 characters; ours stay under this, whole blocks only. */
+export const TELEGRAM_TEXT_MAX = 4000;
+
+/**
+ * Joins whole blocks while the message stays under `TELEGRAM_TEXT_MAX` with its head and footer (a
+ * cut inside an HTML tag would make Telegram refuse the message); what does not fit is counted in
+ * a line that points to `more`.
+ */
+function fitBlocks(head: string, blocks: string[], footer: string, more: (n: number) => string): string {
+  const kept: string[] = [];
+  for (let i = 0; i < blocks.length; i++) {
+    const rest = blocks.length - i - 1;
+    const tail = rest > 0 ? `\n\n${more(rest)}` : '';
+    const candidate = `${head}${[...kept, blocks[i]!].join('\n\n')}${tail}${footer}`;
+    if (candidate.length > TELEGRAM_TEXT_MAX && kept.length > 0) {
+      return `${head}${kept.join('\n\n')}\n\n${more(blocks.length - kept.length)}${footer}`;
+    }
+    kept.push(blocks[i]!);
+  }
+  return `${head}${kept.join('\n\n')}${footer}`;
+}
 
 export function telegramAlertMessage(items: AlertItem[], opts: { manageUrl: string; simulated?: boolean }): { text: string; buttons: InlineButton[][] } {
   if (items.length === 0) throw new Error('telegramAlertMessage: no items');
-  const blocks = items.slice(0, 10).map((x) =>
+  const blocks = items.map((x) =>
     [
       `<b>${tgEscape(shorten(x.productTitle, 90))}</b>`,
-      `${tgEscape(lei(x.totalBani))} la ${tgEscape(x.shopName)} (${tgEscape(deliveryLine(x.priceBani, x.shippingBani, x.shippingEstimated))})`,
+      `${tgEscape(lei(x.totalBani))} la ${tgEscape(shorten(x.shopName, 60))} (${tgEscape(deliveryLine(x.priceBani, x.shippingBani, x.shippingEstimated))})`,
       tgEscape(reasonLine(x)),
       `Verificat pe ${tgEscape(formatDateTime(x.checkedAt))}. <a href="${tgEscape(x.outUrl)}">Vezi oferta</a> · <a href="${tgEscape(x.productUrl)}">Istoric</a>`,
     ].join('\n'),
   );
   const head = `${opts.simulated ? '[SIMULARE] ' : ''}${items.length === 1 ? 'Preț mai mic' : `${items.length} prețuri mai mici`}`;
   const affiliate = items.some((x) => x.affiliate) ? '\nUnele linkuri pot fi afiliate (comision fără cost pentru tine).' : '';
-  let text = `<b>${head}</b>\n\n${blocks.join('\n\n')}\n\n<i>Prețul final este cel afișat de magazin.${affiliate}</i>\nOprești alertele cu /oprire.`;
-  if (text.length > TELEGRAM_MAX) text = `${text.slice(0, TELEGRAM_MAX)}…`;
+  const text = fitBlocks(
+    `<b>${head}</b>\n\n`,
+    blocks,
+    `\n\n<i>Prețul final este cel afișat de magazin.${affiliate}</i>\nOprești alertele cu /oprire.`,
+    (n) => `… și încă ${n === 1 ? 'o alertă' : `${n} alerte`} în <a href="${tgEscape(opts.manageUrl)}">Alertele mele</a>.`,
+  );
   const first = items[0]!;
   const buttons: InlineButton[][] =
     items.length === 1
@@ -71,14 +95,13 @@ export function dealsPostText(drops: VerifiedDrop[], opts: { date: Date; dealsUr
     .slice(0, 10)
     .map(
       (d, i) =>
-        `${i + 1}. <a href="${tgEscape(d.productUrl)}">${tgEscape(shorten(d.productTitle, 80))}</a>\n   ${tgEscape(lei(d.totalBani))}${d.shopName ? ` la ${tgEscape(d.shopName)}` : ''} · cu ${d.dropPct}% sub minimul din 30 de zile (${tgEscape(lei(d.min30Bani))})`,
+        `${i + 1}. <a href="${tgEscape(d.productUrl)}">${tgEscape(shorten(d.productTitle, 80))}</a>\n   ${tgEscape(lei(d.totalBani))}${d.shopName ? ` la ${tgEscape(shorten(d.shopName, 60))}` : ''} · cu ${d.dropPct}% sub minimul din 30 de zile (${tgEscape(lei(d.min30Bani))})`,
     );
-  return [
-    `<b>Reduceri verificate de Pretoscop</b> · ${tgEscape(formatLongDate(opts.date))}`,
-    'Prețul total (preț + livrare) a scăzut azi cu cel puțin 3% sub cel mai mic preț observat de noi în cele 30 de zile dinainte (cu cel puțin 14 zile observate):',
-    '',
-    lines.join('\n\n'),
-    '',
-    `<i>Prețurile se pot schimba oricând; prețul final este cel de pe site-ul magazinului.</i> <a href="${tgEscape(opts.dealsUrl)}">Toate reducerile</a>`,
-  ].join('\n');
+  return fitBlocks(
+    `<b>Reduceri verificate de Pretoscop</b> · ${tgEscape(formatLongDate(opts.date))}\n` +
+      'Prețul total (preț + livrare) a scăzut azi cu cel puțin 3% sub cel mai mic preț observat de noi în cele 30 de zile dinainte (cu cel puțin 14 zile observate):\n\n',
+    lines,
+    `\n\n<i>Prețurile se pot schimba oricând; prețul final este cel de pe site-ul magazinului.</i> <a href="${tgEscape(opts.dealsUrl)}">Toate reducerile</a>`,
+    (n) => `… și încă ${n === 1 ? 'una' : n} pe pagina de reduceri.`,
+  );
 }

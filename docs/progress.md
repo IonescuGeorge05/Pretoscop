@@ -63,7 +63,7 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 | Module | Name | Status | Branch / PR | Verified by founder | Notes |
 |---|---|---|---|---|---|
 | M19 | Accounts and price alerts | in progress | `mod/M19-alerts` (merged into `daniel`) | | Verify passes; an independent review found 2 high and 3 medium issues, being fixed on the branch |
-| M20 | Merchant self-serve feed portal (free listing) | in progress | `mod/M20-merchants` (merged into `daniel`) | | Verify passes; migration regenerated as 0015_merchants; independent review running |
+| M20 | Merchant self-serve feed portal (free listing) | in progress | `mod/M20-merchants` (merged into `daniel`) | | Verify passes; migration regenerated as 0015_merchants. An independent review found 3 high issues (a domain-verification race; feed checks able to pause our crawler on any shop; suspension not hiding offers), being fixed; keep `merchants.portal.enabled` off until then |
 | M21 | Bot legitimacy program and source adapters batch 2 | in progress | `mod/M21-bot-legitimacy` (WIP) | | Stopped mid-work for the machine move |
 | M22 | LLM-assisted matching and attribute extraction | todo | `mod/M22-llm-matching` (empty) | | Brief in docs/HANDOFF.md §7 |
 | M23 | Black Friday / fake-discount report tooling | review | `mod/M23-reports` (merged locally into `daniel`) | | Generator deterministic, reconciled with SQL; BF 2026 page waits for approved data |

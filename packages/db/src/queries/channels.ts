@@ -285,6 +285,13 @@ export async function pruneTelegramLinkTokens(db: Exec): Promise<number> {
   return r.rows.length;
 }
 
+/** True while this raw token is this user's unused, unexpired link token (/alerte shows its deep link only then). */
+export async function telegramLinkTokenPending(db: Exec, userId: string, token: string): Promise<boolean> {
+  const r = await db.execute(sql`
+    SELECT 1 FROM telegram_link_tokens WHERE token_hash = ${telegramTokenHash(token)} AND user_id = ${userId} AND expires_at > now()`);
+  return r.rows.length > 0;
+}
+
 /** "/urmareste iphone 17 pro": active products whose title holds every word (folded), most offers first. */
 export async function searchProductsForBot(db: Exec, query: string, limit = 5): Promise<Array<{ id: number; slug: string; title: string; minTotalBani: number | null }>> {
   const words = foldLower(query)

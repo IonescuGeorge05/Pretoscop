@@ -16,6 +16,7 @@ import {
   dropE2eFixture,
   e2eFixtureClicks,
 } from '../fixtures/e2e';
+import { channelsFixturePrice, channelsFixtureState, createChannelsFixture, dropChannelsFixture, setChannelFlags } from '../fixtures/channels-e2e';
 
 // Usage: tsx src/cli/e2e-fixture.ts <command> [args] — prints JSON on stdout.
 //   create | drop | clicks                     product-page fixture (M13)
@@ -30,6 +31,11 @@ import {
 //   alerts-products <n>                        n extra throwaway products (removed by alerts-drop)
 //   alerts-suppress <email> <reason>           puts a test address on the suppression list
 //   alerts-drop <flagWas:on|off> <email…>      removes the alert fixture and the test addresses
+//   channels-create                            M27: product, offers, the three channel flags on (prints flagsWere)
+//   channels-price <offerKey> <lei>            synthetic price change of a channels fixture offer
+//   channels-state <email>                     browsers, Telegram link, alerts and consents of a test address
+//   channels-flags '<json>'                    sets channel flags, e.g. '{"alerts.push.enabled":false}'
+//   channels-drop '<json flagsWere>'           removes the channels fixture and accounts; restores the flags
 loadRootEnvFile();
 const env = getEnv();
 const pool = createPool(env.DATABASE_URL, 2);
@@ -54,6 +60,14 @@ try {
     const reason = args[1] === 'bounce' || args[1] === 'unsubscribed' ? args[1] : 'complaint';
     out = await alertsFixtureSuppress(db, hashes([args[0] ?? ''])[0]!, reason);
   }
+  else if (cmd === 'channels-create') out = await createChannelsFixture(db);
+  else if (cmd === 'channels-price') out = await channelsFixturePrice(db, args[0] ?? 'a', Number(args[1]));
+  else if (cmd === 'channels-state') out = await channelsFixtureState(db, args[0] ?? '');
+  else if (cmd === 'channels-flags') {
+    await setChannelFlags(db, JSON.parse(args[0] ?? '{}') as Record<string, boolean>);
+    out = { ok: true };
+  } else if (cmd === 'channels-drop')
+    out = { dropped: await dropChannelsFixture(db, { restoreFlags: JSON.parse(args[0] ?? '{}') as Record<string, boolean> }) };
   else if (cmd === 'alerts-drop')
     out = {
       dropped: await dropAlertsFixture(db, {

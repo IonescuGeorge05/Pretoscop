@@ -1,5 +1,5 @@
 import { consentTextByKey, currentConsentText } from '@pretoscop/config/legal-texts';
-import { userAlerts, type AlertView } from '@pretoscop/db';
+import { telegramLinkTokenPending, userAlerts, type AlertView } from '@pretoscop/db';
 import type { Metadata } from 'next';
 import { cookies } from 'next/headers';
 import Link from 'next/link';
@@ -219,8 +219,11 @@ export default async function AlertsPage({ searchParams }: Props) {
   }
 
   const [alerts, ch, jar] = await Promise.all([userAlerts(db(), session.user.id), userChannels(session.user.id), cookies()]);
-  // The one-time Telegram link token, set by "Conectează Telegram" (httpOnly cookie, 15 minutes).
-  const telegramToken = jar.get(TELEGRAM_LINK_COOKIE)?.value ?? null;
+  // The one-time Telegram link token, set by "Conectează Telegram" (httpOnly cookie, 15 minutes):
+  // shown only while it is this account's unused, unexpired token (not after /start, /oprire or
+  // another login on this browser).
+  const cookieToken = jar.get(TELEGRAM_LINK_COOKIE)?.value ?? null;
+  const telegramToken = cookieToken && !ch.telegram && (await telegramLinkTokenPending(db(), session.user.id, cookieToken)) ? cookieToken : null;
   const changed = Number(one(p.modificat) || one(p.confirmat));
   const notice =
     one(p.modificat) !== ''

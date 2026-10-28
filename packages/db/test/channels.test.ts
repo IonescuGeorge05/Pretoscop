@@ -16,6 +16,7 @@ import {
   recordDeliveryReceipt,
   savePushSubscription,
   telegramLinkByUser,
+  telegramLinkTokenPending,
   telegramTokenHash,
   unlinkTelegram,
   updateAlert,
@@ -119,12 +120,15 @@ describe('Telegram links', () => {
     const stored = await t.db.execute<{ token_hash: string }>(sql`SELECT token_hash FROM telegram_link_tokens WHERE user_id = ${u}`);
     expect(stored.rows).toEqual([{ token_hash: telegramTokenHash(token) }]);
     expect(stored.rows[0]!.token_hash).not.toContain(token);
+    expect(await telegramLinkTokenPending(t.db, u, token)).toBe(true);
+    expect(await telegramLinkTokenPending(t.db, 'someone-else', token)).toBe(false);
 
     const [first, second] = await Promise.all([
       consumeTelegramLinkToken(t.db, telegramTokenHash(token), 7001, () => 'h'.repeat(64)),
       consumeTelegramLinkToken(t.db, telegramTokenHash(token), 7002, () => 'h'.repeat(64)),
     ]);
     expect([first, second].filter((x) => x !== null)).toHaveLength(1); // one-time, even when raced
+    expect(await telegramLinkTokenPending(t.db, u, token)).toBe(false);
 
     const late = randomBytes(24).toString('base64url');
     await createTelegramLinkToken(t.db, u, late, 'telegramConsent.v1');

@@ -45,11 +45,12 @@ beforeAll(async () => {
   await offer(paused, 'e1', hoursAgo(1));
   await offer(inactive, 'f1', hoursAgo(1), { active: false });
   await offer(linkOnly, 'g1', hoursAgo(1), { tier: 4 });
-}, 60_000);
+}, 180_000);
 
+// Creating and dropping throwaway databases is slow when other packages' tests run in parallel.
 afterAll(async () => {
   await t?.drop();
-});
+}, 120_000);
 
 describe('countCoveredShops', () => {
   it('counts active shops with an active verified offer checked in the last 48 hours, sorted the Romanian way', async () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { extractMpnCandidates, isSpecToken, normalizeMpn } from './mpn';
+import { extractMpnCandidates, isSpecToken, mpnHintOf, normalizeMpn } from './mpn';
 
 const best = (title: string, productCode?: string): string | null =>
   extractMpnCandidates(title, { productCode: productCode ?? null })[0]?.norm ?? null;
@@ -103,6 +103,10 @@ describe('extractMpnCandidates', () => {
     'Telefon mobil Blackview Wave 7C, 16GB+128GB（2TB TF),6.56"HD+ IPS',
     'Consola retro portabila R36TMAX, Bedee, 64GB',
     'Consolă de jocuri Bedee X12plus, 7 inch, 16GB, design ergonomic, multicolor',
+    'Consola portabila gaming dual rocker gameplayer, Bedee®, X12-plus, 16 GB',
+    'Laptop Energizer EnergyBook Pro cu procesor Intel® Pentium® Gold 6500Y',
+    'Laptop Dell 16Inch Full HD+ 16GB RAM DDR5-SDRAM 512 GB SSD Wi-Fi 6E (802.11ax) Windows 11 Pro',
+    'Laptop Auusda 15.6" cu procesor AMD Ryzen 3 3250 3.5GHz 8GB DDR4 512GB, WIFI6.Windows 11 Pro',
   ])('%s → no part number', (title) => {
     expect(all(title)).toEqual([]);
   });
@@ -135,4 +139,37 @@ describe('isSpecToken', () => {
       expect(isSpecToken(token)).toBe(false);
     },
   );
+});
+
+describe('mpnHintOf (URL slug tails, live eMAG run 2026-10-27)', () => {
+  it.each([
+    ['SM-S741BZVDEUE', 'SMS741BZVDEUE'],
+    ['MFYM4ZD-A', 'MFYM4ZDA'],
+    ['UE43U8072HUXXH', 'UE43U8072HUXXH'],
+    ['83QM0034RM', '83QM0034RM'],
+    ['CFI-2016', 'CFI2016'],
+    // Plausible but possibly a seller's SKU: kept as a guess.
+    ['KXG0214352', 'KXG0214352'],
+  ])('%s → %s', (raw, norm) => {
+    expect(mpnHintOf(raw)).toBe(norm);
+  });
+
+  it.each([
+    'B0BHPQ5MSM', // Amazon ASIN
+    'CONSOLA620JOCURI',
+    '620JOCURI',
+    'ERIK-RO-B9-GREY',
+    'XS18PRO-A-PINK',
+    '3800234790831YELLOW',
+    '67-INCH', // spec
+    'RK3326', // chip
+    'MSEL-87-33-199272526568', // longer than any manufacturer code
+    '2026',
+    'ABCDEF',
+    'AB12',
+    '',
+    null,
+  ])('%s → null', (raw) => {
+    expect(mpnHintOf(raw)).toBeNull();
+  });
 });

@@ -53,6 +53,9 @@ importers:
       '@pretoscop/mailer':
         specifier: workspace:*
         version: link:../../packages/mailer
+      '@pretoscop/notify':
+        specifier: workspace:*
+        version: link:../../packages/notify
       '@pretoscop/report':
         specifier: workspace:*
         version: link:../../packages/report
@@ -141,6 +144,12 @@ importers:
       '@pretoscop/icecat':
         specifier: workspace:*
         version: link:../../packages/icecat
+      '@pretoscop/mailer':
+        specifier: workspace:*
+        version: link:../../packages/mailer
+      '@pretoscop/notify':
+        specifier: workspace:*
+        version: link:../../packages/notify
       '@pretoscop/report':
         specifier: workspace:*
         version: link:../../packages/report
@@ -209,6 +218,9 @@ importers:
         specifier: ^8.23.1
         version: 8.23.1
     devDependencies:
+      '@pretoscop/notify':
+        specifier: workspace:*
+        version: link:../notify
       '@types/pg':
         specifier: ^8.23.1
         version: 8.23.1
@@ -273,6 +285,15 @@ importers:
       '@types/nodemailer':
         specifier: ^8.0.2
         version: 8.0.2
+
+  packages/notify:
+    dependencies:
+      '@pretoscop/core':
+        specifier: workspace:*
+        version: link:../core
+      '@pretoscop/mailer':
+        specifier: workspace:*
+        version: link:../mailer
 
   packages/report:
     dependencies:

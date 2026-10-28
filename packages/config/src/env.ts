@@ -90,6 +90,8 @@ export const EnvSchema = z
     FETCH_DEFAULT_MIN_INTERVAL_MS: int(5000),
     FETCH_TIMEOUT_MS: int(30000),
     FETCH_MAX_BODY_BYTES: int(15 * 1024 * 1024),
+    /** Lets the worker's fetcher reach private/loopback addresses (local fixture servers). Never in production. */
+    FETCH_ALLOW_PRIVATE_HOSTS: bool.default(false),
 
     // Assisted-access channel (M05B, ADR-015)
     ASSISTED_VENDOR: z.enum(['none', 'zyte', 'oxylabs']).default('none'),
@@ -130,6 +132,12 @@ export const EnvSchema = z
     REVALIDATE_TOKEN: z.string().min(16).default(DEV_SECRET),
     HASH_SALT_SECRET: z.string().min(16).default(DEV_SECRET),
 
+    // Price alerts (M19): signs confirmation/unsubscribe links and keys the stable address hash
+    // (suppression list, consent ledger). Never rotate without accepting that both break.
+    ALERTS_SECRET: z.string().min(16).default(DEV_SECRET),
+    // Resend webhook signing secret (`whsec_…`) for bounces and complaints; unset = endpoint off.
+    RESEND_WEBHOOK_SECRET: optionalString,
+
     // Operations alerts (two consecutive source failures, backups, caps)
     OPS_ALERT_TELEGRAM_BOT_TOKEN: optionalString,
     OPS_ALERT_TELEGRAM_CHAT_ID: optionalString,
@@ -159,9 +167,14 @@ export const EnvSchema = z
     // Affiliate networks (M24)
     TWOPERFORMANT_EMAIL: optionalString,
     TWOPERFORMANT_PASSWORD: optionalString,
+    /** Our affiliate code (aff_code in quicklinks). */
     TWOPERFORMANT_UNIQUE_CODE: optionalString,
+    TWOPERFORMANT_API_URL: z.string().min(1).default('https://api.2performant.com'),
     PROFITSHARE_API_USER: optionalString,
     PROFITSHARE_API_KEY: optionalString,
+    AWIN_PUBLISHER_ID: optionalString,
+    CJ_PUBLISHER_ID: optionalString,
+    TRADEDOUBLER_AFFILIATE_ID: optionalString,
 
     // Analytics and monitoring
     NEXT_PUBLIC_PLAUSIBLE_DOMAIN: optionalString,
@@ -172,10 +185,13 @@ export const EnvSchema = z
   })
   .superRefine((env, ctx) => {
     if (env.APP_ENV === 'staging' || env.APP_ENV === 'prod') {
-      for (const key of ['BETTER_AUTH_SECRET', 'REVALIDATE_TOKEN', 'HASH_SALT_SECRET'] as const) {
+      for (const key of ['BETTER_AUTH_SECRET', 'REVALIDATE_TOKEN', 'HASH_SALT_SECRET', 'ALERTS_SECRET'] as const) {
         if (env[key] === DEV_SECRET) {
           ctx.addIssue({ code: 'custom', path: [key], message: `${key} must be set outside dev` });
         }
+      }
+      if (env.FETCH_ALLOW_PRIVATE_HOSTS) {
+        ctx.addIssue({ code: 'custom', path: ['FETCH_ALLOW_PRIVATE_HOSTS'], message: 'FETCH_ALLOW_PRIVATE_HOSTS is for local development only' });
       }
     }
   });

@@ -61,7 +61,8 @@ test.describe('admin', () => {
   test('review queue: accepting a candidate links the offer and is audited', async ({ page }) => {
     const f = fixture().admin;
     await login(page);
-    await page.goto('/admin/potriviri');
+    // The live queue can be long: filter to the fixture's item.
+    await page.goto(`/admin/potriviri?q=${encodeURIComponent('Testoscop Y2')}`);
     const item = page.getByTestId('review-item').filter({ hasText: f.reviewTitle });
     await expect(item).toHaveCount(1);
     await item.getByRole('button', { name: /^Acceptă \(1\)$/ }).click();

@@ -286,6 +286,85 @@ describe('normalizeOffer: identifiers', () => {
     expect(real).toMatchObject({ mpnNorm: 'UE43U8072HUXXH', mpnSource: 'field' });
   });
 
+  // URL hints (eMAG slug tails), real offers of the live run (2026-10-27).
+  it('uses a URL hint only as a guess when the title has no code', () => {
+    const s26 = accepted(
+      raw({
+        title: 'Telefon mobil Samsung Galaxy S26 FE, Dual SIM, 8GB RAM, 128GB, 5G, Blueberry',
+        mpnHint: 'SM-S741BZVDEUE',
+      }),
+    );
+    expect(s26).toMatchObject({
+      mpnNorm: 'SMS741BZVDEUE',
+      mpnSource: 'title',
+      mpnOrigin: 'url',
+      mpnRaw: null,
+      mpnHint: 'SMS741BZVDEUE',
+    });
+    expect(s26.warnings).toContain('mpn_from_url');
+  });
+
+  it('prefers a stated MPN and a title code to the URL hint', () => {
+    const acer = accepted(
+      raw({
+        title:
+          'Laptop Acer Nitro V15 ANV15-41-R948, NH.QSGEX.00H, 15.6", AMD Ryzen 7 7735HS, 16GB, 512GB SSD',
+        mpnHint: 'KXG0214352',
+      }),
+    );
+    expect(acer).toMatchObject({ mpnSource: 'title', mpnOrigin: 'title', mpnHint: 'KXG0214352' });
+    expect(acer.mpnNorm).not.toBe('KXG0214352');
+    expect(acer.mpnCandidates).toContain('NHQSGEX00H');
+    const stated = accepted(
+      raw({
+        title: 'Telefon mobil Samsung Galaxy S26 FE',
+        mpn: 'SM-S741BZVDEUE',
+        mpnHint: 'XYZ123456',
+      }),
+    );
+    expect(stated).toMatchObject({
+      mpnNorm: 'SMS741BZVDEUE',
+      mpnSource: 'field',
+      mpnOrigin: 'field',
+    });
+  });
+
+  it('keeps the URL hint when it contains and extends the title code', () => {
+    const tv = accepted(
+      raw({
+        title: 'Televizor SAMSUNG LED 43U8072H, 108 cm, Smart, 4K Ultra HD, Clasa F',
+        mpnHint: 'UE43U8072HUXXH',
+      }),
+    );
+    expect(tv).toMatchObject({ mpnNorm: 'UE43U8072HUXXH', mpnSource: 'title', mpnOrigin: 'url' });
+    expect(tv.warnings).toContain('mpn_from_url_confirmed_by_title');
+    const hyundai = accepted(
+      raw({ title: 'Televizor QLED HYUNDAI 43 HYN 8110 VDQ4K, 108 cm', mpnHint: '43HYN8110VDQ4K' }),
+    );
+    expect(hyundai.mpnNorm).toBe('43HYN8110VDQ4K');
+  });
+
+  it('rejects URL hints that cannot be part numbers', () => {
+    for (const mpnHint of [
+      'B0BHPQ5MSM',
+      'CONSOLA620JOCURI',
+      'ERIK-RO-B9-GREY',
+      '67-INCH',
+      'MSEL-87-33-199272526568',
+    ]) {
+      const n = accepted(
+        raw({ title: 'Consola portabila gaming Valve Steam Deck 256GB, Negru', mpnHint }),
+      );
+      expect(n, mpnHint).toMatchObject({
+        mpnNorm: null,
+        mpnSource: null,
+        mpnOrigin: null,
+        mpnHint: null,
+      });
+      expect(n.warnings, mpnHint).toContain('mpn_url_hint_rejected');
+    }
+  });
+
   it('reports unknown and conflicting brand fields', () => {
     const unknown = accepted(raw({ title: 'Husa silicon pentru iPhone 17', brand: 'Lemonttix' }));
     expect(unknown).toMatchObject({ brandName: 'Lemonttix', brandKnown: false });

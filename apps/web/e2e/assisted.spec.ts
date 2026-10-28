@@ -37,8 +37,8 @@ test.describe('admin: assisted access', () => {
     await login(page, baseURL!);
     await page.getByRole('link', { name: 'Acces asistat' }).click();
     await expect(page.getByRole('heading', { name: 'Acces asistat' })).toBeVisible();
-    await expect(page.getByText('Plafon lunar')).toBeVisible();
-    await expect(page.getByText('Magazine desemnate')).toBeVisible();
+    await expect(page.getByText('Plafon lunar', { exact: true })).toBeVisible();
+    await expect(page.getByText('Magazine desemnate', { exact: true })).toBeVisible();
     for (const slug of ['altex', 'mediagalaxy', 'flanco', 'pcgarage', 'cel', 'evomag', 'vexio']) {
       await expect(page.getByTestId(`assisted-kill-${slug}`)).toBeVisible();
     }

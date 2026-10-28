@@ -27,6 +27,8 @@
     "icecat:coverage": "tsx src/cli/icecat-coverage.ts",
     "icecat:sync": "tsx src/cli/icecat-sync.ts",
     "icecat:demo": "tsx src/cli/icecat-demo.ts",
+    "renormalize": "tsx src/cli/renormalize.ts",
+    "commissions:import": "tsx src/cli/commissions-import.ts",
     "ops:alert-test": "tsx src/cli/ops-alert-test.ts"
   },
   "devDependencies": {

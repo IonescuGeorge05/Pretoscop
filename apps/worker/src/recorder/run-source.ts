@@ -20,7 +20,7 @@ import {
   type RunStats,
   type RunStatus,
 } from '@pretoscop/db';
-import { parseFeed, parsePageDetailed, parseSitemap } from '@pretoscop/extractors';
+import { hostOnDomain, parseFeed, parsePageDetailed, parseSitemap } from '@pretoscop/extractors';
 import { eq, sql } from 'drizzle-orm';
 import { checkGates } from './gates';
 import type { RecorderDeps, ShopContext } from './types';
@@ -49,7 +49,7 @@ interface Ctx {
   shop: ShopContext;
   sourceId: number;
   sourceTier: 1 | 2 | 3 | 4;
-  stats: RunStats & { rejected: number; stale: number; newOffers: number; pages: number; discovered: number; quarantined: number };
+  stats: RunStats & { rejected: number; stale: number; newOffers: number; pages: number; discovered: number; quarantined: number; offDomain: number };
   snapshot: string[];
   /** Offers that need (re)matching after this run (M07 consumes them). */
   touchedOffers: Set<number>;
@@ -269,13 +269,47 @@ async function fetchProductPages(ctx: Ctx, picks: { id: number; url: string }[],
   }
 }
 
-async function runFeed(ctx: Ctx, source: { url: string; parserKey: string }): Promise<{ complete: boolean }> {
+/** `shop_sources.url` of a feed file a merchant uploaded (M20): `upload:<blob key>`. */
+export const UPLOAD_URL_PREFIX = 'upload:';
+
+/**
+ * Feeds (affiliate, merchant). Merchant sources (M20) add three rules from `config`: the declared
+ * `priceFormat` ("12.500" = 12.5 or 12 500), `requireDomain` (offers must link to the domain the
+ * merchant proved it controls; others are dropped) and uploaded files, which are read once per
+ * upload and observed at the upload time, never as a fresh check.
+ */
+async function runFeed(ctx: Ctx, source: { url: string; parserKey: string; config: Record<string, unknown> }): Promise<{ complete: boolean }> {
   ctx.stats.pages++;
-  const res = await ctx.deps.fetcher.fetchPolite(source.url, { shopSlug: ctx.shop.slug, purpose: 'feed', runId: ctx.runId });
-  if (fetchOutcome(ctx, res) !== 'ok') return { complete: false };
-  const observedAt = ctx.deps.now?.() ?? new Date();
+  let body: string | Uint8Array;
+  let observedAt: Date;
+  if (source.url.startsWith(UPLOAD_URL_PREFIX)) {
+    const data = await ctx.deps.blob.get(source.url.slice(UPLOAD_URL_PREFIX.length));
+    if (!data) {
+      ctx.stats.errors++;
+      ctx.errors.push(`uploaded feed file missing: ${source.url}`);
+      return { complete: false };
+    }
+    ctx.stats.fetched++;
+    body = data;
+    const at = typeof source.config.uploadedAt === 'string' ? new Date(source.config.uploadedAt) : null;
+    observedAt = at && !Number.isNaN(at.getTime()) ? at : (ctx.deps.now?.() ?? new Date());
+  } else {
+    const res = await ctx.deps.fetcher.fetchPolite(source.url, { shopSlug: ctx.shop.slug, purpose: 'feed', runId: ctx.runId });
+    if (fetchOutcome(ctx, res) !== 'ok') return { complete: false };
+    body = res.body!;
+    observedAt = ctx.deps.now?.() ?? new Date();
+  }
+  const priceFormat = source.config.priceFormat === 'ro' || source.config.priceFormat === 'decimal' ? source.config.priceFormat : undefined;
+  const domain = typeof source.config.requireDomain === 'string' && source.config.requireDomain !== '' ? source.config.requireDomain : null;
   const batch: RawOffer[] = [];
-  for await (const raw of parseFeed(source.parserKey, res.body!, { shopSlug: ctx.shop.slug, observedAt: observedAt.toISOString(), feedUrl: source.url })) {
+  for await (const raw of parseFeed(source.parserKey, body, { shopSlug: ctx.shop.slug, observedAt: observedAt.toISOString(), feedUrl: source.url })) {
+    if (domain && !hostOnDomain(raw.url, domain)) {
+      ctx.stats.offDomain++;
+      ctx.stats.rejected++;
+      if (ctx.errors.length < SNAPSHOT_SAMPLE_REJECTS) ctx.errors.push(`reject ${raw.externalId}: product URL outside ${domain} (${raw.url})`);
+      continue;
+    }
+    if (priceFormat && raw.priceFormat === undefined) raw.priceFormat = priceFormat;
     batch.push(raw);
     if (batch.length >= 500) await ingest(ctx, batch.splice(0), observedAt);
   }
@@ -323,7 +357,7 @@ export async function runSource(deps: RecorderDeps, sourceId: number, opts: RunO
     shop: { id: shop.id, slug: shop.slug, shippingRules: shop.shippingRules, vatIncludedDefault: shop.vatIncludedDefault },
     sourceId,
     sourceTier: (source.sourceTier as 1 | 2 | 3 | 4) ?? 1,
-    stats: { ...emptyStats(), rejected: 0, stale: 0, newOffers: 0, pages: 0, discovered: 0, quarantined: 0 },
+    stats: { ...emptyStats(), rejected: 0, stale: 0, newOffers: 0, pages: 0, discovered: 0, quarantined: 0, offDomain: 0 },
     snapshot: [],
     touchedOffers: new Set<number>(),
     touchedProducts: new Set<number>(),
@@ -353,7 +387,7 @@ export async function runSource(deps: RecorderDeps, sourceId: number, opts: RunO
       const picks = await pickCrawlUrls(db, shop.id, limit, 'priority', { notFetchedWithinHours: 20 });
       await fetchProductPages(ctx, picks, source.parserKey);
     } else if (source.kind === 'feed') {
-      complete = (await runFeed(ctx, { url: source.url, parserKey: source.parserKey })).complete;
+      complete = (await runFeed(ctx, { url: source.url, parserKey: source.parserKey, config })).complete;
     } else {
       ctx.errors.push(`kind ${source.kind} has no runner`);
     }

@@ -1,5 +1,5 @@
 import { load } from 'cheerio';
-import type { RawOffer } from '@pretoscop/core';
+import { mpnHintOf, type RawOffer } from '@pretoscop/core';
 import { extractBreadcrumb, extractJsonLd } from '../structured/jsonld';
 import type { PageContext, PageParseResult } from '../types';
 import {
@@ -45,13 +45,15 @@ export function emagPnk(url: string): string | undefined {
 }
 
 /**
- * eMAG slugs are the slugified title followed by the manufacturer part number, e.g.
- * `telefon-mobil-samsung-galaxy-s26-fe-…-blueberry-sm-s741bzvdeue` → `SM-S741BZVDEUE`.
- * eMAG transliterates some symbols (™ → `tm`, ® → `r`), so instead of requiring the exact title
- * prefix we take the trailing slug tokens that do not occur in the title (at most four), stopping
- * at the first title word. Returns undefined unless the result looks like a part number.
+ * The tail of an eMAG slug that is not part of the title. eMAG slugs are the slugified title
+ * followed by a code, e.g. `telefon-mobil-samsung-galaxy-s26-fe-…-blueberry-sm-s741bzvdeue` →
+ * `SM-S741BZVDEUE`. eMAG transliterates some symbols (™ → `tm`, ® → `r`), so instead of requiring
+ * the exact title prefix we take the trailing slug tokens that do not occur in the title (at most
+ * four), stopping at the first title word. Structural only: the code is often the manufacturer
+ * part number, but as often a marketplace seller's SKU (KXG0214352), an Amazon ASIN (B0BHPQ5MSM)
+ * or leftover words (CONSOLA620JOCURI). Use `emagSlugMpn` for a part-number hint.
  */
-export function emagSlugMpn(url: string, title: string): string | undefined {
+export function emagSlugTail(url: string, title: string): string | undefined {
   const m = /emag\.ro\/([^/]+)\/pd\//.exec(url);
   if (!m?.[1]) return undefined;
   const slugTokens = m[1].toLowerCase().split('-').filter(Boolean);
@@ -68,6 +70,18 @@ export function emagSlugMpn(url: string, title: string): string | undefined {
   // A lone short token (e.g. "2026", "5g") is not a part number.
   if (tail.length === 1 && rest.length < 6) return undefined;
   return rest.toUpperCase();
+}
+
+/**
+ * A part-number *hint* from an eMAG URL: the slug tail when it can be a manufacturer code
+ * (`mpnHintOf`: not an ASIN, a spec or chip token, nor a code made of product or colour words).
+ * It goes to `RawOffer.mpnHint`, never to `mpn`: the slug is not stated by eMAG as an MPN, and a
+ * plausible tail can still be a seller's SKU, so the normalizer uses it only when neither a stated
+ * MPN nor a title code exists, as a guess.
+ */
+export function emagSlugMpn(url: string, title: string): string | undefined {
+  const tail = emagSlugTail(url, title);
+  return tail !== undefined && mpnHintOf(tail) !== null ? tail : undefined;
 }
 
 function textOf(html: string): string {
@@ -123,7 +137,8 @@ export function parseEmagListing(html: string, ctx: PageContext): PageParseResul
       oldPrice,
       currency: 'RON',
       availability: EMAG_AVAILABILITY[card.attr('data-availability-id') ?? ''] ?? availClass ?? nonEmpty(availEl.text()),
-      mpn: emagSlugMpn(canonical, title),
+      // Listing cards state no MPN; the slug tail is only a hint (often a seller's SKU).
+      mpnHint: emagSlugMpn(canonical, title),
       category: nonEmpty(card.attr('data-category-trail'))?.replace(/\//g, ' > '),
       shopLowest30d: oldPrice,
       observedAt: ctx.observedAt,
@@ -213,7 +228,9 @@ export function parseEmagProduct(html: string, ctx: PageContext): PageParseResul
   if (!title) return { offers: [], meta: { reason: 'no product title' } };
 
   const pnk = ld?.sku ?? emagPnk(canonical);
-  const mpn = ld?.mpn ?? ld?.productId ?? emagSlugMpn(canonical, title);
+  // The JSON-LD `mpn` is stated by eMAG; the slug tail is only a hint (see `emagSlugMpn`).
+  const mpn = ld?.mpn ?? ld?.productId;
+  const mpnHint = emagSlugMpn(canonical, title);
   const brand = ld?.brand;
   const category = breadcrumb ?? ld?.category;
   const productId = /EM\.product_id\s*=\s*(\d+)/.exec(html)?.[1];
@@ -245,6 +262,7 @@ export function parseEmagProduct(html: string, ctx: PageContext): PageParseResul
       availability: o.availability?.code ?? o.availability?.text,
       condition: kind === 'used' || o.flags?.is_used ? 'resigilat' : 'new',
       mpn,
+      mpnHint,
       brand,
       category,
       sellerName: o.vendor?.name?.display ?? o.vendor?.name?.default,
@@ -286,6 +304,7 @@ export function parseEmagProduct(html: string, ctx: PageContext): PageParseResul
       currency: 'RON',
       condition: 'new',
       mpn,
+      mpnHint,
       brand,
       category,
       sellerName: vendor,
@@ -311,6 +330,7 @@ export function parseEmagProduct(html: string, ctx: PageContext): PageParseResul
         availability: o.availability,
         condition: o.itemCondition ?? ld.itemCondition,
         mpn,
+        mpnHint,
         brand,
         category,
         sellerName: o.sellerName,
@@ -326,6 +346,7 @@ export function parseEmagProduct(html: string, ctx: PageContext): PageParseResul
     meta: {
       pnk,
       mpn,
+      mpnHint: mpnHint ?? null,
       offersCount: Number(/EM\.offers_count\s*=\s*(\d+)/.exec(html)?.[1] ?? NaN) || null,
       fromEmbedded: offers.length,
       jsonLdSeller: ld?.offers[0]?.sellerName ?? null,

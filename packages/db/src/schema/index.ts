@@ -11,3 +11,5 @@ export * from './auth';
 export * from './contact';
 export * from './clicks';
 export * from './alerts';
+export * from './merchants';
+export * from './revenue';

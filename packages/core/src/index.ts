@@ -96,6 +96,7 @@ export {
   normalizeMpn,
   extractMpnCandidates,
   isSpecToken,
+  mpnHintOf,
 } from './mpn';
 export {
   type Brand,
@@ -146,6 +147,7 @@ export { type Availability, mapAvailability } from './availability';
 
 // Offer normalization
 export {
+  type MpnOrigin,
   type RejectReason,
   type NormalizeShopContext,
   type NormalizeContext,
@@ -166,3 +168,8 @@ export * from './matching-eval';
 
 // M19: price-alert rules (decisions in bani, target parsing, quiet hours, email checks)
 export * from './alerts';
+
+// Company identifiers and shop domains (M20 merchant portal)
+export { type CuiResult, cuiControlDigit, validateCui } from './cui';
+export { FREE_MAIL_DOMAINS, emailProvesDomain, normalizeShopDomain, shopSlugFromDomain } from './merchant';
+export * from './affiliate';

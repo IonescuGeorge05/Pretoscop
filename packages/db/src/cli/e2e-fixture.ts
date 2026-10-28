@@ -12,6 +12,7 @@ import {
   alertsFixtureSuppress,
   createAlertsFixture,
   createE2eFixture,
+  createLlmFixture,
   dropAlertsFixture,
   dropE2eFixture,
   e2eFixtureClicks,
@@ -30,6 +31,7 @@ import {
 //   alerts-products <n>                        n extra throwaway products (removed by alerts-drop)
 //   alerts-suppress <email> <reason>           puts a test address on the suppression list
 //   alerts-drop <flagWas:on|off> <email…>      removes the alert fixture and the test addresses
+//   llm-decision <productId>                   M22: a review item accepted by the LLM, its opinion and a ledger row (removed by drop)
 loadRootEnvFile();
 const env = getEnv();
 const pool = createPool(env.DATABASE_URL, 2);
@@ -61,6 +63,7 @@ try {
         restoreFlag: args[0] === 'on',
       }),
     };
+  else if (cmd === 'llm-decision') out = await createLlmFixture(db, Number(args[0]));
   else out = await createE2eFixture(db);
   console.log(JSON.stringify(out));
 } finally {

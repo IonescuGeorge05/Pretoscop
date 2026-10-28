@@ -7,7 +7,7 @@ const ts = (name: string) => timestamp(name, { withTimezone: true, mode: 'date' 
 const nanos = (name: string) => bigint(name, { mode: 'number' });
 
 /**
- * LLM cost ledger (M22, ADR-022): one row per Anthropic request (a synchronous call or one item of
+ * LLM cost ledger (M22, ADR-024): one row per Anthropic request (a synchronous call or one item of
  * a Message Batch). A row is inserted as a reservation at the request's worst-case cost before
  * anything is sent, under an advisory lock that checks the monthly cap (LLM_MONTHLY_CAP_EUR), then
  * settled at the billed cost ('billed'), released when the API did not process it ('released') or

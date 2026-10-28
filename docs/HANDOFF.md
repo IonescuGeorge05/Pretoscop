@@ -26,21 +26,20 @@ the build. Read this first, then `CLAUDE.md` and `docs/progress.md`.
 - **Everything on the old machine is stopped:** agents, Docker containers (volumes kept), Docker
   Desktop, `caffeinate`, dev servers.
 
-## 2. What to copy from the old machine
+## 2. What comes with the repo (nothing to copy by hand)
 
-All of it lives in the repo folder `Pretoscop/` on the old Mac.
+Everything the new machine needs is in git, on `daniel`, in the folder `handoff/` (see
+`handoff/README.md`). The GitHub repo is **public**, so that folder holds only what is safe to
+publish:
 
-| File or folder | What it is | Needed? |
-|---|---|---|
-| `data/handoff/pretoscop-all-branches.bundle` | Git bundle of `daniel` and every `mod/*` branch (the same as GitHub) | Only if cloning from GitHub is not possible |
-| `data/handoff/pretoscop-dev-2026-10-28.dump` + `.sha256` | `pg_dump --format=custom` of the dev database (recorded prices, products, matches, admin audit) | **Yes** |
-| `.env` | Local dev settings (git-ignored): `CRAWL_ENABLED=true`, `ADMIN_EMAILS`, dev secrets | Yes, or recreate from `.env.example` |
-| `data/` (rest) | Raw run snapshots and backups (`data/blobs`), generated reports, probe notes; ~12 MB | Recommended |
+| In the repo | What it is |
+|---|---|
+| `handoff/dev.env` | The old machine's `.env`. Dev defaults only (no real credentials), plus `CRAWL_ENABLED=true` and `ADMIN_EMAILS` |
+| `handoff/db/pretoscop-dev-2026-10-28.public.sql.gz` | The dev database from 28 Oct 2026 08:19 UTC (plain SQL, gzip): shops, offers, products, matches and all price history. **No login data**: the rows of `users`, `sessions`, `accounts`, `verifications`, `audit_log`, `clicks`, `contact_requests`, `events`, `consent_records`, `email_suppressions`, `alerts` and `alert_sends` are left out, as is the pg-boss queue (the worker recreates it). Test-restored: 4,493 offers, 2,679 products, 4,493 price events, 15 migrations |
+| `handoff/data/` | The old `data/` folder: run snapshots (`blobs/snapshots`), generated reports, probe and discovery notes. The nightly full backups (`blobs/backups`) are left out because they contain the login data |
 
-Copying the whole `Pretoscop/` folder instead also works. Afterwards, run `git worktree prune`
-(the `.claude/worktrees/*` paths point at the old machine) and skip `git clone` below.
-
-Check the dump after copying: `shasum -a 256 data/handoff/pretoscop-dev-2026-10-28.dump` must equal the `.sha256` file.
+Kept only on the old Mac (`data/handoff/`): the full custom-format dump with the login data, its
+`.sha256`, and a git bundle of all branches (a fallback if GitHub is unreachable).
 
 ## 3. Setting up the new machine
 
@@ -56,17 +55,19 @@ git clone https://github.com/IonescuGeorge05/Pretoscop.git pretoscop && cd preto
 git checkout daniel
 for b in $(git branch -r | grep -E 'origin/mod/' | sed 's#origin/##'); do git branch --track "$b" "origin/$b" 2>/dev/null; done
 
-# Settings and dependencies
-cp /path/from/old/mac/.env .env            # or: cp .env.example .env, then set CRAWL_ENABLED=true and ADMIN_EMAILS
-mkdir -p data && cp -R /path/from/old/mac/data/* data/
+# Settings, local data and dependencies (from the repo's handoff/ folder)
+cp handoff/dev.env .env
+mkdir -p data && cp -R handoff/data/. data/
 corepack enable && pnpm install
 pnpm --filter @pretoscop/web exec playwright install chromium
 
 # Services and the recorded data
 make services                               # PostgreSQL 18 + pgvector (runs under an init process), Meilisearch, Mailpit
-docker compose -f infra/docker-compose.dev.yml -p pretoscop exec -T postgres \
-  pg_restore -U pretoscop -d pretoscop --clean --if-exists --no-owner < data/handoff/pretoscop-dev-2026-10-28.dump
+gunzip -c handoff/db/pretoscop-dev-2026-10-28.public.sql.gz | \
+  docker compose -f infra/docker-compose.dev.yml -p pretoscop exec -T postgres psql -q -v ON_ERROR_STOP=1 -U pretoscop -d pretoscop
 make migrate                                # no-op on `daniel` (the dump is already at or past its schema)
+# Restore into the fresh, empty database that `make services` creates (no --clean in a plain dump).
+# Admin users are not in the dump: log in again at /admin with an address from ADMIN_EMAILS.
 
 # Checks
 make test

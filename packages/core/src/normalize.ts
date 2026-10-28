@@ -7,8 +7,8 @@
 import { detectAccessory } from './accessory';
 import { type Attributes, extractAttributes } from './attributes';
 import { type Availability, mapAvailability } from './availability';
-import { type BrandVia, detectBrand } from './brands';
-import { detectBundle } from './bundle';
+import { type BrandVia, brandTokens, detectBrand } from './brands';
+import { type BundleKind, detectBundle } from './bundle';
 import { type Condition, type ConditionDetail, detectCondition } from './condition';
 import type { ContentHasher } from './content-hash';
 import {
@@ -19,7 +19,7 @@ import {
   summarizeGtins,
 } from './gtin';
 import type { Bani } from './money';
-import { extractMpnCandidates, normalizeMpn } from './mpn';
+import { extractMpnCandidates, isSpecToken, mpnHintOf, normalizeMpn } from './mpn';
 import {
   BELOW_MIN_MINOR,
   convertToRonBani,
@@ -40,6 +40,10 @@ import {
   normalizeText,
   titleForMatch,
 } from './text';
+import type { UnknownBrandRule } from './unknown-brand';
+
+/** Where an offer's MPN came from: the shop's MPN field, a code in the title, or the URL hint. */
+export type MpnOrigin = 'field' | 'title' | 'url';
 
 /** Why an offer must not be ingested. */
 export type RejectReason =
@@ -118,14 +122,28 @@ interface NormalizedOfferBase {
   brandSlug: string | null;
   brandConfidence: number | null;
   brandVia: BrandVia | null;
-  /** False when the brand is an unknown brand-field value (title-cased). */
+  /** False when the brand is not in the dictionary (an unknown brand field or a title guess). */
   brandKnown: boolean;
+  /**
+   * How an unknown title brand was read (`trademark` ®/™ at 0.8; `prefix`, `after_noun`,
+   * `segment` by position at 0.6), null otherwise. See `guessUnknownBrand`.
+   */
+  brandGuess: UnknownBrandRule | null;
   brandRaw: string | null;
 
-  /** Normalized MPN: from the MPN field, else the best code in the title. */
+  /** Normalized MPN: from the MPN field, else the best code in the title, else the URL hint. */
   mpnNorm: string | null;
+  /** The shop's MPN field as seen (never the URL hint). */
   mpnRaw: string | null;
+  /**
+   * 'field' when the shop stated it, 'title' when it was guessed (from the title or the URL
+   * hint): what `offers.mpn_source` stores and matching trusts accordingly.
+   */
   mpnSource: 'field' | 'title' | null;
+  /** Where `mpnNorm` came from: the MPN field, a title code or the URL hint (`raw.mpnHint`). */
+  mpnOrigin: MpnOrigin | null;
+  /** The URL hint, normalized, when plausible (`mpnHintOf`), whether or not it was used. */
+  mpnHint: string | null;
   /** All normalized code candidates from the title, best first. */
   mpnCandidates: string[];
 
@@ -135,6 +153,9 @@ interface NormalizedOfferBase {
   conditionDetail: ConditionDetail | null;
   conditionReason: string;
   isBundle: boolean;
+  /** game, gift, accessory, subscription or other (see `detectBundle`); null when not a bundle. */
+  bundleKind: BundleKind | null;
+  /** `<kind>:<evidence>`, e.g. `gift:plus:woven`, `game:bundle`; null when not a bundle. */
   bundleReason: string | null;
   isAccessory: boolean;
   accessoryReason: string | null;
@@ -325,12 +346,42 @@ export function normalizeOffer(raw: RawOffer, ctx: NormalizeContext): Normalized
     warnings.push('mpn_looks_like_gtin');
     fieldMpn = null;
   }
+  // A spec or chip in an MPN field ("67INCH", "CORTEXA35", "RK3326").
+  if (fieldMpn && isSpecToken(mpnRaw)) {
+    warnings.push('mpn_looks_like_spec');
+    fieldMpn = null;
+  }
   const candidates = extractMpnCandidates(titleClean, {
     brand: brand?.name ?? null,
     productCode: cleaned.productCode,
   }).map((c) => c.norm);
-  const mpnNorm = fieldMpn ?? candidates[0] ?? null;
-  const mpnSource = fieldMpn ? 'field' : candidates[0] ? 'title' : null;
+  let mpnNorm = fieldMpn ?? candidates[0] ?? null;
+  let mpnSource: 'field' | 'title' | null = fieldMpn ? 'field' : candidates[0] ? 'title' : null;
+  let mpnOrigin: MpnOrigin | null = fieldMpn ? 'field' : candidates[0] ? 'title' : null;
+  // The URL hint (an eMAG slug tail) stays a guess: it is as often a seller SKU as a manufacturer
+  // code. A stated MPN always wins; a title code wins too, unless the hint contains it and extends
+  // it (the title corroborates the hint, which adds the regional or configuration suffix:
+  // "43U8072H" in the title, "UE43U8072HUXXH" in the slug).
+  const hint =
+    fieldMpn === null && textOrNull(raw.mpnHint) !== null ? mpnHintOf(raw.mpnHint) : null;
+  if (fieldMpn === null && textOrNull(raw.mpnHint) !== null) {
+    const brandWords = new Set(brandTokens(brand?.name ?? ''));
+    const usable = hint !== null && !brandWords.has(hint.toLowerCase());
+    const titleCode = candidates[0];
+    const corroborated =
+      usable &&
+      titleCode !== undefined &&
+      hint.length > titleCode.length &&
+      hint.includes(titleCode);
+    if (usable && (titleCode === undefined || corroborated)) {
+      mpnNorm = hint;
+      mpnSource = 'title';
+      mpnOrigin = 'url';
+      warnings.push(corroborated ? 'mpn_from_url_confirmed_by_title' : 'mpn_from_url');
+    } else if (!usable) {
+      warnings.push('mpn_url_hint_rejected');
+    }
+  }
 
   // ---- flags
   const condition = detectCondition(titleClean, raw.condition ?? null);
@@ -364,10 +415,13 @@ export function normalizeOffer(raw: RawOffer, ctx: NormalizeContext): Normalized
     brandConfidence: brand?.confidence ?? null,
     brandVia: brand?.via ?? null,
     brandKnown: brand?.known ?? false,
+    brandGuess: brand?.guess ?? null,
     brandRaw: textOrNull(raw.brand),
     mpnNorm,
     mpnRaw,
     mpnSource,
+    mpnOrigin,
+    mpnHint: textOrNull(raw.mpnHint) !== null ? mpnHintOf(raw.mpnHint) : null,
     mpnCandidates: candidates,
     attributes,
     productKind,
@@ -375,6 +429,7 @@ export function normalizeOffer(raw: RawOffer, ctx: NormalizeContext): Normalized
     conditionDetail: condition.detail ?? null,
     conditionReason: condition.reason,
     isBundle: bundle.isBundle,
+    bundleKind: bundle.kind,
     bundleReason: bundle.reason,
     isAccessory: accessory.isAccessory,
     accessoryReason: accessory.reason,

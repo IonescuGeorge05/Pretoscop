@@ -27,11 +27,12 @@ FIXTURE=$(cd packages/db && pnpm exec tsx src/cli/e2e-fixture.ts create | tail -
 SLUG=$(node -e "console.log(JSON.parse(process.argv[1]).slug)" "$FIXTURE")
 PID=$(node -e "console.log(JSON.parse(process.argv[1]).productId)" "$FIXTURE")
 LOG=$(mktemp)
+stop_port "$PORT"
 (cd apps/web && PUBLIC_BASE_URL="$BASE" pnpm exec next start --port "$PORT" >"$LOG" 2>&1) &
 SERVER=$!
 cleanup() {
   kill "$SERVER" 2>/dev/null || true
-  pkill -f "next start --port $PORT" 2>/dev/null || true
+  stop_port "$PORT"
   (cd packages/db && pnpm exec tsx src/cli/e2e-fixture.ts drop >/dev/null) || true
 }
 trap cleanup EXIT

@@ -1,0 +1,86 @@
+{
+  "msg": "OK",
+  "data": {
+    "GeneralInfo": {
+      "IcecatId": 56195846,
+      "ReleaseDate": "07/06/2018",
+      "EndOfLifeDate": "",
+      "Title": "DELL G5 5587 Laptop 39,6 cm (15.6\") Full HD Intel® Core™ i5 i5-8300H 8 GB DDR4-SDRAM 1 TB HDD NVIDIA® GeForce® GTX 1050 Ti Wi-Fi 5 (802.11ac) Windows 10 Home Negru",
+      "TitleInfo": {
+        "GeneratedIntTitle": "DELL G5 5587 Laptop 39.6 cm (15.6\") Full HD Intel® Core™ i5 i5-8300H 8 GB DDR4-SDRAM 1 TB HDD NVIDIA® GeForce® GTX 1050 Ti Wi-Fi 5 (802.11ac) Windows 10 Home Black",
+        "GeneratedLocalTitle": { "Value": "DELL G5 5587 Laptop 39,6 cm (15.6\") Full HD Intel® Core™ i5 i5-8300H 8 GB DDR4-SDRAM 1 TB HDD NVIDIA® GeForce® GTX 1050 Ti Wi-Fi 5 (802.11ac) Windows 10 Home Negru", "Language": "RO" }
+      },
+      "Brand": "DELL",
+      "BrandID": "2",
+      "BrandInfo": { "BrandName": "DELL", "BrandLocalName": "" },
+      "ProductName": "G5 5587",
+      "BrandPartCode": "5587-SYNTH-01",
+      "GTIN": ["5397184119709"],
+      "Category": { "CategoryID": "151", "Name": { "ID": 2054, "Value": "Laptopuri", "Language": "RO" } },
+      "ProductFamily": { "ProductFamilyID": "7130", "Value": "G series", "Language": "RO" },
+      "Description": { "ID": 0, "LongDesc": "", "MiddleDesc": "", "Disclaimer": "", "LeafletPDFURL": "", "ManualPDFURL": "", "Language": "RO" },
+      "SummaryDescription": {
+        "ShortSummaryDescription": "DELL G5 5587, Intel® Core™ i5, 2,3 GHz, 39,6 cm (15.6\"), 1920 x 1080 Pixel, 8 GB, 1000 GB",
+        "LongSummaryDescription": "DELL G5 5587. Tipul de produs: Laptop, Factorul de formă: Clapetă. Familie procesor: Intel® Core™ i5, Model procesor: i5-8300H. Diagonala ecranului: 39,6 cm (15.6\"), Rezoluție display: 1920 x 1080 Pixel. Memorie internă: 8 GB, Tip memorie internă: DDR4-SDRAM. Capacitate totală de stocare: 1 TB, Unitate de stocare: HDD. Model adaptor grafic discret: NVIDIA® GeForce® GTX 1050 Ti. Sistem de operare instalat: Windows 10 Home. Culoarea produsului: Negru"
+      },
+      "BulletPoints": { "Values": [], "Language": "RO" },
+      "Quality": "ICECAT",
+      "OnMarket": "1"
+    },
+    "Image": {
+      "HighPic": "https://images.icecat.biz/img/gallery/56195846_synth-main.jpg",
+      "HighPicWidth": 1200,
+      "HighPicHeight": 1200,
+      "Pic500x500": "https://images.icecat.biz/img/gallery_mediums/56195846_synth-main.jpg",
+      "LowPic": "https://images.icecat.biz/img/gallery_lows/56195846_synth-main.jpg",
+      "ThumbPic": "https://images.icecat.biz/img/gallery_thumbs/56195846_synth-main.jpg"
+    },
+    "Gallery": [
+      { "ID": 90000002, "Pic": "https://images.icecat.biz/img/gallery/56195846_synth-side.jpg", "Pic500x500": "https://images.icecat.biz/img/gallery_mediums/56195846_synth-side.jpg", "PicWidth": 1200, "PicHeight": 900, "Size": 150000, "No": 2, "IsMain": "N", "IsPrivate": false, "Type": "ProductImage", "Updated": "2018-06-07 10:00:00" },
+      { "ID": 90000001, "Pic": "https://images.icecat.biz/img/gallery/56195846_synth-main.jpg", "Pic500x500": "https://images.icecat.biz/img/gallery_mediums/56195846_synth-main.jpg", "PicWidth": 1200, "PicHeight": 1200, "Size": 180000, "No": 1, "IsMain": "Y", "IsPrivate": false, "Type": "ProductImage", "Updated": "2018-06-07 10:00:00" },
+      { "ID": 90000003, "Pic": "https://images.icecat.biz/img/gallery/56195846_synth-private.jpg", "PicWidth": 1200, "PicHeight": 1200, "No": 3, "IsMain": "N", "IsPrivate": true, "Type": "ProductImage" }
+    ],
+    "FeaturesGroups": [
+      {
+        "ID": 6060,
+        "SortNo": 2,
+        "FeatureGroup": { "ID": "36", "Name": { "ID": 9001, "Value": "Procesor", "Language": "RO" } },
+        "Features": [
+          { "ID": 1, "Type": "dropdown", "Value": "Intel® Core™ i5", "PresentationValue": "Intel® Core™ i5", "SortNo": 1, "Feature": { "ID": "5", "Name": { "ID": 9101, "Value": "Familie procesor", "Language": "RO" } } },
+          { "ID": 2, "Type": "dropdown", "Value": "i5-8300H", "PresentationValue": "i5-8300H", "SortNo": 2, "Feature": { "ID": "6", "Name": { "ID": 9102, "Value": "Model procesor", "Language": "RO" } } },
+          { "ID": 3, "Type": "numerical", "Value": "2.3", "RawValue": "2.3", "PresentationValue": "2,3 GHz", "SortNo": 3, "Feature": { "ID": "7", "Measure": { "ID": "28", "Sign": "GHz", "Signs": { "_": "GHz", "RO": "GHz" } }, "Name": { "ID": 9103, "Value": "Frecvență procesor", "Language": "RO" } } }
+        ]
+      },
+      {
+        "ID": 6059,
+        "SortNo": 1,
+        "FeatureGroup": { "ID": "33", "Name": { "ID": 9000, "Value": "Afișaj", "Language": "RO" } },
+        "Features": [
+          { "ID": 4, "Type": "numerical", "Value": "15.6", "RawValue": "15.6", "PresentationValue": "39,6 cm (15.6\")", "SortNo": 1, "Feature": { "ID": "944", "Sign": "\"", "Measure": { "ID": "18", "Sign": "\"", "Signs": { "_": "\"", "RO": "\"" } }, "Name": { "ID": 9104, "Value": "Diagonala ecranului", "Language": "RO" } } },
+          { "ID": 5, "Type": "dropdown", "Value": "1920 x 1080", "PresentationValue": "1920 x 1080 Pixel", "SortNo": 2, "Feature": { "ID": "1585", "Measure": { "ID": "24", "Sign": "Pixel", "Signs": { "_": "pixels", "RO": "Pixel" } }, "Name": { "ID": 9105, "Value": "Rezoluție display", "Language": "RO" } } },
+          { "ID": 6, "Type": "y_n", "Value": "", "PresentationValue": "", "SortNo": 3, "Feature": { "ID": "4963", "Name": { "ID": 9106, "Value": "Ecran tactil", "Language": "RO" } } }
+        ]
+      },
+      {
+        "ID": 6061,
+        "SortNo": 3,
+        "FeatureGroup": { "ID": "37", "Name": { "ID": 9002, "Value": "Memorie", "Language": "RO" } },
+        "Features": [
+          { "ID": 7, "Type": "numerical", "Value": "8", "RawValue": "8", "PresentationValue": "8 GB", "SortNo": 1, "Feature": { "ID": "18", "Measure": { "ID": "11", "Sign": "GB", "Signs": { "_": "GB", "RO": "GB" } }, "Name": { "ID": 9107, "Value": "Memorie internă", "Language": "RO" } } },
+          { "ID": 8, "Type": "dropdown", "Value": "DDR4-SDRAM", "PresentationValue": "DDR4-SDRAM", "SortNo": 2, "Feature": { "ID": "19", "Name": { "ID": 9108, "Value": "Tip memorie internă", "Language": "RO" } } }
+        ]
+      },
+      {
+        "ID": 6062,
+        "SortNo": 4,
+        "FeatureGroup": { "ID": "38", "Name": { "ID": 9003, "Value": "Software", "Language": "RO" } },
+        "Features": [
+          { "ID": 9, "Type": "dropdown", "Value": "Windows 10 Home", "PresentationValue": "Windows 10 Home", "SortNo": 1, "Feature": { "ID": "3233", "Name": { "ID": 9109, "Value": "Sistem de operare instalat", "Language": "RO" } } }
+        ]
+      }
+    ],
+    "ReasonsToBuy": [],
+    "Multimedia": [],
+    "DemoAccount": true
+  }
+}

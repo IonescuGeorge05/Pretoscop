@@ -55,6 +55,14 @@ row when anything changed. Changes to `access_mode` or `legal` go through the YA
 `pnpm --filter @pretoscop/config shops:table` regenerates the "Registry snapshot" table at the end
 of `docs/06-retailer-targets.md`.
 
+Source conventions (M10): one `listing` source per category (`<shop>:listing:<category>`) with
+`config.max_pages` (pagination bound), `config.label`, `config.tier`, staggered off-peak schedules
+and `freshness_slo_hours`; tests keep the sum of `max_pages` under the shop's `max_pages_per_day`.
+A `sitemap` source names its product-page parser in `config.productParser` (validated too).
+`shipping` amounts come only from the shop's own delivery page, cited with URL and date in
+`shipping.notes`; when the page states no price the amounts stay empty (`verified` stays false until
+a founder checks them).
+
 What may run against a shop (all must hold): env `CRAWL_ENABLED=true`, flag `crawl.enabled`, for
 eMAG the flag `source.emag.enabled` (ADR-013), shop `status: active`, `access_mode` not `off`,
 source `enabled` and not `kill_switch`.

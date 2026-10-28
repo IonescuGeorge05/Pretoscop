@@ -15,6 +15,20 @@
     "backup": "tsx src/cli/backup.ts",
     "stats:show": "tsx src/cli/stats-show.ts",
     "match:run": "tsx src/cli/match-run.ts",
+    "match:eval": "tsx src/cli/match-eval.ts",
+    "match:eval:build": "tsx src/cli/match-eval-build.ts",
+    "match:label": "tsx src/cli/match-label.ts",
+    "compare:live": "tsx src/cli/compare-live.ts",
+    "report": "tsx src/cli/report.ts",
+    "report:approve": "tsx src/cli/report-approve.ts",
+    "alerts:simulate": "tsx src/cli/alerts-simulate.ts",
+    "alerts:run": "tsx src/cli/alerts-run.ts",
+    "icecat:lookup": "tsx src/cli/icecat-lookup.ts",
+    "icecat:coverage": "tsx src/cli/icecat-coverage.ts",
+    "icecat:sync": "tsx src/cli/icecat-sync.ts",
+    "icecat:demo": "tsx src/cli/icecat-demo.ts",
+    "renormalize": "tsx src/cli/renormalize.ts",
+    "commissions:import": "tsx src/cli/commissions-import.ts",
     "bot:check": "tsx src/cli/bot-check.ts",
     "shops:probe": "tsx src/cli/shops-probe.ts"
   },
@@ -27,10 +41,15 @@
     "@pretoscop/db": "workspace:*",
     "@pretoscop/extractors": "workspace:*",
     "@pretoscop/fetch": "workspace:*",
+    "@pretoscop/icecat": "workspace:*",
+    "@pretoscop/mailer": "workspace:*",
+    "@pretoscop/notify": "workspace:*",
+    "@pretoscop/report": "workspace:*",
     "@pretoscop/storage": "workspace:*",
     "cron-parser": "^5.10.2",
     "drizzle-orm": "0.45.4",
     "pg-boss": "12.38.0",
-    "pino": "^10.4.0"
+    "pino": "^10.4.0",
+    "sharp": "0.35.5"
   }
 }

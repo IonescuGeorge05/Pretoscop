@@ -1,17 +1,20 @@
-import { createHash } from 'node:crypto';
 import type { Env } from '@pretoscop/config/env';
 import type { Logger } from '@pretoscop/config/logger';
 import { normalizeOffer } from '@pretoscop/core';
 import { contentHash } from '@pretoscop/core/hash';
 import { type Db, latestFxRate } from '@pretoscop/db';
 import { createFetcher, createGuardedDispatcher, signerFromEnv } from '@pretoscop/fetch';
+import { createMailer } from '@pretoscop/mailer';
+import { alertLinks } from '@pretoscop/notify';
 import { createBlobStore } from '@pretoscop/storage';
+import { createEmailSender, createNotifier, operatorFromEnv } from './alerts/notifier';
 import { createPolicyResolver } from './fetch/policy';
 import { PgDomainStateStore } from './fetch/pg-state';
 import { PgRequestLogSink } from './fetch/request-log';
-import type { Services } from './jobs/types';
+import type { AlertServices, Services } from './jobs/types';
 import { createOpsAlert } from './ops/alert';
 import { createRevalidator } from './ops/revalidate';
+import { offerIdentity } from './recorder/identity';
 import type { NormalizeFn } from './recorder/types';
 
 /**
@@ -31,12 +34,7 @@ export function createNormalize(eurRonRate: () => number | null): NormalizeFn {
       hash: contentHash,
     });
     if (!n.ok) return { rejectReason: n.rejects.join(', ') || 'rejected' };
-    const gtin14 = n.gtinQuality === 'valid' ? n.gtin14 : null;
-    // Ambiguous or component brands must not become hard matching constraints (M06 report).
-    const brandName = n.brandName && (n.brandKnown || (n.brandConfidence ?? 0) >= 0.7) ? n.brandName : null;
-    const identityHash = createHash('sha256')
-      .update([n.titleMatch, gtin14 ?? '', n.mpnNorm ?? '', brandName ?? ''].join('|'))
-      .digest('hex');
+    const { gtin14, brandName, identityHash } = offerIdentity(n);
     return {
       observation: {
         shopId: ctx.shop.id,
@@ -83,6 +81,18 @@ export function createNormalize(eurRonRate: () => number | null): NormalizeFn {
   };
 }
 
+/** Price-alert channels (M19 email; M27 adds push and Telegram), links and sender identity. */
+export function createAlertServices(env: Env, db: Db, log: Logger): AlertServices {
+  const mailer = createMailer(env, log);
+  return {
+    mailer,
+    notifier: createNotifier({ email: createEmailSender(db, mailer, log) }),
+    links: alertLinks(env.ALERTS_SECRET, env.PUBLIC_BASE_URL),
+    operator: operatorFromEnv(env),
+    secret: env.ALERTS_SECRET,
+  };
+}
+
 /** Long-lived collaborators of the worker: blob store, the polite fetcher, normalizer, ops alerts. */
 export function createServices(env: Env, db: Db, log: Logger): Services & { close: () => Promise<void> } {
   const requestLog = new PgRequestLogSink(db, log);
@@ -122,6 +132,7 @@ export function createServices(env: Env, db: Db, log: Logger): Services & { clos
     }),
     alert: createOpsAlert(env, log),
     revalidate: createRevalidator(env, log),
+    alerts: createAlertServices(env, db, log),
     async close() {
       await requestLog.flush();
       await fetcher.close?.();

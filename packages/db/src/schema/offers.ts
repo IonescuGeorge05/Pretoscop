@@ -56,7 +56,10 @@ export const offers = pgTable(
     brandName: text('brand_name'),
     mpnRaw: text('mpn_raw'),
     mpnNorm: text('mpn_norm'),
-    /** 'field' (structured data, feed, URL slug) or 'title' (guessed from the title: may be a series code). */
+    /**
+     * 'field' (stated: structured data, feed column) or 'title' (guessed: a title code, which may be
+     * a series code, or a URL slug tail, which may be a seller's SKU).
+     */
     mpnSource: text('mpn_source'),
     gtinRaw: text('gtin_raw'),
     gtin14: text('gtin14'),

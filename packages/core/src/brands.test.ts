@@ -201,3 +201,105 @@ describe('detectBrand: titles', () => {
     expect(detectBrand('')).toBeNull();
   });
 });
+
+describe('handhelds and no-name devices (live eMAG run, 2026-10-27)', () => {
+  it('knows handheld and retro console makers', () => {
+    expect(brandOf('Consola portabila retro ANBERNIC RG35XX H cu jocuri, Bluvista®')).toBe(
+      'Anbernic',
+    );
+    expect(brandOf('Consola retro portabila TRIMUI Smart Pro cu jocuri, Bluvista®')).toBe('Trimui');
+    expect(brandOf('Consola de joc Miyoo Mini Plus, culoare alba, portabila')).toBe('Miyoo');
+    expect(brandOf('Consola portabila Retroid Pocket 5, Snapdragon 865, 8GB RAM')).toBe('Retroid');
+    expect(brandOf('Consola Evercade Super Pocket Data East Edition')).toBe('Evercade');
+    expect(brandOf('Consola portabila My Arcade Retro Machine, 200 Jocuri')).toBe('My Arcade');
+    expect(brandOf('Consola portabila Mangmi Air X, Qualcomm Snapdragon 662')).toBe('Mangmi');
+    expect(brandOf('Kiano Slim TV Travel Televizor 19" pentru camion si rulote')).toBe('Kiano');
+  });
+
+  it('ignores what a retro handheld emulates', () => {
+    expect(
+      brandOf(
+        'Consola retro portabila R36S 64GB cu jocuri, CPU RK3326, Emulator N64 PSP PS1 PlayStation Sega, Alb',
+      ),
+    ).toBeNull();
+    expect(
+      brandOf('Consola Bluvista® R36S portabila retro, Emulator N64 PSP PS1 PlayStation Sega'),
+    ).toBe('Bluvista');
+  });
+
+  it.each([
+    ['Telefon mobil pentru seniori, Garsonal®, cu meniul in limba Romana', 'Garsonal', 'trademark'],
+    ['Controller Wireless Dual-Sense pentru PS5, negru, HAPPY JOKER®', 'Happy Joker', 'trademark'],
+    ['Consola Retro, BYONDSELF®, 128G, 4K, 20000 de Jocuri Incorporate', 'Byondself', 'trademark'],
+  ])('%s → declared trademark %s', (title, name, guess) => {
+    expect(detectBrand(title)).toMatchObject({
+      name,
+      known: false,
+      via: 'title',
+      guess,
+      confidence: 0.8,
+    });
+  });
+
+  it.each([
+    ['SweetLink S2 Plus Telefon mobil pentru seniori, taste mari', 'SweetLink', 'prefix'],
+    ['ZHISHAN Consola de jocuri portabila 32 biti pentru copii', 'Zhishan', 'prefix'],
+    ['Telefon Mobil Seniori VERITY, Functie SOS pentru Siguranta', 'Verity', 'after_noun'],
+    [
+      'Telefon Mobil pentru Seniori Mapajoy MP2, 4G, Meniu in Limba Romana',
+      'Mapajoy',
+      'after_noun',
+    ],
+    ['Laptop XIAORAN 15.6", Intel Celeron N400, 16GB RAM', 'Xiaoran', 'after_noun'],
+    ['Laptop Auusda cu procesor Intel Alder Celeon N5100, 32GB', 'Auusda', 'after_noun'],
+    ['Televizor LED Smart NEO LED-24ELWO25, Wi-Fi, WebOS', 'NEO', 'after_noun'],
+    ['Consola SUP Game Box, 400 jocuri, Rotita volum', 'SUP', 'after_noun'],
+    ['Consola portabila 6000+ jocuri NEXTLY, X6, ecran 3.5 inch', 'Nextly', 'after_noun'],
+    [
+      'Consola de jocuri retro Timeless Tools, 620 jocuri, 2 controller',
+      'Timeless Tools',
+      'after_noun',
+    ],
+    ['Consola de Jocuri Portabila Retoo PlayTech, Ecran HD 3.5 inch', 'Retoo', 'after_noun'],
+    ['Consola portabila, Taipintee, 800 jocuri clasice retro', 'Taipintee', 'segment'],
+    ['Consola de jocuri, Planet Tech, 400 de jocuri, Galben', 'Planet Tech', 'segment'],
+    ['Smartphone mini 3G, Rainbuvvy, XS18 Pro, 2GB RAM, 16GB', 'Rainbuvvy', 'segment'],
+  ])('%s → unknown brand %s by position (%s)', (title, name, guess) => {
+    expect(detectBrand(title)).toMatchObject({
+      name,
+      known: false,
+      via: 'title',
+      guess,
+      confidence: 0.6,
+    });
+  });
+
+  it.each([
+    'Laptop 14" cu procesor Intel Celeron J4105, 8GB RAM, 128GB SSD, Intel® UHD Graphics 600',
+    'Gaming Notebook 16 GB RAM 512 GB 1 TB SSD expansiune Core i3',
+    'Mini Laptop 8" 2-in-1, Laptop Computer Win 11, Intel N95',
+    'Consola Game Box, Micro-USB, Multiplayer, portabila, cu 400 de jocuri, retro, galben',
+    'Consola arcade retro portabila Street Fighter II Color',
+    'Consola de jocuri PSP X12, 8GB memorie, ecran HD 5,1 inch, albastra',
+    'Consola jocuri video retro, Negru, Monitor',
+    'Consola de jocuri, Consola Portabila, Ecran 3 inch, 500 Jocuri',
+    'Mini consola Retro Portabila Nostalgic Jocuri 2 Jocatori',
+    'Husa pentru iPhone 17, Silicon, Negru',
+    'Joc Mario Kart World pentru Nintendo Switch 2',
+  ])('%s → no brand guessed', (title) => {
+    expect(detectBrand(title)).toBeNull();
+  });
+
+  it('prefers a brand field to a guessed title brand', () => {
+    expect(detectBrand('Consola portabila, Taipintee, 800 jocuri', 'Bedee')).toMatchObject({
+      name: 'Bedee',
+      via: 'field',
+      known: false,
+    });
+    expect(detectBrand('Consola portabila, Taipintee, 800 jocuri', 'Anbernic')).toMatchObject({
+      name: 'Anbernic',
+      via: 'field',
+      known: true,
+    });
+  });
+});

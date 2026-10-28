@@ -56,7 +56,9 @@ export type FetchErrorCode =
   | 'invalid_policy'
   | 'invalid_request'
   | 'crawl_disabled'
-  | 'assisted_error';
+  | 'assisted_error'
+  /** A transport error that surfaced long after the request's own timeout: this process was suspended (the machine slept), not refused. */
+  | 'local_suspend';
 
 export interface FetchPoliteOptions {
   /** Shop registry slug, for logs and the request log. Defaults to the policy's `shopSlug`. */

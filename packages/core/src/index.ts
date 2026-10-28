@@ -95,6 +95,8 @@ export {
   type ExtractMpnOptions,
   normalizeMpn,
   extractMpnCandidates,
+  isSpecToken,
+  mpnHintOf,
 } from './mpn';
 export {
   type Brand,
@@ -109,9 +111,19 @@ export {
   detectBrandInTitle,
 } from './brands';
 export { type BrandSeed, type LineSeed, BRAND_SEEDS } from './brands-data';
+export { type UnknownBrandGuess, type UnknownBrandRule, guessUnknownBrand } from './unknown-brand';
 
 // Attributes and flags
-export { type ProductKind, detectProductKind, isAccessoryKind } from './product-kind';
+export {
+  type ProductKind,
+  type ProductKindExplained,
+  type ProductKindVia,
+  categoryKind,
+  detectProductKind,
+  explainProductKind,
+  isAccessoryKind,
+  lineKind,
+} from './product-kind';
 export {
   type Attributes,
   type ColorKey,
@@ -120,6 +132,7 @@ export {
   type Edition,
   type ExtractAttributesOptions,
   COLOR_LABELS_RO,
+  colorKeyOf,
   extractAttributes,
 } from './attributes';
 export {
@@ -128,12 +141,13 @@ export {
   type ConditionResult,
   detectCondition,
 } from './condition';
-export { type BundleResult, detectBundle } from './bundle';
+export { type BundleKind, type BundleResult, detectBundle } from './bundle';
 export { type AccessoryResult, detectAccessory } from './accessory';
 export { type Availability, mapAvailability } from './availability';
 
 // Offer normalization
 export {
+  type MpnOrigin,
   type RejectReason,
   type NormalizeShopContext,
   type NormalizeContext,
@@ -150,3 +164,20 @@ export * from './discount';
 export * from './anomaly';
 export * from './taxonomy';
 export * from './matching';
+export * from './matching-eval';
+
+// M19: price-alert rules (decisions in bani, target parsing, quiet hours, email checks)
+export * from './alerts';
+
+// Company identifiers and shop domains (M20 merchant portal)
+export { type CuiResult, cuiControlDigit, validateCui } from './cui';
+export {
+  FREE_MAIL_DOMAINS,
+  PUBLIC_SUFFIXES,
+  emailProvesDomain,
+  hostOnShopDomain,
+  isPublicSuffix,
+  normalizeShopDomain,
+  shopSlugFromDomain,
+} from './merchant';
+export * from './affiliate';

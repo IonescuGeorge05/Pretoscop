@@ -1,10 +1,13 @@
 #!/usr/bin/env bash
 # One-time preparation of the production server (Hetzner dedicated, Ubuntu 24.04 LTS), M18.
-# Run as root on a fresh install:   bash bootstrap.sh <github-repo-ssh-url> <deploy-user-ssh-public-key-file>
+# Run as root on a fresh install:   bash bootstrap.sh <github-repo-url> <deploy-user-ssh-public-keys-file>
+# (repo URL: https://github.com/OWNER/Pretoscop.git while the repository is public; for a private one
+# git@github.com:OWNER/Pretoscop.git, which needs the deploy user's GitHub deploy key: if that clone
+# fails, add the key printed at the end to GitHub and run the script again.)
 # Idempotent: re-running it changes nothing that is already in place.
 # What it does: updates the system, enables unattended security upgrades, installs Docker Engine and
 # the compose plugin from Docker's repository, creates the `deploy` user (docker group, SSH key,
-# no password), hardens SSH (keys only, no root login), configures the firewall (SSH from
+# no password, no sudo), hardens SSH (keys only; root by key only, for maintenance), configures the firewall (SSH from
 # anywhere, HTTP/HTTPS from Cloudflare only), sets journald and Docker log limits, creates
 # /srv/pretoscop/{prod,staging} checkouts. Secrets are NOT created here: see infra/runbooks/server-setup.md.
 set -Eeuo pipefail
@@ -65,13 +68,28 @@ echo "== deploy user"
 id "$DEPLOY_USER" >/dev/null 2>&1 || useradd --create-home --shell /bin/bash "$DEPLOY_USER"
 usermod -aG docker "$DEPLOY_USER"
 install -d -m 700 -o "$DEPLOY_USER" -g "$DEPLOY_USER" "/home/${DEPLOY_USER}/.ssh"
-install -m 600 -o "$DEPLOY_USER" -g "$DEPLOY_USER" "$PUBKEY_FILE" "/home/${DEPLOY_USER}/.ssh/authorized_keys"
+# The file may hold several keys (the CI deploy key and each founder's); keys already present stay.
+auth="/home/${DEPLOY_USER}/.ssh/authorized_keys"
+install -m 600 -o "$DEPLOY_USER" -g "$DEPLOY_USER" /dev/null "$auth.new"
+{
+  if [[ -f "$auth" ]]; then cat "$auth"; fi
+  cat "$PUBKEY_FILE"
+} | grep -E '^(ssh-|ecdsa-|sk-)' | awk '!seen[$0]++' >"$auth.new" || {
+  echo "no public key in $PUBKEY_FILE" >&2
+  exit 1
+}
+mv "$auth.new" "$auth"
+if [[ ! -f "/home/${DEPLOY_USER}/.ssh/id_ed25519" ]]; then
+  # The deploy user's own key: read-only GitHub deploy key for git fetch (infra/runbooks/server-setup.md).
+  sudo -u "$DEPLOY_USER" ssh-keygen -q -t ed25519 -N '' -C "deploy@$(hostname)" -f "/home/${DEPLOY_USER}/.ssh/id_ed25519"
+fi
+sudo -u "$DEPLOY_USER" sh -c 'ssh-keyscan -t ed25519 github.com >>~/.ssh/known_hosts 2>/dev/null; sort -u -o ~/.ssh/known_hosts ~/.ssh/known_hosts'
 
-echo "== SSH: keys only, no root login"
+echo "== SSH: keys only (root too: the deploy user has no sudo, so maintenance is ssh root@ with a key)"
 cat >/etc/ssh/sshd_config.d/10-pretoscop.conf <<'SSHD'
 PasswordAuthentication no
 KbdInteractiveAuthentication no
-PermitRootLogin no
+PermitRootLogin prohibit-password
 SSHD
 systemctl reload ssh || systemctl reload sshd
 
@@ -121,11 +139,19 @@ systemctl enable --now pretoscop-docker-user-firewall.service
 
 echo "== checkouts"
 install -d -o "$DEPLOY_USER" -g "$DEPLOY_USER" "$SRV"
+cloned=1
 for env in prod staging; do
   if [[ ! -d "$SRV/$env/.git" ]]; then
-    sudo -u "$DEPLOY_USER" git clone "$REPO_URL" "$SRV/$env"
+    sudo -u "$DEPLOY_USER" git clone "$REPO_URL" "$SRV/$env" || cloned=0
   fi
 done
+if ((cloned == 0)); then
+  echo
+  echo "The clone failed. For a private repository add this read-only deploy key on GitHub"
+  echo "(Settings → Deploy keys), then run this script again:"
+  cat "/home/${DEPLOY_USER}/.ssh/id_ed25519.pub"
+  exit 1
+fi
 
 echo
 echo "Done. Next (as ${DEPLOY_USER}): create ${SRV}/prod/.env and .env.backup, ${SRV}/staging/.env,"

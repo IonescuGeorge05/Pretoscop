@@ -56,6 +56,10 @@ export type FetchErrorCode =
   | 'invalid_request'
   | 'crawl_disabled'
   | 'assisted_error'
+  /** The guarded dispatcher refused a private, loopback or otherwise non-public address (SSRF guard, M20). */
+  | 'non_public_address'
+  /** A transport error that surfaced long after the request's own timeout: this process was suspended (the machine slept), not refused. */
+  | 'local_suspend'
   /** Assisted channel: the month's vendor spend reached ASSISTED_MONTHLY_CAP_EUR (M05B). */
   | 'assisted_cap'
   /** Assisted channel: the vendor refuses our account or this shop's domain (M05B). */

@@ -77,6 +77,9 @@ export const DEFAULT_MAX_BYTES = 15 * 1024 * 1024;
 export const DEFAULT_CONNECT_TIMEOUT_MS = 10_000;
 export const DEFAULT_MAX_RETRIES = 2;
 export const DEFAULT_RETRY_BASE_MS = 10_000;
+/** How far past its own timeout a failed request must surface to count as a local suspension. */
+export const LOCAL_SUSPEND_SLACK_MS = 30_000;
+
 /** The assisted client gets `timeoutMs`; the fetch layer gives up `min(timeoutMs, 2 s)` later. */
 export const ASSISTED_TIMEOUT_GRACE_MS = 2000;
 
@@ -998,6 +1001,15 @@ class PoliteFetcher implements Fetcher {
           const cls = det.transportError;
           const message = cls?.message ?? String(out.error);
           const code = cls?.code ?? 'network';
+          // An error that surfaces long after the request's own timeout means this process was
+          // suspended (the machine slept and the shop closed the idle connection meanwhile): not
+          // the shop's doing, so no pause and no failure count. On 28 Oct 2026 a sleeping Mac
+          // otherwise paused five shops for 24 h with "connection reset".
+          if (out.durationMs > ctx.timeoutMs + LOCAL_SUSPEND_SLACK_MS) {
+            const note = `${message} (after ${Math.round(out.durationMs / 1000)} s: local suspension)`;
+            await this.writeLog(ctx, { ...logBase, status: 0, bytes: 0, blocked: false, error: note, errorCode: 'local_suspend' });
+            return done({ ...emptyResult(start.href, out.channel), finalUrl: current.href, error: note, errorCode: 'local_suspend' }, true);
+          }
           if (det.blocked && out.channel === 'direct') {
             const pause = await this.pauseChain(chainHosts, 'transport', det, 0, ctx);
             await this.writeLog(ctx, { ...logBase, status: 0, bytes: 0, blocked: true, blockReason: 'transport', blockDetail: det.detail, error: message, errorCode: code });

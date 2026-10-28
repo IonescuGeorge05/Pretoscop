@@ -1,7 +1,7 @@
 # Release pipeline (M18; infra/runbooks/deploy.md). A tag v* builds the images and deploys staging;
 # production waits for a founder's approval (GitHub environment "production" with required
 # reviewers). "Run workflow" redeploys an existing tag to one environment (rollback).
-# Secrets (per environment): DEPLOY_SSH_KEY (private key of the server's `deploy` user),
+# Secrets (per environment): DEPLOY_SSH_KEY (private half of the CI key in the `deploy` user's authorized_keys),
 # DEPLOY_HOST, DEPLOY_KNOWN_HOSTS (output of `ssh-keyscan <host>`, checked, never skipped).
 # Variables: PROD_SITE_INDEXABLE (false until launch), PLAUSIBLE_DOMAIN, PLAUSIBLE_SCRIPT_URL, MEDIA_BASE_URL.
 name: deploy
@@ -21,16 +21,15 @@ on:
         type: string
         required: true
 
+# Least privilege: only the image job may push to GHCR; the deploy jobs only hold their SSH secrets.
 permissions:
   contents: read
-  packages: write
 
 concurrency:
   group: deploy
   cancel-in-progress: false
 
 env:
-  REGISTRY: ghcr.io/${{ github.repository_owner }}
   TAG: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
 
 jobs:
@@ -38,6 +37,9 @@ jobs:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: true
       matrix:
@@ -73,6 +75,8 @@ jobs:
       - name: Tags
         id: tags
         run: |
+          # Image names must be lower-case; the GitHub owner (IonescuGeorge05) is not.
+          REGISTRY="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}"
           if [ "${{ matrix.image }}" = "pretoscop-postgres" ]; then
             echo "tags=${REGISTRY}/${{ matrix.image }}:18,${REGISTRY}/${{ matrix.image }}:18-${TAG}" >> "$GITHUB_OUTPUT"
           else

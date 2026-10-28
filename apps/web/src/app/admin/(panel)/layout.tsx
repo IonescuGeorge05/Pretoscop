@@ -9,7 +9,11 @@ const nav = [
   ['/admin/rulari', 'Rulări'],
   ['/admin/potriviri', 'Potriviri'],
   ['/admin/produse', 'Produse'],
+  ['/admin/oferte', 'Oferte'],
+  ['/admin/venituri', 'Venituri'],
   ['/admin/carantina', 'Carantină'],
+  ['/admin/alerte', 'Alerte'],
+  ['/admin/comercianti', 'Magazine partenere'],
   ['/admin/flaguri', 'Flaguri'],
   ['/admin/audit', 'Audit'],
 ] as const;

@@ -67,7 +67,7 @@
       "datasource": { "type": "prometheus", "uid": "${datasource}" },
       "fieldConfig": { "defaults": { "unit": "h", "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "red", "value": 26 }] } } },
       "targets": [
-        { "expr": "(time() - pretoscop_job_last_success_timestamp_seconds{env=\"$env\", job=\"backup.nightly\"}) / 3600", "legendFormat": "pg_dump", "refId": "A" },
+        { "expr": "(time() - pretoscop_job_last_success_timestamp_seconds{env=\"$env\", queue=\"backup.nightly\"}) / 3600", "legendFormat": "pg_dump", "refId": "A" },
         { "expr": "(time() - pretoscop_pg_last_archived_timestamp_seconds{env=\"$env\"}) / 3600", "legendFormat": "last WAL archived", "refId": "B" }
       ]
     },

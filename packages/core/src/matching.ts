@@ -71,7 +71,10 @@ export interface Tokens {
 /** Tokens for matching: ASCII-folded, units glued to numbers ("16 GB" → "16gb"), stopwords dropped. */
 export function tokenSets(title: string): Tokens {
   const t = fold(title)
-    .replace(/(\d)[,.](\d)/g, '$1$2')
+    // "S26+" is the Plus model, not the S26 ("SSD+2TB" keeps its plus as a separator).
+    .replace(/([a-z0-9])\+(?=[^a-z0-9]|$)/g, '$1 plus')
+    // Decimal comma ("6,7 inch") joins; a list comma before a capacity ("Acebook 10,16GB") does not.
+    .replace(/(\d)[,.](\d{1,2})(?!\d|\s*(?:gb|tb|mb)\b)/g, '$1$2')
     .replace(/(\d+)\s*(gb|tb|mb|mah|w|hz|kg|l|ml|inch|inchi|cm|mm|mp|rpm)\b/g, '$1$2')
     .replace(/(\d+)\s*("|''|”)/g, '$1in')
     .replace(/wi-?fi/g, 'wifi')
@@ -119,6 +122,11 @@ export function attributeConflicts(a: Record<string, unknown>, b: Record<string,
   const ci = num(a.capacityL);
   const cj = num(b.capacityL);
   if (ci !== null && cj !== null && Math.abs(ci - cj) / Math.max(ci, cj) > 0.03) out.push(`capacityL ${ci}≠${cj}`);
+  // Galaxy A17 5G and A17 4G are different phones (5G models also speak 4G, but titles name one).
+  const gen = (v: unknown) => (Array.isArray(v) ? (v.includes('5g') ? '5g' : v.includes('4g') ? '4g' : null) : null);
+  const ga = gen(a.connectivity);
+  const gb = gen(b.connectivity);
+  if (ga && gb && ga !== gb) out.push(`network ${ga}≠${gb}`);
   const colA = typeof a.color === 'string' ? a.color : null;
   const colB = typeof b.color === 'string' ? b.color : null;
   if (colA && colB && colA !== colB) out.push(`color ${colA}≠${colB}`);

@@ -1,10 +1,13 @@
 import { sql } from '@pretoscop/db';
 import { Section, Table, Td } from '@/components/admin/ui';
+import { requireAdmin } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { formatDateTime, formatLeiNumeric } from '@/lib/format';
 import { rejectQuarantineAction, releaseQuarantineAction } from '../../actions';
 
 export default async function QuarantinePage() {
+  // Each admin page checks the session itself: the layout guard does not stop a segment from rendering.
+  await requireAdmin();
   const res = await db().execute<{ id: string; observed_at: string; price: string; median_price: string | null; ratio: number | null; reason: string; title: string; shop: string; url: string }>(sql`
     SELECT q.id::text, q.observed_at::text, q.price::text, q.median_price::text, q.ratio, q.reason, o.title_raw AS title, s.slug AS shop, o.url
     FROM price_events_quarantine q JOIN offers o ON o.id = q.offer_id JOIN shops s ON s.id = o.shop_id

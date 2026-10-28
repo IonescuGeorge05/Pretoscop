@@ -1,20 +1,22 @@
-import { createHash } from 'node:crypto';
 import type { Env } from '@pretoscop/config/env';
 import type { Logger } from '@pretoscop/config/logger';
 import { normalizeOffer } from '@pretoscop/core';
 import { contentHash } from '@pretoscop/core/hash';
 import { type Db, latestFxRate } from '@pretoscop/db';
-import { createFetcher } from '@pretoscop/fetch';
+import { createFetcher, createGuardedDispatcher, type DomainStateStore, type Fetcher, type FetcherDeps, ScopedDomainStateStore } from '@pretoscop/fetch';
 import { createMailer, type Mailer } from '@pretoscop/mailer';
+import { alertLinks } from '@pretoscop/notify';
 import { createBlobStore } from '@pretoscop/storage';
+import { createEmailSender, createNotifier, operatorFromEnv } from './alerts/notifier';
 import { createAssistedChannelFromEnv } from './fetch/assisted';
 import { createPolicyResolver } from './fetch/policy';
 import { PgDomainStateStore } from './fetch/pg-state';
 import { PgRequestLogSink } from './fetch/request-log';
-import type { Services } from './jobs/types';
+import type { AlertServices, Services } from './jobs/types';
 import { createOpsAlert } from './ops/alert';
 import { assistedMetricFamilies, assistedSloAlerts } from './ops/assisted';
 import { createRevalidator } from './ops/revalidate';
+import { offerIdentity } from './recorder/identity';
 import type { NormalizeFn } from './recorder/types';
 
 /**
@@ -34,12 +36,7 @@ export function createNormalize(eurRonRate: () => number | null): NormalizeFn {
       hash: contentHash,
     });
     if (!n.ok) return { rejectReason: n.rejects.join(', ') || 'rejected' };
-    const gtin14 = n.gtinQuality === 'valid' ? n.gtin14 : null;
-    // Ambiguous or component brands must not become hard matching constraints (M06 report).
-    const brandName = n.brandName && (n.brandKnown || (n.brandConfidence ?? 0) >= 0.7) ? n.brandName : null;
-    const identityHash = createHash('sha256')
-      .update([n.titleMatch, gtin14 ?? '', n.mpnNorm ?? '', brandName ?? ''].join('|'))
-      .digest('hex');
+    const { gtin14, brandName, identityHash } = offerIdentity(n);
     return {
       observation: {
         shopId: ctx.shop.id,
@@ -97,24 +94,68 @@ function opsMailer(env: Env, log: Logger): Mailer | undefined {
   }
 }
 
-/** Long-lived collaborators of the worker: blob store, the polite fetcher, normalizer, ops alerts. */
-export function createServices(env: Env, db: Db, log: Logger): Services & { close: () => Promise<void> } {
-  const requestLog = new PgRequestLogSink(db, log);
-  // Assisted-access channel (M05B): only with a configured vendor; otherwise the fetch layer
-  // refuses every assisted host (`assisted_unavailable`).
-  const assisted = createAssistedChannelFromEnv(env, db, log);
-  log.info({ assisted: assisted.channel ? 'on' : 'off', detail: assisted.reason }, 'assisted-access channel');
-  const fetcher = createFetcher({
+/** Price-alert channels (M19 email; M27 adds push and Telegram), links and sender identity. */
+export function createAlertServices(env: Env, db: Db, log: Logger): AlertServices {
+  const mailer = createMailer(env, log);
+  return {
+    mailer,
+    notifier: createNotifier({ email: createEmailSender(db, mailer, log) }),
+    links: alertLinks(env.ALERTS_SECRET, env.PUBLIC_BASE_URL),
+    operator: operatorFromEnv(env),
+    secret: env.ALERTS_SECRET,
+  };
+}
+
+function fetcherDeps(env: Env, db: Db, log: Logger, deps: Pick<FetcherDeps, 'dispatcher' | 'requestLog' | 'stateStore'>): FetcherDeps {
+  return {
+    ...deps,
     policyFor: createPolicyResolver(db),
-    stateStore: new PgDomainStateStore(db),
-    requestLog,
-    ...(assisted.channel ? { assisted: assisted.channel } : {}),
     crawlEnabled: env.CRAWL_ENABLED,
     botInfoUrl: env.BOT_INFO_URL,
     defaultTimeoutMs: env.FETCH_TIMEOUT_MS,
     defaultMaxBytes: env.FETCH_MAX_BODY_BYTES,
     logger: log,
+  };
+}
+
+/**
+ * The fetcher for requests a merchant asks for (M20: feed checks, verification files and the pulls
+ * of merchant feeds). Same identity, robots.txt rules, per-host start slots and SSRF guard as the
+ * crawler's, but whatever those requests provoke (pauses, failure streaks, the daily count, a
+ * robots.txt result) is kept under `merchant:` keys (ScopedDomainStateStore), so a stranger's URL can
+ * never pause, slow down or use up the crawler's access to a shop.
+ */
+export function createMerchantFetcher(
+  env: Env,
+  db: Db,
+  log: Logger,
+  deps: Pick<FetcherDeps, 'dispatcher' | 'requestLog'> & { stateStore: DomainStateStore },
+  /** Test hooks only (`sleep`, `now`). */
+  overrides: Pick<FetcherDeps, 'sleep' | 'now'> = {},
+): Fetcher {
+  return createFetcher({ ...fetcherDeps(env, db, log, { ...deps, stateStore: new ScopedDomainStateStore(deps.stateStore, 'merchant') }), ...overrides });
+}
+
+/** Long-lived collaborators of the worker: blob store, the polite fetcher, normalizer, ops alerts. */
+export function createServices(env: Env, db: Db, log: Logger): Services & { close: () => Promise<void> } {
+  const requestLog = new PgRequestLogSink(db, log);
+  // Only public internet addresses (M20: merchants type feed URLs); local fixtures need FETCH_ALLOW_PRIVATE_HOSTS
+  // (everything) or FETCH_PRIVATE_ALLOWLIST (exact ip:port pairs).
+  const dispatcher = createGuardedDispatcher({
+    allowPrivate: env.FETCH_ALLOW_PRIVATE_HOSTS,
+    allowTargets: env.FETCH_PRIVATE_ALLOWLIST,
+    timeoutMs: env.FETCH_TIMEOUT_MS,
   });
+  const state = new PgDomainStateStore(db);
+  // Assisted-access channel (M05B): the crawler fetcher only, and only with a configured vendor; otherwise
+  // the fetch layer refuses every assisted host (`assisted_unavailable`). Merchant requests never use it.
+  const assisted = createAssistedChannelFromEnv(env, db, log);
+  log.info({ assisted: assisted.channel ? 'on' : 'off', detail: assisted.reason }, 'assisted-access channel');
+  const fetcher = createFetcher({
+    ...fetcherDeps(env, db, log, { dispatcher, requestLog, stateStore: state }),
+    ...(assisted.channel ? { assisted: assisted.channel } : {}),
+  });
+  const merchantFetcher = createMerchantFetcher(env, db, log, { dispatcher, requestLog, stateStore: state });
   let eur: { rate: number | null; at: number } = { rate: null, at: 0 };
   const refreshEur = () => {
     if (Date.now() - eur.at < 3600_000) return;
@@ -129,6 +170,7 @@ export function createServices(env: Env, db: Db, log: Logger): Services & { clos
   return {
     blob: createBlobStore(env),
     fetcher,
+    merchantFetcher,
     normalize: createNormalize(() => {
       refreshEur();
       return eur.rate;
@@ -136,11 +178,14 @@ export function createServices(env: Env, db: Db, log: Logger): Services & { clos
     alert: createOpsAlert(env, log, opsMailer(env, log)),
     revalidate: createRevalidator(env, log),
     startedAt: new Date(),
+    alerts: createAlertServices(env, db, log),
     sloExtra: () => assistedSloAlerts(db, env),
     metricsExtra: () => assistedMetricFamilies(db, env),
     async close() {
       await requestLog.flush();
       await fetcher.close?.();
+      await merchantFetcher.close?.();
+      await dispatcher.close();
     },
   };
 }

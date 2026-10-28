@@ -12,6 +12,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "demo": "tsx src/cli/demo.ts",
+    "record": "tsx src/cli/record.ts",
     "assisted:demo": "tsx src/cli/assisted-demo.ts"
   },
   "dependencies": {

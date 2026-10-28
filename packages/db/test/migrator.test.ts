@@ -1,53 +1,54 @@
-import { randomBytes } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import pg from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { getEnv, loadRootEnvFile } from '@pretoscop/config/env';
 import { createDb, createPool } from '../src/client';
-import { MIGRATIONS_FOLDER, runMigrations } from '../src/migrator';
+import { MIGRATIONS_FOLDER, MIGRATION_LOCK_KEY, runMigrations } from '../src/migrator';
+import { createTestDatabase, type TestDatabase } from '../src/testing';
 
 // M18: the one-shot `migrate` service, a worker starting at the same moment and a second deploy
-// can all call runMigrations at once; the advisory lock makes them take turns.
-describe('runMigrations under concurrency', () => {
-  loadRootEnvFile();
-  const env = getEnv();
-  const name = `pretoscop_migr_${process.pid}_${randomBytes(3).toString('hex')}`;
-  const url = (() => {
-    const u = new URL(env.TEST_DATABASE_ADMIN_URL);
-    u.pathname = `/${name}`;
-    return u.toString();
-  })();
+// can all call runMigrations at once; the session advisory lock makes them take turns.
+describe('runMigrations takes the migration lock', () => {
+  let t: TestDatabase;
   const pools: pg.Pool[] = [];
-
   beforeAll(async () => {
-    const admin = new pg.Client({ connectionString: env.TEST_DATABASE_ADMIN_URL });
-    await admin.connect();
-    await admin.query(`CREATE DATABASE ${name}`);
-    await admin.end();
+    t = await createTestDatabase(); // migrated once here
   });
-
   afterAll(async () => {
     for (const p of pools) await p.end().catch(() => undefined);
-    const admin = new pg.Client({ connectionString: env.TEST_DATABASE_ADMIN_URL });
-    await admin.connect();
-    await admin.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`);
-    await admin.end();
+    await t?.drop();
   });
 
-  it('applies every migration exactly once when three migrators race on an empty database', async () => {
+  it('waits while another session holds the lock, then completes', async () => {
+    const holder = new pg.Client({ connectionString: t.url });
+    await holder.connect();
+    try {
+      await holder.query('SELECT pg_advisory_lock($1)', [MIGRATION_LOCK_KEY]);
+      let settled = false;
+      const run = runMigrations(t.db).then(() => {
+        settled = true;
+      });
+      await new Promise((r) => setTimeout(r, 1500));
+      expect(settled).toBe(false);
+      await holder.query('SELECT pg_advisory_unlock($1)', [MIGRATION_LOCK_KEY]);
+      await run;
+      expect(settled).toBe(true);
+    } finally {
+      await holder.end();
+    }
+  });
+
+  it('concurrent runs all succeed, apply nothing twice and leave no lock behind', async () => {
     const dbs = [0, 1, 2].map(() => {
-      const pool = createPool(url, 2);
+      const pool = createPool(t.url, 2);
       pools.push(pool);
       return createDb(pool);
     });
     await Promise.all(dbs.map((db) => runMigrations(db)));
     const journal = JSON.parse(readFileSync(join(MIGRATIONS_FOLDER, 'meta', '_journal.json'), 'utf8')) as { entries: unknown[] };
-    const res = await pools[0]!.query<{ n: string }>('SELECT count(*)::text AS n FROM drizzle.__drizzle_migrations');
+    const res = await t.pool.query<{ n: string }>('SELECT count(*)::text AS n FROM drizzle.__drizzle_migrations');
     expect(Number(res.rows[0]!.n)).toBe(journal.entries.length);
-    // The lock is released: a later run is a quick no-op.
-    await runMigrations(dbs[0]!);
-    const locks = await pools[0]!.query<{ n: string }>(
+    const locks = await t.pool.query<{ n: string }>(
       "SELECT count(*)::text AS n FROM pg_locks WHERE locktype = 'advisory' AND database = (SELECT oid FROM pg_database WHERE datname = current_database())",
     );
     expect(Number(locks.rows[0]!.n)).toBe(0);

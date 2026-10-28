@@ -1,0 +1,6 @@
+ID comision;Stare;Suma comision;Valoare tranzactie;Moneda;Cod program;Data tranzactiei;Stats tags
+9001;pending;12,50;250,00;RON;u1;2026-10-20T10:00:00Z;c101
+9002;accepted;45,00;900,00;RON;u1;2026-10-21T11:30:00Z;c102
+9003;rejected;8,10;162,00;RON;u2;21.10.2026;
+9004;paid;"1.234,56";"24.691,20";RON;u1;2026-10-01T09:00:00Z;pc-c103
+bad;;;;;;;

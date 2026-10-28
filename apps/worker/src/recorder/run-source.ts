@@ -8,6 +8,7 @@ import {
   type OfferObservation,
   emptyStats,
   finishRun,
+  foreignShopForHost,
   lastDiscoveryAt,
   markCrawlUrlFetched,
   markMissingOffers,
@@ -20,8 +21,9 @@ import {
   type RunStats,
   type RunStatus,
 } from '@pretoscop/db';
-import { parseFeed, parsePageDetailed, parseSitemap } from '@pretoscop/extractors';
+import { hostOnDomain, parseFeed, parsePageDetailed, parseSitemap } from '@pretoscop/extractors';
 import { eq, sql } from 'drizzle-orm';
+import { FeedTooLargeError, readUploadedFeed } from '../merchant/upload';
 import { checkGates } from './gates';
 import type { RecorderDeps, ShopContext } from './types';
 
@@ -39,6 +41,8 @@ export interface RunOutcome {
   reason?: string;
   /** Offers recorded in this run that need (re)matching. */
   touchedOffers?: number[];
+  /** Matched products whose offers changed price or stock in this run (rollup.touch → alerts). */
+  touchedProducts?: number[];
 }
 
 interface Ctx {
@@ -47,10 +51,12 @@ interface Ctx {
   shop: ShopContext;
   sourceId: number;
   sourceTier: 1 | 2 | 3 | 4;
-  stats: RunStats & { rejected: number; stale: number; newOffers: number; pages: number; discovered: number; quarantined: number };
+  stats: RunStats & { rejected: number; stale: number; newOffers: number; pages: number; discovered: number; quarantined: number; offDomain: number };
   snapshot: string[];
   /** Offers that need (re)matching after this run (M07 consumes them). */
   touchedOffers: Set<number>;
+  /** Already-matched products with a price event in this run (re-rolled up; their alerts evaluated). */
+  touchedProducts: Set<number>;
   /** Set when the run-level breaker trips: nothing more is recorded. */
   held?: string;
   errors: string[];
@@ -119,6 +125,7 @@ async function ingest(ctx: Ctx, offers: RawOffer[], observedAt: Date): Promise<v
       if (r.eventKind) ctx.stats.changed++;
       if (r.inserted) ctx.stats.newOffers++;
       if (r.needsMatch && r.offerId !== null) ctx.touchedOffers.add(r.offerId);
+      else if (r.eventKind && r.productId) ctx.touchedProducts.add(r.productId);
     } catch (err) {
       ctx.stats.errors++;
       if (ctx.errors.length < SNAPSHOT_SAMPLE_REJECTS) ctx.errors.push(`record ${o.externalId}: ${(err as Error).message}`);
@@ -177,7 +184,10 @@ async function runListing(ctx: Ctx, source: { url: string; parserKey: string; co
       observedAt: observedAt.toISOString(),
     });
     if (parsed.offers.length === 0) {
-      if (ctx.stats.pages === 1) {
+      // A page whose products are all unavailable (VTEX shows them without a price) still lists
+      // them (`meta.items`): that is the end of the priced listing, not a layout change.
+      const items = typeof parsed.meta?.items === 'number' ? parsed.meta.items : 0;
+      if (ctx.stats.pages === 1 && items === 0) {
         ctx.stats.errors++;
         ctx.errors.push(`no offers parsed on the first page ${res.finalUrl} (layout change?)`);
       } else complete = true;
@@ -267,13 +277,69 @@ async function fetchProductPages(ctx: Ctx, picks: { id: number; url: string }[],
   }
 }
 
-async function runFeed(ctx: Ctx, source: { url: string; parserKey: string }): Promise<{ complete: boolean }> {
+/** `shop_sources.url` of a feed file a merchant uploaded (M20): `upload:<blob key>`. */
+export const UPLOAD_URL_PREFIX = 'upload:';
+
+/**
+ * Feeds (affiliate, merchant). Merchant sources (M20, `config.origin = 'merchant'`) add these rules:
+ * the declared `priceFormat` ("12.500" = 12.5 or 12 500); `requireDomain` (offers must link to the
+ * domain the merchant proved it controls; others are dropped); no affiliate link of the merchant's
+ * own (click-outs go to the product URL on that domain); requests go through the merchant-scoped
+ * fetcher and never to the host of another shop we crawl; uploaded files are read once per upload,
+ * decoded under the same size cap as a fetched feed, and observed at the upload time, never as a
+ * fresh check.
+ */
+async function runFeed(ctx: Ctx, source: { url: string; parserKey: string; config: Record<string, unknown> }): Promise<{ complete: boolean }> {
   ctx.stats.pages++;
-  const res = await ctx.deps.fetcher.fetchPolite(source.url, { shopSlug: ctx.shop.slug, purpose: 'feed', runId: ctx.runId });
-  if (fetchOutcome(ctx, res) !== 'ok') return { complete: false };
-  const observedAt = ctx.deps.now?.() ?? new Date();
+  const merchantId = source.config.origin === 'merchant' && typeof source.config.merchantId === 'number' ? source.config.merchantId : null;
+  const domain = typeof source.config.requireDomain === 'string' && source.config.requireDomain !== '' ? source.config.requireDomain : null;
+  let body: string | Uint8Array;
+  let observedAt: Date;
+  if (source.url.startsWith(UPLOAD_URL_PREFIX)) {
+    let data: Uint8Array | null;
+    try {
+      data = await readUploadedFeed(ctx.deps.blob, source.url.slice(UPLOAD_URL_PREFIX.length), ctx.deps.env.FETCH_MAX_BODY_BYTES);
+    } catch (err) {
+      ctx.stats.errors++;
+      ctx.errors.push(err instanceof FeedTooLargeError ? `uploaded feed file too large: ${err.message}` : `uploaded feed file unreadable: ${(err as Error).message}`);
+      return { complete: false };
+    }
+    if (!data) {
+      ctx.stats.errors++;
+      ctx.errors.push(`uploaded feed file missing: ${source.url}`);
+      return { complete: false };
+    }
+    ctx.stats.fetched++;
+    body = data;
+    const at = typeof source.config.uploadedAt === 'string' ? new Date(source.config.uploadedAt) : null;
+    observedAt = at && !Number.isNaN(at.getTime()) ? at : (ctx.deps.now?.() ?? new Date());
+  } else {
+    if (merchantId !== null) {
+      const host = new URL(source.url).hostname;
+      const foreign = await foreignShopForHost(ctx.deps.db, host, { merchantId, domain, domainVerified: domain !== null });
+      if (foreign) {
+        ctx.stats.errors++;
+        ctx.errors.push(`merchant feed host ${host} belongs to the registered shop ${foreign.slug}: not requested`);
+        return { complete: false };
+      }
+    }
+    const fetcher = merchantId !== null ? (ctx.deps.merchantFetcher ?? ctx.deps.fetcher) : ctx.deps.fetcher;
+    const res = await fetcher.fetchPolite(source.url, { shopSlug: ctx.shop.slug, purpose: 'feed', runId: ctx.runId });
+    if (fetchOutcome(ctx, res) !== 'ok') return { complete: false };
+    body = res.body!;
+    observedAt = ctx.deps.now?.() ?? new Date();
+  }
+  const priceFormat = source.config.priceFormat === 'ro' || source.config.priceFormat === 'decimal' ? source.config.priceFormat : undefined;
   const batch: RawOffer[] = [];
-  for await (const raw of parseFeed(source.parserKey, res.body!, { shopSlug: ctx.shop.slug, observedAt: observedAt.toISOString(), feedUrl: source.url })) {
+  for await (const raw of parseFeed(source.parserKey, body, { shopSlug: ctx.shop.slug, observedAt: observedAt.toISOString(), feedUrl: source.url })) {
+    if (domain && !hostOnDomain(raw.url, domain)) {
+      ctx.stats.offDomain++;
+      ctx.stats.rejected++;
+      if (ctx.errors.length < SNAPSHOT_SAMPLE_REJECTS) ctx.errors.push(`reject ${raw.externalId}: product URL outside ${domain} (${raw.url})`);
+      continue;
+    }
+    if (merchantId !== null) delete raw.affiliateUrl;
+    if (priceFormat && raw.priceFormat === undefined) raw.priceFormat = priceFormat;
     batch.push(raw);
     if (batch.length >= 500) await ingest(ctx, batch.splice(0), observedAt);
   }
@@ -300,6 +366,16 @@ export async function runSource(deps: RecorderDeps, sourceId: number, opts: RunO
     deps.log.info({ source_id: sourceId, shop: shop.slug, reason: gate.reason }, 'source run gated');
     return { runId: null, status: 'gated', stats: emptyStats(), reason: gate.reason };
   }
+  // A host the fetch layer already paused (403/429/challenge) is not a new failure: no run, no
+  // request, no alert, until the pause ends (the block that set it was alerted when it happened).
+  const host = new URL(source.url).host;
+  const pause = await db.execute<{ until: string; reason: string | null }>(sql`
+    SELECT paused_until::text AS until, pause_reason AS reason FROM fetch_domain_state WHERE host = ${host} AND paused_until > now()`);
+  if (pause.rows[0]) {
+    const reason = `host ${host} paused until ${pause.rows[0].until}${pause.rows[0].reason ? ` (${pause.rows[0].reason})` : ''}`;
+    deps.log.info({ source_id: sourceId, shop: shop.slug, reason }, 'source run gated');
+    return { runId: null, status: 'gated', stats: emptyStats(), reason };
+  }
 
   const channel = source.kind === 'feed' ? 'feed' : shop.accessMode === 'assisted' ? 'assisted' : 'direct';
   const run = await startRun(db, { sourceId, channel, trigger: opts.trigger });
@@ -311,9 +387,10 @@ export async function runSource(deps: RecorderDeps, sourceId: number, opts: RunO
     shop: { id: shop.id, slug: shop.slug, shippingRules: shop.shippingRules, vatIncludedDefault: shop.vatIncludedDefault },
     sourceId,
     sourceTier: (source.sourceTier as 1 | 2 | 3 | 4) ?? 1,
-    stats: { ...emptyStats(), rejected: 0, stale: 0, newOffers: 0, pages: 0, discovered: 0, quarantined: 0 },
+    stats: { ...emptyStats(), rejected: 0, stale: 0, newOffers: 0, pages: 0, discovered: 0, quarantined: 0, offDomain: 0 },
     snapshot: [],
     touchedOffers: new Set<number>(),
+    touchedProducts: new Set<number>(),
     errors: [],
     log,
   };
@@ -340,7 +417,7 @@ export async function runSource(deps: RecorderDeps, sourceId: number, opts: RunO
       const picks = await pickCrawlUrls(db, shop.id, limit, 'priority', { notFetchedWithinHours: 20 });
       await fetchProductPages(ctx, picks, source.parserKey);
     } else if (source.kind === 'feed') {
-      complete = (await runFeed(ctx, { url: source.url, parserKey: source.parserKey })).complete;
+      complete = (await runFeed(ctx, { url: source.url, parserKey: source.parserKey, config })).complete;
     } else {
       ctx.errors.push(`kind ${source.kind} has no runner`);
     }
@@ -418,5 +495,5 @@ export async function runSource(deps: RecorderDeps, sourceId: number, opts: RunO
   }
 
   log.info({ status, stats: ctx.stats, snapshot: snapshotKey }, 'source run finished');
-  return { runId: run.id, status, stats: ctx.stats, touchedOffers: [...ctx.touchedOffers] };
+  return { runId: run.id, status, stats: ctx.stats, touchedOffers: [...ctx.touchedOffers], touchedProducts: [...ctx.touchedProducts] };
 }

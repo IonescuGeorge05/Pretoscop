@@ -1,5 +1,5 @@
 # PostgreSQL 18 (+ pgvector, as in development) with pgBackRest for continuous WAL archiving and
-# base backups to S3-compatible storage (Cloudflare R2 in production; ADR-016). The same image
+# base backups to S3-compatible storage (Cloudflare R2 in production; ADR-018). The same image
 # runs the database and the `pgbackrest` sidecar (scheduled backups, weekly restore test).
 #   docker build -f infra/docker/postgres.Dockerfile -t ghcr.io/<owner>/pretoscop-postgres:18 .
 FROM pgvector/pgvector:0.8.7-pg18-trixie

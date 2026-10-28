@@ -1,7 +1,8 @@
 import 'server-only';
 import type { DiscountFact } from '@pretoscop/core';
-import { productOfferFacts, sql } from '@pretoscop/db';
+import { isFlagEnabled, productOfferFacts, programsByShop, sql } from '@pretoscop/db';
 import { unstable_cache } from 'next/cache';
+import { affiliateLinkFor } from './affiliate';
 import { db } from './db';
 
 export interface ProductOffer {
@@ -42,6 +43,10 @@ export interface ProductPageData {
   gtins: string[];
   attributes: Record<string, unknown>;
   imageKey: string | null;
+  /** Licensed source of the shown image (`feed`, `icecat`, `manual`, `merchant`). */
+  imageSource: string | null;
+  /** Icecat specs are stored for the product (the page must then credit Icecat, M11). */
+  icecatSpecs: boolean;
   stats: {
     currentMinTotal: string | null;
     min30d: string | null;
@@ -71,18 +76,19 @@ async function load(id: number): Promise<ProductPageData | null> {
   const p = await d.execute<{
     id: string; slug: string; title: string; status: string; merged_slug: string | null; provisional: boolean; brand: string | null; brand_slug: string | null;
     cat_slug: string | null; cat_name: string | null; parent_slug: string | null; parent_name: string | null; mpn: string | null;
-    attributes: Record<string, unknown>; family_id: string | null; image_key: string | null; gtins: string[] | null;
+    attributes: Record<string, unknown>; family_id: string | null; image_key: string | null; image_source: string | null; icecat_specs: boolean; gtins: string[] | null;
   }>(sql`
     SELECT p.id::text, p.slug, p.title, p.status, m.slug AS merged_slug, p.provisional, b.name AS brand, b.slug AS brand_slug,
       c.slug AS cat_slug, c.name_ro AS cat_name, pc.slug AS parent_slug, pc.name_ro AS parent_name, p.mpn, p.attributes,
-      p.family_id::text, img.storage_key AS image_key,
+      p.family_id::text, img.storage_key AS image_key, img.source AS image_source,
+      EXISTS (SELECT 1 FROM product_specs s WHERE s.product_id = p.id AND s.source = 'icecat') AS icecat_specs,
       (SELECT array_agg(gtin14) FROM product_gtins g WHERE g.product_id = p.id) AS gtins
     FROM products p
     LEFT JOIN products m ON m.id = p.merged_into_id
     LEFT JOIN brands b ON b.id = p.brand_id
     LEFT JOIN categories c ON c.id = p.category_id
     LEFT JOIN categories pc ON pc.id = c.parent_id
-    LEFT JOIN LATERAL (SELECT storage_key FROM product_images i WHERE i.product_id = p.id ORDER BY is_primary DESC, id LIMIT 1) img ON true
+    LEFT JOIN LATERAL (SELECT storage_key, source FROM product_images i WHERE i.product_id = p.id ORDER BY is_primary DESC, id LIMIT 1) img ON true
     WHERE p.id = ${id}
   `);
   const row = p.rows[0];
@@ -96,13 +102,13 @@ async function load(id: number): Promise<ProductPageData | null> {
       FROM product_stats WHERE product_id = ${id}
     `),
     d.execute<{
-      id: string; shop_slug: string; shop_name: string; shop_kind: string; seller_name: string | null; seller_type: 'shop' | 'marketplace'; url: string;
-      affiliate: boolean; price: string; old_price: string | null; lowest: string | null; shipping_cost: string | null; shipping_estimated: boolean;
+      id: string; shop_id: string; shop_slug: string; shop_name: string; shop_domain: string; shop_kind: string; seller_name: string | null; seller_type: 'shop' | 'marketplace'; url: string;
+      affiliate_url: string | null; price: string; old_price: string | null; lowest: string | null; shipping_cost: string | null; shipping_estimated: boolean;
       shipping_note: string | null; rules_note: string | null; total: string; availability: ProductOffer['availability']; condition: ProductOffer['condition'];
       last_checked_at: string; slo: number;
     }>(sql`
-      SELECT o.id::text, s.slug AS shop_slug, s.name AS shop_name, s.kind AS shop_kind, o.seller_name, o.seller_type, o.url,
-        (o.affiliate_url IS NOT NULL) AS affiliate, o.price::text, o.old_price::text, o.shop_lowest_30d::text AS lowest,
+      SELECT o.id::text, s.id::text AS shop_id, s.slug AS shop_slug, s.name AS shop_name, s.domain AS shop_domain, s.kind AS shop_kind, o.seller_name, o.seller_type, o.url,
+        o.affiliate_url, o.price::text, o.old_price::text, o.shop_lowest_30d::text AS lowest,
         o.shipping_cost::text, o.shipping_estimated, o.shipping_note, s.shipping_rules->>'notes' AS rules_note, o.total_price::text AS total,
         o.availability, o.condition, o.last_checked_at::text,
         coalesce((s.crawl_policy->>'freshness_slo_hours')::int, 26) AS slo
@@ -120,6 +126,9 @@ async function load(id: number): Promise<ProductPageData | null> {
     productOfferFacts(d, id).catch(() => new Map<number, DiscountFact[]>()),
   ]);
 
+  // Same decision as the click-out route (M24), so the "Link afiliat" label never lies.
+  const affiliateOn = await isFlagEnabled(d, 'affiliate.links.enabled');
+  const programs = affiliateOn ? await programsByShop(d, [...new Set(offers.rows.map((o) => Number(o.shop_id)))]) : new Map();
   const now = Date.now();
   const q = encodeURIComponent([row.brand, row.title.split(',')[0]?.replace(/^(telefon mobil|laptop|televizor|tableta)\s+/i, '')].filter(Boolean).join(' ').slice(0, 80));
   const rank = (o: ProductOffer) => (o.availability === 'in_stock' ? (o.stale ? 1 : 0) : 2);
@@ -133,7 +142,7 @@ async function load(id: number): Promise<ProductPageData | null> {
       sellerName: o.seller_name,
       sellerType: o.seller_type,
       url: o.url,
-      hasAffiliate: o.affiliate,
+      hasAffiliate: affiliateLinkFor(affiliateOn, programs.get(Number(o.shop_id)), { url: o.url, shopSlug: o.shop_slug, shopDomain: o.shop_domain, feedAffiliateUrl: o.affiliate_url }, 'c0') !== null,
       price: o.price,
       oldPrice: o.old_price,
       shopLowest30d: o.lowest,
@@ -167,6 +176,8 @@ async function load(id: number): Promise<ProductPageData | null> {
     gtins: row.gtins ?? [],
     attributes: row.attributes ?? {},
     imageKey: row.image_key,
+    imageSource: row.image_source,
+    icecatSpecs: row.icecat_specs === true,
     stats: (stats.rows[0] as ProductPageData['stats']) ?? null,
     offers: mapped,
     variants: variants.rows.map((v) => ({ id: Number(v.id), slug: v.slug, title: v.title, attributes: v.attributes ?? {}, minTotal: v.min_total, current: Number(v.id) === id })),

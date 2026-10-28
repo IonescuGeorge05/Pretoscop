@@ -177,23 +177,30 @@ describe('metrics and SLO checks (database)', () => {
   it('alerts on stale sources, high reject rates, a missing nightly dump; nothing while crawling is off', async () => {
     const env = { ...getEnv({}), CRAWL_ENABLED: true };
     const now = new Date();
-    const old = new Date(now.getTime() - 5 * 86_400_000); // sitemap sources have a 72 h SLO
+    const old = new Date(now.getTime() - 30 * 86_400_000); // older than every SLO in the registry (at most 8 days)
     // Crawling off (flag): no source alerts at all.
     let alerts = await evaluateSlos(t.db, env, { now, startedAt: now });
     expect(alerts.filter((a) => a.key.startsWith('freshness:'))).toEqual([]);
 
     await setFlag(t.db, 'crawl.enabled', true);
     await t.db.execute(sql`UPDATE shop_sources SET created_at = ${old}, last_success_at = NULL`);
-    const src = await t.db.execute<{ id: string }>(sql`SELECT id::text FROM shop_sources WHERE key = 'itgalaxy:sitemap:produse'`);
-    const sourceId = Number(src.rows[0]!.id);
+    // The sources the recorder runs today (the registry changes as shops are added): every one of them
+    // must alert, except eMAG, which is gated by its own flag (ADR-013).
+    const live = await t.db.execute<{ id: string; key: string; shop: string }>(sql`
+      SELECT s.id::text, s.key, p.slug AS shop FROM shop_sources s JOIN shops p ON p.id = s.shop_id
+      WHERE s.enabled AND NOT s.kill_switch AND s.schedule IS NOT NULL AND p.status = 'active'
+        AND p.access_mode NOT IN ('off', 'assisted') AND p.slug <> 'emag' ORDER BY s.key`);
+    expect(live.rows.length).toBeGreaterThan(5);
+    const rejecting = live.rows[0]!;
+    const sourceId = Number(rejecting.id);
     await t.db.execute(
       sql`INSERT INTO ingest_runs (source_id, status, stats, finished_at) VALUES (${sourceId}, 'partial', ${JSON.stringify({ parsed: 100, rejected: 7 })}::jsonb, now())`,
     );
     alerts = await evaluateSlos(t.db, env, { now, startedAt: new Date(now.getTime() - 2 * 86_400_000) });
     const keys = alerts.map((a) => a.key);
-    expect(keys).toEqual(expect.arrayContaining(['freshness:itgalaxy:sitemap:produse', 'freshness:forit:sitemap:produse', 'freshness:flip:sitemap:produse']));
+    expect(keys).toEqual(expect.arrayContaining(live.rows.map((r) => `freshness:${r.key}`)));
     expect(keys.some((k) => k.startsWith('freshness:emag:'))).toBe(false); // eMAG is gated by its own flag (ADR-013)
-    expect(keys).toContain('rejects:itgalaxy:sitemap:produse');
+    expect(keys).toContain(`rejects:${rejecting.key}`);
     expect(keys).toContain('backup-nightly');
     expect(keys).not.toContain('backup-restore-test'); // the worker has run for 2 days, not 8
     for (const a of alerts) expect(a.everySeconds).toBeGreaterThanOrEqual(6 * 3600);

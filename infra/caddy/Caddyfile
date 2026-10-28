@@ -1,4 +1,4 @@
-# Edge proxy for production and staging (M18, ADR-017). Started by infra/docker-compose.edge.yml;
+# Edge proxy for production and staging (M18, ADR-019). Started by infra/docker-compose.edge.yml;
 # environment placeholders come from the production .env. Cloudflare sits in front (proxied DNS,
 # cache rules, WAF, Access); the server's firewall admits ports 80/443 from Cloudflare only.
 #
@@ -68,11 +68,24 @@
 	header_up -Cf-Connecting-Ip
 }
 
+# The web replicas of an environment: upstream defaults plus an active readiness check. A replica
+# that infra/scripts/deploy.sh is about to replace answers 503 on /api/ready and gets no new requests
+# after two failed checks (about 4 s); a new one gets traffic once /api/ready answers. /api/ready does
+# not check the database, so a database blip never empties the pool.
+(web_replicas) {
+	import upstream_defaults
+	health_uri /api/ready
+	health_interval 2s
+	health_timeout 5s
+	health_fails 2
+	health_passes 1
+}
+
 {$SITE_DOMAIN:pretoscop.ro} {
 	tls {$CADDY_TLS:internal}
 	import app_defaults
 	reverse_proxy {$PROD_UPSTREAMS:prod-web-1:3000 prod-web-2:3000} {
-		import upstream_defaults
+		import web_replicas
 	}
 }
 
@@ -87,7 +100,21 @@ www.{$SITE_DOMAIN:pretoscop.ro} {
 	import app_defaults
 	header X-Robots-Tag "noindex, nofollow"
 	reverse_proxy {$STAGING_UPSTREAMS:staging-web-1:3000 staging-web-2:3000} {
+		import web_replicas
+	}
+}
+
+# Plausible web analytics (production; compose profile `analytics` of docker-compose.prod.yml).
+# Public on purpose: the script and the event endpoint must be reachable by visitors who accepted
+# analytics; the dashboard has its own login (registration by invitation only).
+{$PLAUSIBLE_DOMAIN:stats.pretoscop.ro} {
+	tls {$CADDY_TLS:internal}
+	import app_defaults
+	reverse_proxy {$PLAUSIBLE_UPSTREAM:prod-plausible:8000} {
 		import upstream_defaults
+		# Plausible counts unique visitors with a daily-salted hash of address and User-Agent and
+		# never stores the address; it reads it from this header.
+		header_up X-Plausible-IP {client_ip}
 	}
 }
 

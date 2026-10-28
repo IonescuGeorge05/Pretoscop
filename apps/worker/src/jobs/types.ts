@@ -1,16 +1,30 @@
 import type { Env } from '@pretoscop/config/env';
 import type { Db } from '@pretoscop/db';
+import type { Mailer } from '@pretoscop/mailer';
+import type { AlertLinks, Operator } from '@pretoscop/notify';
 import type { FetchLike, NormalizeFn, OpsAlert } from '../recorder/types';
+import type { Notifier } from '../alerts/notifier';
 import type { BlobStore } from '@pretoscop/storage';
 import type { Logger } from '@pretoscop/config/logger';
 import type { Job, PgBoss, Queue, WorkOptions } from 'pg-boss';
 import type { MetricFamily } from '../ops/prometheus';
 import type { SloAlert } from '../ops/slo';
 
+/** Price alerts (M19): channels, signed links, sender identity, the ALERTS_SECRET. */
+export interface AlertServices {
+  notifier: Notifier;
+  mailer: Mailer;
+  links: AlertLinks;
+  operator: Operator;
+  secret: string;
+}
+
 /** Long-lived collaborators shared by jobs (created once per worker process). */
 export interface Services {
   blob: BlobStore;
   fetcher: FetchLike;
+  /** Requests made for merchants (M20): merchant-scoped pauses, budget and robots.txt cache. */
+  merchantFetcher?: FetchLike;
   normalize: NormalizeFn;
   alert: OpsAlert;
   /** Marks cached web pages stale by tag (best effort; returns how many tags were accepted). */
@@ -21,6 +35,7 @@ export interface Services {
   sloExtra?: () => Promise<SloAlert[]>;
   /** Extra Prometheus metric families contributed by other modules (M05B). */
   metricsExtra?: () => Promise<MetricFamily[]>;
+  alerts: AlertServices;
 }
 
 export interface JobContext {

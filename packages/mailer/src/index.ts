@@ -14,6 +14,12 @@ export interface MailMessage {
   headers?: Record<string, string>;
   replyTo?: string;
   tags?: Record<string, string>;
+  /**
+   * Same key, same email: a retry after a timeout or a crash (the provider may have accepted the
+   * first attempt) is not sent twice. Resend honours it for 24 hours (`Idempotency-Key`, ≤ 256
+   * characters); SMTP and the log driver ignore it.
+   */
+  idempotencyKey?: string;
 }
 
 export interface Mailer {
@@ -36,7 +42,11 @@ export function createMailer(env: Env, log?: { info: (o: object, m: string) => v
       async send(msg) {
         const res = await fetch('https://api.resend.com/emails', {
           method: 'POST',
-          headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, 'content-type': 'application/json' },
+          headers: {
+            authorization: `Bearer ${env.RESEND_API_KEY}`,
+            'content-type': 'application/json',
+            ...(msg.idempotencyKey ? { 'idempotency-key': msg.idempotencyKey.slice(0, 256) } : {}),
+          },
           body: JSON.stringify({
             from,
             to: [msg.to],

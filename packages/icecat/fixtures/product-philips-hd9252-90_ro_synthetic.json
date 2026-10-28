@@ -1,0 +1,38 @@
+{
+  "msg": "OK",
+  "data": {
+    "GeneralInfo": {
+      "IcecatId": 99000456,
+      "Title": "Philips 3000 series HD9252/90 friteuză Unic 4,1 L Independent 1400 W Friteuză cu aer cald Negru, Argint",
+      "Brand": "Philips",
+      "ProductName": "3000 series HD9252/90",
+      "BrandPartCode": "HD9252/90",
+      "GTIN": [],
+      "Category": { "Name": { "Value": "Friteuze", "Language": "RO" } },
+      "Description": {
+        "LongDesc": "<b>Gustoase și crocante. Cu până la 90% mai puţină grăsime*</b><br/>Datorită tehnologiei RapidAir, alimentele se prăjesc cu aer fierbinte, cu până la 90% mai puţină grăsime.",
+        "Language": "RO"
+      },
+      "SummaryDescription": {
+        "ShortSummaryDescription": "Philips 3000 series HD9252/90, Unic, Friteuză cu aer cald, 4,1 L, 0,8 kg, 1400 W, Negru, Argint",
+        "LongSummaryDescription": "Philips 3000 series HD9252/90. Capacitate totală: 4,1 L. Putere: 1400 W. Culoarea produsului: Negru, Argint"
+      },
+      "BulletPoints": { "Values": ["Tehnologie RapidAir", "Capacitate 4,1 L"], "Language": "RO" },
+      "Quality": "ICECAT"
+    },
+    "Image": { "HighPic": "https://images.icecat.biz/img/gallery/99000456_synth-main.jpg", "HighPicWidth": 800, "HighPicHeight": 800 },
+    "Gallery": [],
+    "FeaturesGroups": [
+      {
+        "ID": 8001,
+        "SortNo": 1,
+        "FeatureGroup": { "Name": { "Value": "Caracteristici", "Language": "RO" } },
+        "Features": [
+          { "ID": 21, "Type": "numerical", "Value": "4.1", "RawValue": "4.1", "PresentationValue": "4,1 L", "SortNo": 1, "Feature": { "Measure": { "Sign": "L" }, "Name": { "Value": "Capacitate totală", "Language": "RO" } } },
+          { "ID": 22, "Type": "numerical", "Value": "1400", "RawValue": "1400", "PresentationValue": "1400 W", "SortNo": 2, "Feature": { "Measure": { "Sign": "W" }, "Name": { "Value": "Putere", "Language": "RO" } } }
+        ]
+      }
+    ],
+    "DemoAccount": true
+  }
+}

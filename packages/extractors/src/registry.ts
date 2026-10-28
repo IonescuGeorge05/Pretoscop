@@ -6,7 +6,13 @@ import {
   parseGenericCsv,
   parseGoogleShopping,
 } from './feeds/mappers';
+import { parseBonamiListing } from './shops/bonami';
+import { parseCarrefourListing } from './shops/carrefour';
+import { parseDedemanListing } from './shops/dedeman';
 import { parseEmagListing, parseEmagProduct } from './shops/emag';
+import { parseFlipProduct } from './shops/flip';
+import { parseItGalaxyListing } from './shops/itgalaxy';
+import { parseVtexListing } from './shops/vtex';
 import { parseStructuredProductPage } from './structured/generic';
 import type { FeedContext, FeedInput, FeedParser, PageContext, PageParseResult, PageParser } from './types';
 
@@ -15,6 +21,13 @@ export const PAGE_PARSERS: Record<string, PageParser> = {
   'jsonld-product': parseStructuredProductPage,
   'emag-listing': parseEmagListing,
   'emag-product': parseEmagProduct,
+  // M10 adapters (listing pages first: many offers per polite request).
+  'itgalaxy-listing': parseItGalaxyListing,
+  'dedeman-listing': parseDedemanListing,
+  'carrefour-listing': parseCarrefourListing,
+  'vtex-listing': parseVtexListing,
+  'bonami-listing': parseBonamiListing,
+  'flip-product': parseFlipProduct,
 };
 
 /** Feed parsers keyed by `shop_sources.parser_key`. */

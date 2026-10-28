@@ -1,4 +1,4 @@
-# Edge stack (M18, ADR-017): Caddy terminates TLS for production and staging and load-balances
+# Edge stack (M18, ADR-019): Caddy terminates TLS for production and staging and load-balances
 # each environment's two web replicas. Separate from the app stacks so that deploying either
 # environment never restarts the proxy. Start it once, from the production checkout:
 #   docker network create pretoscop-edge   # once per server (deploy.sh also creates it)
@@ -13,7 +13,8 @@ services:
     # Not PID 1 (orphaned health-check children are reaped by tini); exec-form check, generous timeout.
     init: true
     healthcheck:
-      test: ['CMD', 'wget', '-q', '--spider', 'http://127.0.0.1:9180/metrics']
+      # Reads the whole page (--spider hangs up early and makes Caddy log a broken pipe every 10 s).
+      test: ['CMD', 'wget', '-q', '-O', '/dev/null', 'http://127.0.0.1:9180/metrics']
       interval: 10s
       timeout: 10s
       retries: 10
@@ -37,6 +38,8 @@ services:
         2803:f800::/32 2405:b500::/32 2405:8100::/32 2a06:98c0::/29 2c0f:f248::/32}
       PROD_UPSTREAMS: ${PROD_UPSTREAMS:-prod-web-1:3000 prod-web-2:3000}
       STAGING_UPSTREAMS: ${STAGING_UPSTREAMS:-staging-web-1:3000 staging-web-2:3000}
+      PLAUSIBLE_DOMAIN: ${PLAUSIBLE_DOMAIN:-stats.pretoscop.ro}
+      PLAUSIBLE_UPSTREAM: ${PLAUSIBLE_UPSTREAM:-prod-plausible:8000}
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       # Cloudflare Origin CA certificate and key (never in git; see infra/cloudflare/README.md).

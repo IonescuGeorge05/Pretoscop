@@ -6,6 +6,9 @@ services:
   postgres:
     image: pgvector/pgvector:0.8.7-pg18-trixie
     restart: unless-stopped
+    # tini as PID 1: an orphaned process (e.g. a timed-out healthcheck) re-parented to the
+    # postmaster made PostgreSQL treat its exit as a backend crash and restart (27 Oct 2026).
+    init: true
     environment:
       POSTGRES_USER: pretoscop
       POSTGRES_PASSWORD: pretoscop
@@ -26,10 +29,12 @@ services:
       # PostgreSQL 18 images keep data under /var/lib/postgresql/18/docker; mount the parent.
       - pgdata:/var/lib/postgresql
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U pretoscop -d pretoscop']
-      interval: 2s
-      timeout: 3s
+      # Exec form (no shell that could leave pg_isready orphaned when the check times out).
+      test: ['CMD', 'pg_isready', '-U', 'pretoscop', '-d', 'pretoscop']
+      interval: 5s
+      timeout: 10s
       retries: 30
+      start_period: 20s
 
   meilisearch:
     image: getmeili/meilisearch:v1.56.0
@@ -86,6 +91,88 @@ services:
       postgres:
         condition: service_healthy
 
+  # --- Self-hosted Plausible Community Edition (M17) ------------------------------------------
+  # Web analytics the site loads only after the visitor clicks "Accept" (ADR-010). NOT started by
+  # default; start and stop it explicitly:
+  #   docker compose -f infra/docker-compose.dev.yml -p pretoscop --profile analytics up -d
+  #   docker compose -f infra/docker-compose.dev.yml -p pretoscop --profile analytics stop
+  # RAM: ClickHouse + Plausible + their Postgres need about 2 GB (the Plausible CE README asks for
+  # at least 2 GB); stop the profile on an 8 GB laptop when you do not need it.
+  # Dashboard: http://localhost:8100 (the first account you register becomes the owner; add the
+  # site "localhost"). Then build the web app with
+  #   NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL=http://localhost:8100/js/script.js NEXT_PUBLIC_PLAUSIBLE_DOMAIN=localhost
+  # Services and ClickHouse settings mirror plausible/community-edition v3.2.1 (infra/plausible/).
+  plausible_db:
+    profiles: [analytics]
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: postgres
+    volumes:
+      - plausible_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 1m
+
+  plausible_events_db:
+    profiles: [analytics]
+    image: clickhouse/clickhouse-server:24.12-alpine
+    restart: unless-stopped
+    environment:
+      CLICKHOUSE_SKIP_USER_SETUP: '1'
+    volumes:
+      - plausible_events:/var/lib/clickhouse
+      - plausible_event_logs:/var/log/clickhouse-server
+      - ./plausible/clickhouse/logs.xml:/etc/clickhouse-server/config.d/logs.xml:ro
+      - ./plausible/clickhouse/ipv4-only.xml:/etc/clickhouse-server/config.d/ipv4-only.xml:ro
+      - ./plausible/clickhouse/low-resources.xml:/etc/clickhouse-server/config.d/low-resources.xml:ro
+      - ./plausible/clickhouse/default-profile-low-resources-overrides.xml:/etc/clickhouse-server/users.d/default-profile-low-resources-overrides.xml:ro
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    healthcheck:
+      test: ['CMD-SHELL', 'wget --no-verbose --tries=1 -O - http://127.0.0.1:8123/ping || exit 1']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+      start_period: 1m
+
+  plausible:
+    profiles: [analytics]
+    image: ghcr.io/plausible/community-edition:v3.2.1
+    restart: unless-stopped
+    command: sh -c "/entrypoint.sh db createdb && /entrypoint.sh db migrate && /entrypoint.sh run"
+    depends_on:
+      plausible_db:
+        condition: service_healthy
+      plausible_events_db:
+        condition: service_healthy
+    environment:
+      TMPDIR: /var/lib/plausible/tmp
+      BASE_URL: ${PLAUSIBLE_BASE_URL:-http://localhost:8100}
+      # Development placeholder (at least 64 bytes). Production: `openssl rand -base64 48`, kept in
+      # the server .env, never in git.
+      SECRET_KEY_BASE: ${PLAUSIBLE_SECRET_KEY_BASE:-dev-only-insecure-plausible-secret-key-base-change-me-0123456789abcdef}
+      HTTP_PORT: '8000'
+      DATABASE_URL: postgres://postgres:postgres@plausible_db:5432/plausible_db
+      CLICKHOUSE_DATABASE_URL: http://plausible_events_db:8123/plausible_events_db
+    volumes:
+      - plausible_data:/var/lib/plausible
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    ports:
+      - '${PLAUSIBLE_PORT:-8100}:8000'
+
 volumes:
   pgdata:
   meilidata:
+  plausible_db:
+  plausible_events:
+  plausible_event_logs:
+  plausible_data:

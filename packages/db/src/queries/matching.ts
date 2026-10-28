@@ -152,7 +152,7 @@ export async function findCandidates(db: Db, o: PendingOffer, category: string |
   }));
 }
 
-function slugPart(s: string): string {
+export function slugPart(s: string): string {
   return s
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { NotFoundResponse } from '@/components/http/not-found-status';
+import { NotFoundContent } from '@/components/layout/not-found-content';
 import { Breadcrumbs } from '@/components/listing/breadcrumbs';
 import { ShopStateBadge, shopState } from '@/components/shop/shop-facts';
 import { JsonLd } from '@/components/seo/json-ld';
@@ -8,7 +9,7 @@ import { Container } from '@/components/ui/container';
 import { listShops, type ShopFacts } from '@/lib/catalog';
 import { serverEnv } from '@/lib/db';
 import { formatPercent, plural } from '@/lib/format';
-import { robotsFor } from '@/lib/seo';
+import { robotsFor, unresolvedMetadata } from '@/lib/seo';
 import { breadcrumbList } from '@/lib/structured-data';
 
 // ISR 1 h; the optional catch-all keeps it out of `next build` (it reads the database).
@@ -20,7 +21,8 @@ export function generateStaticParams() {
 
 type Props = { params: Promise<{ rest?: string[] }> };
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  if ((await params).rest?.length) return unresolvedMetadata();
   return {
     title: 'Magazinele comparate',
     description: 'Magazinele online din România ale căror prețuri le compară Pretoscop, cât de proaspete sunt datele și magazinele pe care nu le acoperim încă.',
@@ -46,7 +48,13 @@ function ShopRow({ s }: { s: ShopFacts }) {
 }
 
 export default async function ShopsPage({ params }: Props) {
-  if ((await params).rest?.length) notFound();
+  if ((await params).rest?.length) {
+    return (
+      <NotFoundResponse>
+        <NotFoundContent />
+      </NotFoundResponse>
+    );
+  }
   const shops = await listShops();
   const covered = shops.filter((s) => shopState(s).covered);
   const coming = shops.filter((s) => s.status === 'active' && !shopState(s).covered);

@@ -4,6 +4,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { cache } from 'react';
+import { NotFoundResponse } from '@/components/http/not-found-status';
+import { NotFoundContent } from '@/components/layout/not-found-content';
 import { Breadcrumbs, type Crumb } from '@/components/listing/breadcrumbs';
 import { ProductGrid } from '@/components/listing/product-card';
 import { Pagination } from '@/components/listing/pagination';
@@ -13,7 +15,7 @@ import { categoryHref, getBrands, getCategoryTree, type CategoryNode } from '@/l
 import { serverEnv } from '@/lib/db';
 import { inSentence, plural } from '@/lib/format';
 import { meili, names, q } from '@/lib/search';
-import { forMetadata, robotsFor, UNRESOLVED } from '@/lib/seo';
+import { forMetadata, pageOrNotFound, robotsFor, unresolvedMetadata } from '@/lib/seo';
 import { breadcrumbList, itemList } from '@/lib/structured-data';
 
 // docs/03 §7.1: ISR 1 h. Rendered on first request, never at build time (no database needed to build).
@@ -33,9 +35,21 @@ interface CategoryPage {
   crumbs: Crumb[];
 }
 
-/** `/c/tv-audio/televizoare/2` → category + page; a trailing number is the page (slugs are never numeric). */
-const load = cache(async (segments: string[]): Promise<CategoryPage> => {
-  const parts = segments.map((s) => decodeURIComponent(s).toLowerCase());
+const decode = (s: string) => {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+};
+
+/**
+ * `/c/tv-audio/televizoare/2` → category + page; a trailing number is the page (slugs are never
+ * numeric). Cached per request by the joined path (generateMetadata and the page share one load).
+ */
+const load = cache(async (key: string): Promise<CategoryPage> => {
+  const segments = key.split('/');
+  const parts = segments.map((s) => decode(s).toLowerCase());
   let page = 1;
   if (parts.length > 1 && /^\d+$/.test(parts.at(-1)!)) page = Number(parts.pop());
   const tree = await getCategoryTree();
@@ -68,8 +82,8 @@ const indexableCount = (list: ListResult) => list.facets.indexable?.true ?? 0;
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { path } = await params;
-  const loaded = await forMetadata(() => load(path));
-  if (!loaded) return UNRESOLVED;
+  const loaded = await forMetadata(() => load(path.join('/')));
+  if (!loaded) return unresolvedMetadata();
   const { node, page, list } = loaded;
   const n = list.total;
   const title = page > 1 ? `${node.name} – pagina ${page}` : n > 0 ? `${node.name} – compară prețurile la ${plural(n, 'produs', 'produse')}` : node.name;
@@ -86,7 +100,15 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function CategoryPage({ params }: Props) {
-  const { node, page, list, crumbs } = await load((await params).path);
+  const loaded = await pageOrNotFound(async () => load((await params).path.join('/')));
+  if (!loaded) {
+    return (
+      <NotFoundResponse>
+        <NotFoundContent />
+      </NotFoundResponse>
+    );
+  }
+  const { node, page, list, crumbs } = loaded;
   const [tree, brands] = await Promise.all([getCategoryTree(), getBrands()]);
   const base = serverEnv().PUBLIC_BASE_URL;
   const childCounts = list.facets.category_slug ?? {};

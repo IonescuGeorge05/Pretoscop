@@ -5,6 +5,8 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { cache } from 'react';
 import { DealCard } from '@/components/deals/deal-card';
+import { NotFoundResponse } from '@/components/http/not-found-status';
+import { NotFoundContent } from '@/components/layout/not-found-content';
 import { Breadcrumbs, type Crumb } from '@/components/listing/breadcrumbs';
 import { AllTimeLowBadge } from '@/components/price/badges';
 import { JsonLd } from '@/components/seo/json-ld';
@@ -14,7 +16,7 @@ import { getCategoryTree, type CategoryNode } from '@/lib/catalog';
 import { db, serverEnv } from '@/lib/db';
 import { cn } from '@/lib/cn';
 import { formatDate, inSentence, plural } from '@/lib/format';
-import { forMetadata, robotsFor, UNRESOLVED } from '@/lib/seo';
+import { forMetadata, pageOrNotFound, robotsFor, unresolvedMetadata } from '@/lib/seo';
 import { breadcrumbList, itemList } from '@/lib/structured-data';
 
 // docs/03 §7.1: ISR 15 min, rendered on first request (never at build time).
@@ -72,7 +74,7 @@ const load = cache(async (key: string): Promise<DealsPage> => {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { categorie } = await params;
   const p = await forMetadata(() => load((categorie ?? []).join('/')));
-  if (!p) return UNRESOLVED;
+  if (!p) return unresolvedMetadata();
   const title = p.root ? `Reduceri verificate: ${p.root.name}` : 'Reduceri verificate – scăderi reale de preț';
   return {
     title,
@@ -121,7 +123,15 @@ function Filters() {
 }
 
 export default async function DealsPageView({ params }: Props) {
-  const p = await load(((await params).categorie ?? []).join('/'));
+  const key = ((await params).categorie ?? []).join('/');
+  const p = await pageOrNotFound(() => load(key));
+  if (!p) {
+    return (
+      <NotFoundResponse>
+        <NotFoundContent />
+      </NotFoundResponse>
+    );
+  }
   const { all } = p;
   const base = serverEnv().PUBLIC_BASE_URL;
   const countByRoot = new Map<string, number>();

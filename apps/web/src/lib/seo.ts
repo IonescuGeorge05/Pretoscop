@@ -12,21 +12,43 @@ export function robotsFor(pageIndexable: boolean): NonNullable<Metadata['robots'
   return pageIndexable ? { index: true, follow: true } : { index: false, follow: true };
 }
 
+const digestOf = (err: unknown) => (err as { digest?: unknown } | null)?.digest;
+const isNotFoundSignal = (err: unknown) => {
+  const d = digestOf(err);
+  return typeof d === 'string' && d.startsWith('NEXT_HTTP_ERROR_FALLBACK;404');
+};
+
 /**
  * Runs a page loader for `generateMetadata`, turning the 404 and redirect signals Next.js uses
  * (`notFound()`, `permanentRedirect()`) into `null`. The page component calls the same (React-cached)
- * loader and raises them itself: a `notFound()` thrown while metadata streams leaves the 404 body
- * empty in the HTML, visible only after JavaScript runs.
+ * loader and answers them itself (`pageOrNotFound`): a `notFound()` thrown while metadata streams
+ * leaves the 404 body empty in the HTML, visible only after JavaScript runs.
  */
 export async function forMetadata<T>(load: () => Promise<T>): Promise<T | null> {
   try {
     return await load();
   } catch (err) {
-    const digest = (err as { digest?: unknown } | null)?.digest;
+    const digest = digestOf(err);
     if (typeof digest === 'string' && (digest.startsWith('NEXT_HTTP_ERROR_FALLBACK') || digest.startsWith('NEXT_REDIRECT'))) return null;
     throw err;
   }
 }
 
-/** Metadata of a page that will answer 404 or redirect (the page decides). */
-export const UNRESOLVED: Metadata = { robots: { index: false, follow: true } };
+/**
+ * Runs a page loader in the page component: a `notFound()` becomes `null`, so the page renders its 404
+ * itself inside `NotFoundResponse` (server-rendered HTML, status 404); redirects still propagate (their
+ * status and Location header are all a client needs).
+ */
+export async function pageOrNotFound<T>(load: () => Promise<T>): Promise<T | null> {
+  try {
+    return await load();
+  } catch (err) {
+    if (isNotFoundSignal(err)) return null;
+    throw err;
+  }
+}
+
+/** Metadata of a page that will answer 404 or redirect (the page decides): never indexed. */
+export function unresolvedMetadata(title = 'Pagina nu există'): Metadata {
+  return { title, robots: robotsFor(false) };
+}

@@ -4,6 +4,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { cache } from 'react';
+import { NotFoundResponse } from '@/components/http/not-found-status';
+import { NotFoundContent } from '@/components/layout/not-found-content';
 import { Breadcrumbs, type Crumb } from '@/components/listing/breadcrumbs';
 import { ProductGrid } from '@/components/listing/product-card';
 import { Pagination } from '@/components/listing/pagination';
@@ -14,7 +16,7 @@ import { getCategoryTree, getShop, type ShopFacts } from '@/lib/catalog';
 import { serverEnv } from '@/lib/db';
 import { plural } from '@/lib/format';
 import { meili, names, q } from '@/lib/search';
-import { forMetadata, robotsFor, UNRESOLVED } from '@/lib/seo';
+import { forMetadata, pageOrNotFound, robotsFor, unresolvedMetadata } from '@/lib/seo';
 import { breadcrumbList } from '@/lib/structured-data';
 
 // docs/03 §7.1: ISR 1 h, rendered on first request.
@@ -35,8 +37,12 @@ interface ShopPage {
   href: (n: number) => string;
 }
 
-/** `/magazin/emag` and `/magazin/emag/2`: shop facts plus the products it sells (live offers). */
-const load = cache(async (slug: string, rest: string[]): Promise<ShopPage> => {
+/**
+ * `/magazin/emag` and `/magazin/emag/2`: shop facts plus the products it sells (live offers). Cached
+ * per request by slug and the joined rest (generateMetadata and the page share one load).
+ */
+const load = cache(async (slug: string, restKey: string): Promise<ShopPage> => {
+  const rest = restKey ? restKey.split('/') : [];
   const shop = await getShop(slug.toLowerCase());
   if (!shop || shop.status === 'removed' || rest.length > 1 || (rest[0] !== undefined && !/^\d+$/.test(rest[0]))) notFound();
   const page = rest[0] ? Number(rest[0]) : 1;
@@ -64,8 +70,8 @@ const load = cache(async (slug: string, rest: string[]): Promise<ShopPage> => {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug, rest } = await params;
-  const p = await forMetadata(() => load(slug, rest ?? []));
-  if (!p) return UNRESOLVED;
+  const p = await forMetadata(() => load(slug, (rest ?? []).join('/')));
+  if (!p) return unresolvedMetadata();
   const { shop } = p;
   const covered = shopState(shop).covered;
   const title = p.page > 1 ? `${shop.name} – pagina ${p.page}` : covered ? `${shop.name}: prețuri urmărite de Pretoscop la ${plural(shop.products, 'produs', 'produse')}` : `${shop.name} pe Pretoscop`;
@@ -81,7 +87,14 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function ShopPageView({ params }: Props) {
   const { slug, rest } = await params;
-  const p = await load(slug, rest ?? []);
+  const p = await pageOrNotFound(() => load(slug, (rest ?? []).join('/')));
+  if (!p) {
+    return (
+      <NotFoundResponse>
+        <NotFoundContent />
+      </NotFoundResponse>
+    );
+  }
   const { shop, list } = p;
   const tree = await getCategoryTree();
   const cats = Object.entries(list?.facets.category_slug ?? {})

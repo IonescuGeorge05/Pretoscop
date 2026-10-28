@@ -1,8 +1,9 @@
 import { isProductIndexable } from '@pretoscop/core';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound, permanentRedirect } from 'next/navigation';
+import { permanentRedirect } from 'next/navigation';
 import { AlertForm } from '@/components/alerts/alert-form';
+import { NotFoundResponse } from '@/components/http/not-found-status';
 import { OffersTable } from '@/components/product/offers-table';
 import { PriceChart } from '@/components/product/price-chart';
 import { ProductImage } from '@/components/product/product-image';
@@ -16,8 +17,9 @@ import { alertConsent, alertsEnabled } from '@/lib/alerts';
 import { serverEnv } from '@/lib/db';
 import { formatDate, formatLeiNumeric, plural, toBani } from '@/lib/format';
 import { bestOffer, getProductPageData, idFromSlug, type ProductPageData } from '@/lib/product';
-import { robotsFor } from '@/lib/seo';
+import { robotsFor, unresolvedMetadata } from '@/lib/seo';
 import { breadcrumbList, productJsonLd, type BreadcrumbItem } from '@/lib/structured-data';
+import ProductNotFound from './not-found';
 
 export const revalidate = 3600;
 export const dynamicParams = true;
@@ -35,12 +37,12 @@ async function find(slug: string): Promise<ProductPageData | null> {
 }
 
 /**
- * Redirects and 404s are raised by the page, never by generateMetadata: a notFound() thrown while
- * metadata streams leaves the 404 body empty in the HTML (only the RSC payload carries it).
+ * Redirects are raised by the page, never by generateMetadata. A missing product returns null: the
+ * page renders the 404 itself (`NotFoundResponse`), so the HTML carries the message.
  */
-async function resolve(slug: string): Promise<ProductPageData> {
+async function resolve(slug: string): Promise<ProductPageData | null> {
   const p = await find(slug);
-  if (!p) notFound();
+  if (!p) return null;
   if (p.status === 'merged' && p.mergedIntoSlug) permanentRedirect(`/p/${p.mergedIntoSlug}`);
   if (p.slug !== slug) permanentRedirect(`/p/${p.slug}`);
   return p;
@@ -91,7 +93,7 @@ function structuredData(p: ProductPageData) {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const p = await find(slug);
-  if (!p || p.status !== 'active') return { robots: { index: false, follow: true } };
+  if (!p || p.status !== 'active') return unresolvedMetadata('Produsul nu mai este disponibil');
   const shops = new Set(p.offers.map((o) => o.shopSlug)).size;
   const min = p.stats?.currentMinTotal ?? p.offers[0]?.total ?? null;
   const title = min ? `${p.title} – prețuri de la ${formatLeiNumeric(min)} la ${plural(shops, 'magazin', 'magazine')}` : p.title;
@@ -107,6 +109,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function ProductPage({ params }: Props) {
   const { slug } = await params;
   const p = await resolve(slug);
+  if (!p) {
+    return (
+      <NotFoundResponse>
+        <ProductNotFound />
+      </NotFoundResponse>
+    );
+  }
   const specs = keySpecs(p.attributes);
   const stats = p.stats;
   // Best = what a buyer pays now (marketplace sellers included). The drop badge (M15) compares like

@@ -1,7 +1,8 @@
 import { facetCounts } from '@pretoscop/search';
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { NotFoundResponse } from '@/components/http/not-found-status';
+import { NotFoundContent } from '@/components/layout/not-found-content';
 import { Breadcrumbs } from '@/components/listing/breadcrumbs';
 import { JsonLd } from '@/components/seo/json-ld';
 import { Container } from '@/components/ui/container';
@@ -9,7 +10,7 @@ import { categoryHref, getCategoryTree } from '@/lib/catalog';
 import { serverEnv } from '@/lib/db';
 import { plural } from '@/lib/format';
 import { meili, names } from '@/lib/search';
-import { robotsFor } from '@/lib/seo';
+import { robotsFor, unresolvedMetadata } from '@/lib/seo';
 import { breadcrumbList } from '@/lib/structured-data';
 
 // ISR 1 h. The optional catch-all with no static params keeps this page out of `next build`
@@ -22,7 +23,8 @@ export function generateStaticParams() {
 
 type Props = { params: Promise<{ rest?: string[] }> };
 
-export async function generateMetadata(): Promise<Metadata> {
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  if ((await params).rest?.length) return unresolvedMetadata();
   return {
     title: 'Categorii',
     description:
@@ -33,7 +35,13 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function CategoriesPage({ params }: Props) {
-  if ((await params).rest?.length) notFound();
+  if ((await params).rest?.length) {
+    return (
+      <NotFoundResponse>
+        <NotFoundContent />
+      </NotFoundResponse>
+    );
+  }
   const [tree, counts] = await Promise.all([getCategoryTree(), facetCounts(meili(), names(), [], ['category_slugs'])]);
   const n = counts.facets.category_slugs ?? {};
   const crumbs = [

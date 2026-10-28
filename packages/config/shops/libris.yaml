@@ -21,5 +21,10 @@ affiliate:
   comparator_policy: "allowed"
   status: "to_apply"
   notes: "Allowed in comparators (CSS only with approval; no multi-network)."
-notes: "JSON-LD with gtin13 (ISBN). Electronics subset in Phase 1, books in Phase 4."
+probes:
+  - date: "2026-10-27"
+    vantage: "founder home connection (Mac), PretoscopBot via @pretoscop/fetch (M10)"
+    result: served
+    note: "robots and home 200; the menu has books, games, LEGO, stationery and gifts, no electronics or appliances"
+notes: "JSON-LD with gtin13 (ISBN). M10 (2026-10-27): no electronics or appliance assortment, so no source in the launch phase; books, games and LEGO come with the category expansion (Phase 4, M29)."
 sources: []

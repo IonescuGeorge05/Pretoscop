@@ -11,6 +11,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
+import { Upload } from '@aws-sdk/lib-storage';
 import { type Env, repoPath } from '@pretoscop/config/env';
 
 /**
@@ -130,11 +131,20 @@ export class S3BlobStore implements BlobStore {
     );
   }
 
+  /**
+   * Streams with a multipart upload (R2 and MinIO support it), so a multi-gigabyte nightly dump
+   * never sits in memory: at most `queueSize` parts of `partSize` are buffered. Bodies smaller
+   * than one part become a single PUT.
+   */
   async putStream(key: string, body: Readable, contentType?: string): Promise<void> {
-    // R2 needs a known length for a single PUT: buffer (snapshots and dumps are compressed).
-    const chunks: Buffer[] = [];
-    for await (const c of body) chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c as Uint8Array));
-    await this.put(key, Buffer.concat(chunks), contentType);
+    const upload = new Upload({
+      client: this.client,
+      params: { Bucket: this.bucket, Key: checkKey(key), Body: body, ContentType: contentType },
+      partSize: 64 * 1024 * 1024,
+      queueSize: 2,
+      leavePartsOnError: false,
+    });
+    await upload.done();
   }
 
   async get(key: string): Promise<Uint8Array | null> {

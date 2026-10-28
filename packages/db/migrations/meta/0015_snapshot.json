@@ -1,5 +1,5 @@
 {
-  "id": "5b8c2d03-169e-4dfd-a8cc-f6389716e20f",
+  "id": "f1b61a64-8cb4-4572-a4ff-c21fb84d8590",
   "prevId": "a478ce6c-a064-42b0-9a63-fa8ef629ee54",
   "version": "7",
   "dialect": "postgresql",
@@ -5587,54 +5587,8 @@
       },
       "isRLSEnabled": false
     },
-    "public.channel_posts": {
-      "name": "channel_posts",
-      "schema": "",
-      "columns": {
-        "channel": {
-          "name": "channel",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "day": {
-          "name": "day",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "message_id": {
-          "name": "message_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "channel_posts_channel_day_pk": {
-          "name": "channel_posts_channel_day_pk",
-          "columns": [
-            "channel",
-            "day"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.push_subscriptions": {
-      "name": "push_subscriptions",
+    "public.merchants": {
+      "name": "merchants",
       "schema": "",
       "columns": {
         "id": {
@@ -5644,7 +5598,7 @@
           "notNull": true,
           "identity": {
             "type": "always",
-            "name": "push_subscriptions_id_seq",
+            "name": "merchants_id_seq",
             "schema": "public",
             "increment": "1",
             "startWith": "1",
@@ -5660,251 +5614,198 @@
           "primaryKey": false,
           "notNull": true
         },
-        "endpoint": {
-          "name": "endpoint",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "p256dh": {
-          "name": "p256dh",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "auth": {
-          "name": "auth",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "device_label": {
-          "name": "device_label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "consent_at": {
-          "name": "consent_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "consent_text_version": {
-          "name": "consent_text_version",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "last_success_at": {
-          "name": "last_success_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "failures": {
-          "name": "failures",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        }
-      },
-      "indexes": {
-        "push_subscriptions_endpoint_uq": {
-          "name": "push_subscriptions_endpoint_uq",
-          "columns": [
-            {
-              "expression": "endpoint",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "push_subscriptions_user_idx": {
-          "name": "push_subscriptions_user_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "push_subscriptions_user_id_users_id_fk": {
-          "name": "push_subscriptions_user_id_users_id_fk",
-          "tableFrom": "push_subscriptions",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.telegram_link_tokens": {
-      "name": "telegram_link_tokens",
-      "schema": "",
-      "columns": {
-        "token_hash": {
-          "name": "token_hash",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "consent_at": {
-          "name": "consent_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "consent_text_version": {
-          "name": "consent_text_version",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "expires_at": {
-          "name": "expires_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "telegram_link_tokens_user_idx": {
-          "name": "telegram_link_tokens_user_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "telegram_link_tokens_user_id_users_id_fk": {
-          "name": "telegram_link_tokens_user_id_users_id_fk",
-          "tableFrom": "telegram_link_tokens",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.telegram_links": {
-      "name": "telegram_links",
-      "schema": "",
-      "columns": {
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "chat_id": {
-          "name": "chat_id",
+        "shop_id": {
+          "name": "shop_id",
           "type": "bigint",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "status": {
           "name": "status",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": "'active'"
+          "default": "'draft'"
         },
-        "consent_at": {
-          "name": "consent_at",
-          "type": "timestamp with time zone",
+        "shop_name": {
+          "name": "shop_name",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
-        "consent_text_version": {
-          "name": "consent_text_version",
+        "company_name": {
+          "name": "company_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "cui": {
+          "name": "cui",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contact_name": {
+          "name": "contact_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "contact_email": {
+          "name": "contact_email",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "linked_at": {
-          "name": "linked_at",
+        "contact_phone": {
+          "name": "contact_phone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "website_url": {
+          "name": "website_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "domain": {
+          "name": "domain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "verification_token": {
+          "name": "verification_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "verification_method": {
+          "name": "verification_method",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "domain_verified_at": {
+          "name": "domain_verified_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "domain_check": {
+          "name": "domain_check",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "feed_url": {
+          "name": "feed_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "feed_upload_key": {
+          "name": "feed_upload_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "feed_uploaded_at": {
+          "name": "feed_uploaded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "feed_format": {
+          "name": "feed_format",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "price_format": {
+          "name": "price_format",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "shipping_rules": {
+          "name": "shipping_rules",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "validation": {
+          "name": "validation",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "terms_version": {
+          "name": "terms_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "terms_accepted_at": {
+          "name": "terms_accepted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "plan": {
+          "name": "plan",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'free'"
+        },
+        "status_reason": {
+          "name": "status_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "decided_at": {
+          "name": "decided_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "decided_by": {
+          "name": "decided_by",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "submitted_at": {
+          "name": "submitted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
         },
-        "last_error": {
-          "name": "last_error",
-          "type": "text",
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {
-        "telegram_links_chat_uq": {
-          "name": "telegram_links_chat_uq",
+        "merchants_user_uq": {
+          "name": "merchants_user_uq",
           "columns": [
             {
-              "expression": "chat_id",
+              "expression": "user_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -5914,12 +5815,49 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "merchants_status_idx": {
+          "name": "merchants_status_idx",
+          "columns": [
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "submitted_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "merchants_domain_approved_uq": {
+          "name": "merchants_domain_approved_uq",
+          "columns": [
+            {
+              "expression": "domain",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"merchants\".\"status\" = 'approved'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
-        "telegram_links_user_id_users_id_fk": {
-          "name": "telegram_links_user_id_users_id_fk",
-          "tableFrom": "telegram_links",
+        "merchants_user_id_users_id_fk": {
+          "name": "merchants_user_id_users_id_fk",
+          "tableFrom": "merchants",
           "tableTo": "users",
           "columnsFrom": [
             "user_id"
@@ -5928,6 +5866,19 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "merchants_shop_id_shops_id_fk": {
+          "name": "merchants_shop_id_shops_id_fk",
+          "tableFrom": "merchants",
+          "tableTo": "shops",
+          "columnsFrom": [
+            "shop_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
           "onUpdate": "no action"
         }
       },
@@ -5935,9 +5886,21 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "telegram_links_status_ck": {
-          "name": "telegram_links_status_ck",
-          "value": "\"telegram_links\".\"status\" in ('active','blocked')"
+        "merchants_status_ck": {
+          "name": "merchants_status_ck",
+          "value": "\"merchants\".\"status\" in ('draft','pending','approved','rejected','suspended')"
+        },
+        "merchants_feed_format_ck": {
+          "name": "merchants_feed_format_ck",
+          "value": "\"merchants\".\"feed_format\" is null or \"merchants\".\"feed_format\" in ('google','compari','csv')"
+        },
+        "merchants_price_format_ck": {
+          "name": "merchants_price_format_ck",
+          "value": "\"merchants\".\"price_format\" is null or \"merchants\".\"price_format\" in ('decimal','ro')"
+        },
+        "merchants_verification_method_ck": {
+          "name": "merchants_verification_method_ck",
+          "value": "\"merchants\".\"verification_method\" is null or \"merchants\".\"verification_method\" in ('email','dns','file','admin')"
         }
       },
       "isRLSEnabled": false

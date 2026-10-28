@@ -18,6 +18,8 @@ export interface NotifyMessage {
   title: string;
   body: string;
   url: string;
+  /** Same key on a retry of the same rows: the provider drops a copy it already accepted. */
+  idempotencyKey?: string;
 }
 
 export type NotifyResult =
@@ -39,7 +41,15 @@ export function createEmailSender(db: Db, mailer: Mailer, log?: Logger): Channel
     const to = r.rows[0]?.email;
     if (!to) return { ok: false, permanent: true, error: 'user not found' };
     try {
-      const sent = await mailer.send({ to, subject: message.email.subject, text: message.email.text, html: message.email.html, headers: message.email.headers, tags: { kind: 'alert' } });
+      const sent = await mailer.send({
+        to,
+        subject: message.email.subject,
+        text: message.email.text,
+        html: message.email.html,
+        headers: message.email.headers,
+        tags: { kind: 'alert' },
+        idempotencyKey: message.idempotencyKey,
+      });
       return { ok: true, id: sent.id };
     } catch (err) {
       log?.warn({ err: (err as Error).message }, 'alert email failed');

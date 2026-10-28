@@ -25,7 +25,11 @@ import { db } from '@/lib/db';
 import { clientIp, hashWithDailySalt } from '@/lib/privacy';
 import { createRateLimiter } from '@/lib/rate-limit';
 
-/** 5 login links per 15 minutes per daily-salted session hash (Better Auth adds its own limit on HTTP). */
+/**
+ * 5 login-link requests per 15 minutes per daily-salted IP hash (never the User-Agent, which a
+ * client can change at will), to tell the visitor. The binding limits (per address, per client)
+ * apply to every login path in `sendMagicLink` (lib/login-limits.ts).
+ */
 const loginLimiter = createRateLimiter({ limit: 5, windowMs: 15 * 60 * 1000 });
 
 async function currentUser() {
@@ -41,7 +45,7 @@ export async function requestLoginLink(form: FormData): Promise<void> {
   const email = normalizeEmail(String(form.get('email') ?? ''));
   if (!isPlausibleEmail(email)) back('eroare=email');
   const h = await headers();
-  if (!loginLimiter.hit(hashWithDailySalt(clientIp(h), h.get('user-agent'))).allowed) back('eroare=limita');
+  if (!loginLimiter.hit(hashWithDailySalt('ip', clientIp(h))).allowed) back('eroare=limita');
   try {
     await auth().api.signInMagicLink({ body: { email, callbackURL: '/alerte' }, headers: h });
   } catch (err) {

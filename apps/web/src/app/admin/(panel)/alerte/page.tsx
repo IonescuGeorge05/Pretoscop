@@ -1,6 +1,7 @@
 import { alertAdminStats, findUserByEmail } from '@pretoscop/db';
 import Link from 'next/link';
 import { Section, Stat, Table, Td } from '@/components/admin/ui';
+import { requireAdmin } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { formatDateTime } from '@/lib/format';
 import { deleteUserAsAdmin } from '../../alert-actions';
@@ -12,6 +13,8 @@ const STATUS: Record<string, string> = { active: 'active', pending: 'în aștept
 
 /** Admin: alert volumes (M19) and data-subject requests by email (export, delete). */
 export default async function AdminAlerts({ searchParams }: Props) {
+  // Each admin page checks the session itself: the layout guard does not stop a segment from rendering.
+  await requireAdmin();
   const p = await searchParams;
   const s = await alertAdminStats(db());
   const email = one(p.email).trim();

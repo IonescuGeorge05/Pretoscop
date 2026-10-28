@@ -28,6 +28,7 @@ describe('consent texts', () => {
     expect(currentVersion).toEqual({
       alertConsent: 'alertConsent.v1',
       analyticsConsent: 'analyticsConsent.v1',
+      merchantTerms: 'merchantTerms.v1',
       pushConsent: 'pushConsent.v1',
       telegramConsent: 'telegramConsent.v1',
     });
@@ -63,6 +64,13 @@ describe('consent texts', () => {
     expect(t.link.href.startsWith('/confidentialitate')).toBe(true);
   });
 
+  it('the merchant terms checkbox covers the right to represent the shop and feed accuracy', () => {
+    const t = legalTexts.merchantTerms.v1;
+    expect(t.text).toMatch(/dreptul să reprezint/);
+    expect(t.text).toMatch(/corecte și actualizate/);
+    expect(t.link.href).toBe('/pentru-magazine/termeni');
+  });
+
   it('the push and Telegram consents (M27) say what goes where and how to stop', () => {
     const push = legalTexts.pushConsent.v1;
     expect(push.text).toMatch(/acest dispozitiv/);
@@ -96,14 +104,14 @@ describe('consent texts', () => {
 describe('legal documents', () => {
   it('every page has a path, a semantic version and an ISO date', () => {
     for (const doc of Object.values(legalDocuments)) {
-      expect(doc.path).toMatch(/^\/[a-z-]+$/);
+      expect(doc.path).toMatch(/^(\/[a-z-]+)+$/);
       expect(doc.version).toMatch(/^\d+\.\d+$/);
       expect(doc.updatedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
     }
     const legal = Object.values(legalDocuments)
       .filter((d) => d.kind === 'legal')
       .map((d) => d.path);
-    expect(legal).toEqual(['/termeni', '/confidentialitate', '/cookies', '/accesibilitate']);
+    expect(legal).toEqual(['/termeni', '/confidentialitate', '/cookies', '/accesibilitate', '/pentru-magazine/termeni']);
   });
 
   it('is exported from the package root as well', () => {

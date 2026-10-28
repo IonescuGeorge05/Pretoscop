@@ -11,7 +11,7 @@
  *   "Document provizoriu, în curs de revizuire juridică" for legal documents until then.
  */
 
-export type ConsentName = 'alertConsent' | 'analyticsConsent' | 'pushConsent' | 'telegramConsent';
+export type ConsentName = 'alertConsent' | 'analyticsConsent' | 'merchantTerms' | 'pushConsent' | 'telegramConsent';
 export type ConsentTextKey = `${ConsentName}.v${number}`;
 
 export interface ConsentText {
@@ -66,6 +66,23 @@ const analyticsConsentV1: ConsentText = {
 };
 
 /**
+ * Merchant portal (M20): the unticked checkbox before a shop submits its listing. Stored in
+ * `merchants.terms_version` as `merchantTerms.v1@<version of the terms page>`.
+ */
+const merchantTermsV1: ConsentText = {
+  key: 'merchantTerms.v1',
+  version: 1,
+  effectiveFrom: '2026-10-27',
+  reviewed: false,
+  title: 'Acceptarea termenilor pentru magazine',
+  text:
+    'Am citit și accept Termenii pentru magazine. Confirm că am dreptul să reprezint acest magazin și ' +
+    'că datele din feed (prețuri, disponibilitate, livrare) sunt corecte și actualizate.',
+  acceptLabel: 'Trimite spre aprobare',
+  link: { href: '/pentru-magazine/termeni', label: 'Termenii pentru magazine' },
+};
+
+/**
  * Web Push consent (M27): the box next to "Activează notificările pe acest dispozitiv" on /alerte,
  * before the browser's own permission prompt (Law 506/2004 art. 4(5): the subscription is stored
  * on the device). Withdrawn by turning notifications off there or in the browser.
@@ -102,6 +119,7 @@ const telegramConsentV1: ConsentText = {
 export const legalTexts = {
   alertConsent: { v1: alertConsentV1 },
   analyticsConsent: { v1: analyticsConsentV1 },
+  merchantTerms: { v1: merchantTermsV1 },
   pushConsent: { v1: pushConsentV1 },
   telegramConsent: { v1: telegramConsentV1 },
 } as const satisfies Record<ConsentName, Record<`v${number}`, ConsentText>>;
@@ -110,6 +128,7 @@ export const legalTexts = {
 export const currentVersion = {
   alertConsent: 'alertConsent.v1',
   analyticsConsent: 'analyticsConsent.v1',
+  merchantTerms: 'merchantTerms.v1',
   pushConsent: 'pushConsent.v1',
   telegramConsent: 'telegramConsent.v1',
 } as const satisfies Record<ConsentName, ConsentTextKey>;
@@ -153,9 +172,10 @@ export const legalDocuments = {
   merchants: { path: '/pentru-magazine', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
   contact: { path: '/contact', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
   terms: { path: '/termeni', kind: 'legal', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
-  privacy: { path: '/confidentialitate', kind: 'legal', version: '0.2', updatedAt: '2026-10-28', reviewed: false },
-  cookies: { path: '/cookies', kind: 'legal', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
+  privacy: { path: '/confidentialitate', kind: 'legal', version: '0.3', updatedAt: '2026-10-28', reviewed: false },
+  cookies: { path: '/cookies', kind: 'legal', version: '0.2', updatedAt: '2026-10-27', reviewed: false },
   accessibility: { path: '/accesibilitate', kind: 'legal', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
+  merchantTerms: { path: '/pentru-magazine/termeni', kind: 'legal', version: '0.2', updatedAt: '2026-10-28', reviewed: false },
 } as const satisfies Record<string, LegalDocumentVersion>;
 
 export type LegalDocumentName = keyof typeof legalDocuments;

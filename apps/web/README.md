@@ -82,15 +82,52 @@ Behind the flag `alerts.email.enabled` (off by default); with it off the product
 | Route | What it does |
 |---|---|
 | product page, "Alertă de preț" | `components/alerts/alert-form.tsx`: below a target or any drop of at least 1%, optionally any variant, the unticked consent box with `alertConsent` (current version from `@pretoscop/config/legal-texts`); a plain HTML form without JavaScript |
-| `POST /api/alerts` | validates (`lib/alert-form.ts`, shared with the form), refuses cross-site posts, bodies > 8 KB and the honeypot; 10 requests/hour per daily-salted session; at most 3 confirmation emails per address per day; same answer whether or not the address has an account; logged in with the same verified address → active at once (`confirm_method = 'session'`) |
+| `POST /api/alerts` | validates (`lib/alert-form.ts`, shared with the form), refuses cross-site posts, bodies > 8 KB (by Content-Length before reading, and the read stops at the limit) and the honeypot; 10 requests/hour per daily-salted IP hash (never the User-Agent); at most 3 confirmation emails per address per day, never to an address suppressed after a complaint or bounce; same answer whether or not the address has an account; logged in with the same verified address → active at once (`confirm_method = 'session'`) |
 | `/alerte/confirmare?a=&t=` + `POST /api/alerts/confirm` | double opt-in: the page only shows the alert and the consent text; the button confirms (mail scanners open links) |
 | `/alerte/dezabonare?a=&t=` / `?u=&t=` + `POST /api/alerts/unsubscribe` | one button, no login; the same URL takes the RFC 8058 one-click POST (`List-Unsubscribe=One-Click`) from mailbox providers; a GET never unsubscribes |
-| `/alerte` | magic-link login (server action, works without JavaScript); list, edit, confirm, delete, stop all; `GET /api/account/export` (JSON); delete the account |
+| `/alerte` | magic-link login (server action, works without JavaScript); list, edit, confirm, delete, stop all; `GET /api/account/export` (JSON, with the address's suppression entry); delete the account |
+| login emails (every path) | `lib/login-limits.ts`, applied in Better Auth's `sendMagicLink` (the /alerte, admin and merchant forms and `POST /api/auth/sign-in/magic-link` all end there; Better Auth's own limiter is off without IP tracking): at most 5 per address per hour (database counter under a daily-salted hash of the address, reset by a successful login) and 20 per daily-salted IP hash per 15 minutes; over a limit nothing is sent and the answer is unchanged |
 | `/alerte/rezultat`, `/alerte/pastreaza` | the no-JavaScript result of the form; "keep my account" from the 24-month notice |
-| `POST /api/webhooks/resend` | Svix-signed (RESEND_WEBHOOK_SECRET): complaints and permanent bounces stop the address's email alerts and suppress its hash |
+| `POST /api/webhooks/resend` | Svix-signed (RESEND_WEBHOOK_SECRET, required with APP_ENV=prod and MAIL_DRIVER=resend): complaints and permanent bounces stop the address's email alerts and suppress its hash; bodies over 256 KB refused before reading |
 | `/admin/alerte`, `GET /api/admin/users/{id}/export` | volumes, failures, and data-subject requests (export, delete; audited without the address) |
 
 Evidence: `consent_ip_hash`/`confirm_ip_hash` = `hashWithDailySalt('ip', ip)` (the salt of the
 UTC day of `consent_at`/`confirmed_at`, derived from HASH_SALT_SECRET), so a claimed IP can be
 checked later while the stored value reveals nothing. Links are signed with ALERTS_SECRET
 (`@pretoscop/notify`). E2E: `E2E_SHARED_FIXTURE=0 pnpm exec playwright test e2e/alerts.spec.ts --project=desktop --workers=1`.
+## Merchant portal (M20)
+
+- **Flag**: `merchants.portal.enabled` (off by default) gates new registrations and submissions; approved feeds keep running
+  when it is off.
+- **Merchant pages**: `/pentru-magazine/autentificare` (magic link, role `merchant`), `/pentru-magazine/cont` (steps: company
+  and CUI with checksum → domain proof → feed URL or upload → price format and delivery → terms and submit; then the pending,
+  approved (dashboard), rejected and suspended views), `/pentru-magazine/termeni` (merchant terms, `merchantTerms.v1`).
+  Forms are server actions with redirect-after-post, so they work without JavaScript; `AutoRefresh` only reloads while a
+  worker check runs.
+- **Domain proof** (the abuse guard against listing someone else's feed): an email address on the shop's domain (or on a
+  parent domain when the shop is on a subdomain; never a mailbox on a subdomain, webmail or a public suffix such as
+  `com.ro`), a DNS TXT record `pretoscop-verificare=<token>` on the apex, or exactly the token as the content of
+  `/.well-known/pretoscop-verificare.txt` (never requested from a shop we already crawl); an admin can also verify
+  manually. A check verifies only the domain it looked at: changing the domain while it runs verifies nothing. Approval
+  requires it, and the worker drops feed offers whose URL is not on that domain.
+- **Checks run in the worker** (`merchant.feed_check`, `merchant.domain_check`, pg-boss `stately` queues: one waiting and
+  one running per merchant): fetches go through the merchant-scoped fetcher (`ScopedDomainStateStore`: shared 5 s
+  spacing and robots.txt rules, but its own pauses and budget, so a merchant URL can never pause the crawler) as
+  `PretoscopBot-Feed`, public addresses only, never to the host of another shop we crawl. A result is stored only for the
+  feed and domain it checked; submission and approval need a finished check of the current feed and domain with at least
+  one listable offer on that domain (`listingReportProblem`). The web app only enqueues and shows results.
+- **Limits**: one check per 30 s and one upload per minute per merchant whatever the address, and per 24 h at most 30 feed
+  checks, 10 uploads and 30 domain checks (counted in `audit_log`).
+- **Upload**: `POST /api/merchant/feed-upload` (multipart, same-site) reads at most `FETCH_MAX_BODY_BYTES` + 64 KiB of
+  body (chunked bodies included) and stores the file in the blob store, deleting the one it replaces; the worker gunzips it
+  under the same cap. An approved upload source is observed at upload time, never scheduled, and its offers turn grey after
+  72 h (`crawl_policy.freshness_slo_hours` of a portal-created shop; a feed address gets 12 h).
+- **Admin**: `/admin/comercianti` (queue and detail): approve (creates the shop, or attaches to an existing one only after
+  the admin ticks the confirmation under the warning that lists its sources; refused while another merchant of the domain
+  is suspended), reject / suspend with a statement of reasons (category + facts, emailed; P2B art. 4: the offers are hidden
+  at once and a portal-created shop is paused), reinstate (the feed read brings the offers back), manual domain
+  verification, re-check, run now. Every decision is in `audit_log`. Admin pages call `requireAdmin()` themselves (the
+  layout check alone does not stop a page segment from rendering).
+- **Development only**: with `FETCH_ALLOW_PRIVATE_HOSTS=true` (or the narrower `FETCH_PRIVATE_ALLOWLIST=127.0.0.1:3399`;
+  both refused in staging and production) a feed URL may point to a
+  local IP and port, which the e2e flow uses.

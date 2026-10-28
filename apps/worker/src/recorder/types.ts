@@ -19,6 +19,8 @@ export interface FetchLike {
     finalUrl: string;
     channel: 'direct' | 'assisted';
     error?: string;
+    errorCode?: string;
+    contentType?: string | null;
   }>;
 }
 
@@ -43,6 +45,8 @@ export interface RecorderDeps {
   log: Logger;
   blob: BlobStore;
   fetcher: FetchLike;
+  /** Pulls merchant feeds (`config.origin = 'merchant'`, M20) in the merchant-scoped fetch state; tests may omit it. */
+  merchantFetcher?: FetchLike;
   normalize: NormalizeFn;
   alert: OpsAlert;
   now?: () => Date;

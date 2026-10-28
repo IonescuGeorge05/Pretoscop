@@ -59,8 +59,9 @@ const bani = (lei: number) => Math.round(lei * 100);
 
 export async function createE2eFixture(db: Db): Promise<E2eFixture> {
   await dropE2eFixture(db);
-  const shops = await db.execute<{ slug: string; id: string }>(sql`SELECT slug, id::text FROM shops WHERE slug IN ('emag','itgalaxy','forit','flip','elefant','auchan','carrefour')`);
+  const shops = await db.execute<{ slug: string; id: string; domain: string }>(sql`SELECT slug, id::text, domain FROM shops WHERE slug IN ('emag','itgalaxy','forit','flip','elefant','auchan','carrefour')`);
   const shopId = new Map(shops.rows.map((r) => [r.slug, Number(r.id)]));
+  const shopDomain = new Map(shops.rows.map((r) => [r.slug, r.domain]));
   const now = Date.now();
   const ids: Record<string, number> = {};
   for (const o of OFFERS) {
@@ -78,7 +79,8 @@ export async function createE2eFixture(db: Db): Promise<E2eFixture> {
         sourceTier: 1,
         runId: null,
         externalId: `${PREFIX}${o.key}`,
-        url: `https://example.com/e2e/${o.key}`,
+        // On the shop's own domain, like a real offer (affiliate links refuse other hosts); never fetched.
+        url: `https://www.${shopDomain.get(o.shop)}/e2e-fixture/${o.key}`,
         titleRaw: E2E_TITLE,
         titleClean: E2E_TITLE,
         attributes: { kind: 'phone', storageGb: 128, ramGb: 8, color: 'black', colorRo: 'negru', connectivity: ['5g', 'dual_sim'] },
@@ -151,6 +153,37 @@ async function createAdminFixture(db: Db, shopId: Map<string, number>, now: numb
   await db.execute(sql`INSERT INTO match_decisions (offer_id, product_id, decision, decided_by, reason, score) VALUES (${review}, NULL, 'needs_review', 'rule', 'title 0.74 in gray zone', 0.74)`);
   const slug = await db.execute<{ slug: string }>(sql`SELECT slug FROM products WHERE id = ${dupB}`);
   return { dupA, dupB, dupBSlug: slug.rows[0]!.slug, reviewOfferId: review, reviewTitle: ADMIN_OFFERS[2]!.title };
+}
+
+/**
+ * Affiliate e2e (M24): a temporary approved 2Performant program for forit that allows comparators,
+ * with the flag on; `affiliateSyncForbidden` runs the real program sync with forit's permission
+ * set to "no"; `affiliateRestore` removes the program and puts the flag back.
+ */
+export async function affiliateAllow(db: Db): Promise<{ flagWas: boolean }> {
+  const f = await db.execute<{ enabled: boolean }>(sql`SELECT enabled FROM feature_flags WHERE key = 'affiliate.links.enabled'`);
+  await db.execute(sql`
+    INSERT INTO affiliate_programs (shop_id, network, program_external_id, comparator_policy, status, notes)
+    SELECT id, '2performant', 'e2e-unique', 'allowed', 'approved', 'e2e fixture' FROM shops WHERE slug = 'forit'
+    ON CONFLICT (shop_id, network) DO UPDATE SET program_external_id = 'e2e-unique', comparator_policy = 'allowed', status = 'approved', notes = 'e2e fixture'`);
+  await db.execute(sql`INSERT INTO feature_flags (key, enabled) VALUES ('affiliate.links.enabled', true) ON CONFLICT (key) DO UPDATE SET enabled = true`);
+  return { flagWas: f.rows[0]?.enabled ?? false };
+}
+
+export async function affiliateSyncForbidden(db: Db): Promise<number> {
+  const { applyTwoPerformantPrograms } = await import('../queries/affiliate');
+  const res = await applyTwoPerformantPrograms(
+    db,
+    [{ id: 990001, name: 'forit (e2e)', main_url: 'https://www.forit.ro', unique_code: 'e2e-unique', affrequest: { status: 'accepted' }, traffic_sources: [{ name: 'Price Comparison Services', usage: 'no' }] }],
+    'e2e-fixture',
+    new Date().toISOString().slice(0, 10),
+  );
+  return res.changes.length;
+}
+
+export async function affiliateRestore(db: Db, flagWas: boolean): Promise<void> {
+  await db.execute(sql`DELETE FROM affiliate_programs WHERE network = '2performant' AND program_external_id = 'e2e-unique'`);
+  await db.execute(sql`UPDATE feature_flags SET enabled = ${flagWas} WHERE key = 'affiliate.links.enabled'`);
 }
 
 /** Clicks logged for the fixture's offers (the click-out test checks one was written). */
@@ -275,14 +308,35 @@ export async function alertsFixturePrice(db: Db, key: string, lei: number): Prom
   return { offerId, total: t.rows[0]!.total };
 }
 
+/**
+ * A daily-salted hash as `hashWithDailySalt` writes it (32 lowercase hex characters): a raw IP,
+ * or anything else, fails the e2e assertions that read the `*_hashed` columns below.
+ */
+const HASH_FORMAT = '^[0-9a-f]{32}$';
+
+/** Extra throwaway products for the alert e2e (same title, so `alerts-drop` removes them). */
+export async function alertsFixtureExtraProducts(db: Db, n: number): Promise<number[]> {
+  const ids: number[] = [];
+  const tag = createHash('sha256').update(`${Date.now()}:${Math.random()}`).digest('hex').slice(0, 8);
+  for (let i = 0; i < n; i++) {
+    const slug = `e2e-alerte-extra-${tag}-${i}`;
+    const r = await db.execute<{ id: string }>(sql`
+      INSERT INTO products (slug, title, title_ascii, provisional) VALUES (${slug}, ${E2E_ALERTS_TITLE}, ${slug}, true) RETURNING id::text`);
+    ids.push(Number(r.rows[0]!.id));
+  }
+  return ids;
+}
+
 /** What the database holds for a test address (assertions of the e2e flows). */
 export async function alertsFixtureState(db: Db, email: string): Promise<Record<string, unknown>> {
   const u = await db.execute<{ id: string; email_verified: boolean }>(sql`SELECT id, email_verified FROM users WHERE lower(email) = lower(${email})`);
   const userId = u.rows[0]?.id ?? null;
   const alerts = userId
     ? await db.execute(sql`
-        SELECT id::text, status, kind, target_price::text, channel, consent_text_version, consent_ip_hash IS NOT NULL AS consent_ip_hashed,
-          confirmed_at IS NOT NULL AS confirmed, confirm_method, confirm_ip_hash IS NOT NULL AS confirm_ip_hashed, last_notified_total::text
+        SELECT id::text, status, kind, target_price::text, channel, consent_text_version,
+          coalesce(consent_ip_hash ~ ${HASH_FORMAT}, false) AS consent_ip_hashed,
+          confirmed_at IS NOT NULL AS confirmed, confirm_method,
+          coalesce(confirm_ip_hash ~ ${HASH_FORMAT}, false) AS confirm_ip_hashed, last_notified_total::text
         FROM alerts WHERE user_id = ${userId} ORDER BY id`)
     : { rows: [] };
   const sends = userId ? await db.execute(sql`SELECT status, total::text, reason, simulated FROM alert_sends WHERE user_id = ${userId} ORDER BY id`) : { rows: [] };
@@ -293,11 +347,19 @@ export async function alertsFixtureState(db: Db, email: string): Promise<Record<
 export async function alertsFixtureEvidence(db: Db, emailHashes: string[]): Promise<Record<string, unknown>> {
   const h = sql.param(emailHashes);
   const consents = await db.execute(sql`
-    SELECT purpose, text_version, given_ip_hash IS NOT NULL AS given_ip_hashed, confirmed_at IS NOT NULL AS confirmed, confirm_method,
-      withdrawn_at IS NOT NULL AS withdrawn, withdraw_method
+    SELECT purpose, text_version, coalesce(given_ip_hash ~ ${HASH_FORMAT}, false) AS given_ip_hashed, confirmed_at IS NOT NULL AS confirmed,
+      confirm_method, withdrawn_at IS NOT NULL AS withdrawn, withdraw_method
     FROM consent_records WHERE email_hash = ANY(${h}::text[]) ORDER BY id`);
   const suppressions = await db.execute(sql`SELECT reason FROM email_suppressions WHERE email_hash = ANY(${h}::text[])`);
   return { consents: consents.rows, suppressions: suppressions.rows };
+}
+
+/** Puts a test address on the suppression list (by its hash), e.g. as a complaint would. */
+export async function alertsFixtureSuppress(db: Db, emailHash: string, reason: 'complaint' | 'bounce' | 'unsubscribed'): Promise<{ suppressed: true }> {
+  await db.execute(sql`
+    INSERT INTO email_suppressions (email_hash, reason) VALUES (${emailHash}, ${reason})
+    ON CONFLICT (email_hash) DO UPDATE SET reason = EXCLUDED.reason, created_at = now()`);
+  return { suppressed: true };
 }
 
 /** Removes the alert fixture: test accounts, their evidence and suppressions, the product; restores the flag. */

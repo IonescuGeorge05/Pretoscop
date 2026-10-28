@@ -22,7 +22,14 @@
     "report": "tsx src/cli/report.ts",
     "report:approve": "tsx src/cli/report-approve.ts",
     "alerts:simulate": "tsx src/cli/alerts-simulate.ts",
-    "alerts:run": "tsx src/cli/alerts-run.ts"
+    "alerts:run": "tsx src/cli/alerts-run.ts",
+    "icecat:lookup": "tsx src/cli/icecat-lookup.ts",
+    "icecat:coverage": "tsx src/cli/icecat-coverage.ts",
+    "icecat:sync": "tsx src/cli/icecat-sync.ts",
+    "icecat:demo": "tsx src/cli/icecat-demo.ts",
+    "renormalize": "tsx src/cli/renormalize.ts",
+    "commissions:import": "tsx src/cli/commissions-import.ts",
+    "ops:alert-test": "tsx src/cli/ops-alert-test.ts"
   },
   "devDependencies": {
     "pino-pretty": "^13.2.0"
@@ -33,6 +40,7 @@
     "@pretoscop/db": "workspace:*",
     "@pretoscop/extractors": "workspace:*",
     "@pretoscop/fetch": "workspace:*",
+    "@pretoscop/icecat": "workspace:*",
     "@pretoscop/mailer": "workspace:*",
     "@pretoscop/notify": "workspace:*",
     "@pretoscop/report": "workspace:*",

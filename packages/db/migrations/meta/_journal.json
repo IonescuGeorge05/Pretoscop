@@ -110,8 +110,22 @@
     {
       "idx": 15,
       "version": "7",
-      "when": 1793145979300,
-      "tag": "0015_channels",
+      "when": 1793179199269,
+      "tag": "0015_merchants",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1793179425583,
+      "tag": "0016_commissions",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1793183774919,
+      "tag": "0017_channels",
       "breakpoints": true
     }
   ]

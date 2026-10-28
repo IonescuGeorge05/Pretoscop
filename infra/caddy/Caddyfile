@@ -1,0 +1,124 @@
+# Edge proxy for production and staging (M18, ADR-019). Started by infra/docker-compose.edge.yml;
+# environment placeholders come from the production .env. Cloudflare sits in front (proxied DNS,
+# cache rules, WAF, Access); the server's firewall admits ports 80/443 from Cloudflare only.
+#
+# TLS (CADDY_TLS):
+#   "/etc/caddy/certs/origin.pem /etc/caddy/certs/origin.key"  Cloudflare Origin CA certificate
+#        (recommended behind Cloudflare with SSL mode "Full (strict)"; files never in git)
+#   "admin@pretoscop.ro"  automatic certificates from Let's Encrypt (DNS records not proxied, or
+#        Cloudflare SSL mode Full while the first certificate is issued)
+#   "internal"            Caddy's own local CA (local prod-like runs)
+{
+	email {$ACME_EMAIL:admin@pretoscop.ro}
+	http_port {$CADDY_HTTP_PORT:80}
+	https_port {$CADDY_HTTPS_PORT:443}
+	servers {
+		# Real client IP: from Cloudflare's header, only when the request comes from Cloudflare.
+		trusted_proxies static {$TRUSTED_PROXIES:private_ranges}
+		client_ip_headers Cf-Connecting-Ip X-Forwarded-For
+	}
+	metrics {
+		per_host
+	}
+}
+
+(app_defaults) {
+	encode zstd gzip
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+		-Via
+		-X-Powered-By
+	}
+	# Access log without personal data beyond what operations need: client IPs truncated
+	# (/16 IPv4, /32 IPv6), proxy and identity headers dropped. Kept by Docker's log rotation.
+	log {
+		output stdout
+		format filter {
+			wrap json
+			fields {
+				request>remote_ip ip_mask {
+					ipv4 16
+					ipv6 32
+				}
+				request>client_ip ip_mask {
+					ipv4 16
+					ipv6 32
+				}
+				request>headers>Cf-Connecting-Ip delete
+				request>headers>X-Forwarded-For delete
+				request>headers>X-Real-Ip delete
+				request>headers>Cookie delete
+				request>headers>Authorization delete
+				request>headers>Cf-Access-Jwt-Assertion delete
+			}
+		}
+	}
+}
+
+(upstream_defaults) {
+	# During a rolling deploy one replica restarts; requests wait for the other (up to 20 s).
+	lb_policy round_robin
+	lb_try_duration 20s
+	lb_try_interval 250ms
+	fail_duration 10s
+	# The app reads the client IP from X-Real-Ip (hashed with a daily salt, never stored raw).
+	# Cf-Connecting-Ip is removed so a request that bypasses Cloudflare cannot spoof it.
+	header_up X-Real-Ip {client_ip}
+	header_up -Cf-Connecting-Ip
+}
+
+# The web replicas of an environment: upstream defaults plus an active readiness check. A replica
+# that infra/scripts/deploy.sh is about to replace answers 503 on /api/ready and gets no new requests
+# after two failed checks (about 4 s); a new one gets traffic once /api/ready answers. /api/ready does
+# not check the database, so a database blip never empties the pool.
+(web_replicas) {
+	import upstream_defaults
+	health_uri /api/ready
+	health_interval 2s
+	health_timeout 5s
+	health_fails 2
+	health_passes 1
+}
+
+{$SITE_DOMAIN:pretoscop.ro} {
+	tls {$CADDY_TLS:internal}
+	import app_defaults
+	reverse_proxy {$PROD_UPSTREAMS:prod-web-1:3000 prod-web-2:3000} {
+		import web_replicas
+	}
+}
+
+www.{$SITE_DOMAIN:pretoscop.ro} {
+	tls {$CADDY_TLS:internal}
+	redir https://{$SITE_DOMAIN:pretoscop.ro}{uri} permanent
+}
+
+# Staging: never indexed, and behind Cloudflare Access (docs: infra/cloudflare/README.md).
+{$STAGING_DOMAIN:staging.pretoscop.ro} {
+	tls {$CADDY_TLS:internal}
+	import app_defaults
+	header X-Robots-Tag "noindex, nofollow"
+	reverse_proxy {$STAGING_UPSTREAMS:staging-web-1:3000 staging-web-2:3000} {
+		import web_replicas
+	}
+}
+
+# Plausible web analytics (production; compose profile `analytics` of docker-compose.prod.yml).
+# Public on purpose: the script and the event endpoint must be reachable by visitors who accepted
+# analytics; the dashboard has its own login (registration by invitation only).
+{$PLAUSIBLE_DOMAIN:stats.pretoscop.ro} {
+	tls {$CADDY_TLS:internal}
+	import app_defaults
+	reverse_proxy {$PLAUSIBLE_UPSTREAM:prod-plausible:8000} {
+		import upstream_defaults
+		# Plausible counts unique visitors with a daily-salted hash of address and User-Agent and
+		# never stores the address; it reads it from this header.
+		header_up X-Plausible-IP {client_ip}
+	}
+}
+
+# Prometheus metrics for Grafana Alloy (reachable on the edge network only; never published).
+:9180 {
+	metrics
+}

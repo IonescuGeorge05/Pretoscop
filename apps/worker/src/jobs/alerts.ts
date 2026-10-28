@@ -44,13 +44,18 @@ export const alertsDeliverJob = defineJob({
   },
 });
 
-/** Nightly retention: pending requests, inactive accounts (with notice), evidence, clicks/events. */
+/**
+ * Nightly retention: pending requests, inactive accounts (with notice), evidence, clicks/events,
+ * expired verification rows. Steps run independently; a failing one is reported (ops alert) and
+ * the job does not fail, so a retry never repeats the steps that worked.
+ */
 export const alertsRetentionJob = defineJob({
   name: 'alerts.retention',
   queue: { retryLimit: 2, retryDelay: 1800, expireInSeconds: 3600 },
   schedule: { cron: '20 3 * * *' },
   handler: async (_job, { db, log, services }) => {
-    const r = await runAlertRetention({ db, log, ...services.alerts });
-    log.info(r, 'alert retention done');
+    const r = await runAlertRetention({ db, log, ...services.alerts, opsAlert: services.alert });
+    if (r.failedSteps.length > 0) log.error(r, 'alert retention done with failed steps');
+    else log.info(r, 'alert retention done');
   },
 });

@@ -10,7 +10,8 @@
     "lint": "eslint src test",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "demo": "tsx src/cli/demo.ts"
+    "demo": "tsx src/cli/demo.ts",
+    "record": "tsx src/cli/record.ts"
   },
   "dependencies": {
     "@pretoscop/config": "workspace:*",

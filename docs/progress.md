@@ -2,7 +2,16 @@
 
 Single page the founders read to supervise the build. The implementing agent updates it at the start and end of every module. Statuses: `todo` → `in_progress` → `review` (founder verifies with the module's checklist) → `done`, or `blocked` (say on what). Phase gates (G0–G4) require explicit founder approval before the next phase starts.
 
-Last updated: 2026-10-27 (autonomous build session started; see "Build session mode" below).
+Last updated: 2026-10-28 (build resumed on the Windows laptop; see below).
+
+## Build session resumed on the Windows laptop (28 Oct 2026)
+
+The build moved from the old Mac to Daniel's Windows 11 laptop on 28 Oct 2026 (`docs/HANDOFF.md`).
+- **Setup:** Docker Desktop (WSL2 backend) with PostgreSQL 18, Meilisearch and Mailpit; the dev database restored from `handoff/` (4,493 offers, 2,679 products; the eMAG and Flip pauses and the eMAG Tier A kill switch carried over). `make test` and `make verify M=13` pass on the laptop.
+- **Windows fixes on `daniel`:** LF line endings (`.gitattributes`; Git for Windows had turned every file into CRLF); e2e CLIs started with `node --import tsx` (`runTsx`), because pnpm is a `.cmd` shim that Node cannot spawn; `stop_port`/`port_in_use` in `scripts/verify/lib.sh`, because pkill cannot see native Windows processes; a per-checkout database and E2E port, so parallel worktrees never share one.
+- **Recorder:** runs on the laptop from 28 Oct 09:05 UTC (`make recorder`). Keep the laptop on power and awake, with Docker Desktop running; it sleeps after 10 idle minutes unless that setting is changed.
+- **Daniel's instructions for the rest of the session:** finish the plan; push `daniel` and each module branch once its verify passes (this replaces "nothing is pushed"); subagents only on Opus 5.5 at xhigh effort.
+- **How it runs:** modules with personal data or money get an independent review before they are marked done; merges regenerate each branch's migrations on top of `daniel` (HANDOFF §5).
 
 ## Build session mode (2026-10-27)
 
@@ -18,7 +27,7 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 | M03 | Extractors: structured data and feed mappers | review | `mod/M03-extractors` (merged locally into `daniel`) | | eMAG listing/product, JSON-LD/microdata/OG, 5 feed mappers, sitemaps |
 | M04 | Shop registry and configuration | review | `mod/M04-registry` (merged locally into `daniel`) | | 28 shops, 49 sources (eMAG 43 listings + Tier A), idempotent sync |
 | M05 | Phase-0 price recorder (eMAG listings + first feeds) | review | chain `mod/M13-product-page` (from `mod/M05-recorder`) | | Live since 27 Oct: 960 eMAG offers; eMAG product pages answered with a CAPTCHA → Tier A off (decision needed) |
-| M05B | Assisted-access channel for blocked shops (prototype) | todo | | | decided 2026-10-27 after legal advice; file the written opinion and open the vendor account (A10) |
+| M05B | Assisted-access channel for blocked shops (prototype) | in progress | `mod/M05B-assisted` (unmerged) | | Implemented by an agent, verify script present, not yet reviewed; decided 2026-10-27 after legal advice; file the written opinion and open the vendor account (A10) |
 
 **Gate G0** — recorder runs daily on ≥5,000 products from ≥2 shops; raw snapshots in R2; backups on. Target: assisted channel live for ≥3 of the 5 designated shops at ≥90% success within the cap. Approved: ☐ date: ____
 
@@ -30,8 +39,8 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 | M07 | Matching v1 (deterministic + review queue) | review | chain `mod/M13-product-page` (from `mod/M07-matching`) | | Eval 375 pairs: 0 false accepts; 100 founder labels still needed |
 | M08 | Rollups, stats, anomaly filters, verdicts | review | chain `mod/M13-product-page` (from `mod/M08-rollups`) | | Known-answer series, quarantine, breaker; full rollup < 5 min |
 | M09 | Admin v1 (sources, review queue, merge/split) | review | chain `mod/M13-product-page` (from `mod/M09-admin`) | | Magic link via Mailpit; every mutation audited |
-| M10 | Source adapters batch 1 | todo | | | |
-| M11 | Icecat enrichment | todo | | | |
+| M10 | Source adapters batch 1 | review | `mod/M10-adapters` (merged locally into `daniel`) | | 105 listing sources: IT Galaxy, forIT, Carrefour, Dedeman, Auchan, Bonami; Flip product pages |
+| M11 | Icecat enrichment | review | `mod/M11-icecat` (merged locally into `daniel`) | | Built against synthetic fixtures; flag `icecat.enabled` off until B1 |
 
 **Gate G1** — ≥20,000 products with ≥2 live offers; audited match precision ≥98%; freshness ≥90% < 24h. Approved: ☐ date: ____
 
@@ -41,11 +50,11 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 |---|---|---|---|---|---|
 | M12 | Web foundation (Next.js app, design system, layout) | review | `mod/M12-web-foundation` (merged locally into `daniel`) | | Lighthouse mobile 98/95, desktop 100/100 |
 | M13 | Product page, history API, click-out | review | chain `mod/M13-product-page` | | Cached TTFB p95 13 ms; worker → web revalidation |
-| M14 | Search, category, brand and shop pages | todo | | | |
-| M15 | Deals page and discount verdict UI | todo | | | |
-| M16 | SEO: structured data, sitemaps, performance | todo | | | |
+| M14 | Search, category, brand and shop pages | in progress | `mod/M14-search` (unmerged) | | Implemented by an agent, verify script present, not yet reviewed |
+| M15 | Deals page and discount verdict UI | in progress | `mod/M15-deals` (unmerged) | | Implemented by an agent, not yet reviewed |
+| M16 | SEO: structured data, sitemaps, performance | in progress | `mod/M16-seo` (WIP) | | Stopped mid-work for the machine move |
 | M17 | Legal and trust pages, consent, analytics, bot page | review | `mod/M17-legal` (merged into the chain) | | Lawyer review pending (B5) |
-| M18 | Production deployment, backups, monitoring, staging | todo | | | |
+| M18 | Production deployment, backups, monitoring, staging | review | `mod/M18-deploy` (merged into `daniel`) | | Full rehearsal passes on the laptop (PITR, disaster recovery, rolling deploy, rollback, k6); needs the server and accounts (A1, A3, A4, B2–B4, B8–B12) |
 
 **Gate G2** — staging reviewed by founders; launch checklist complete (`04-plan-normal.md` §9); SRL exists; lawyer review done. Launch date: ____ ANCOM DSA notification due: launch + 45 days.
 
@@ -53,10 +62,10 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 
 | Module | Name | Status | Branch / PR | Verified by founder | Notes |
 |---|---|---|---|---|---|
-| M19 | Accounts and price alerts | todo | | | |
-| M20 | Merchant self-serve feed portal (free listing) | todo | | | |
-| M21 | Bot legitimacy program and source adapters batch 2 | todo | | | |
-| M22 | LLM-assisted matching and attribute extraction | todo | | | |
+| M19 | Accounts and price alerts | review | `mod/M19-alerts` (merged into `daniel`) | | Independently reviewed; all high/medium findings fixed; flag `alerts.email.enabled` off until B2/B4/B5 |
+| M20 | Merchant self-serve feed portal (free listing) | review | `mod/M20-merchants` (merged into `daniel`) | | Independently reviewed; all high/medium findings fixed; migration 0015_merchants; `merchants.portal.enabled` off until B5 and the founders open it |
+| M21 | Bot legitimacy program and source adapters batch 2 | in progress | `mod/M21-bot-legitimacy` (WIP) | | Stopped mid-work for the machine move |
+| M22 | LLM-assisted matching and attribute extraction | todo | `mod/M22-llm-matching` (empty) | | Brief in docs/HANDOFF.md §7 |
 | M23 | Black Friday / fake-discount report tooling | review | `mod/M23-reports` (merged locally into `daniel`) | | Generator deterministic, reconciled with SQL; BF 2026 page waits for approved data |
 
 **Gate G3** — alerts live with double opt-in; ≥10 merchants onboarded; Verified Bots application submitted. Approved: ☐ date: ____
@@ -65,10 +74,10 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 
 | Module | Name | Status | Branch / PR | Verified by founder | Notes |
 |---|---|---|---|---|---|
-| M24 | Affiliate operations (program sync, links, commissions, revenue dashboard) | todo | | | |
+| M24 | Affiliate operations (program sync, links, commissions, revenue dashboard) | review | `mod/M24-affiliate` (merged into `daniel`) | | Mocked 2Performant until A6/A7; migration regenerated as 0016_commissions |
 | M25 | Promoted placements and merchant billing; optional ad slots | todo | | | |
 | M26 | Browser extension (MV3) | todo | | | |
-| M27 | Telegram bot and web push | todo | | | |
+| M27 | Telegram bot and web push | in progress | `mod/M27-telegram-push` (WIP) | | Stopped mid-work for the machine move |
 | M28 | B2B price intelligence MVP | todo | | | |
 | M29 | Category expansion playbook and CSS enrolment readiness | todo | | | |
 
@@ -82,6 +91,8 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 | | 2Performant ToS §9 clearance for price history on feed data | written clearance / own crawl of merchant pages / merchant direct feeds | pending |
 | | Company: SRL formation date | | pending |
 | 2026-10-27 | eMAG product pages (Tier A) after a CAPTCHA | keep Tier A off and rely on listings / retry Tier A at a slower pace after asking eMAG / stop eMAG entirely | **Pending founder decision.** Listing pages were fine (≈ 200 pages, 5 s apart); at 21:45 UTC eMAG answered the 6th product-page request (5 s apart) with a CAPTCHA (HTTP 511). The fetch layer paused www.emag.ro for 24 h (until 28 Oct 21:45 UTC), so the 28 Oct night has no eMAG observations (a gap, shown as a gap). The lead switched the Tier A source off (kill switch, audited) so the next pause does not also stop listings; nothing was retried or worked around |
+| 2026-10-28 | Development and recording machine; pushing | keep the Mac / move to Daniel's Windows laptop; push only when asked / push as modules pass | **Decided by Daniel:** the build and the recorder move to his Windows laptop (Docker Desktop installed; the recorder runs there from 28 Oct, eMAG product pages stay off); `daniel` and every module branch are pushed to GitHub as soon as their verify passes; the old machine's `.env`, `data/` and a dump without login data were published under `handoff/` (checked: no keys, no emails, no rows from the user, session, audit, click or consent tables) |
+| 2026-10-28 | Recording Mac sleeping on battery (operations note) | keep the Mac plugged in and awake / move the recorder to the VPS (M18) | **Needs Daniel.** From about 00:29 UTC the Mac was on battery (66 % → 61 %) and in idle sleep with short maintenance wakes. Requests in flight broke as "connection reset" and the fetch layer paused six shops for 24 h. The lead matched each reset to a sleep or wake in `pmset -g log` and lifted five pauses (audited: `fetch.unpause`); Flip stays paused (its reset matches no sleep event). Two fixes: `caffeinate -i` for 4 h from ~07:15 UTC, and since `4d46a06` a transport error that surfaces > 30 s after its own timeout counts as a local suspension (no pause). Please keep the Mac on power with the lid open, or run the recorder on a server |
 | 2026-10-27 | Blocked shops policy (`12-blocked-shops-strategy.md` §0) | identity + feeds + partnerships only / assisted-access channel for the prototype / exclude | **Decided: assisted-access channel for the prototype**, after legal advice (verbal); written opinion to be filed (A10); exit per shop to feed or allowlist; eMAG excluded from this decision |
 
 ## Module report template
@@ -224,6 +235,8 @@ Risks / open questions: synthetic sets were written by the same agent as the rul
 Next module: M07 (uses brand, MPN and attributes).
 Real-data follow-up (merged 27 Oct, `c9fa591`): on 168 labelled titles from the first live run, brand 77.4 % → 99.4 %, MPN 90.5 % → 98.8 %, accessory 91.7 % → 100 %, bundle 95.2 % → 100 % (corpus `real-live-2026-10-27.ts`, gated at ≥ 95 % per field). Over all 960 eMAG offers: accessories 51 → 7 (all real controllers), bundles 64 → 32 (new `bundleKind`: gift, game, accessory, subscription, other), offers without a brand 216 → 79; chip/size/spec words are no longer taken for MPNs (`isSpecToken`); unknown seller brands come back as `brandGuess` (confidence 0.8 with ®/™, 0.6 by position; the worker keeps ≥ 0.7). Left open: eMAG URL-slug codes are sometimes seller SKUs and win over the title's real part number (to fix in M03 + normalization); codes written with spaces; lower-case seller brands; game publishers.
 
+Slug-MPN follow-up (`mod/M06-slug-mpn`, written before the machine move, finished and merged 28 Oct): eMAG URL-slug codes are now low-trust MPN hints (`mpn_source = 'title'`), never product fields, so a seller SKU in the slug no longer beats the title's part number; matching still accepts equal MPNs (0.98 when one side is a stated field; two guesses must also agree on the title). New CLI `pnpm --filter @pretoscop/worker renormalize [--shop] [--dry-run]` rewrites stored offers' normalized columns with the current rules (prices and price events untouched; human decisions kept; matcher-made products follow their offer). `make verify M=06` passes (live-run corpus 99.85 %); the renormalize tests cover dry run, rewrite, idempotency and identity parity with the recorder. **Dry run on the dev database (28 Oct):** 4,493 offers scanned, 708 changed, 634 slug MPNs become hints, 130 MPN values change, 193 identities change (93 back to the matcher, 100 keep their link, 0 human decisions touched), 481 matcher-made products follow; offers without a brand 455 → 387, accessories 55 → 11, bundles 177 → 145. **Not run for real yet, on purpose:** the recorder rewrites normalized columns at every observation, so it must run the new rules first (rebuild the recorder image from `daniel`), otherwise the old rules would flip the 634 MPNs back each night. Order: rebuild the recorder → back up the database → `renormalize` → `match:run`.
+
 ### M05 — Phase-0 price recorder (eMAG listings + first feeds) — 2026-10-27
 (Implemented by the lead; wiring finished on the chain after M02 and M06 merged.)
 Scope delivered:
@@ -326,3 +339,188 @@ Founder checklist: `scripts/verify/M23.checklist.md`.
 Human tasks needed: approve each report (`report:approve`); confirm the data licence for reuse (e.g. CC BY 4.0) and the press contact; give shops the right of reply before a release that names them.
 Risks / open questions: Black Friday 2026 comes ~4 weeks after recording started, so the 30-day comparison is barely covered and raise-then-cut (60 days) cannot be evaluated this year; eMAG's history has a gap on 28 Oct (paused after the CAPTCHA).
 Next module: M16 (sitemap entries for approved reports).
+
+### M10 — Source adapters batch 1 — 2026-10-27
+(Implemented by a delegated Opus agent; integrated and re-verified by the lead.)
+Scope delivered:
+- Fixture recording through the polite fetcher (`pnpm --filter @pretoscop/fetch record`, `scripts/record-fixture.sh`), refusing any shop that is not `active` with `access_mode: direct`.
+- Generic JSON-LD listing pages (forIT, 60 per page, next-page link, relative URLs, stray HTML entities) and new parsers `itgalaxy-listing` (EAN on some cards), `dedeman-listing`, `carrefour-listing` (ignores the wishlist link carrying another product), `vtex-listing` (Auchan: page state, not the VTEX API; EAN everywhere), `bonami-listing`, `flip-product` (refurbished; grade in `raw.grade`; Flip's stated 30-day minimum as reference; its "0 lei delivery" ignored because it contradicts Flip's courier fee).
+- Registry: 105 listing sources (IT Galaxy 25, forIT 25, Carrefour 23, Dedeman 19, Auchan 11, Bonami 2) staggered from 02:15 Bucharest, page caps kept under each daily budget by a test, freshness 26 h; IT Galaxy and forIT sitemap sweeps disabled (one request per product; forIT's sitemaps exceed the 15 MiB cap); Flip keeps its sitemap (SLO 192 h).
+- Delivery rules only as the shops state them: Dedeman locker 11 lei; Flip courier 19,99 / locker 11,99 lei; forIT per offer; IT Galaxy, Carrefour, Auchan and Bonami state no fee (left unknown).
+- A listing page whose products are all unavailable ends the run normally. Tests: 16 parser tests, 8 recorder end-to-end cases with the real normalizer, 3 registry checks.
+Out of scope / deferred: Libris, Elefant, JYSK (no electronics; Phase 4); blocked shops (M05B / feeds).
+Deviations from plan: listing pages instead of sitemap sweeps for IT Galaxy and forIT; Auchan read from page HTML.
+Verification: `make verify M=10` → OK (extractors 47, config 24, fetch 194, worker 27 tests; fixtures parse; registry table; a blocked shop is refused). After the merge the lead ran the whole monorepo suite (35/36 tasks; the mailer package has no tests and passes on its own) and restarted the recorder with the new sources on 28 Oct 01:4x Bucharest. Live probes, 27 Oct 21:34–21:47 UTC: 33 requests, ≥ 5 s apart per host, none blocked.
+Founder checklist: `scripts/verify/M10.checklist.md`.
+Human tasks needed: read the six shops' terms; confirm the delivery amounts and add courier fees where shops state none; decide whether Dedeman's "Verifică disponibilitatea online" counts as in stock (recorded as unknown); decide on Auchan's VTEX API (allowed by robots.txt, terms not read).
+Risks / open questions: markup changes show as failing sources; Auchan pages are 4.4 MB and mostly unavailable products (the hold rule may alert); Flip records only the default grade.
+Next module: M11.
+
+### M11 — Icecat enrichment — 2026-10-27
+(Implemented by a delegated Opus agent; integrated by the lead.)
+Scope delivered:
+- `@pretoscop/icecat`: Open Icecat client through the polite fetcher (Icecat's robots.txt obeyed, as its licence requires) with lookup classes found / not found / restricted (Apple) / Full-Icecat-only (Sony) / cap reached / stop (a plain per-product 403 lifts the fetch layer's pause; a CDN 403, 429 or robots refusal stops the run), monthly cap counted before each datasheet request, pure mapper to `product_specs.data`, licensed image copies (120/400/800 px), licence texts, a local mock server.
+- Job `icecat.sync` (05:30, flag `icecat.enabled` off and `ICECAT_USERNAME` required): GTIN, then brand + MPN, Romanian then English; up to 6 images; primary image only when none; confirms provisional products found by GTIN; misses remembered 30 days; monthly refresh; alerts on stop or cap. CLIs `icecat:lookup`, `icecat:coverage`, `icecat:sync`, `icecat:demo`.
+- Product page: "Specs Icecat" credit linked to icecat.biz whenever specs or images come from Icecat. ADR-016: Icecat data is isolated (GTINs never copied into `product_gtins`/`products`).
+Out of scope / deferred: real responses (no account).
+Deviations from plan: fixtures hand-written to the documented shape and labelled `_synthetic`; per-product API lookups instead of index files; counters and misses in existing tables (`fetch_domain_daily` host `icecat:<LANG>`, `product_specs` rows with `source = 'icecat-miss'` — readers must filter on `source`); `is_icecat` as `source = 'icecat'`; images in the local blob store.
+Verification: `make verify M=11` → OK (icecat 16 tests, 6 end-to-end sync tests, web 7), licence checks, offline demo (3 found, 1 not found, 1 restricted, 1 Full-only, 5 images).
+Founder checklist: `scripts/verify/M11.checklist.md`.
+Human tasks needed: B1 (Open Icecat account); read and file the Open Content Licence (open item 40); keep `icecat.enabled` off until then and until M16 blocks AI crawlers in robots.txt (`ICECAT_ROBOTS_DISALLOW_AGENTS`).
+Risks / open questions: `live.icecat.biz/robots.txt` never read (bot wall): check once with `icecat:lookup` after creating the account; real responses may differ from the synthetic fixtures; schema wishes: `icecat_usage` and `icecat_lookups` tables, a unique index on `product_images(product_id, sha256)`.
+Next module: M16 (robots.txt AI-crawler rule), M22 (keep Icecat rows out of prompts).
+
+### M24 — Affiliate operations — 2026-10-28
+(Implemented by a delegated Opus agent before the machine move; merged and re-verified by the lead on the Windows laptop. The agent's own report was lost in the move; this one is rebuilt from the branch.)
+Scope delivered:
+- `@pretoscop/core` `affiliate.ts`: `affiliateAllowed` (approved program, comparator policy `allowed` or `written_ok`, offer URL on the shop's own domain, never eMAG per ADR-013) and `buildAffiliateUrl` for 2Performant quicklinks, Awin, CJ and Tradedoubler with our click id as sub-id; `comparatorPolicyFrom2P` reads 2Performant's "Price Comparison Services" permission, including its end date (180 days' notice).
+- 2Performant client (tested against a local mock), job `affiliate.sync` (05:15) that updates `affiliate_programs.comparator_policy`, job `commissions.import` (06:15) and the CLI `commissions:import` (RFC 4180 CSV, `,` or `;`, Romanian or English headers, per-status reconciliation, unreadable lines reported).
+- Migration `commissions` (now `0016_commissions`); click-out decides at click time and logs `is_affiliate`/`placement`; the product page labels exactly the offers that would get an affiliate link.
+- `/admin/venituri`: clicks, affiliate clicks, commissions, EPC and conversion by shop and day; monthly totals per network for the accountant (CSV); the program list with permissions. `/cum-castigam-bani` lists partner shops live and says "no revenue" only while there are none.
+Out of scope / deferred: live network calls (no accounts yet: A6/A7, C4); Profitshare is typed but has no builder yet.
+Deviations from plan: networks other than 2Performant have link builders but no API sync (their programs are entered by hand until accounts exist); the flag `affiliate.links.enabled` stays off.
+Verification: `make verify M=24` on the Windows laptop → lint/typecheck/tests (core, db, worker, web) green; the commission CSV reconciles with the fixture report (`paid 1 commissions 1234.56 lei`); production build; Playwright 5/5 (allowed program → labelled affiliate link carrying our click id; the real program sync marks it forbidden → plain link; eMAG always plain; product page click-out). The lead had to run that e2e on one worker: with Playwright's default of 12 parallel workers on this machine, the product spec raced the affiliate spec's temporary program. Full suite on `daniel` after the merge: 39/39 tasks.
+Founder checklist: `scripts/verify/M24.checklist.md`.
+Human tasks needed: A6/A7 (2Performant account, program approvals, ToS §9 clearance), C4 (Awin/CJ/Tradedoubler accounts), B4 (SRL for payouts), B7 (bank account); then set `TWOPERFORMANT_*` in `.env` and turn on `affiliate.links.enabled`.
+Risks / open questions: comparator permissions can be withdrawn with notice (the nightly sync catches it, but only for 2Performant); commission reports are imported by CSV until the API import is tested with a real account.
+Next module: M25 (promoted placements; needs M20 and M24).
+
+### M19 — Accounts and price alerts — 2026-10-28
+(Implemented by a delegated Opus agent before the machine move; merged by the lead on the Windows laptop, then independently reviewed by a second Opus agent, which also implemented the fixes; the lead reviewed the fix diff and re-verified. The original agent's report was lost in the move; this one is rebuilt from the branch.)
+Scope delivered:
+- `@pretoscop/core` alert rules (decisions in integer bani, target-price parsing, quiet hours 22:00–08:00 Romania time, email checks); `@pretoscop/notify` (signed confirmation/unsubscribe links with HMAC-SHA256, address hash, Romanian alert emails with sender identity); `@pretoscop/mailer` (Mailpit in dev, Resend in production).
+- Migration `0014_alerts`: `alerts` (consent evidence: time, daily-salted IP hash, text version; double opt-in), `alert_sends` (outbox claimed by compare-and-set), `consent_records` (evidence ledger kept 3 years after withdrawal), `email_suppressions` (hashes only).
+- Worker: `alerts.evaluate` (after rollups and price changes, nightly 07:30), `alerts.deliver` (one message per user and channel, offer re-checked before sending, suppression honoured, retries), `alerts.retention` (03:20: pending requests, unverified accounts, 24-month inactivity notice then deletion, consent pruning, sends after 13 months, clicks/events minimized after 90 days, expired login tokens), CLIs `alerts:run` and `alerts:simulate`.
+- Web: the alert form on product pages (unticked consent with the versioned text, works without JavaScript), double opt-in and one-click unsubscribe pages (`List-Unsubscribe` + `List-Unsubscribe-Post`, RFC 8058), `/alerte` (magic-link login, list, edit, delete, stop all, export JSON, delete account), the Resend bounce/complaint webhook (Svix signature), `/admin/alerte` (volumes, failures, data-subject requests).
+Independent review (28 Oct) and fixes: 2 high, 3 medium and 13 low findings; all high and medium ones and most low ones fixed with regression tests:
+- **High:** magic-link emails could be sent without limit (Better Auth's limiter was disabled by `disableIpTracking`). Now every login path is capped at 5 emails per address per hour (in the database) and 20 per client per 15 minutes, with the same answer either way.
+- **High:** two products merged into one target broke the nightly retention job for good. Merges are now deduplicated along the whole merge chain, and each retention step runs on its own with an ops alert when one fails.
+- **Medium:** a briefly stale or out-of-stock cheapest offer could trigger a repeat "below target" email at an unchanged price. Its last known price is now kept for 7 days, and implausible prices are ignored.
+- **Medium:** `alerts:simulate` emailed every real subscriber. It now sends only to named addresses and refuses `APP_ENV=prod`.
+- **Medium:** production now refuses to start with the placeholder sender identity or, on Resend, without the webhook secret; staging warns.
+- **Low, also fixed:** limiters keyed on the IP hash only; capped request bodies; Resend idempotency keys; advisory locks against double-submit races; export includes the suppression status; paused-alert wording.
+Out of scope / deferred: push and Telegram (M27); React Email templates (plain string templates instead: recorded deviation); recorded but not changed: batching per time window, consent text for the logged-in path (lawyer, B5), consent records of deleted products, "any variant" alerts on an inactive variant, separate keys for link signing and address pseudonyms (rotation).
+Deviations from plan: ADR-017 (renumbered at merge: M11 took ADR-016); login and alert-form limits documented in `apps/web/README.md`.
+Verification: `make verify M=19` on `daniel` after the fixes → lint/typecheck/tests green (core 779, db 71, worker 71, web 51, config 46, notify 12, mailer 2), production build, Playwright 9/9 (consent, double opt-in, drop email with List-Unsubscribe, dedupe, unsubscribe incl. one-click POST, export/delete, no-JS form, login cap on every path, cross-site refusal, per-IP limit regardless of User-Agent, suppressed address, daily confirmation cap, hash formats), no test data left; admin login e2e 4/4. Full suite on `daniel`: 39/39 tasks.
+Founder checklist: `scripts/verify/M19.checklist.md` (simulation now `pnpm alerts:simulate <productId> 10 --email <your address>`).
+Human tasks needed: B2 (Resend domain, `RESEND_WEBHOOK_SECRET`), B4 (SRL: the legal name and postal address in every email; production will not start without them), B5 (lawyer: `alertConsent.v1`, including the logged-in path wording).
+Risks / open questions: per-IP limits trust `cf-connecting-ip`/`x-forwarded-for`, so the production proxy must overwrite them (M18); in-memory limiters are per process (the per-address caps are in the database); retried delivery groups that gain rows get a new idempotency key.
+Next module: M27 (Telegram and web push, on top of these fixes).
+
+### M18 — Production deployment, backups, monitoring, staging — 2026-10-28
+(Built by a delegated Opus agent on the Mac on 27–28 Oct and stopped during its restore rehearsal; a second Opus agent merged `daniel` four times, finished and verified it on the Windows laptop; merged by the lead.)
+Scope delivered:
+- Images (`infra/docker/`): web (Next.js standalone, built per environment because prerendered pages carry PUBLIC_BASE_URL, SITE_INDEXABLE and NEXT_PUBLIC_*), worker (one image for every environment and the one-shot `migrate`; PostgreSQL 18 client; non-root `node` user), PostgreSQL 18 + pgvector + pgBackRest 2.60 tuned for the 64 GB server.
+- `infra/docker-compose.prod.yml` (projects pretoscop-prod and pretoscop-staging): PostgreSQL with WAL archiving, the `pgbackrest` sidecar, Meilisearch, `migrate` under an advisory lock, two web replicas, the worker; profiles `monitoring` (Grafana Alloy) and `analytics` (Plausible CE, production only); init processes, exec-form health checks, memory limits, rotated logs; web replicas never receive worker-only credentials.
+- Edge (ADR-019): one Caddy for production, staging (noindex) and stats; TLS from a Cloudflare Origin CA certificate, Let's Encrypt or an internal CA; client IP trusted only from Cloudflare's ranges; privacy-filtered access log; active checks on the new `/api/ready`.
+- Backups (ADR-018): continuous WAL archiving (5-minute RPO), weekly full and nightly differential backups in their own R2 bucket, encrypted client-side (AES-256-CBC), two full cycles kept; a weekly restore test into a scratch copy that compares row counts and the newest price event; `restore-scratch`; the M05 nightly `pg_dump` kept as a second backup, now streamed to S3.
+- Scripts: `deploy.sh` (refuses unsafe configurations, never restarts data services, runs migrations once, drains and replaces each web replica with automatic revert, checks `/api/health`, records the release), `rollback.sh`, `restore-pitr.sh` (a time, a backup set or the latest; new-server mode), `compose.sh`; `bootstrap.sh` for the server; release workflow (tag → GHCR images → staging → founder approval → production).
+- Monitoring (ADR-020): worker `/health` and `/metrics`, heartbeats, an hourly SLO check with deduplicated Telegram/email alerts, an ops-alert test CLI; web `/api/health` and `/api/ready`; Alloy config, Grafana dashboard, 13 alert rules with promtool unit tests, the Better Stack monitor list; 10 runbooks, `infra/launch-checklist.md`, env templates, the Deployment section of `.env.example`.
+- Production bugs found and fixed while finishing:
+  - the weekly restore test could never start (scratch `max_connections` below the primary's);
+  - two alert rules could never fire (scrapers overwrote the `job` label);
+  - rules matching `on ()` would break once staging and production both report;
+  - every deploy would have restarted PostgreSQL (each tag rebuilt the database image);
+  - a rolling deploy dropped a request (replicas are now drained first);
+  - runbook commands failed on the server;
+  - the bootstrap could lock everyone out;
+  - GHCR image names were not lower-case;
+  - the `handoff/` dump was inside the image build context.
+Out of scope / deferred: Sentry (until the account exists; errors are JSON logs plus a 5xx-rate alert); the rehearsal renders but does not start a staging stack; per-URL Cloudflare purge (needs a token); worker processes per queue group; an uncached product-page k6 scenario.
+Deviations from plan: ADR-018 to ADR-021:
+- pgBackRest instead of a generic backup sidecar;
+- one shared Caddy edge;
+- no self-hosted Prometheus;
+- web images per environment and a single worker process;
+- data services kept running across releases, and replicas drained before replacement;
+- Plausible only under its profile.
+Verification: `make verify M=18` on the laptop (≈ 25 min, 31 OK steps):
+- Static checks: lint/typecheck/tests (worker, db, storage, config, web); compose renders for every environment and profile; shellcheck, actionlint, promtool (13 rules with unit tests), caddy validate.
+- Rehearsal, with MinIO standing in for R2:
+  - deploy refusals; HTTPS with HSTS; noindex staging; licensed images only under `/media`;
+  - an encrypted backup repository;
+  - PITR after deleting all price events (all counts and the newest event back);
+  - disaster recovery into an empty volume;
+  - the weekly restore test (15 s, counts equal); retention;
+  - pg_dump to S3 and its restore test;
+  - a second deploy with 0 of 154 probe requests failed and PostgreSQL untouched, then a rollback;
+  - a release with an invalid production `.env` refused at the migration step while the old one keeps serving;
+  - k6: 21,106 requests, 0 % failed (cached product page p95 8.09 ms, uncached history API p95 19.21 ms).
+- The lead re-ran the full suite on `daniel` after the merge: 39/39 tasks.
+Founder checklist: `scripts/verify/M18.checklist.md`. Step 1 is done by the agent; steps 2–3 need the founders (read the runbooks, store the backup passphrase); steps 4–6 need the accounts.
+Human tasks needed:
+- A1: domain.
+- A3/B10: Cloudflare; three R2 buckets with one token each; Origin CA certificate; cache and WAF rules; Access on staging and /admin; a `stats` record.
+- A4: Hetzner server.
+- A5/B11: GitHub environments, DEPLOY_* secrets, a GHCR storage plan (≈ 2.5 GB per release).
+- B8: run the bootstrap.
+- B9: secrets, and PGBACKREST_REPO1_CIPHER_PASS in both password managers. Without it the physical backups cannot be restored.
+- B12: Telegram ops bot.
+- B3: Better Stack first.
+- B2 + B4: the Resend webhook secret, and the SRL's legal name and address. Production refuses to start without them.
+- Decide when the recorder moves to the server.
+Risks / open questions:
+- Real R2 is not exercised yet: watch the first backup.
+- Staging and production share one server.
+- Plausible data is not backed up.
+- The weekly restore test needs free disk about the size of the database.
+- `/cum-functioneaza` shows its fallback text for up to an hour after a deploy (prerendered without a database, ISR).
+- The dev recorder runs as a non-root user after its next rebuild (tested against the Windows bind mount).
+Next module: M05B (its branch sits on M18), then the founders' production setup toward Gate G2.
+
+### M20 — Merchant self-serve feed portal (free listing) — 2026-10-28
+(Implemented by a delegated Opus agent before the machine move; merged by the lead with its migration regenerated; independently reviewed by a second Opus agent, which also implemented the fixes; the lead reviewed the fix diff, in particular the fetch-layer change, and re-verified. The original agent's report was lost in the move; this one is rebuilt from the branch.)
+Scope delivered:
+- `/pentru-magazine` flow (role `merchant`, magic link):
+  - company and CUI (checksum);
+  - domain proof: an email on the shop's domain, a DNS TXT record or a token file;
+  - feed URL (Google Shopping XML, compari.ro XML, CSV) or upload; price format and delivery rules;
+  - terms (`merchantTerms`, now v0.2) and submission;
+  - pending, approved, rejected and suspended views;
+  - the merchant dashboard: offers, matched share, clicks over 30 days, freshness, last runs, "Ce poți îmbunătăți".
+- Worker jobs for feed checks and domain checks, now the stately queues `merchant.feed_check` / `merchant.domain_check`:
+  - feed inspection and a 20-offer preview through the real normalizer;
+  - DNS/file verification;
+  - approval creates or attaches the shop (`feed_only`, trust tier 2) and a `<slug>:feed:merchant` source, read every 4 hours through the normal pipeline (parser registry, normalization, kill switches);
+  - `shops:sync` never disables portal sources.
+- Admin `/admin/comercianti`: queue and detail; approve, reject or suspend with a statement of reasons (category + facts, emailed; P2B art. 4); reinstate; manual domain verification; re-check; run now. Every decision is audited.
+- Migration `merchants` (now `0015_merchants`); flag `merchants.portal.enabled` (off).
+Independent review (28 Oct) and fixes: 3 high, 4 medium and 9 low findings. All high and medium ones and most low ones were fixed, with regression tests.
+- High:
+  - **Domain-verification race:** a merchant could get a domain they do not own marked verified. Checks are now bound to the domain and feed they checked; attaching a feed to an existing shop needs explicit admin confirmation; the token file must match exactly.
+  - **Crawler pause through merchant URLs:** a merchant-supplied URL could pause our crawler on any shop for 24 h through the shared per-host state. Merchant requests now use their own `merchant:` namespace (`ScopedDomainStateStore` in `@pretoscop/fetch`), still sharing the 5-second per-host spacing and obeying the crawler's pauses. Feed URLs on another registered shop's host are refused.
+  - **Suspension did not hide offers:** suspension and rejection now deactivate the source's offers, pause portal-created shops and refresh the cached pages.
+- Medium:
+  - capped gunzip and streamed, capped uploads (no gzip bomb, no unbounded bodies);
+  - a real single pending check per merchant, cooldowns regardless of URL, and daily caps;
+  - email proof only for the exact domain or a parent, with public suffixes refused (a curated list: there is no PSL package in the lockfile);
+  - validation reports stamped and required to match at submit and approve; off-domain offers counted as rejected; at least one on-domain offer required.
+- Low, also fixed:
+  - the detected format is propagated to the live source;
+  - approval is blocked while another merchant of the same domain is suspended;
+  - consistent freshness SLOs: 12 h for feed URLs, 72 h for uploads;
+  - affiliate links from merchant feeds are dropped;
+  - `requireAdmin()` in every admin page, since a layout check does not protect a page segment;
+  - only known message codes are rendered.
+Out of scope / deferred: payments (M25). Recorded without code:
+- domains are never re-verified and tokens never rotated;
+- the shop logo upload in the contract was not implemented (deviation);
+- there is no retention/closure job for merchant accounts yet, although the privacy page promises "3 years after closure".
+Deviations from plan: logo upload missing (see above); the public-suffix check uses a curated list.
+Verification: `make verify M=20` on `daniel` after the fixes:
+- lint/typecheck and tests green (fetch 227, core 785, db 80, worker 93, web 59);
+- production build;
+- the worker against its own database, with every registry source killed;
+- Playwright 1/1: register → domain proof → feed check and preview → submit → admin approval → the offer visible on a public product page → suspension hides it;
+- admin e2e (`make verify M=09`) 4/4, with audit rows;
+- full suite on `daniel`: 39/39 tasks.
+Founder checklist: `scripts/verify/M20.checklist.md`.
+Human tasks needed:
+- B5: lawyer review of merchant terms v0.2 and the statement-of-reasons texts.
+- C3: the outreach list.
+- Decide when to open the portal (the flag) and who answers the approval queue (one business day is promised).
+Risks / open questions:
+- Once M20 runs anywhere, rebuild the recorder and the web app together: the web enqueues on the new queue names. The old empty queues `merchant.validate` / `merchant.verify_domain` can then be deleted.
+- Merchants still pending from before the fixes must be re-checked before approval.
+- Merchants verified through a subdomain mailbox before the fix stay verified, since domains are never re-verified.
+Next module: M21 (built on M20), then M25 and M28 (merchant accounts).

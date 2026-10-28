@@ -20,6 +20,10 @@ const optionalString = z
 
 const DEV_SECRET = 'dev-only-insecure-secret-change-me';
 
+/** Placeholder sender identity (dev defaults): every email must name the real operator in prod. */
+export const PLACEHOLDER_COMPANY_LEGAL_NAME = 'Pretoscop (în curs de înființare)';
+export const PLACEHOLDER_COMPANY_POSTAL_ADDRESS = 'România';
+
 /** `203.0.113.10`, `2001:db8::1`, or a CIDR prefix such as `203.0.113.0/28` or `2001:db8::/64`. */
 export function isIpOrCidr(value: string): boolean {
   const [addr, prefix, ...rest] = value.split('/');
@@ -81,7 +85,19 @@ export const EnvSchema = z
     FETCH_DEFAULT_MIN_INTERVAL_MS: int(5000),
     FETCH_TIMEOUT_MS: int(30000),
     FETCH_MAX_BODY_BYTES: int(15 * 1024 * 1024),
-
+    /** Lets the worker's fetcher reach private/loopback addresses (local fixture servers). Never in production. */
+    FETCH_ALLOW_PRIVATE_HOSTS: bool.default(false),
+    /** Exact private `ip:port` targets the guard lets through (e2e fixture servers) while it stays on for the rest. Never in production. */
+    FETCH_PRIVATE_ALLOWLIST: z
+      .string()
+      .default('')
+      .transform((v) =>
+        v
+          .split(',')
+          .map((e) => e.trim())
+          .filter(Boolean),
+      )
+      .pipe(z.array(z.string().regex(/^\d{1,3}(\.\d{1,3}){3}:\d{1,5}$/, 'expected ip:port, e.g. 127.0.0.1:3399'))),
     // Assisted-access channel (M05B, ADR-015)
     ASSISTED_VENDOR: z.enum(['none', 'zyte', 'oxylabs']).default('none'),
     ZYTE_API_KEY: optionalString,
@@ -104,8 +120,8 @@ export const EnvSchema = z
     RESEND_API_KEY: optionalString,
     MAIL_FROM: z.string().default('Pretoscop <noreply@pretoscop.ro>'),
     MAIL_REPLY_TO: z.string().default('contact@pretoscop.ro'),
-    COMPANY_LEGAL_NAME: z.string().default('Pretoscop (în curs de înființare)'),
-    COMPANY_POSTAL_ADDRESS: z.string().default('România'),
+    COMPANY_LEGAL_NAME: z.string().default(PLACEHOLDER_COMPANY_LEGAL_NAME),
+    COMPANY_POSTAL_ADDRESS: z.string().default(PLACEHOLDER_COMPANY_POSTAL_ADDRESS),
 
     // Auth, admin, web internals
     BETTER_AUTH_SECRET: z.string().min(16).default(DEV_SECRET),
@@ -139,10 +155,13 @@ export const EnvSchema = z
     // Channel for the daily verified-deals post (`@pretoscop_reduceri` or a -100… id); unset = no post.
     TELEGRAM_DEALS_CHAT_ID: optionalString,
 
-    // Operations alerts (two consecutive source failures, backups, caps)
+    // Operations alerts (two consecutive source failures, backups, caps, SLO breaches)
     OPS_ALERT_TELEGRAM_BOT_TOKEN: optionalString,
     OPS_ALERT_TELEGRAM_CHAT_ID: optionalString,
     OPS_ALERT_EMAIL: optionalString,
+    // Dead-man's-switch heartbeats (M18): worker alive every 5 min; nightly logical dump.
+    OPS_HEARTBEAT_URL: optionalString,
+    DUMP_HEARTBEAT_URL: optionalString,
 
     // LLM (M22, ADR-011)
     ANTHROPIC_API_KEY: optionalString,
@@ -150,17 +169,32 @@ export const EnvSchema = z
     LLM_MODEL_DEFAULT: z.string().default('claude-haiku-5-5'),
     LLM_MODEL_ESCALATION: z.string().default('claude-sonnet-5-5'),
 
-    // Icecat (M11)
+    // Icecat (M11). Open Icecat needs only the account name (sent as `shopname`); the tokens are
+    // for Full Icecat and are not used. The job also needs the flag `icecat.enabled` (off).
     ICECAT_USERNAME: optionalString,
     ICECAT_API_TOKEN: optionalString,
     ICECAT_CONTENT_TOKEN: optionalString,
+    ICECAT_BASE_URL: z.string().min(1).default('https://live.icecat.biz/api'),
+    // Languages tried in order: the first one is stored; the next only when the first has no content.
+    ICECAT_LANGS: z.string().min(2).default('RO,EN'),
+    // Datasheet requests per language and month (Open Icecat Fair Use Policy: 1,000,000).
+    ICECAT_MONTHLY_CAP: int(1_000_000),
+    // Products looked up per icecat.sync run (new ones first, then 30-day refreshes).
+    ICECAT_DAILY_BATCH: int(2000),
+    // Minimum interval between two requests to an Icecat host (Icecat allows up to 100 per second).
+    ICECAT_MIN_INTERVAL_MS: int(1000),
 
     // Affiliate networks (M24)
     TWOPERFORMANT_EMAIL: optionalString,
     TWOPERFORMANT_PASSWORD: optionalString,
+    /** Our affiliate code (aff_code in quicklinks). */
     TWOPERFORMANT_UNIQUE_CODE: optionalString,
+    TWOPERFORMANT_API_URL: z.string().min(1).default('https://api.2performant.com'),
     PROFITSHARE_API_USER: optionalString,
     PROFITSHARE_API_KEY: optionalString,
+    AWIN_PUBLISHER_ID: optionalString,
+    CJ_PUBLISHER_ID: optionalString,
+    TRADEDOUBLER_AFFILIATE_ID: optionalString,
 
     // Analytics and monitoring
     NEXT_PUBLIC_PLAUSIBLE_DOMAIN: optionalString,
@@ -182,10 +216,51 @@ export const EnvSchema = z
           ctx.addIssue({ code: 'custom', path: [key], message: `${key} must be set outside dev` });
         }
       }
+      if (env.FETCH_ALLOW_PRIVATE_HOSTS) {
+        ctx.addIssue({ code: 'custom', path: ['FETCH_ALLOW_PRIVATE_HOSTS'], message: 'FETCH_ALLOW_PRIVATE_HOSTS is for local development only' });
+      }
+      if (env.FETCH_PRIVATE_ALLOWLIST.length > 0) {
+        ctx.addIssue({ code: 'custom', path: ['FETCH_PRIVATE_ALLOWLIST'], message: 'FETCH_PRIVATE_ALLOWLIST is for local development only' });
+      }
+    }
+    // Production refuses to start without a real sender identity in every email (Law 506/2004
+    // art. 12, Law 365/2002) and, on Resend, without the bounce/complaint webhook (a complaint must
+    // stop the alerts). Staging only warns (`envWarnings`).
+    if (env.APP_ENV === 'prod') {
+      for (const p of emailComplianceProblems(env)) ctx.addIssue({ code: 'custom', path: [p.key], message: p.message });
     }
   });
 
+interface EmailComplianceInput {
+  COMPANY_LEGAL_NAME: string;
+  COMPANY_POSTAL_ADDRESS: string;
+  MAIL_DRIVER: string;
+  RESEND_WEBHOOK_SECRET?: string | undefined;
+}
+
+/** What keeps emails from being compliant outside dev: placeholder sender identity, no bounce webhook. */
+export function emailComplianceProblems(env: EmailComplianceInput): Array<{ key: keyof EmailComplianceInput; message: string }> {
+  const out: Array<{ key: keyof EmailComplianceInput; message: string }> = [];
+  const name = env.COMPANY_LEGAL_NAME.trim();
+  const address = env.COMPANY_POSTAL_ADDRESS.trim();
+  if (name === '' || name === PLACEHOLDER_COMPANY_LEGAL_NAME) {
+    out.push({ key: 'COMPANY_LEGAL_NAME', message: 'COMPANY_LEGAL_NAME must be the legal name of the operator (it is printed in every email)' });
+  }
+  if (address === '' || address === PLACEHOLDER_COMPANY_POSTAL_ADDRESS) {
+    out.push({ key: 'COMPANY_POSTAL_ADDRESS', message: 'COMPANY_POSTAL_ADDRESS must be the full postal address of the operator (it is printed in every email)' });
+  }
+  if (env.MAIL_DRIVER === 'resend' && !env.RESEND_WEBHOOK_SECRET) {
+    out.push({ key: 'RESEND_WEBHOOK_SECRET', message: 'RESEND_WEBHOOK_SECRET must be set with MAIL_DRIVER=resend (bounces and complaints stop alert emails)' });
+  }
+  return out;
+}
+
 export type Env = z.infer<typeof EnvSchema>;
+
+/** Problems that refuse a production start but only warn in staging (logged once per process by `getEnv`). */
+export function envWarnings(env: Env): string[] {
+  return env.APP_ENV === 'staging' ? emailComplianceProblems(env).map((p) => `${p.key}: ${p.message}`) : [];
+}
 
 let cached: Env | undefined;
 
@@ -219,7 +294,10 @@ export function getEnv(source: NodeJS.ProcessEnv = process.env): Env {
     const lines = parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`);
     throw new Error(`Invalid environment:\n${lines.join('\n')}`);
   }
-  if (source === process.env) cached = parsed.data;
+  if (source === process.env) {
+    cached = parsed.data;
+    for (const w of envWarnings(parsed.data)) console.warn(JSON.stringify({ level: 'warn', service: 'config', event: 'env.warning', message: w }));
+  }
   return parsed.data;
 }
 

@@ -1,0 +1,14 @@
+{
+  "notFound": {
+    "COMMENT": "The requested product is not present in the Icecat database",
+    "StatusCode": 1
+  },
+  "brandRestricted": {
+    "COMMENT": "Product has brand restrictions or access is limited",
+    "StatusCode": 4
+  },
+  "fullIcecatOnly": {
+    "COMMENT": "Pentru a accesa conținutul complet Icecat, este necesar un app_key. Utilizatorii Full Icecat îl pot găsi pe pagina 'Profilul meu'.",
+    "StatusCode": 3
+  }
+}

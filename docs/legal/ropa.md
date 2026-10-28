@@ -144,14 +144,16 @@ The consent choice itself is stored only in the visitor's browser (`localStorage
 
 | Field | Record |
 |---|---|
-| Status | planned (M20) |
-| Purpose | Free listing, feed processing, merchant communications, later billing (M25) |
-| Legal basis | Art. 6(1)(b) (contract with the merchant); Art. 6(1)(c) for invoicing |
-| Data subjects | Merchant contacts |
-| Personal data | Contact name, email, company data, feed URL, activity log |
-| Recipients | Hetzner, Resend; later the payment provider (M25) |
-| Retention | Contract duration; invoices per the accounting law (confirm with the accountant, setup B4) |
-| Implementation | `merchants` (M20) |
+| Status | live (M20, merchant portal behind the flag `merchants.portal.enabled`) |
+| Purpose | Free listing of a shop's offers from its feed; domain verification; communications; record of decisions (approval, rejection, suspension) with their statement of reasons; later billing (M25) |
+| Legal basis | Art. 6(1)(b) (the listing contract accepted with the merchant terms); Art. 6(1)(c) for the statement of reasons (P2B Regulation 2019/1150 art. 4) and, later, invoicing |
+| Data subjects | Merchant contact persons |
+| Personal data | Contact name, email, phone (optional), company name and CUI, website and feed addresses, domain-verification token and method, terms version and acceptance time, decisions and reasons, portal actions in `audit_log`; the session is the Better Auth cookie (no IP, no User-Agent) |
+| Recipients | Hetzner (database), Resend (magic links and decision emails); later the payment provider (M25) |
+| Transfers | Resend (US): DPF or SCCs |
+| Retention | While the account is active and 3 years after it is closed (evidence of decisions and of the contract; general limitation period); invoices per the accounting law (setup B4). Job pending |
+| Security | Magic-link login; a merchant only lists offers whose product URLs are on the domain it proved it controls; feed URLs are fetched by the worker, which refuses private addresses |
+| Implementation | `merchants` (migration 0015), `/pentru-magazine/cont`, `/admin/comercianti` |
 
 ### P10. Error monitoring
 
@@ -184,7 +186,7 @@ EU hosting (Hetzner, Germany); TLS everywhere; secrets only in the server `.env`
 
 ## Open items
 
-- Retention jobs: P4 (12 months / 3 years) and P6 (audit log 3 years) are still pending; P2 and P8 run in `alerts.retention` (M19). Event properties (P2) stay until the 13-month deletion; an `events_daily` aggregate would let raw rows go after 90 days.
+- Retention jobs: P4 (12 months / 3 years), P6 (audit log 3 years) and P9 (merchant accounts, 3 years after closure; M20) are still pending; P2 and P8 run in `alerts.retention` (M19). Event properties (P2) stay until the 13-month deletion; an `events_daily` aggregate would let raw rows go after 90 days.
 - Seller-name suppression action for P7 objections (admin).
 - Controller identity once the SRL exists (B4); mailbox provider and its DPA (`dpa-list.md`).
 - Lawyer review of this record together with the public pages (B5).

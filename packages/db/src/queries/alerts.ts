@@ -1,3 +1,4 @@
+import { ALERT_KNOWN_PRICE_DAYS, alertBaselineBani } from '@pretoscop/core';
 import { sql, type SQL } from 'drizzle-orm';
 import type { Db } from '../client';
 import { baniToNumeric, numericToBani } from '../money';
@@ -24,6 +25,22 @@ export const ELIGIBLE_ALERT_OFFER: SQL = sql.raw(`(
   AND s.status = 'active' AND s.trust_tier <= 2 AND o.source_tier <= 2
   AND o.last_checked_at > now() - make_interval(hours => coalesce((s.crawl_policy->>'freshness_slo_hours')::int, 26))
   AND NOT EXISTS (SELECT 1 FROM price_events_quarantine q WHERE q.offer_id = o.id AND q.status = 'pending')
+)`);
+
+/**
+ * An offer whose last total is still "known" to the alert rules (core `ALERT_KNOWN_PRICE_DAYS`,
+ * 7 days): the static rules of `ELIGIBLE_ALERT_OFFER` (active, matched, new, shop-sold, trusted
+ * shop…), checked within the window (or the shop's freshness SLO when longer), and either in stock
+ * or unavailable for less than the window (`price_changed_at` moves when the availability does).
+ * Freshness, stock and quarantine are deliberately not required: an offer briefly out of view
+ * still holds its price, so its return is not news. Eligible offers are known offers too.
+ */
+export const KNOWN_ALERT_OFFER: SQL = sql.raw(`(
+  o.active AND o.match_status IN ('auto','manual') AND o.condition = 'new'
+  AND NOT o.is_bundle AND NOT o.is_accessory AND NOT o.blacklisted AND o.seller_type = 'shop'
+  AND s.status = 'active' AND s.trust_tier <= 2 AND o.source_tier <= 2
+  AND o.last_checked_at > now() - make_interval(hours => greatest(${ALERT_KNOWN_PRICE_DAYS * 24}, coalesce((s.crawl_policy->>'freshness_slo_hours')::int, 26)))
+  AND (o.availability = 'in_stock' OR o.price_changed_at > now() - interval '${ALERT_KNOWN_PRICE_DAYS} days')
 )`);
 
 /** Raw `execute` returns timestamptz as text ("2026-10-28 00:18:26.73+00"): convert at the edge. */
@@ -72,6 +89,21 @@ export async function bestAlertOffer(db: Exec, productId: number, anyVariant = f
     totalBani: bani(row.total)!,
     checkedAt: new Date(row.checked),
   };
+}
+
+/**
+ * The 'any_drop' reference for an alert that starts now (confirmation, logged-in creation, edit):
+ * the best eligible total or a lower total still known (`KNOWN_ALERT_OFFER`), whichever is lower,
+ * so a cheaper shop that is only briefly out of view cannot come back as a "drop".
+ */
+export async function alertStartBaseline(db: Exec, productId: number, anyVariant = false): Promise<number | null> {
+  const scope = anyVariant
+    ? sql`o.product_id IN (SELECT v.id FROM products v JOIN products p ON p.family_id = v.family_id WHERE p.id = ${productId} AND v.status = 'active' UNION SELECT ${productId}::bigint)`
+    : sql`o.product_id = ${productId}`;
+  const r = await db.execute<{ known: string | null }>(sql`
+    SELECT min(o.total_price)::text AS known FROM offers o JOIN shops s ON s.id = o.shop_id WHERE ${scope} AND ${KNOWN_ALERT_OFFER}`);
+  const best = await bestAlertOffer(db, productId, anyVariant);
+  return alertBaselineBani(best?.totalBani ?? null, bani(r.rows[0]?.known));
 }
 
 export interface AlertProduct {
@@ -128,6 +160,15 @@ async function withdrawConsents(tx: Exec, where: SQL, method: string): Promise<v
   await tx.execute(sql`UPDATE consent_records SET withdrawn_at = now(), withdraw_method = ${method} WHERE withdrawn_at IS NULL AND ${where}`);
 }
 
+/**
+ * Serializes, until the transaction ends, every writer of the live alert of one user, product and
+ * channel (creation with a session, confirmation, channel change): two at once would otherwise both
+ * miss the other's row in `replaceOlder` and break the unique index (a 500 for a double click).
+ */
+async function lockLiveAlert(tx: Exec, userId: string, productId: number, channel: AlertChannel): Promise<void> {
+  await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${`alert:${userId}:${productId}:${channel}`}, 0))`);
+}
+
 /** A newer live alert for the same user, product and channel replaces the older one (`alertId` 0: all). */
 async function replaceOlder(tx: Exec, alertId: number, userId: string, productId: number, channel: AlertChannel): Promise<void> {
   const older = sql`alert_id IN (SELECT id FROM alerts WHERE user_id = ${userId} AND product_id = ${productId} AND channel = ${channel} AND status <> 'pending' AND id <> ${alertId})`;
@@ -139,8 +180,12 @@ async function replaceOlder(tx: Exec, alertId: number, userId: string, productId
 export async function createAlert(db: Db, i: NewAlertInput): Promise<{ alertId: number; status: AlertStatus }> {
   return db.transaction(async (tx) => {
     const active = i.confirm !== undefined;
-    // The live alert this one replaces must go first (unique per user, product and channel).
-    if (active) await replaceOlder(tx, 0, i.userId, i.productId, i.channel);
+    // The live alert this one replaces must go first (unique per user, product and channel); the
+    // lock makes a second request at the same moment (double submit) wait and replace this one.
+    if (active) {
+      await lockLiveAlert(tx, i.userId, i.productId, i.channel);
+      await replaceOlder(tx, 0, i.userId, i.productId, i.channel);
+    }
     const ins = await tx.execute<{ id: string }>(sql`
       INSERT INTO alerts (user_id, product_id, kind, target_price, any_variant, channel, status, consent_at, consent_ip_hash, consent_text_version,
         confirmed_at, confirm_ip_hash, confirm_method)
@@ -156,8 +201,8 @@ export async function createAlert(db: Db, i: NewAlertInput): Promise<{ alertId: 
         ${active ? sql`now()` : null}, ${i.confirm?.ipHash ?? null}, ${i.confirm?.method ?? null})
     `);
     if (active) {
-      const best = await bestAlertOffer(tx, i.productId, i.anyVariant);
-      await tx.execute(sql`UPDATE alerts SET baseline_total = ${money(best?.totalBani ?? null)} WHERE id = ${alertId}`);
+      const baseline = await alertStartBaseline(tx, i.productId, i.anyVariant);
+      await tx.execute(sql`UPDATE alerts SET baseline_total = ${money(baseline)} WHERE id = ${alertId}`);
       await tx.execute(sql`UPDATE users SET last_active_at = now(), retention_notice_at = NULL WHERE id = ${i.userId}`);
       if (i.emailHash && i.channel === 'email') await liftSuppression(tx, i.emailHash);
     }
@@ -257,7 +302,7 @@ export type ConfirmOutcome = 'confirmed' | 'already' | 'expired' | 'missing';
 /**
  * The double opt-in click: activates a pending alert (replacing an older live one for the same
  * product and channel), records when and from where, marks the address verified and starts the
- * 'any_drop' baseline from today's best total.
+ * 'any_drop' baseline from today's best total (or a lower price still known: `alertStartBaseline`).
  */
 export async function confirmAlert(
   db: Db,
@@ -273,11 +318,12 @@ export async function confirmAlert(
     if (a.status !== 'pending') return 'already';
     if (a.expired) return 'expired';
     const productId = Number(a.product_id);
+    await lockLiveAlert(tx, a.user_id, productId, a.channel);
     await replaceOlder(tx, alertId, a.user_id, productId, a.channel);
-    const best = await bestAlertOffer(tx, productId, a.any_variant);
+    const baseline = await alertStartBaseline(tx, productId, a.any_variant);
     await tx.execute(sql`
       UPDATE alerts SET status = 'active', confirmed_at = now(), confirm_ip_hash = ${opts.ipHash}, confirm_method = ${opts.method},
-        baseline_total = ${money(best?.totalBani ?? null)}, updated_at = now()
+        baseline_total = ${money(baseline)}, updated_at = now()
       WHERE id = ${alertId}`);
     await tx.execute(sql`
       UPDATE consent_records SET confirmed_at = now(), confirm_ip_hash = ${opts.ipHash}, confirm_method = ${opts.method}
@@ -369,6 +415,43 @@ export async function deleteUserData(db: Db, userId: string, opts: { method: str
   });
 }
 
+// ---------------------------------------------------------------------------------------------
+// Sending limits
+
+const SEND_CAP_PREFIX = 'send-cap:';
+
+/**
+ * Counts emails sent under `key` in a fixed window and returns the count including this one. The
+ * counter is a row of Better Auth's `verifications` table (`id = identifier = 'send-cap:<key>'`,
+ * `value` = count, `expires_at` = end of the window), so an expired counter goes away with Better
+ * Auth's own cleanup and the nightly `alerts.retention`, and no table of our own is needed. `key`
+ * must already be a hash: never put an address in it.
+ */
+export async function hitSendCounter(db: Exec, key: string, windowMinutes: number): Promise<number> {
+  const id = `${SEND_CAP_PREFIX}${key}`;
+  const r = await db.execute<{ value: string }>(sql`
+    INSERT INTO verifications (id, identifier, value, expires_at, created_at, updated_at)
+    VALUES (${id}, ${id}, '1', now() + make_interval(mins => ${windowMinutes}::int), now(), now())
+    ON CONFLICT (id) DO UPDATE SET
+      value = CASE WHEN verifications.expires_at <= now() THEN '1' ELSE (verifications.value::int + 1)::text END,
+      expires_at = CASE WHEN verifications.expires_at <= now() THEN now() + make_interval(mins => ${windowMinutes}::int)
+        ELSE verifications.expires_at END,
+      updated_at = now()
+    RETURNING value`);
+  return Number(r.rows[0]?.value ?? 0);
+}
+
+/** Starts the counter under `key` over (e.g. after a successful login). */
+export async function clearSendCounter(db: Exec, key: string): Promise<void> {
+  await db.execute(sql`DELETE FROM verifications WHERE id = ${`${SEND_CAP_PREFIX}${key}`}`);
+}
+
+/** Expired verification rows (magic-link tokens, send counters): nightly, besides Better Auth's lazy cleanup. */
+export async function deleteExpiredVerifications(db: Exec): Promise<number> {
+  const r = await db.execute(sql`DELETE FROM verifications WHERE expires_at < now()`);
+  return r.rowCount ?? 0;
+}
+
 /** Marks activity (login, alert edits, "keep my account"): resets the 24-month retention clock. */
 export async function touchUserActivity(db: Exec, userId: string): Promise<void> {
   await db.execute(sql`UPDATE users SET last_active_at = now(), retention_notice_at = NULL WHERE id = ${userId}`);
@@ -387,13 +470,16 @@ export async function updateAlert(
     const a = r.rows[0];
     if (!a) return false;
     const channel = patch.channel ?? a.channel;
-    if (channel !== a.channel && a.status !== 'pending') await replaceOlder(tx, alertId, userId, Number(a.product_id), channel);
-    const best = await bestAlertOffer(tx, Number(a.product_id), a.any_variant);
+    if (channel !== a.channel && a.status !== 'pending') {
+      await lockLiveAlert(tx, userId, Number(a.product_id), channel);
+      await replaceOlder(tx, alertId, userId, Number(a.product_id), channel);
+    }
+    const baseline = await alertStartBaseline(tx, Number(a.product_id), a.any_variant);
     // A new condition starts from today's price: no notification about the old one is pending.
     await tx.execute(sql`
       UPDATE alerts SET kind = ${patch.kind}, target_price = ${money(patch.targetBani)}, channel = ${channel},
         armed = true, last_notified_at = NULL, last_notified_total = NULL, last_notified_offer_id = NULL,
-        baseline_total = ${money(best?.totalBani ?? null)},
+        baseline_total = ${money(baseline)},
         status = CASE WHEN status = 'paused' AND paused_reason = 'channel_unavailable' AND channel <> ${channel} THEN 'active' ELSE status END,
         paused_reason = CASE WHEN status = 'paused' AND paused_reason = 'channel_unavailable' AND channel <> ${channel} THEN NULL ELSE paused_reason END,
         updated_at = now()
@@ -426,12 +512,14 @@ export interface AlertCandidate {
   /** Exact database text of the state, for the compare-and-set. */
   state: { lastNotifiedAt: string | null; lastNotifiedTotal: string | null; lastNotifiedOfferId: number | null; armed: boolean };
   lastNotifiedBani: number | null;
-  best: (BestAlertOffer & { crossShopMedianBani: number | null }) | null;
+  /** The lowest total still known (`KNOWN_ALERT_OFFER`), eligible offers included. */
+  best: (BestAlertOffer & { crossShopMedianBani: number | null; knownFloorBani: number | null }) | null;
 }
 
 /**
  * Active alerts (optionally only those watching `productIds`, directly or through their family)
- * on the given channels, each with the best eligible offer right now.
+ * on the given channels, each with the best eligible offer right now and the lowest total still
+ * known (core `ALERT_KNOWN_PRICE_DAYS`).
  */
 export async function alertCandidates(db: Exec, opts: { productIds?: number[] | null; channels: AlertChannel[] }): Promise<AlertCandidate[]> {
   if (opts.channels.length === 0) return [];
@@ -444,7 +532,7 @@ export async function alertCandidates(db: Exec, opts: { productIds?: number[] | 
     id: string; user_id: string; channel: AlertChannel; kind: AlertKind; any_variant: boolean; product_id: string; target: string | null; baseline: string | null;
     armed: boolean; last_at: Date | null; last_at_text: string | null; last_total: string | null; last_offer: string | null;
     offer_id: string | null; offer_product_id: string | null; shop_id: string | null; shop_name: string | null; price: string | null; shipping: string | null;
-    shipping_estimated: boolean | null; total: string | null; checked: Date | null; median: string | null;
+    shipping_estimated: boolean | null; total: string | null; checked: Date | null; median: string | null; known: string | null;
   }>(sql`
     WITH a AS (
       SELECT al.id, al.user_id, al.channel, al.kind, al.any_variant, al.product_id, al.target_price, al.baseline_total, al.armed,
@@ -464,6 +552,12 @@ export async function alertCandidates(db: Exec, opts: { productIds?: number[] | 
       WHERE ${ELIGIBLE_ALERT_OFFER}
       ORDER BY scope.alert_id, o.total_price ASC, o.last_checked_at DESC, o.id
     ),
+    known AS (
+      SELECT scope.alert_id, min(o.total_price) AS floor
+      FROM scope JOIN offers o ON o.product_id = scope.product_id JOIN shops s ON s.id = o.shop_id
+      WHERE ${KNOWN_ALERT_OFFER}
+      GROUP BY scope.alert_id
+    ),
     med AS (
       SELECT o.product_id, percentile_cont(0.5) WITHIN GROUP (ORDER BY o.total_price)::numeric(12,2) AS m
       FROM offers o
@@ -475,8 +569,10 @@ export async function alertCandidates(db: Exec, opts: { productIds?: number[] | 
       a.armed, a.last_notified_at AS last_at, a.last_notified_at::text AS last_at_text, a.last_notified_total::text AS last_total,
       a.last_notified_offer_id::text AS last_offer,
       best.offer_id::text, best.product_id::text AS offer_product_id, best.shop_id::text, best.shop_name, best.price::text, best.shipping_cost::text AS shipping,
-      best.shipping_estimated, best.total_price::text AS total, best.last_checked_at AS checked, med.m::text AS median
+      best.shipping_estimated, best.total_price::text AS total, best.last_checked_at AS checked, med.m::text AS median,
+      known.floor::text AS known
     FROM a LEFT JOIN best ON best.alert_id = a.id LEFT JOIN med ON med.product_id = best.product_id
+      LEFT JOIN known ON known.alert_id = a.id
     ORDER BY a.id
   `);
   return r.rows.map((x) => ({
@@ -505,6 +601,7 @@ export async function alertCandidates(db: Exec, opts: { productIds?: number[] | 
             totalBani: bani(x.total)!,
             checkedAt: new Date(x.checked),
             crossShopMedianBani: bani(x.median),
+            knownFloorBani: bani(x.known),
           }
         : null,
   }));
@@ -598,13 +695,20 @@ export interface QueuedSend {
   stillValid: boolean;
 }
 
-/** Puts 'sending' rows older than `minutes` (a crashed delivery) to 'failed', giving the alert its state back. */
-export async function recoverStuckSends(db: Db, minutes = 15): Promise<number> {
-  const r = await db.execute<{ id: string }>(sql`
-    SELECT id::text FROM alert_sends WHERE status = 'sending' AND not_before < now() - make_interval(mins => ${minutes}::int)`);
-  const ids = r.rows.map((x) => Number(x.id));
-  if (ids.length) await finishSends(db, ids, 'failed', 'interrupted');
-  return ids.length;
+/**
+ * 'sending' rows older than `minutes` (a delivery that crashed; the email may or may not have gone
+ * out) go back to the queue as they are, so the retry carries the same idempotency key and the
+ * provider drops a copy of a message it already accepted. Rows out of attempts become 'failed',
+ * which gives the alert its state back.
+ */
+export async function recoverStuckSends(db: Db, minutes = 15, maxAttempts = 3): Promise<number> {
+  const r = await db.execute<{ id: string; attempts: number }>(sql`
+    SELECT id::text, attempts FROM alert_sends WHERE status = 'sending' AND not_before < now() - make_interval(mins => ${minutes}::int)`);
+  const again = r.rows.filter((x) => x.attempts < maxAttempts).map((x) => Number(x.id));
+  const final = r.rows.filter((x) => x.attempts >= maxAttempts).map((x) => Number(x.id));
+  if (again.length) await db.execute(sql`UPDATE alert_sends SET status = 'queued', error = 'interrupted', not_before = now() WHERE id = ANY(${sql.param(again)}::bigint[])`);
+  if (final.length) await finishSends(db, final, 'failed', 'interrupted');
+  return r.rows.length;
 }
 
 /**
@@ -736,6 +840,10 @@ export async function exportUserData(db: Exec, userId: string, emailHash: string
     SELECT id, purpose, alert_id, product_id, text_version, given_at, given_ip_hash, confirmed_at, confirm_ip_hash, confirm_method, withdrawn_at, withdraw_method
     FROM consent_records WHERE user_id = ${userId} OR (${emailHash}::text IS NOT NULL AND email_hash = ${emailHash}) ORDER BY id`);
   const sessions = await db.execute<Record<string, unknown>>(sql`SELECT created_at, expires_at FROM sessions WHERE user_id = ${userId} ORDER BY created_at`);
+  // The address's entry on the suppression list (we keep only its hash): why and since when.
+  const suppression = emailHash
+    ? await db.execute<Record<string, unknown>>(sql`SELECT reason, created_at FROM email_suppressions WHERE email_hash = ${emailHash}`)
+    : { rows: [] as Record<string, unknown>[] };
   const push = await db.execute<Record<string, unknown>>(sql`
     SELECT endpoint, device_label, consent_at, consent_text_version, created_at, last_success_at FROM push_subscriptions WHERE user_id = ${userId} ORDER BY id`);
   const telegram = await db.execute<Record<string, unknown>>(sql`
@@ -746,6 +854,7 @@ export async function exportUserData(db: Exec, userId: string, emailHash: string
     alertSends: sends.rows,
     consentRecords: consents.rows,
     sessions: sessions.rows,
+    emailSuppression: suppression.rows[0] ?? null,
     pushSubscriptions: push.rows,
     telegram: telegram.rows[0] ?? null,
   };
@@ -825,27 +934,59 @@ export async function pruneAlertSends(db: Exec, months = 13): Promise<number> {
   return r.rows.length;
 }
 
-/** Alerts on merged products follow the merge (a duplicate for the same user and channel is dropped). */
+/**
+ * Every merged product and the product its chain ends on (A → B → C: A and B end on C). Starts a
+ * WITH list (`WITH RECURSIVE … final(src, dst)`); the caller appends `, more AS (…) SELECT …`.
+ */
+const MERGE_TARGETS = sql.raw(`WITH RECURSIVE chain AS (
+    SELECT p.id AS src, p.merged_into_id AS dst, 1 AS depth FROM products p
+    WHERE p.status = 'merged' AND p.merged_into_id IS NOT NULL
+    UNION ALL
+    SELECT c.src, p.merged_into_id, c.depth + 1 FROM chain c JOIN products p ON p.id = c.dst
+    WHERE p.status = 'merged' AND p.merged_into_id IS NOT NULL AND c.depth < 10
+  ),
+  final AS (SELECT DISTINCT ON (src) src, dst FROM chain ORDER BY src, depth DESC)`);
+
+/**
+ * Alerts on merged products follow the merge to the end of the chain. Several live alerts of one
+ * user and channel can land on one product (two duplicates merged into a third, or an alert already
+ * there): one is kept (the one already on the target, else an active one, else the most recently
+ * confirmed, else the newest) and the others are withdrawn ('replaced') and deleted, so the unique
+ * index (one live alert per user, product and channel) always holds. Pending requests just follow.
+ */
 export async function repointMergedAlerts(db: Db): Promise<number> {
-  let moved = 0;
-  for (let hop = 0; hop < 5; hop++) {
-    const n = await db.transaction(async (tx) => {
-      const dup = sql`a.id IN (
-        SELECT a.id FROM alerts a JOIN products p ON p.id = a.product_id
-        WHERE p.status = 'merged' AND p.merged_into_id IS NOT NULL AND a.status <> 'pending'
-          AND EXISTS (SELECT 1 FROM alerts b WHERE b.user_id = a.user_id AND b.product_id = p.merged_into_id AND b.channel = a.channel AND b.status <> 'pending'))`;
-      await tx.execute(sql`UPDATE consent_records SET withdrawn_at = now(), withdraw_method = 'replaced' WHERE withdrawn_at IS NULL AND alert_id IN (SELECT a.id FROM alerts a WHERE ${dup})`);
-      await tx.execute(sql`DELETE FROM alerts a WHERE ${dup}`);
-      const r = await tx.execute<{ id: string }>(sql`
-        UPDATE alerts a SET product_id = p.merged_into_id, updated_at = now()
-        FROM products p WHERE p.id = a.product_id AND p.status = 'merged' AND p.merged_into_id IS NOT NULL
-        RETURNING a.id::text`);
-      return r.rows.length;
-    });
-    moved += n;
-    if (n === 0) break;
-  }
-  return moved;
+  return db.transaction(async (tx) => {
+    const losers = await tx.execute<{ id: string }>(sql`
+      ${MERGE_TARGETS},
+      moving AS (
+        SELECT a.id, a.user_id, a.channel, f.dst AS target, a.status, a.confirmed_at, 1 AS pri
+        FROM alerts a JOIN final f ON f.src = a.product_id WHERE a.status <> 'pending'
+      ),
+      staying AS (
+        SELECT b.id, b.user_id, b.channel, b.product_id AS target, b.status, b.confirmed_at, 0 AS pri
+        FROM alerts b
+        WHERE b.status <> 'pending' AND b.product_id NOT IN (SELECT src FROM final)
+          AND (b.user_id, b.product_id, b.channel) IN (SELECT user_id, target, channel FROM moving)
+      ),
+      ranked AS (
+        SELECT id, row_number() OVER (
+          PARTITION BY user_id, target, channel
+          ORDER BY pri, (status = 'active') DESC, confirmed_at DESC NULLS LAST, id DESC) AS rn
+        FROM (SELECT * FROM moving UNION ALL SELECT * FROM staying) c
+      )
+      SELECT id::text FROM ranked WHERE rn > 1`);
+    const ids = losers.rows.map((r) => Number(r.id));
+    if (ids.length > 0) {
+      await withdrawConsents(tx, sql`alert_id = ANY(${sql.param(ids)}::bigint[])`, 'replaced');
+      await tx.execute(sql`DELETE FROM alerts WHERE id = ANY(${sql.param(ids)}::bigint[])`);
+    }
+    const moved = await tx.execute<{ id: string }>(sql`
+      ${MERGE_TARGETS}
+      UPDATE alerts a SET product_id = f.dst, updated_at = now()
+      FROM final f WHERE a.product_id = f.src
+      RETURNING a.id::text`);
+    return moved.rows.length;
+  });
 }
 
 /**

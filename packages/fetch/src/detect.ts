@@ -142,6 +142,8 @@ export function classifyTransportError(error: unknown): TransportErrorClass {
   }
   // A request we could not even build (bad header value): our fault, not the shop's.
   if (has('UND_ERR_INVALID_ARG', 'ERR_INVALID_CHAR', 'ERR_INVALID_HTTP_TOKEN')) return neutral('invalid_request');
+  // The SSRF guard (guard.ts) refused a private/loopback address: our refusal, never retried.
+  if (has('ENONPUBLIC')) return neutral('non_public_address');
   if (codes.some((c) => CERT_ERROR_CODES.has(c))) return neutral('tls_certificate');
   if (has('UND_ERR_CONNECT_TIMEOUT', 'ETIMEDOUT')) return block('connect_timeout');
   if (

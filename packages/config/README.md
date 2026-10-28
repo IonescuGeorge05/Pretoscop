@@ -10,6 +10,11 @@ Contract:
 - `BOT_EGRESS_IPS` (M17): comma-separated IPv4/IPv6 addresses or CIDR prefixes of the crawler's
   fixed egress, parsed to `string[]`; an invalid entry fails `getEnv()` with the offending value
   (`isIpOrCidr()` is exported). Published on `/bot` and `/bot/ips.json`.
+- `FETCH_ALLOW_PRIVATE_HOSTS` (M20): lets the worker's fetcher connect to private, loopback and link-local addresses
+  (local fixture servers, e2e). Default off; `getEnv()` refuses it in staging and production.
+- `FETCH_PRIVATE_ALLOWLIST` (M20): comma-separated `ip:port` pairs (IP literals) the worker may reach although they
+  are private, while the guard stays on for everything else (`make verify M=20` opens only its fixture feed server, so
+  the e2e also proves that any other private address is refused). Empty by default; refused in staging and production.
 
 ## Legal and consent texts (M17)
 
@@ -49,6 +54,14 @@ row when anything changed. Changes to `access_mode` or `legal` go through the YA
 
 `pnpm --filter @pretoscop/config shops:table` regenerates the "Registry snapshot" table at the end
 of `docs/06-retailer-targets.md`.
+
+Source conventions (M10): one `listing` source per category (`<shop>:listing:<category>`) with
+`config.max_pages` (pagination bound), `config.label`, `config.tier`, staggered off-peak schedules
+and `freshness_slo_hours`; tests keep the sum of `max_pages` under the shop's `max_pages_per_day`.
+A `sitemap` source names its product-page parser in `config.productParser` (validated too).
+`shipping` amounts come only from the shop's own delivery page, cited with URL and date in
+`shipping.notes`; when the page states no price the amounts stay empty (`verified` stays false until
+a founder checks them).
 
 What may run against a shop (all must hold): env `CRAWL_ENABLED=true`, flag `crawl.enabled`, for
 eMAG the flag `source.emag.enabled` (ADR-013), shop `status: active`, `access_mode` not `off`,

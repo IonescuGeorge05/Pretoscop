@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { getEnv, isIpOrCidr } from './env';
+import { emailComplianceProblems, envWarnings, getEnv, isIpOrCidr } from './env';
+
+/** A real-looking sender identity (production refuses the dev placeholders). */
+const identity = { COMPANY_LEGAL_NAME: 'Pretoscop SRL', COMPANY_POSTAL_ADDRESS: 'Str. Exemplu nr. 1, București 010101, România' };
 
 describe('getEnv', () => {
   it('applies dev defaults', () => {
@@ -27,7 +30,28 @@ describe('getEnv', () => {
     expect(() => getEnv({ APP_ENV: 'prod' })).toThrow(/BETTER_AUTH_SECRET must be set/);
     const others = { BETTER_AUTH_SECRET: 'a'.repeat(32), REVALIDATE_TOKEN: 'b'.repeat(32), HASH_SALT_SECRET: 'c'.repeat(32) };
     expect(() => getEnv({ APP_ENV: 'prod', ...others })).toThrow(/ALERTS_SECRET must be set/);
-    expect(getEnv({ APP_ENV: 'prod', ...others, ALERTS_SECRET: 'd'.repeat(32) }).RESEND_WEBHOOK_SECRET).toBeUndefined();
+    expect(getEnv({ APP_ENV: 'prod', ...others, ALERTS_SECRET: 'd'.repeat(32), ...identity }).RESEND_WEBHOOK_SECRET).toBeUndefined();
+  });
+
+  it('refuses a production start without a real sender identity or, on Resend, the bounce webhook', () => {
+    const secrets = { BETTER_AUTH_SECRET: 'a'.repeat(32), REVALIDATE_TOKEN: 'b'.repeat(32), HASH_SALT_SECRET: 'c'.repeat(32), ALERTS_SECRET: 'd'.repeat(32) };
+    expect(() => getEnv({ APP_ENV: 'prod', ...secrets })).toThrow(/COMPANY_LEGAL_NAME must be the legal name[\s\S]*COMPANY_POSTAL_ADDRESS must be the full postal address/);
+    expect(() => getEnv({ APP_ENV: 'prod', ...secrets, COMPANY_LEGAL_NAME: '  ', COMPANY_POSTAL_ADDRESS: 'România' })).toThrow(/COMPANY_LEGAL_NAME/);
+    expect(() => getEnv({ APP_ENV: 'prod', ...secrets, ...identity, MAIL_DRIVER: 'resend', RESEND_API_KEY: 're_x' })).toThrow(/RESEND_WEBHOOK_SECRET must be set with MAIL_DRIVER=resend/);
+    const ok = getEnv({ APP_ENV: 'prod', ...secrets, ...identity, MAIL_DRIVER: 'resend', RESEND_API_KEY: 're_x', RESEND_WEBHOOK_SECRET: 'whsec_x' });
+    expect(ok.COMPANY_POSTAL_ADDRESS).toBe(identity.COMPANY_POSTAL_ADDRESS);
+  });
+
+  it('only warns about the same problems in staging, and says nothing in dev', () => {
+    const secrets = { BETTER_AUTH_SECRET: 'a'.repeat(32), REVALIDATE_TOKEN: 'b'.repeat(32), HASH_SALT_SECRET: 'c'.repeat(32), ALERTS_SECRET: 'd'.repeat(32) };
+    const staging = getEnv({ APP_ENV: 'staging', ...secrets, MAIL_DRIVER: 'resend', RESEND_API_KEY: 're_x' });
+    expect(envWarnings(staging)).toEqual([
+      expect.stringMatching(/^COMPANY_LEGAL_NAME: /),
+      expect.stringMatching(/^COMPANY_POSTAL_ADDRESS: /),
+      expect.stringMatching(/^RESEND_WEBHOOK_SECRET: /),
+    ]);
+    expect(envWarnings(getEnv({}))).toEqual([]);
+    expect(emailComplianceProblems({ ...identity, MAIL_DRIVER: 'smtp' })).toEqual([]);
   });
 
   it('push and Telegram settings come in pairs (M27)', () => {
@@ -55,6 +79,21 @@ describe('getEnv', () => {
     expect(() => getEnv({ BOT_EGRESS_IPS: '203.0.113.0/33' })).toThrow(/BOT_EGRESS_IPS/);
     expect(() => getEnv({ BOT_EGRESS_IPS: '2001:db8::/129' })).toThrow(/BOT_EGRESS_IPS/);
     expect(() => getEnv({ BOT_EGRESS_IPS: '256.1.1.1' })).toThrow(/BOT_EGRESS_IPS/);
+  });
+
+  it('parses the e2e fixture allowlist of the SSRF guard, and refuses it (and the open switch) outside development', () => {
+    expect(getEnv({}).FETCH_PRIVATE_ALLOWLIST).toEqual([]);
+    expect(getEnv({ FETCH_PRIVATE_ALLOWLIST: ' 127.0.0.1:3399 ,' }).FETCH_PRIVATE_ALLOWLIST).toEqual(['127.0.0.1:3399']);
+    expect(() => getEnv({ FETCH_PRIVATE_ALLOWLIST: 'localhost:3399' })).toThrow(/FETCH_PRIVATE_ALLOWLIST/);
+    const prod = {
+      APP_ENV: 'prod',
+      BETTER_AUTH_SECRET: 'a'.repeat(32),
+      REVALIDATE_TOKEN: 'b'.repeat(32),
+      HASH_SALT_SECRET: 'c'.repeat(32),
+      ALERTS_SECRET: 'd'.repeat(32),
+    };
+    expect(() => getEnv({ ...prod, FETCH_PRIVATE_ALLOWLIST: '127.0.0.1:3399' })).toThrow(/FETCH_PRIVATE_ALLOWLIST is for local development only/);
+    expect(() => getEnv({ ...prod, FETCH_ALLOW_PRIVATE_HOSTS: 'true' })).toThrow(/FETCH_ALLOW_PRIVATE_HOSTS is for local development only/);
   });
 });
 

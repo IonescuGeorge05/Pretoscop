@@ -14,6 +14,8 @@ export const KNOWN_FLAGS: Record<string, string> = {
   'telegram.deals.enabled': 'Daily verified-deals post in the Telegram channel (M27; needs TELEGRAM_DEALS_CHAT_ID)',
   'affiliate.links.enabled': 'Use affiliate links in click-outs when the program allows (M24)',
   'promoted.enabled': 'Promoted placements (M25)',
+  'icecat.enabled': 'Open Icecat enrichment: specs and licensed images (M11); needs an Open Icecat account (B1)',
+  'merchants.portal.enabled': 'Merchant self-serve portal: new registrations and submissions (M20)',
 };
 
 export async function isFlagEnabled(db: Db, key: string): Promise<boolean> {

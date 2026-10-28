@@ -120,6 +120,7 @@ itself refuses those requests.
 | HTTP-200 interstitials: Fastly "Client Challenge" (`/_fs-ch-`, Hornbach), Tencent EdgeOne (`EO_Bot_Ssid`, Fashion Days), Distinct Captcha (evoMAG's hoster), DataDome (`captcha-delivery.com`), PerimeterX (`px-captcha`), Imperva incident page | `blocked`, `challenge`, body never returned | 24 h |
 | Redirect to a CAPTCHA/challenge host, of another site or of the shop's own (`captcha.distinct.ro`, `geo.captcha-delivery.com`, `challenges.cloudflare.com`, `captcha.shop.ro`: any host label exactly `captcha`/`challenge`), or to a challenge path on any host (`/…captcha…`, `/_fs-ch-`, `/cdn-cgi/challenge-platform/`; the query string is not looked at) | `blocked`, `captcha_redirect`, **never followed** | 24 h |
 | Connection reset, HTTP/2 stream reset or GOAWAY (Akamai), TLS failure, connect timeout (cel.ro from abroad) | `blocked`, `transport` | 24 h |
+| Any transport error that surfaces more than 30 s after the request's own timeout (this process was suspended: the machine slept and the shop closed the idle connection) | `local_suspend`, not blocked, retried on a fresh slot | none (no failure counted) |
 | 429 | `blocked`, `http_429` | `Retry-After`, at least 1 h (at most 7 days) |
 | 511 (eMAG-style bot throttling) | `blocked`, `http_429` | `Retry-After`, at least 24 h |
 | 503 without challenge markers | not a block; retried unless `Retry-After` is present | `Retry-After`, at least 1 h, once the call gives up |
@@ -204,6 +205,14 @@ else if (res.blocked) markSourceBlocked(res.blockReason, res.blockDetail);
 | `now`, `sleep`, `random`, `dispatcher`, `userAgent` | test hooks (fake clock, undici `MockAgent`/`H2CClient`) |
 | `botInfoUrl`, `defaultTimeoutMs`, `defaultMaxBytes`, `connectTimeoutMs`, `retry` | defaults: env `BOT_INFO_URL`, 30 000, 15 MiB, 10 000, `{ maxRetries: 2, baseDelayMs: 10 000 }` |
 
+`createGuardedDispatcher({ allowPrivate, allowTargets, connectTimeoutMs, timeoutMs })` (M20) returns an undici `Agent` whose connector
+refuses non-public addresses after DNS resolution (private, loopback, link-local, CGNAT, documentation, multicast, IPv4-mapped
+variants): pass it as `dispatcher` wherever the URL comes from outside (merchant feeds). A refusal surfaces as
+`errorCode: 'non_public_address'`: never retried, never a failure or a block of the host. `allowTargets` (development and
+e2e only) opens exact `ip:port` pairs written as IP literals (a local fixture server) while the guard stays on for every
+other address. `isNonPublicAddress(ip)` is exported. `gunzipFile(bytes, maxBytes)` (the capped `.gz` decoder the fetcher
+uses) is exported for feed files that do not come through `fetchPolite` (uploads).
+
 ### `Fetcher`
 
 - `fetchPolite(url, { purpose, shopSlug?, accept?, etag?, lastModified?, timeoutMs?, maxBytes?, signal?, runId?, sourceId? })` → `FetchResult`.
@@ -235,7 +244,7 @@ pause set while the request waited for its slot); `attempts` then counts the att
 `network_unreachable`, `protocol_error`, `network`, `body_too_large`, `decode_error`,
 `too_many_redirects`, `cross_site_redirect`, `invalid_redirect`, `redirect_disallowed`,
 `channel_change`, `robots_unavailable`, `invalid_policy`, `invalid_request`, `crawl_disabled`,
-`assisted_error`.
+`assisted_error`, `non_public_address`, `local_suspend`.
 
 Pure helpers are exported too: `detectBlock`, `classifyTransportError`, `detectChallengeRedirect`,
 `parseRetryAfter`, `parseRobotsTxt`, `selectRobotsGroups`, `evaluateRobots`, `normalizeRobotsPath`,
@@ -304,6 +313,27 @@ still keep the interval; the 100 ms slot margin absorbs differences in round-tri
 worker per host, e.g. pg-boss singleton keys per host). The fetcher calls `getPause` and `policyFor`
 again for every request (before and after the slot wait), so keep both cheap.
 
+#### `ScopedDomainStateStore` (requests made on someone else's behalf, M20)
+
+`new ScopedDomainStateStore(shared, 'merchant')` wraps the crawler's store for a second fetcher whose
+URLs come from outside (the merchant portal's feed checks and domain probes). It keeps the politeness
+and nothing else:
+
+| Method | Goes to |
+|---|---|
+| `reserveSlot(host)` | the shared store, real host: the minimum interval holds across **all** our requests to a host |
+| `getPause(host)` | both; the later of the crawler's pause and the scoped one (crawler pauses are obeyed) |
+| `setPause`, `clearPause`, `recordFailure`, `resetFailures`, `getFailures` | `merchant:<host>` |
+| `consumeDailyRequest`, `getDailyCount` | `merchant:<host>` (the shop's daily budget is never spent) |
+| `getRobots(origin)` | the fresher of the crawler's entry and `merchant:<origin>` |
+| `setRobots(origin)` | `merchant:<origin>` |
+
+So a 403, 429, challenge or timeout provoked through a merchant-supplied URL pauses that host for
+merchant checks only: the crawler's pause, failure streak, budget and robots.txt cache are untouched.
+The crawler keeps using the shared store directly; its behaviour does not change. Within one process
+both fetchers also share the per-host lock (`processHostLocks`). Namespaced rows live in the same
+tables (`fetch_domain_state.host = 'merchant:www.shop.ro'`), like the `icecat:<LANG>` budget rows.
+
 ### Assisted channel (M05B)
 
 For `accessMode: 'assisted'` the same `fetchPolite` call routes requests (robots.txt included) through
@@ -335,6 +365,22 @@ User-Agent, status, timing, slot wait, block verdict, and the host's robots.txt 
 rule that decided each sample path. `--cached` makes no request at all. Because a founder starts it
 by hand for one request, the demo ignores `CRAWL_ENABLED` (it says so when the switch is off); every
 other rule applies.
+
+## Fixture recorder CLI (M10)
+
+```
+pnpm --filter @pretoscop/fetch record <shop> <name> <url> [--ext html] [--purpose listing] [--out-dir dir] [--max-bytes n]
+scripts/record-fixture.sh <shop> <name> <url> [ext] [--purpose listing]      # same thing
+```
+
+Records one page as `packages/extractors/fixtures/<shop>/<name>_<YYYY-MM-DD>.<ext>` plus
+`.meta.json` (URL, final URL, status, time, User-Agent, content type, size, robots.txt group), through
+`fetchPolite` with every rule above: robots.txt first, the shop's registry policy (`getDomainPolicy`,
+≥ 5 s), the demo's shared state file (so the demo, the recorder and parallel invocations keep the
+interval), block detection. A blocked or challenged response writes nothing and exits 2. The URL's
+host must belong to the named shop, and shops whose registry status is not `active` or whose access
+mode is not `direct` are refused before any request (exit 3). Like the demo, it ignores
+`CRAWL_ENABLED` (started by hand for one page). `--out-dir` writes elsewhere (probes kept out of git).
 
 ## Tests and fixtures
 

@@ -8,6 +8,7 @@ import {
   type OfferObservation,
   emptyStats,
   finishRun,
+  foreignShopForHost,
   lastDiscoveryAt,
   markCrawlUrlFetched,
   markMissingOffers,
@@ -22,6 +23,7 @@ import {
 } from '@pretoscop/db';
 import { hostOnDomain, parseFeed, parsePageDetailed, parseSitemap } from '@pretoscop/extractors';
 import { eq, sql } from 'drizzle-orm';
+import { FeedTooLargeError, readUploadedFeed } from '../merchant/upload';
 import { checkGates } from './gates';
 import type { RecorderDeps, ShopContext } from './types';
 
@@ -273,17 +275,29 @@ async function fetchProductPages(ctx: Ctx, picks: { id: number; url: string }[],
 export const UPLOAD_URL_PREFIX = 'upload:';
 
 /**
- * Feeds (affiliate, merchant). Merchant sources (M20) add three rules from `config`: the declared
- * `priceFormat` ("12.500" = 12.5 or 12 500), `requireDomain` (offers must link to the domain the
- * merchant proved it controls; others are dropped) and uploaded files, which are read once per
- * upload and observed at the upload time, never as a fresh check.
+ * Feeds (affiliate, merchant). Merchant sources (M20, `config.origin = 'merchant'`) add these rules:
+ * the declared `priceFormat` ("12.500" = 12.5 or 12 500); `requireDomain` (offers must link to the
+ * domain the merchant proved it controls; others are dropped); no affiliate link of the merchant's
+ * own (click-outs go to the product URL on that domain); requests go through the merchant-scoped
+ * fetcher and never to the host of another shop we crawl; uploaded files are read once per upload,
+ * decoded under the same size cap as a fetched feed, and observed at the upload time, never as a
+ * fresh check.
  */
 async function runFeed(ctx: Ctx, source: { url: string; parserKey: string; config: Record<string, unknown> }): Promise<{ complete: boolean }> {
   ctx.stats.pages++;
+  const merchantId = source.config.origin === 'merchant' && typeof source.config.merchantId === 'number' ? source.config.merchantId : null;
+  const domain = typeof source.config.requireDomain === 'string' && source.config.requireDomain !== '' ? source.config.requireDomain : null;
   let body: string | Uint8Array;
   let observedAt: Date;
   if (source.url.startsWith(UPLOAD_URL_PREFIX)) {
-    const data = await ctx.deps.blob.get(source.url.slice(UPLOAD_URL_PREFIX.length));
+    let data: Uint8Array | null;
+    try {
+      data = await readUploadedFeed(ctx.deps.blob, source.url.slice(UPLOAD_URL_PREFIX.length), ctx.deps.env.FETCH_MAX_BODY_BYTES);
+    } catch (err) {
+      ctx.stats.errors++;
+      ctx.errors.push(err instanceof FeedTooLargeError ? `uploaded feed file too large: ${err.message}` : `uploaded feed file unreadable: ${(err as Error).message}`);
+      return { complete: false };
+    }
     if (!data) {
       ctx.stats.errors++;
       ctx.errors.push(`uploaded feed file missing: ${source.url}`);
@@ -294,13 +308,22 @@ async function runFeed(ctx: Ctx, source: { url: string; parserKey: string; confi
     const at = typeof source.config.uploadedAt === 'string' ? new Date(source.config.uploadedAt) : null;
     observedAt = at && !Number.isNaN(at.getTime()) ? at : (ctx.deps.now?.() ?? new Date());
   } else {
-    const res = await ctx.deps.fetcher.fetchPolite(source.url, { shopSlug: ctx.shop.slug, purpose: 'feed', runId: ctx.runId });
+    if (merchantId !== null) {
+      const host = new URL(source.url).hostname;
+      const foreign = await foreignShopForHost(ctx.deps.db, host, { merchantId, domain, domainVerified: domain !== null });
+      if (foreign) {
+        ctx.stats.errors++;
+        ctx.errors.push(`merchant feed host ${host} belongs to the registered shop ${foreign.slug}: not requested`);
+        return { complete: false };
+      }
+    }
+    const fetcher = merchantId !== null ? (ctx.deps.merchantFetcher ?? ctx.deps.fetcher) : ctx.deps.fetcher;
+    const res = await fetcher.fetchPolite(source.url, { shopSlug: ctx.shop.slug, purpose: 'feed', runId: ctx.runId });
     if (fetchOutcome(ctx, res) !== 'ok') return { complete: false };
     body = res.body!;
     observedAt = ctx.deps.now?.() ?? new Date();
   }
   const priceFormat = source.config.priceFormat === 'ro' || source.config.priceFormat === 'decimal' ? source.config.priceFormat : undefined;
-  const domain = typeof source.config.requireDomain === 'string' && source.config.requireDomain !== '' ? source.config.requireDomain : null;
   const batch: RawOffer[] = [];
   for await (const raw of parseFeed(source.parserKey, body, { shopSlug: ctx.shop.slug, observedAt: observedAt.toISOString(), feedUrl: source.url })) {
     if (domain && !hostOnDomain(raw.url, domain)) {
@@ -309,6 +332,7 @@ async function runFeed(ctx: Ctx, source: { url: string; parserKey: string; confi
       if (ctx.errors.length < SNAPSHOT_SAMPLE_REJECTS) ctx.errors.push(`reject ${raw.externalId}: product URL outside ${domain} (${raw.url})`);
       continue;
     }
+    if (merchantId !== null) delete raw.affiliateUrl;
     if (priceFormat && raw.priceFormat === undefined) raw.priceFormat = priceFormat;
     batch.push(raw);
     if (batch.length >= 500) await ingest(ctx, batch.splice(0), observedAt);

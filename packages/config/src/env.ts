@@ -83,7 +83,17 @@ export const EnvSchema = z
     FETCH_MAX_BODY_BYTES: int(15 * 1024 * 1024),
     /** Lets the worker's fetcher reach private/loopback addresses (local fixture servers). Never in production. */
     FETCH_ALLOW_PRIVATE_HOSTS: bool.default(false),
-
+    /** Exact private `ip:port` targets the guard lets through (e2e fixture servers) while it stays on for the rest. Never in production. */
+    FETCH_PRIVATE_ALLOWLIST: z
+      .string()
+      .default('')
+      .transform((v) =>
+        v
+          .split(',')
+          .map((e) => e.trim())
+          .filter(Boolean),
+      )
+      .pipe(z.array(z.string().regex(/^\d{1,3}(\.\d{1,3}){3}:\d{1,5}$/, 'expected ip:port, e.g. 127.0.0.1:3399'))),
     // Assisted-access channel (M05B, ADR-015)
     ASSISTED_VENDOR: z.enum(['none', 'zyte', 'oxylabs']).default('none'),
     ZYTE_API_KEY: optionalString,
@@ -183,6 +193,9 @@ export const EnvSchema = z
       }
       if (env.FETCH_ALLOW_PRIVATE_HOSTS) {
         ctx.addIssue({ code: 'custom', path: ['FETCH_ALLOW_PRIVATE_HOSTS'], message: 'FETCH_ALLOW_PRIVATE_HOSTS is for local development only' });
+      }
+      if (env.FETCH_PRIVATE_ALLOWLIST.length > 0) {
+        ctx.addIssue({ code: 'custom', path: ['FETCH_PRIVATE_ALLOWLIST'], message: 'FETCH_PRIVATE_ALLOWLIST is for local development only' });
       }
     }
   });

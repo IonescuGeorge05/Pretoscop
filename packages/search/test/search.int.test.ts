@@ -20,7 +20,8 @@ const meili = createMeili({ url: env.MEILI_URL, apiKey: env.MEILI_MASTER_KEY });
 const reachable = await meili.healthy();
 if (!reachable && process.env.SEARCH_INTEGRATION === '1') throw new Error(`Meilisearch is not reachable at ${env.MEILI_URL}`);
 
-const prefix = `test_${randomBytes(3).toString('hex')}_`;
+// Under this checkout's MEILI_INDEX_PREFIX, so parallel checkouts sharing one Meilisearch never collide.
+const prefix = `${env.MEILI_INDEX_PREFIX}test_${randomBytes(3).toString('hex')}_`;
 const names = indexNames(prefix);
 
 async function dropAll() {

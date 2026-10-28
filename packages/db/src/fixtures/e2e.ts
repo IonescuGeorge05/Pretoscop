@@ -198,6 +198,11 @@ export interface SearchFixture {
   phone: { id: number; slug: string; title: string };
   /** 45 days at 2.000 lei, then 1.700 lei for the last 4 days: a verified −15% drop and an all-time low. */
   deal: { id: number; slug: string; title: string; dropSince: string };
+  /**
+   * A subcategory with no active product in the database (so none in an index built from it), for
+   * the "empty category" page; null once every subcategory has products.
+   */
+  emptyCategory: { path: string; name: string } | null;
 }
 
 interface SearchProduct {
@@ -294,5 +299,16 @@ async function createSearchFixture(db: Db, shopId: Map<string, number>, now: num
   const today = bucharestToday();
   await rollupProducts(db, { productIds, from: addDaysIso(today, -46), to: today });
   await computeProductStats(db, productIds, today);
-  return { brandSlug: SEARCH_BRAND.slug, tv: out.tv!, phone: out.phone!, deal: { ...out.deal!, dropSince: addDaysIso(today, -4) } };
+  const empty = await db.execute<{ path: string; name: string }>(sql`
+    SELECT c.path, c.name_ro AS name FROM categories c
+    WHERE c.parent_id IS NOT NULL
+      AND NOT EXISTS (SELECT 1 FROM products p JOIN categories pc ON pc.id = p.category_id WHERE p.status = 'active' AND (pc.id = c.id OR pc.path LIKE c.path || '/%'))
+    ORDER BY c.path LIMIT 1`);
+  return {
+    brandSlug: SEARCH_BRAND.slug,
+    tv: out.tv!,
+    phone: out.phone!,
+    deal: { ...out.deal!, dropSince: addDaysIso(today, -4) },
+    emptyCategory: empty.rows[0] ?? null,
+  };
 }

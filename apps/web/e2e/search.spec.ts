@@ -124,8 +124,17 @@ test('category pages: canonical path, breadcrumbs, brand chips, empty categories
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Televizoare Testoscop');
   await expect(page.getByTestId('product-card')).toHaveCount(1);
 
-  await page.goto('/c/electrocasnice-mari/frigidere');
-  await expect(page.getByTestId('empty-category')).toBeVisible();
+  // An empty category says so instead of showing a blank grid (the fixture picks one that has no
+  // product in the database, whatever the recorder has collected by now).
+  const empty = fixture().search.emptyCategory;
+  if (empty) {
+    await page.goto(`/c/${empty.path}`);
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(empty.name);
+    await expect(page.getByTestId('empty-category')).toBeVisible();
+    await expect(page.getByTestId('product-card')).toHaveCount(0);
+  } else {
+    test.info().annotations.push({ type: 'note', description: 'every subcategory has products: empty-category state not exercised' });
+  }
   expect((await request.get('/c/tv-audio/nu-exista')).status()).toBe(404);
   expect((await request.get('/b/testoscop/frigidere')).status()).toBe(404);
 
@@ -146,7 +155,13 @@ test('shop pages state coverage and freshness honestly', async ({ page }) => {
   await expect(page.getByText('Inclus în comparație')).toBeVisible();
   await expect(page.getByTestId('shop-facts')).toContainText('Oferte urmărite');
   await expect(page.getByText(/PretoscopBot, robotul nostru identificat/)).toBeVisible();
-  await expect(page.getByTestId('product-card').filter({ hasText: 'Testoscop Vision' })).toHaveCount(1);
+  // The shop's products (most popular first: the fixture TV is rarely on page 1 of a real shop), and
+  // the shop filter they come from: the fixture TV is sold at IT Galaxy, the phone and console are not.
+  await expect(page.getByRole('heading', { name: /Produse IT Galaxy pe care le urmărim/ })).toBeVisible();
+  await expect(page.getByTestId('product-card').first()).toBeVisible();
+  await page.goto('/cauta?q=testoscop&magazin=itgalaxy&marca=testoscop');
+  await expect(page.getByTestId('product-card')).toHaveCount(1);
+  await expect(page.getByTestId('product-card')).toContainText('Testoscop Vision');
 
   await page.goto('/magazin/altex');
   await expect(page.getByText('Neinclus încă')).toBeVisible();

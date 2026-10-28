@@ -20,6 +20,8 @@ export interface E2eFixture {
     tv: { id: number; slug: string; title: string };
     phone: { id: number; slug: string; title: string };
     deal: { id: number; slug: string; title: string; dropSince: string };
+    /** A subcategory with no active product (see packages/db/src/fixtures/e2e.ts); null when none is left. */
+    emptyCategory: { path: string; name: string } | null;
   };
 }
 

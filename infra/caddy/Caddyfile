@@ -1,4 +1,4 @@
-# Edge proxy for production and staging (M18, ADR-017). Started by infra/docker-compose.edge.yml;
+# Edge proxy for production and staging (M18, ADR-018). Started by infra/docker-compose.edge.yml;
 # environment placeholders come from the production .env. Cloudflare sits in front (proxied DNS,
 # cache rules, WAF, Access); the server's firewall admits ports 80/443 from Cloudflare only.
 #

@@ -95,6 +95,7 @@ export {
   type ExtractMpnOptions,
   normalizeMpn,
   extractMpnCandidates,
+  isSpecToken,
 } from './mpn';
 export {
   type Brand,
@@ -109,9 +110,19 @@ export {
   detectBrandInTitle,
 } from './brands';
 export { type BrandSeed, type LineSeed, BRAND_SEEDS } from './brands-data';
+export { type UnknownBrandGuess, type UnknownBrandRule, guessUnknownBrand } from './unknown-brand';
 
 // Attributes and flags
-export { type ProductKind, detectProductKind, isAccessoryKind } from './product-kind';
+export {
+  type ProductKind,
+  type ProductKindExplained,
+  type ProductKindVia,
+  categoryKind,
+  detectProductKind,
+  explainProductKind,
+  isAccessoryKind,
+  lineKind,
+} from './product-kind';
 export {
   type Attributes,
   type ColorKey,
@@ -120,6 +131,7 @@ export {
   type Edition,
   type ExtractAttributesOptions,
   COLOR_LABELS_RO,
+  colorKeyOf,
   extractAttributes,
 } from './attributes';
 export {
@@ -128,7 +140,7 @@ export {
   type ConditionResult,
   detectCondition,
 } from './condition';
-export { type BundleResult, detectBundle } from './bundle';
+export { type BundleKind, type BundleResult, detectBundle } from './bundle';
 export { type AccessoryResult, detectAccessory } from './accessory';
 export { type Availability, mapAvailability } from './availability';
 
@@ -150,3 +162,4 @@ export * from './discount';
 export * from './anomaly';
 export * from './taxonomy';
 export * from './matching';
+export * from './matching-eval';

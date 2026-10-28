@@ -1,4 +1,4 @@
-# Edge stack (M18, ADR-017): Caddy terminates TLS for production and staging and load-balances
+# Edge stack (M18, ADR-018): Caddy terminates TLS for production and staging and load-balances
 # each environment's two web replicas. Separate from the app stacks so that deploying either
 # environment never restarts the proxy. Start it once, from the production checkout:
 #   docker network create pretoscop-edge   # once per server (deploy.sh also creates it)

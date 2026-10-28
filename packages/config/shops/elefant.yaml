@@ -21,5 +21,10 @@ affiliate:
   comparator_policy: "unknown"
   status: "to_apply"
   notes: "Bans Google Ads/CSS."
-notes: "JSON-LD; EAN in the spec table; the only shop with a real per-URL lastmod. robots blocks `spider`/`crawler` user-agents by name (not ours)."
+probes:
+  - date: "2026-10-27"
+    vantage: "founder home connection (Mac), PretoscopBot via @pretoscop/fetch (M10)"
+    result: served
+    note: "robots and home 200; the menu has books, toys, stationery and perfume, no electronics or appliances"
+notes: "EAN in the spec table; the only shop with a real per-URL lastmod; the 2026-10-27 recon found no JSON-LD Product on a product page (price in a page script). robots blocks `spider`/`crawler` user-agents by name (not ours). M10: no electronics or appliance assortment, so no source in the launch phase (books and toys: Phase 4, M29)."
 sources: []

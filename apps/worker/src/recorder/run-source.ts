@@ -171,7 +171,10 @@ async function runListing(ctx: Ctx, source: { url: string; parserKey: string; co
       observedAt: observedAt.toISOString(),
     });
     if (parsed.offers.length === 0) {
-      if (ctx.stats.pages === 1) {
+      // A page whose products are all unavailable (VTEX shows them without a price) still lists
+      // them (`meta.items`): that is the end of the priced listing, not a layout change.
+      const items = typeof parsed.meta?.items === 'number' ? parsed.meta.items : 0;
+      if (ctx.stats.pages === 1 && items === 0) {
         ctx.stats.errors++;
         ctx.errors.push(`no offers parsed on the first page ${res.finalUrl} (layout change?)`);
       } else complete = true;
@@ -293,6 +296,16 @@ export async function runSource(deps: RecorderDeps, sourceId: number, opts: RunO
   if (!gate.ok) {
     deps.log.info({ source_id: sourceId, shop: shop.slug, reason: gate.reason }, 'source run gated');
     return { runId: null, status: 'gated', stats: emptyStats(), reason: gate.reason };
+  }
+  // A host the fetch layer already paused (403/429/challenge) is not a new failure: no run, no
+  // request, no alert, until the pause ends (the block that set it was alerted when it happened).
+  const host = new URL(source.url).host;
+  const pause = await db.execute<{ until: string; reason: string | null }>(sql`
+    SELECT paused_until::text AS until, pause_reason AS reason FROM fetch_domain_state WHERE host = ${host} AND paused_until > now()`);
+  if (pause.rows[0]) {
+    const reason = `host ${host} paused until ${pause.rows[0].until}${pause.rows[0].reason ? ` (${pause.rows[0].reason})` : ''}`;
+    deps.log.info({ source_id: sourceId, shop: shop.slug, reason }, 'source run gated');
+    return { runId: null, status: 'gated', stats: emptyStats(), reason };
   }
 
   const channel = source.kind === 'feed' ? 'feed' : shop.accessMode === 'assisted' ? 'assisted' : 'direct';

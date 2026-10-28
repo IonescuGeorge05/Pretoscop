@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { extractAttributes } from './attributes';
-import { detectProductKind } from './product-kind';
+import { categoryKind, detectProductKind, explainProductKind, lineKind } from './product-kind';
 
 const attrs = (title: string, categoryHint?: string) =>
   extractAttributes(title, { categoryHint: categoryHint ?? null });
@@ -63,6 +63,63 @@ describe('storage, RAM and VRAM', () => {
     expect(attrs('Telefon mobil XYZ 8GB').ramGb).toBeUndefined();
     expect(attrs('Hard disk 2TB, 256MB cache').storageGb).toBe(2048);
   });
+
+  // Live eMAG run, 2026-10-27
+  it('gives a label word between two capacities to the first one', () => {
+    expect(attrs('Mini Laptop 8", Intel N95, 12GB RAM 512GB SSD, Touchscreen HD')).toMatchObject({
+      ramGb: 12,
+      storageGb: 512,
+    });
+    expect(attrs('Smartphone 4G, 6.58 inch, 3GB RAM 16GB ROM, Android 10')).toMatchObject({
+      ramGb: 3,
+      storageGb: 16,
+    });
+    expect(attrs('Laptop XYZ, RAM 16GB SSD 512GB, 15.6"')).toMatchObject({
+      ramGb: 16,
+      storageGb: 512,
+    });
+  });
+
+  it('ignores expandable and optional capacities', () => {
+    expect(
+      attrs('Gaming Notebook 16 GB RAM 512 GB 1 TB SSD expansiune Core i3 Laptop Notebook 16 inch'),
+    ).toMatchObject({ ramGb: 16, storageGb: 512 });
+    expect(attrs('Laptop 14 inch Win 11, 256GB SSD Expansion SSD 1TB, 8GB').storageGb).toBe(256);
+    expect(
+      attrs('Consola de jocuri portabila X9, Bedee, memorie extensibila pana la 128GB, ABS')
+        .storageGb,
+    ).toBeUndefined();
+    expect(attrs('Telefon mobil XYZ, 4GB RAM, 64GB, card microSD pana la 1TB').storageGb).toBe(64);
+  });
+
+  it('reads "128G", "SSD512" and "10,16GB" as written by sellers', () => {
+    expect(attrs('Consola Retro, BYONDSELF®, 128G, 4K, 20000 de Jocuri').storageGb).toBe(128);
+    expect(attrs('Lenovo LOQ 15ARP9, 15.6", 16GB, GeForce RTX 4050, SSD512, 144Hz')).toMatchObject({
+      ramGb: 16,
+      storageGb: 512,
+      screenInches: 15.6,
+    });
+    expect(attrs('Laptop Blackview Acebook 10,16GB DDR4 512GB SSD+2TB TF')).toMatchObject({
+      ramGb: 16,
+      storageGb: 512,
+    });
+    expect(attrs('Telefon mobil Deemi, C25 Ultra, 6.8inch, 8G RAM, 128GB').ramGb).toBe(8);
+  });
+
+  it('reads bare "memorie" as RAM on computers and as storage elsewhere', () => {
+    expect(attrs('Consola Retro Portabila METISTA® X20, Ecran IPS 7 inch, Memorie 32GB')).toEqual(
+      expect.objectContaining({ storageGb: 32 }),
+    );
+    expect(attrs('Consola Retro Portabila METISTA® X20, Memorie 32GB').ramGb).toBeUndefined();
+    expect(attrs('Laptop XYZ 15.6", Memorie 16GB, SSD 512GB')).toMatchObject({
+      ramGb: 16,
+      storageGb: 512,
+    });
+    const r36s = attrs(
+      'Consola retro portabila R36S, Bedee, 1GB DDR3L RAM, Doua carduri 32GB+128G, ecran 3.5" 640x480,128GB memorie,21000+ jocuri',
+    );
+    expect(r36s).toMatchObject({ ramGb: 1, storageGb: 128 });
+  });
 });
 
 describe('screen size', () => {
@@ -89,6 +146,18 @@ describe('screen size', () => {
     expect(attrs('Hard Disk extern WD Elements 2TB, 2.5 inch').screenInches).toBeUndefined();
     expect(attrs('Laptop 2 in 1 HP Envy x360').screenInches).toBeUndefined();
     expect(attrs('Comoda TV 160 cm').screenInches).toBeUndefined();
+  });
+
+  it('reads a single quote and "-inch" as inch marks', () => {
+    expect(
+      attrs("Laptop ASUS ExpertBook B1 B1503CVA, Intel Core 5 120U, 15.6', FHD, 16GB RAM")
+        .screenInches,
+    ).toBe(15.6);
+    expect(attrs('Telefon mobil iHunt Primo 4G, Dual SIM, Ecran 2.4-inch').screenInches).toBe(2.4);
+    expect(attrs('Telefon mobil Oukitel WP200 Pro, 6.7-inch AMOLED 120Hz').screenInches).toBe(6.7);
+    expect(
+      attrs("Consola de jocuri retro din caramizi, anii '80-'90").screenInches,
+    ).toBeUndefined();
   });
 });
 
@@ -162,6 +231,28 @@ describe('colour', () => {
       expect(attrs(title).color, title).toBeUndefined();
     }
     expect(attrs('Tastatura Razer BlackWidow V4, Green Switch, RGB, Negru').color).toBe('black');
+  });
+
+  it('treats "transparent" as a finish next to a colour', () => {
+    expect(attrs('Consola retro portabila R36S 64GB, 3200 mAh, negru transparent').color).toBe(
+      'black',
+    );
+    expect(attrs('Consola jocuri retro portabila, Yulinland®, Transparent negru').color).toBe(
+      'black',
+    );
+    expect(attrs('Miyoo Mini Plus Consola, culoare mov transparent, ecran IPS').color).toBe(
+      'purple',
+    );
+    expect(attrs('Husa silicon iPhone 17, Transparent').color).toBe('transparent');
+  });
+
+  it('takes the first of colours listed in a row', () => {
+    expect(
+      attrs('Set 2 Controllers wireless, PS4, cu vibratii, negru, rosu HAPPY JOKER®').color,
+    ).toBe('black');
+    expect(attrs('Consola de jocuri portabila, 2000 jocuri, 4.3 inch, Albastru/Rosu').color).toBe(
+      'blue',
+    );
   });
 });
 
@@ -324,5 +415,90 @@ describe('detectProductKind', () => {
       'accessory',
     );
     expect(detectProductKind('Ceva', null)).toBe('other');
+  });
+
+  it.each([
+    ['SweetLink S2 Plus Telefon mobil pentru seniori, negru', 'phone', 'telefon'],
+    ['Kiano Slim TV Travel Televizor 19" pentru camion | Incarcator auto', 'tv', 'televizor'],
+    ['Miyoo Mini Plus Consola de joc portabila', 'console', 'consola'],
+    ['ZHISHAN Consola de jocuri portabila 32 biti', 'console', 'consola'],
+    ['Gaming Notebook 16 GB RAM 512 GB', 'laptop', 'notebook'],
+    ['Mini Laptop 8" 2-in-1, Laptop Computer Win 11', 'laptop', 'laptop'],
+    ["Apple MacBook Air 13'' cu procesor Apple M5, Fara incarcator", 'laptop', 'macbook'],
+    ['HAPPY JOKER Controller wireless pentru PS4', 'accessory', 'controller'],
+    ['Baseus Cablu USB-C 100W', 'accessory', 'cablu'],
+  ])('%s → %s from a head noun after the prefix', (title, kind, word) => {
+    expect(explainProductKind(title)).toEqual({ kind, via: 'head', word });
+  });
+
+  it('starts with game devices sold as "Joc …" and plural "Console"', () => {
+    expect(detectProductKind('Joc TV Consola Retro + Pistol 2x Pady')).toBe('console');
+    expect(detectProductKind('Joc portabil STELS, ecran color de 7.1 inchi')).toBe('console');
+    expect(detectProductKind('Joc cu afisaj color LCD, Viva, portabil')).toBe('console');
+    expect(detectProductKind('Gameboy cu 400 de jocuri')).toBe('console');
+    expect(detectProductKind('Console Hardware DONFANLIA® Consola portabila')).toBe('console');
+    expect(detectProductKind('Set 2 Controllers wireless, PS4')).toBe('accessory');
+    expect(detectProductKind('Joc Mario Kart World pentru Nintendo Switch 2')).toBe('game');
+  });
+
+  it('never reads the product from a negation', () => {
+    expect(detectProductKind('Lenovo IdeaPad Slim 3, fara incarcator')).toBe('laptop');
+    expect(detectProductKind('Notebook X, Fara husa')).toBe('laptop');
+  });
+
+  it('lets an accessory breadcrumb overrule a device noun found after a prefix', () => {
+    expect(detectProductKind('Breloc Telefon universal', 'Accesorii GSM > Brelocuri')).toBe(
+      'accessory',
+    );
+    expect(detectProductKind('Lanyard telefon universal')).toBe('accessory');
+  });
+
+  it('reads the breadcrumb leaf first; "… & accesorii" parents only group', () => {
+    expect(
+      categoryKind('Laptop, Tablete & Telefoane > Laptopuri si accesorii > Laptop > Notebook'),
+    ).toBe('laptop');
+    expect(
+      categoryKind('Laptop, Tablete & Telefoane > Telefoane mobile & accesorii > Telefoane Mobile'),
+    ).toBe('phone');
+    expect(categoryKind('TV, Audio-Video & Foto > Televizoare & accesorii > Televizoare')).toBe(
+      'tv',
+    );
+    expect(
+      categoryKind('Gaming, Carti & Birotica > Console, Jocuri & Accesorii > Console Hardware'),
+    ).toBe('console');
+    expect(categoryKind('Gaming, Carti & Birotica > Console, Jocuri & Accesorii')).toBeNull();
+    expect(categoryKind('Telefoane mobile & accesorii > Huse telefoane')).toBe('accessory');
+    expect(categoryKind('Accesorii GSM')).toBe('accessory');
+    expect(categoryKind('')).toBeNull();
+  });
+
+  it.each([
+    ['Lenovo LOQ 15ARP9, 15.6", 16GB', 'laptop'],
+    ['Lenovo ThinkPad E14 Gen 6, 16GB', 'laptop'],
+    ['PlayStation Portal Remote Player, White', 'console'],
+    ['Sony PS5 Slim, 1TB', 'console'],
+    ['Nintendo Switch 2, Light Blue/Light Red JoyCon', 'console'],
+    ['Apple iPad Air 11 M3, 128GB', 'tablet'],
+    ['Samsung Galaxy Tab S10 FE, 128GB', 'tablet'],
+    ['Apple Watch Series 11, 46mm', 'smartwatch'],
+    ['Apple AirPods Pro 3', 'headphones'],
+    ['Apple iPhone 17, 256GB', 'phone'],
+    ['Samsung Galaxy S25 Ultra, 512GB', 'phone'],
+    ['Amazon Kindle Paperwhite 2024', 'ereader'],
+  ])('%s → %s from the product line', (title, kind) => {
+    expect(explainProductKind(title)).toEqual({ kind, via: 'line', word: null });
+  });
+
+  it('ignores product lines after "pentru", "compatibil" or "emulator"', () => {
+    expect(lineKind('R36S, Emulator N64 PSP PS1 PlayStation Sega')).toBeNull();
+    expect(lineKind('Spigen Ultra Hybrid pentru iPhone 17')).toBeNull();
+    expect(detectProductKind('Spigen Ultra Hybrid pentru iPhone 17')).toBe('accessory');
+  });
+
+  it('prefers the breadcrumb to a product line', () => {
+    expect(detectProductKind('Lenovo Legion Go S, 512GB', 'Console Hardware')).toBe('console');
+    expect(explainProductKind('PlayStation Portal Remote Player', 'Console Hardware').via).toBe(
+      'category',
+    );
   });
 });

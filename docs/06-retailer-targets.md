@@ -83,26 +83,26 @@ _Generated 2026-10-27 from the registry._
 |---|---|---|---|---|---|---|---|---|
 | Altex | altex.ro | blocked | — | 2 | — | 0/0 (—) | to verify | Akamai resets TLS/HTTP2 for unknown bots; listings embed 48 products with price, stock, seller and EAN server-side. Designated for the assis |
 | Answear | answear.ro | blocked | — | 2 | — | 0/0 (—) | to verify | Akamai 403; CJ program. Phase 5. |
-| Auchan | auchan.ro | active | C (polite crawl) | 2 | — | 0/0 (—) | to verify | VTEX; JSON-LD; public VTEX catalogue JSON only if robots and terms allow (M10). |
-| Bonami | bonami.ro | active | C (polite crawl) | 2 | 2performant (unknown, to_apply) | 0/0 (—) | to verify | JSON-LD with gtin; publishes product_dead sitemaps (delisting signal). |
-| Carrefour | carrefour.ro | active | C (polite crawl) | 2 | — | 0/0 (—) | to verify | Magento; JSON-LD; EAN via Flixmedia. Electronics subset only (M10). |
+| Auchan | auchan.ro | active | C (polite crawl) | 2 | — | 11/11 (listing) | to verify | Online electronics range is small and mostly unavailable (Price 0 in the state = not sold online): such products are skipped and the listing |
+| Bonami | bonami.ro | active | C (polite crawl) | 2 | 2performant (unknown, to_apply) | 2/2 (listing) | to verify | Listing data in __NEXT_DATA__ (exact money amounts, crossed retailPrice, stock, brand). JSON-LD with gtin only on product pages; publishes p |
+| Carrefour | carrefour.ro | active | C (polite crawl) | 2 | — | 23/23 (listing) | to verify | Listing cards: article code (= JSON-LD sku and URL tail), price in meta[itemprop=price], crossed price rebuilt from its spans, brand and ava |
 | CEL.ro | cel.ro | blocked | — | 2 | — | 0/0 (—) | to verify | TCP timeout from London; serves fake random-hex products behind its captcha (never ingest challenge pages). robots blocks generic tokens bot |
 | Decathlon | decathlon.ro | blocked | — | 2 | — | 0/0 (—) | to verify | Cloudflare on HTML; robots/sitemaps served; 2Performant program closes 31 Oct 2026. |
-| Dedeman | dedeman.ro | active | C (polite crawl) | 1 | — | 0/1 (sitemap) | to verify | Listing ≈71 offers per page (no JSON-LD on listings); product pages carry microdata. Appliance categories only; a listing parser comes in M1 |
+| Dedeman | dedeman.ro | active | C (polite crawl) | 1 | — | 19/20 (sitemap, listing) | to verify | Listing cards: product code (= /p/<code>), Magento price amounts (decimal), crossed price only on discounted cards, stock line as worded. La |
 | Douglas | douglas.ro | blocked | — | 2 | — | 0/0 (—) | to verify | Akamai 403; Awin feed (5%, 30 days). Phase 4. |
-| Elefant | elefant.ro | active | C (polite crawl) | 2 | 2performant (unknown, to_apply) | 0/0 (—) | to verify | JSON-LD; EAN in the spec table; the only shop with a real per-URL lastmod. robots blocks `spider`/`crawler` user-agents by name (not ours). |
+| Elefant | elefant.ro | active | C (polite crawl) | 2 | 2performant (unknown, to_apply) | 0/0 (—) | to verify | EAN in the spec table; the only shop with a real per-URL lastmod; the 2026-10-27 recon found no JSON-LD Product on a product page (price in  |
 | eMAG | emag.ro | active | C (polite crawl) | 1 | profitshare (forbidden) | 43/44 (listing, product_page, sitemap) | to verify | Crossed price = eMAG's lowest price of the last 30 days; PRP is the manufacturer's recommended price (never a reference). Marketplace seller |
 | evoMAG | evomag.ro | blocked | — | 2 | 2performant (unknown, to_apply) | 0/1 (feed) | to verify | Distinct Traffic Filter CAPTCHA on the first request from London; feed first (2Performant). Designated for the assisted channel until its fe |
 | Fashion Days | fashiondays.ro | blocked | — | 2 | — | 0/0 (—) | to verify | Tencent EdgeOne challenge; eMAG-group program forbids comparators and price-history sites; terms ban robots and republishing. Excluded. |
 | Flanco | flanco.ro | blocked | — | 2 | — | 0/0 (—) | to verify | Cloudflare challenge; Magento 2; MPN in analytics data. Designated for the assisted channel (M05B). |
-| Flip | flip.ro | active | C (polite crawl) | 2 | — | 1/1 (sitemap) | to verify | Refurbished phones: condition refurbished, never in the main (new) minimum. |
-| forit | forit.ro | active | C (polite crawl) | 2 | profitshare (unknown, to_apply) | 1/1 (sitemap) | to verify | JSON-LD Product, no GTIN. |
+| Flip | flip.ro | active | C (polite crawl) | 2 | — | 1/1 (sitemap) | to verify | Refurbished phones with warranty, in grades (Bun, Foarte bun, Excelent, Ca nou) chosen with ?shape=; a page without it shows its default gra |
+| forit | forit.ro | active | C (polite crawl) | 2 | profitshare (unknown, to_apply) | 25/26 (sitemap, listing) | to verify | JSON-LD Product, sku = manufacturer code (also on listings), no GTIN. Offers state their delivery cost. Titles in JSON-LD carry HTML entitie |
 | Hornbach | hornbach.ro | blocked | — | 2 | — | 0/0 (—) | to verify | Fastly client challenge served with HTTP 200 to unknown bots; serves Common Crawl 97% → allowlisting plausible. |
 | iStyle | istyle.ro | blocked | — | 2 | — | 0/0 (—) | to verify | Shopify behind a Cloudflare challenge; GTIN marked up. Needs allowlisting (M21). |
-| IT Galaxy | itgalaxy.ro | active | C (polite crawl) | 2 | profitshare (unknown, to_apply) | 1/1 (sitemap) | to verify | JSON-LD Product with price; EAN only in Flixmedia attributes; shares a template with Vexio. |
-| JYSK | jysk.ro | active | C (polite crawl) | 2 | — | 0/0 (—) | to verify | JSON-LD on product pages; listing prices client-rendered. |
+| IT Galaxy | itgalaxy.ro | active | C (polite crawl) | 2 | profitshare (unknown, to_apply) | 25/26 (sitemap, listing) | to verify | Listing cards: id (= product-page JSON-LD sku), title, price and crossed price in Romanian format, stock text, EAN ('Cod EAN') on many cards |
+| JYSK | jysk.ro | active | C (polite crawl) | 2 | — | 0/0 (—) | to verify | JSON-LD on product pages (no availability); listing prices client-rendered. M10 (2026-10-27): not probed again and no source: JYSK sells fur |
 | Leroy Merlin | leroymerlin.ro | blocked | — | 2 | — | 0/0 (—) | to verify | DataDome. Needs allowlisting. |
-| Libris | libris.ro | active | C (polite crawl) | 2 | 2performant (allowed, to_apply) | 0/0 (—) | to verify | JSON-LD with gtin13 (ISBN). Electronics subset in Phase 1, books in Phase 4. |
+| Libris | libris.ro | active | C (polite crawl) | 2 | 2performant (allowed, to_apply) | 0/0 (—) | to verify | JSON-LD with gtin13 (ISBN). M10 (2026-10-27): no electronics or appliance assortment, so no source in the launch phase; books, games and LEG |
 | Media Galaxy | mediagalaxy.ro | blocked | — | 2 | — | 0/0 (—) | to verify | Same platform as Altex (Akamai). Designated for the assisted channel (M05B). |
 | Notino | notino.ro | blocked | — | 2 | — | 0/0 (—) | to verify | Cloudflare challenge; CJ program (feed). Phase 4. |
 | OLX | olx.ro | blocked | — | 2 | — | 0/0 (—) | to verify | Classifieds: out of scope (02-product-and-scope §4.3). CloudFront 403 for unknown bots. |

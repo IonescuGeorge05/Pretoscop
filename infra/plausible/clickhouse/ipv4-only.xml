@@ -1,0 +1,4 @@
+<!-- From plausible/community-edition v3.2.1: Docker bridge networks have no IPv6 by default. -->
+<clickhouse>
+    <listen_host>0.0.0.0</listen_host>
+</clickhouse>

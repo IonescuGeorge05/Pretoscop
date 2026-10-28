@@ -1,7 +1,7 @@
 # Runbook: set up the production server (once)
 
 Target: one Hetzner dedicated server (AX41-class, 64 GB RAM, NVMe, Germany; Ubuntu 24.04 LTS),
-Cloudflare in front, staging and production side by side (`docs/03-architecture.md` §11, ADR-017).
+Cloudflare in front, staging and production side by side (`docs/03-architecture.md` §11, ADR-018).
 Budget about two hours, most of it waiting. Accounts needed first: `docs/09-external-setup-checklist.md`
 A1 (domain), A3 (Cloudflare + R2), A4 (Hetzner), A5 (GitHub), B3 (Better Stack).
 

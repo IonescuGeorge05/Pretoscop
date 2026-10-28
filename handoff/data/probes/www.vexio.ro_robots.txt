@@ -1,0 +1,113 @@
+User-agent: *
+Disallow: /images/b$
+Disallow: /images/b/*
+Disallow: /*?print_version*
+Disallow: /*/pagina*/filtre/*
+Disallow: /*/filtre/cauta-*
+Disallow: /wishlist$
+Disallow: /wishlist/*
+Disallow: /ajax$
+Disallow: /ajax/*
+Disallow: /shopping/add-to-cart$ Disallow: /shopping/add-to-cart/* Disallow: /alerta-*
+Disallow: /anunta-un-prieten$
+Disallow: /anunta-un-prieten/*
+Disallow: /asistenta-clienti$
+Disallow: /asistenta-clienti/*
+Disallow: /rating$
+Disallow: /rating/*
+Disallow: /click$
+Disallow: /click/*
+Disallow: /galerie-imagini$
+Disallow: /galerie-imagini/*
+Disallow: /incarca-foto$
+Disallow: /incarca-foto/*
+Disallow: /comentarii$
+Disallow: /comentarii/*
+Disallow: /data/feeds*
+Disallow: /compara$
+Disallow: /compara/*
+Disallow: /shopping$
+Disallow: /shopping/*
+Disallow: /payment$
+Disallow: /payment/*
+Disallow: /search$
+Disallow: /search/*
+Disallow: /logout$
+Disallow: /logout/*
+Disallow: /opinie-produs$
+Disallow: /opinie-produs/*
+Disallow: /package-tracking$
+Disallow: /package-tracking/*
+Disallow: /view-messages$
+Disallow: /view-messages/*
+Disallow: /fotografii-clienti$
+Disallow: /fotografii-clienti/*
+Disallow: /notifications$
+Disallow: /notifications/*
+Disallow: /*htaccess*
+Disallow: /admin$
+Disallow: /admin/*
+Disallow: /*/remote$
+Disallow: /*/remote/*
+Disallow: /runtime$
+Disallow: /runtime/*
+Disallow: /*/include$
+Disallow: /*/include/*
+Disallow: /*/utils$
+Disallow: /*/utils/*
+Disallow: /monitor$
+Disallow: /monitor/*
+Disallow: /*/parsers$
+Disallow: /*/parsers/*
+Disallow: /*/spiders$
+Disallow: /*/spiders/*
+Disallow: /*.php
+Disallow: /*.tpl
+Disallow: /*.csv
+Disallow: /*.parser
+Disallow: /*.svn*
+Disallow: /*.svn*
+Disallow: /*?hide_sensitive
+Disallow: /*?show_sensitive
+Disallow: /*2pau
+Disallow: /*2ptt
+Disallow: /*2ptu
+Disallow: /*2prp
+Disallow: /*2pdlst
+Disallow: /*,*
+Disallow: /*/filtre/*/*/*
+Disallow: /*/filtre/pret-%d-pana-la-%d/*
+Disallow: /*/*,*/*
+Disallow: /*tag-*/tag-*
+Disallow: /produse-in-stoc/*/
+
+Crawl-delay: 1
+
+User-agent: Riddler
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: SemrushBot-SA
+Disallow: /
+
+User-agent: MegaIndex.ru/2.0
+Disallow: /
+
+User-agent: MegaIndex.ru
+Disallow: /
+
+User-agent: megaIndex.ru
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: Linguee Bot
+Disallow: /
+
+Sitemap: https://www.vexio.ro/sitemap.xml

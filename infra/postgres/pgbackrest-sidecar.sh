@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# pgBackRest sidecar (ADR-016). Runs in the `pgbackrest` service of infra/docker-compose.prod.yml,
+# pgBackRest sidecar (ADR-017). Runs in the `pgbackrest` service of infra/docker-compose.prod.yml,
 # from the same image as the database, as the postgres user, sharing the data volume and the
 # server's Unix socket. The database container itself pushes WAL (archive_command); this process:
 #   - creates the stanza and checks that WAL archiving works,

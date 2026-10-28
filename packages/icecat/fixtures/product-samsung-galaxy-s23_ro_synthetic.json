@@ -1,0 +1,48 @@
+{
+  "msg": "OK",
+  "data": {
+    "GeneralInfo": {
+      "IcecatId": 99000123,
+      "ReleaseDate": "01/02/2023",
+      "Title": "Samsung Galaxy S23 15,5 cm (6.1\") Dual SIM Android 13 5G USB tip-C 8 GB 128 GB 3900 mAh Negru",
+      "Brand": "Samsung",
+      "BrandID": "25",
+      "ProductName": "Galaxy S23",
+      "BrandPartCode": "SM-S911BZKDEUE",
+      "GTIN": ["8806094724721", "08806094724721"],
+      "Category": { "CategoryID": "1893", "Name": { "ID": 2311, "Value": "Smartphone-uri", "Language": "RO" } },
+      "Description": { "LongDesc": "", "MiddleDesc": "", "Language": "RO" },
+      "SummaryDescription": {
+        "ShortSummaryDescription": "Samsung Galaxy S23, 15,5 cm (6.1\"), 8 GB, 128 GB, 50 MP, Android 13, Negru",
+        "LongSummaryDescription": "Samsung Galaxy S23. Diagonala ecranului: 15,5 cm (6.1\"), Rezoluție display: 2340 x 1080 Pixel. Memorie RAM: 8 GB, Capacitate stocare internă: 128 GB. Rezoluție cameră spate (numeric): 50 MP. Tip SIM card: Dual SIM. Rețea de date: 5G. Capacitate baterie: 3900 mAh. Sistem de operare instalat: Android 13. Culoarea produsului: Negru. Greutate: 168 g"
+      },
+      "Quality": "SUPPLIER"
+    },
+    "Image": { "HighPic": "https://images.icecat.biz/img/gallery/99000123_synth-front.jpg", "HighPicWidth": 1000, "HighPicHeight": 1000 },
+    "Gallery": [
+      { "ID": 91000001, "Pic": "https://images.icecat.biz/img/gallery/99000123_synth-front.jpg", "PicWidth": 1000, "PicHeight": 1000, "No": 1, "IsMain": "Y", "IsPrivate": false, "Type": "ProductImage" },
+      { "ID": 91000002, "Pic": "https://images.icecat.biz/img/gallery/99000123_synth-back.jpg", "PicWidth": 1000, "PicHeight": 1000, "No": 2, "IsMain": "N", "IsPrivate": false, "Type": "ProductImage" }
+    ],
+    "FeaturesGroups": [
+      {
+        "ID": 7001,
+        "SortNo": 1,
+        "FeatureGroup": { "ID": "33", "Name": { "Value": "Afișaj", "Language": "RO" } },
+        "Features": [
+          { "ID": 11, "Type": "numerical", "Value": "15.5", "RawValue": "15.5", "PresentationValue": "15,5 cm (6.1\")", "SortNo": 1, "Feature": { "ID": "944", "Measure": { "Sign": "cm", "Signs": { "_": "cm", "RO": "cm" } }, "Name": { "Value": "Diagonala ecranului", "Language": "RO" } } },
+          { "ID": 12, "Type": "dropdown", "Value": "2340 x 1080", "PresentationValue": "2340 x 1080 Pixel", "SortNo": 2, "Feature": { "ID": "1585", "Measure": { "Sign": "Pixel" }, "Name": { "Value": "Rezoluție display", "Language": "RO" } } }
+        ]
+      },
+      {
+        "ID": 7002,
+        "SortNo": 2,
+        "FeatureGroup": { "ID": "37", "Name": { "Value": "Memorie", "Language": "RO" } },
+        "Features": [
+          { "ID": 13, "Type": "numerical", "Value": "8", "RawValue": "8", "PresentationValue": "8 GB", "SortNo": 1, "Feature": { "ID": "18", "Measure": { "Sign": "GB" }, "Name": { "Value": "Memorie RAM", "Language": "RO" } } },
+          { "ID": 14, "Type": "numerical", "Value": "128", "RawValue": "128", "PresentationValue": "128 GB", "SortNo": 2, "Feature": { "ID": "9876", "Measure": { "Sign": "GB" }, "Name": { "Value": "Capacitate stocare internă", "Language": "RO" } } }
+        ]
+      }
+    ],
+    "DemoAccount": true
+  }
+}

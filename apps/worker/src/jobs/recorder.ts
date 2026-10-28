@@ -31,7 +31,7 @@ export const sourceRunJob = defineJob<{ sourceId: number; trigger?: 'schedule' |
 
 /**
  * Nightly logical backup to the blob store (R2 in production), 14 days kept. Complements the
- * physical backups and WAL archive of the pgbackrest sidecar (ADR-016): a dump restores into any
+ * physical backups and WAL archive of the pgbackrest sidecar (ADR-017): a dump restores into any
  * PostgreSQL version and table by table. Success and failure ping DUMP_HEARTBEAT_URL.
  */
 export const backupJob = defineJob({

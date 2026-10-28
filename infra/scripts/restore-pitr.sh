@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Restores an environment's database from the pgBackRest repository (R2), to the latest archived
-# WAL or to a point in time, in place (ADR-016; procedure: infra/runbooks/restore.md).
+# WAL or to a point in time, in place (ADR-017; procedure: infra/runbooks/restore.md).
 #   infra/scripts/restore-pitr.sh prod --yes                                  → latest
 #   infra/scripts/restore-pitr.sh prod --target "2026-11-02 09:55:00+00" --yes → just before an accident
 #   infra/scripts/restore-pitr.sh prod --set 20261101-023000F --yes          → one backup, no WAL replay

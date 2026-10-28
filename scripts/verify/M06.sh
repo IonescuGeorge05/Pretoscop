@@ -26,12 +26,12 @@ impure="$(grep -l "from 'node:" packages/core/src/*.ts | grep -v -e '\.test\.ts$
 grep -q "from './hash'" packages/core/src/index.ts && fail "index.ts must not export hash.ts"
 ok "root export is browser-safe; hash lives at @pretoscop/core/hash"
 
-step "title corpus accuracy (synthetic, holdout and real eMAG titles; >= 95% per field)"
+step "title corpus accuracy (synthetic, holdout, real and live-run eMAG titles; >= 95% per field)"
 pnpm --filter @pretoscop/core exec vitest run src/corpus.test.ts --silent=false --reporter=verbose >"$tmp/corpus.log" 2>&1 || {
   cat "$tmp/corpus.log"
   fail "corpus accuracy below threshold"
 }
-grep -E '^(Main|Holdout|Real eMAG) corpus|^[a-zA-Z]+ +[0-9.]+%$|^overall' "$tmp/corpus.log" | sed 's/^/   /'
+grep -E '^(Main|Holdout|Real eMAG|Live eMAG) corpus|^[a-zA-Z]+ +[0-9.]+%$|^overall' "$tmp/corpus.log" | sed 's/^/   /'
 ok "corpus accuracy at or above 95% on every field"
 
 step "demo: PS5 bundle title"
@@ -42,6 +42,17 @@ grep -q 'edition: Slim Digital' "$tmp/demo.log" || fail "demo: edition is not Sl
 grep -q '^isBundle     true' "$tmp/demo.log" || fail "demo: not detected as a bundle"
 grep -q '^condition    new' "$tmp/demo.log" || fail "demo: condition is not new"
 ok "demo prints brand Sony, {storage: 1TB, edition: Slim Digital}, isBundle true"
+
+step "demo: live eMAG run (device not an accessory, built-in games not a bundle, emulated platform not the brand)"
+pnpm --silent --filter @pretoscop/core demo "Apple MacBook Air 13'' cu procesor Apple M5, 16GB RAM, 512GB SSD, Midnight, Fara incarcator" \
+  --category "Laptop, Tablete & Telefoane > Laptopuri si accesorii > Laptop > Notebook" | tee "$tmp/macbook.log"
+grep -q '^kind         laptop' "$tmp/macbook.log" || fail "demo: MacBook is not a laptop"
+grep -q '^isAccessory  false' "$tmp/macbook.log" || fail "demo: MacBook flagged as an accessory"
+pnpm --silent --filter @pretoscop/core demo "Consola retro portabila R36S 64GB cu jocuri, 15000 jocuri, Emulator N64 PSP PS1 PlayStation Sega, Alb" \
+  --category "Gaming, Carti & Birotica > Console, Jocuri & Accesorii > Console Hardware" | tee "$tmp/r36s.log"
+grep -q '^isBundle     false' "$tmp/r36s.log" || fail "demo: built-in games read as a bundle"
+grep -q '^brand        –' "$tmp/r36s.log" || fail "demo: an emulated platform read as the brand"
+ok "MacBook is a laptop, not an accessory; R36S has no bundle and no brand"
 
 step "GTIN check"
 pnpm --silent --filter @pretoscop/core gtin 0711719577034 | tee "$tmp/gtin.log"

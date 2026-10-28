@@ -25,4 +25,4 @@ make rollback ENVIRONMENT=prod                       # previous release
 make prod-ps ENVIRONMENT=prod; make prod-logs S=worker
 ```
 
-Design decisions: `docs/03-architecture.md` §11 and ADR-016 … ADR-019.
+Design decisions: `docs/03-architecture.md` §11 and ADR-017 … ADR-020.

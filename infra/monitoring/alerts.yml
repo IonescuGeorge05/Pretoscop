@@ -116,3 +116,20 @@ groups:
         annotations:
           summary: 'Origin p95 latency above 400 ms for 30 minutes (Cloudflare-cached hits are not counted)'
           runbook: infra/runbooks/incident.md
+
+  - name: pretoscop-assisted
+    rules:
+      - alert: AssistedSpendNearCap
+        expr: (pretoscop_assisted_spend_month_cents >= 0.8 * pretoscop_assisted_cap_cents) and on () (pretoscop_assisted_cap_cents > 0)
+        for: 5m
+        labels: { severity: warning }
+        annotations:
+          summary: 'Assisted-access spend at {{ $value }} cents, 80% or more of the monthly cap (hard stop at 100%)'
+          runbook: infra/runbooks/assisted-access.md
+      - alert: AssistedSuccessLow
+        expr: pretoscop_assisted_success_ratio_7d < 0.9
+        for: 6h
+        labels: { severity: warning }
+        annotations:
+          summary: 'Assisted access to {{ $labels.shop }}: {{ $value | humanizePercentage }} success over 7 days (SLO 90%; auto-pause after 7 days below 80%)'
+          runbook: infra/runbooks/assisted-access.md

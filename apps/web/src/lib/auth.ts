@@ -8,6 +8,7 @@ import { magicLink } from 'better-auth/plugins/magic-link';
 import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { db, serverEnv } from './db';
+import { allowLoginEmail, resetLoginEmails } from './login-limits';
 
 function buildAuth() {
   const env = serverEnv();
@@ -42,9 +43,11 @@ function buildAuth() {
       session: {
         create: {
           before: async (session) => ({ data: { ...session, ipAddress: null, userAgent: null } }),
-          // M19 retention: a login is activity (resets the 24-month inactivity clock).
+          // M19 retention: a login is activity (resets the 24-month inactivity clock); it also
+          // starts the address's login-link count over (login-limits.ts).
           after: async (session) => {
             await touchUserActivity(db(), session.userId).catch(() => undefined);
+            await resetLoginEmails(db(), session.userId).catch(() => undefined);
           },
         },
       },
@@ -53,7 +56,15 @@ function buildAuth() {
       magicLink({
         expiresIn: 600,
         storeToken: 'hashed',
-        sendMagicLink: async ({ email, url }) => {
+        // Every login path ends here (the /alerte form, the admin and merchant forms, direct calls
+        // to POST /api/auth/sign-in/magic-link): over a limit nothing is sent and the answer stays
+        // the same (no enumeration).
+        sendMagicLink: async ({ email, url }, ctx) => {
+          const decision = await allowLoginEmail(db(), email, ctx?.headers ?? ctx?.request?.headers);
+          if (!decision.allowed) {
+            console.warn(JSON.stringify({ level: 'warn', service: 'web.auth', event: 'login.link_capped', reason: decision.reason, time: new Date().toISOString() }));
+            return;
+          }
           await mailer.send({
             to: email,
             subject: 'Linkul tău de autentificare Pretoscop',

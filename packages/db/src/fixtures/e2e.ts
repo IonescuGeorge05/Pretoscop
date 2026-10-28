@@ -308,14 +308,35 @@ export async function alertsFixturePrice(db: Db, key: string, lei: number): Prom
   return { offerId, total: t.rows[0]!.total };
 }
 
+/**
+ * A daily-salted hash as `hashWithDailySalt` writes it (32 lowercase hex characters): a raw IP,
+ * or anything else, fails the e2e assertions that read the `*_hashed` columns below.
+ */
+const HASH_FORMAT = '^[0-9a-f]{32}$';
+
+/** Extra throwaway products for the alert e2e (same title, so `alerts-drop` removes them). */
+export async function alertsFixtureExtraProducts(db: Db, n: number): Promise<number[]> {
+  const ids: number[] = [];
+  const tag = createHash('sha256').update(`${Date.now()}:${Math.random()}`).digest('hex').slice(0, 8);
+  for (let i = 0; i < n; i++) {
+    const slug = `e2e-alerte-extra-${tag}-${i}`;
+    const r = await db.execute<{ id: string }>(sql`
+      INSERT INTO products (slug, title, title_ascii, provisional) VALUES (${slug}, ${E2E_ALERTS_TITLE}, ${slug}, true) RETURNING id::text`);
+    ids.push(Number(r.rows[0]!.id));
+  }
+  return ids;
+}
+
 /** What the database holds for a test address (assertions of the e2e flows). */
 export async function alertsFixtureState(db: Db, email: string): Promise<Record<string, unknown>> {
   const u = await db.execute<{ id: string; email_verified: boolean }>(sql`SELECT id, email_verified FROM users WHERE lower(email) = lower(${email})`);
   const userId = u.rows[0]?.id ?? null;
   const alerts = userId
     ? await db.execute(sql`
-        SELECT id::text, status, kind, target_price::text, channel, consent_text_version, consent_ip_hash IS NOT NULL AS consent_ip_hashed,
-          confirmed_at IS NOT NULL AS confirmed, confirm_method, confirm_ip_hash IS NOT NULL AS confirm_ip_hashed, last_notified_total::text
+        SELECT id::text, status, kind, target_price::text, channel, consent_text_version,
+          coalesce(consent_ip_hash ~ ${HASH_FORMAT}, false) AS consent_ip_hashed,
+          confirmed_at IS NOT NULL AS confirmed, confirm_method,
+          coalesce(confirm_ip_hash ~ ${HASH_FORMAT}, false) AS confirm_ip_hashed, last_notified_total::text
         FROM alerts WHERE user_id = ${userId} ORDER BY id`)
     : { rows: [] };
   const sends = userId ? await db.execute(sql`SELECT status, total::text, reason, simulated FROM alert_sends WHERE user_id = ${userId} ORDER BY id`) : { rows: [] };
@@ -326,11 +347,19 @@ export async function alertsFixtureState(db: Db, email: string): Promise<Record<
 export async function alertsFixtureEvidence(db: Db, emailHashes: string[]): Promise<Record<string, unknown>> {
   const h = sql.param(emailHashes);
   const consents = await db.execute(sql`
-    SELECT purpose, text_version, given_ip_hash IS NOT NULL AS given_ip_hashed, confirmed_at IS NOT NULL AS confirmed, confirm_method,
-      withdrawn_at IS NOT NULL AS withdrawn, withdraw_method
+    SELECT purpose, text_version, coalesce(given_ip_hash ~ ${HASH_FORMAT}, false) AS given_ip_hashed, confirmed_at IS NOT NULL AS confirmed,
+      confirm_method, withdrawn_at IS NOT NULL AS withdrawn, withdraw_method
     FROM consent_records WHERE email_hash = ANY(${h}::text[]) ORDER BY id`);
   const suppressions = await db.execute(sql`SELECT reason FROM email_suppressions WHERE email_hash = ANY(${h}::text[])`);
   return { consents: consents.rows, suppressions: suppressions.rows };
+}
+
+/** Puts a test address on the suppression list (by its hash), e.g. as a complaint would. */
+export async function alertsFixtureSuppress(db: Db, emailHash: string, reason: 'complaint' | 'bounce' | 'unsubscribed'): Promise<{ suppressed: true }> {
+  await db.execute(sql`
+    INSERT INTO email_suppressions (email_hash, reason) VALUES (${emailHash}, ${reason})
+    ON CONFLICT (email_hash) DO UPDATE SET reason = EXCLUDED.reason, created_at = now()`);
+  return { suppressed: true };
 }
 
 /** Removes the alert fixture: test accounts, their evidence and suppressions, the product; restores the flag. */

@@ -82,12 +82,13 @@ Behind the flag `alerts.email.enabled` (off by default); with it off the product
 | Route | What it does |
 |---|---|
 | product page, "Alertă de preț" | `components/alerts/alert-form.tsx`: below a target or any drop of at least 1%, optionally any variant, the unticked consent box with `alertConsent` (current version from `@pretoscop/config/legal-texts`); a plain HTML form without JavaScript |
-| `POST /api/alerts` | validates (`lib/alert-form.ts`, shared with the form), refuses cross-site posts, bodies > 8 KB and the honeypot; 10 requests/hour per daily-salted session; at most 3 confirmation emails per address per day; same answer whether or not the address has an account; logged in with the same verified address → active at once (`confirm_method = 'session'`) |
+| `POST /api/alerts` | validates (`lib/alert-form.ts`, shared with the form), refuses cross-site posts, bodies > 8 KB (by Content-Length before reading, and the read stops at the limit) and the honeypot; 10 requests/hour per daily-salted IP hash (never the User-Agent); at most 3 confirmation emails per address per day, never to an address suppressed after a complaint or bounce; same answer whether or not the address has an account; logged in with the same verified address → active at once (`confirm_method = 'session'`) |
 | `/alerte/confirmare?a=&t=` + `POST /api/alerts/confirm` | double opt-in: the page only shows the alert and the consent text; the button confirms (mail scanners open links) |
 | `/alerte/dezabonare?a=&t=` / `?u=&t=` + `POST /api/alerts/unsubscribe` | one button, no login; the same URL takes the RFC 8058 one-click POST (`List-Unsubscribe=One-Click`) from mailbox providers; a GET never unsubscribes |
-| `/alerte` | magic-link login (server action, works without JavaScript); list, edit, confirm, delete, stop all; `GET /api/account/export` (JSON); delete the account |
+| `/alerte` | magic-link login (server action, works without JavaScript); list, edit, confirm, delete, stop all; `GET /api/account/export` (JSON, with the address's suppression entry); delete the account |
+| login emails (every path) | `lib/login-limits.ts`, applied in Better Auth's `sendMagicLink` (the /alerte, admin and merchant forms and `POST /api/auth/sign-in/magic-link` all end there; Better Auth's own limiter is off without IP tracking): at most 5 per address per hour (database counter under a daily-salted hash of the address, reset by a successful login) and 20 per daily-salted IP hash per 15 minutes; over a limit nothing is sent and the answer is unchanged |
 | `/alerte/rezultat`, `/alerte/pastreaza` | the no-JavaScript result of the form; "keep my account" from the 24-month notice |
-| `POST /api/webhooks/resend` | Svix-signed (RESEND_WEBHOOK_SECRET): complaints and permanent bounces stop the address's email alerts and suppress its hash |
+| `POST /api/webhooks/resend` | Svix-signed (RESEND_WEBHOOK_SECRET, required with APP_ENV=prod and MAIL_DRIVER=resend): complaints and permanent bounces stop the address's email alerts and suppress its hash; bodies over 256 KB refused before reading |
 | `/admin/alerte`, `GET /api/admin/users/{id}/export` | volumes, failures, and data-subject requests (export, delete; audited without the address) |
 
 Evidence: `consent_ip_hash`/`confirm_ip_hash` = `hashWithDailySalt('ip', ip)` (the salt of the

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { Logger } from '@pretoscop/config/logger';
 import { inQuietHours } from '@pretoscop/core';
 import {
@@ -42,6 +43,12 @@ function groupKey(s: QueuedSend): string {
   return `${s.userId}\u0000${s.channel}\u0000${s.simulated ? 1 : 0}`;
 }
 
+/** Idempotency key of one message: the alert_sends ids it carries. */
+export function sendsKey(ids: number[]): string {
+  const list = [...ids].sort((a, b) => a - b).join(',');
+  return `alert-sends-${createHash('sha256').update(list).digest('hex').slice(0, 40)}`;
+}
+
 /** Delivers one user's rows on one channel as one message. */
 async function deliverGroup(deps: DeliverDeps, rows: QueuedSend[], out: DeliverResult): Promise<void> {
   const { db, log } = deps;
@@ -68,7 +75,9 @@ async function deliverGroup(deps: DeliverDeps, rows: QueuedSend[], out: DeliverR
     }
   }
 
-  const message = buildAlertMessage(valid, deps.links, deps.operator);
+  // The same rows always make the same key: a retry after a timeout or a crash (the provider may
+  // have accepted the first attempt) is dropped by the provider instead of arriving twice.
+  const message = { ...buildAlertMessage(valid, deps.links, deps.operator), idempotencyKey: sendsKey(ids) };
   const res = await deps.notifier.notify(first.userId, message, first.channel);
   out.messages++;
   if (res.ok) {
@@ -124,7 +133,7 @@ async function deliverRows(deps: DeliverDeps, rows: QueuedSend[], out: DeliverRe
  */
 export async function deliverAlerts(deps: DeliverDeps, opts: { channels: AlertChannel[]; now?: Date; maxBatches?: number }): Promise<DeliverResult> {
   const out: DeliverResult = { messages: 0, sent: 0, skipped: 0, retried: 0, failed: 0, recovered: 0 };
-  out.recovered = await recoverStuckSends(deps.db);
+  out.recovered = await recoverStuckSends(deps.db, 15, MAX_ATTEMPTS);
   const quiet = inQuietHours(opts.now ?? new Date());
   const channels = opts.channels.filter((c) => c === 'email' || !quiet);
   for (let batch = 0; batch < (opts.maxBatches ?? 50); batch++) {

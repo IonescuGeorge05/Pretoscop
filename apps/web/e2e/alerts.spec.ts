@@ -54,6 +54,14 @@ const newEmail = () => {
 const CONSENT = /Vreau să primesc pe email alerte de preț/;
 /** After a server action or a cold page on a shared, busy dev machine. */
 const SLOW = 20_000;
+/**
+ * A client address of its own (the web reads `cf-connecting-ip` first): the per-IP limits are in
+ * memory and a reused server keeps them between runs, so every run and every limit test gets its
+ * own address instead of sharing localhost's.
+ */
+const fakeIp = () => `10.${[0, 1, 2].map(() => randomBytes(1)[0]! % 250).join('.')}`;
+test.use({ extraHTTPHeaders: { 'cf-connecting-ip': fakeIp() } });
+const quietFor = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /** Creates an alert through the API (the enhanced form's path) and confirms it with the emailed link. */
 async function confirmedAlert(request: APIRequestContext, email: string, body: Record<string, unknown>): Promise<void> {
@@ -201,12 +209,85 @@ test.describe('price alerts', () => {
     expect(data.user.email).toBe(email);
     expect(data.alerts[0]).toMatchObject({ kind: 'below', consent_text_version: 'alertConsent.v1', confirm_method: 'email_link' });
     expect(data.consentRecords).toHaveLength(1);
+    expect(data).toMatchObject({ emailSuppression: null });
 
     await page.getByRole('checkbox', { name: /Înțeleg că ștergerea contului este definitivă/ }).check();
     await page.getByRole('button', { name: 'Șterge contul' }).click();
     await expect(page.getByRole('heading', { name: 'Contul a fost șters' })).toBeVisible({ timeout: SLOW });
     expect(cli<State>('alerts-state', email).userId).toBeNull();
     expect((await page.request.get('/api/account/export')).status()).toBe(401);
+  });
+});
+
+test.describe('limits and refusals', () => {
+  const alertBody = (email: string, productId = fx.productId) => ({ productId: String(productId), email, kind: 'any_drop', consent: true, consentVersion: 'alertConsent.v1' });
+
+  test('login links: at most 5 per address per hour on every login path, with the same answer every time', async ({ page, request, baseURL }) => {
+    const email = newEmail();
+    const since = Date.now();
+    const httpLogin = async () => {
+      // Better Auth's public endpoint (what the admin and merchant forms call), each time from
+      // another address: the cap is per email address, not per client.
+      const res = await request.post('/api/auth/sign-in/magic-link', {
+        data: { email, callbackURL: '/alerte' },
+        headers: { origin: baseURL!, 'cf-connecting-ip': fakeIp() },
+      });
+      expect(res.status()).toBe(200);
+      expect(await res.json()).toEqual({ status: true });
+    };
+    for (let i = 0; i < 5; i++) await httpLogin();
+    // The sixth through the /alerte form: the visitor sees the usual answer, nothing is sent.
+    await page.goto('/alerte');
+    await page.getByLabel('Adresa de email').fill(email);
+    await page.getByRole('button', { name: 'Trimite linkul de autentificare' }).click();
+    await expect(page.getByRole('heading', { name: 'Verifică emailul' })).toBeVisible({ timeout: SLOW });
+    await httpLogin(); // and a seventh over HTTP
+    const logins = async () => (await mailsTo(email, since)).filter((m) => /autentificare/.test(m.Subject)).length;
+    await expect.poll(logins, { timeout: SLOW }).toBe(5);
+    await quietFor(3000);
+    expect(await logins()).toBe(5);
+  });
+
+  test('the alert API refuses cross-site posts and allows 10 requests an hour per IP, whatever the User-Agent', async ({ request }) => {
+    const cross = await request.post('/api/alerts', { data: alertBody(newEmail()), headers: { 'sec-fetch-site': 'cross-site' } });
+    expect(cross.status()).toBe(403);
+    const ip = fakeIp();
+    // Incomplete requests (no consent): counted by the limiter, never stored or emailed.
+    const attempt = (ua: string) =>
+      request.post('/api/alerts', { data: { productId: String(fx.productId), email: 'nu-e-adresa', consentVersion: 'alertConsent.v1' }, headers: { 'cf-connecting-ip': ip, 'user-agent': ua } });
+    for (let i = 0; i < 10; i++) expect((await attempt(`agent-${i}`)).status()).toBe(400);
+    const over = await attempt('a-brand-new-agent');
+    expect(over.status()).toBe(429);
+    expect(over.headers()['retry-after']).toMatch(/^\d+$/);
+  });
+
+  test('a suppressed address (complaint) gets no confirmation email, and the answer does not tell', async ({ request }) => {
+    const email = newEmail();
+    cli('alerts-suppress', email, 'complaint');
+    const since = Date.now();
+    const res = await request.post('/api/alerts', { data: alertBody(email), headers: { 'cf-connecting-ip': fakeIp() } });
+    expect(res.status()).toBe(201);
+    expect(await res.json()).toEqual({ ok: true, status: 'pending' });
+    await quietFor(3000);
+    expect(await mailsTo(email, since)).toEqual([]);
+    expect(cli<State>('alerts-state', email).alerts).toEqual([]);
+  });
+
+  test('at most 3 confirmation emails per address per day, with the same answer every time', async ({ request }) => {
+    const email = newEmail();
+    const products = cli<number[]>('alerts-products', '4');
+    const ip = fakeIp();
+    const since = Date.now();
+    for (const productId of products) {
+      const res = await request.post('/api/alerts', { data: alertBody(email, productId), headers: { 'cf-connecting-ip': ip } });
+      expect(res.status()).toBe(201);
+      expect(await res.json()).toEqual({ ok: true, status: 'pending' });
+    }
+    const confirmations = async () => (await mailsTo(email, since)).filter((m) => /^Confirmă alerta de preț/.test(m.Subject)).length;
+    await expect.poll(confirmations, { timeout: SLOW }).toBe(3);
+    await quietFor(3000);
+    expect(await confirmations()).toBe(3);
+    expect(cli<State>('alerts-state', email).alerts).toHaveLength(3);
   });
 });
 

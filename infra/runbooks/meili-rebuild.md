@@ -8,22 +8,24 @@ results disagree with the product pages.
 cd /srv/pretoscop/prod
 C="docker compose -p pretoscop-prod -f infra/docker-compose.prod.yml --env-file .env"
 $C exec meilisearch curl -fsS http://localhost:7700/health          # {"status":"available"}
-$C exec worker node --import tsx src/cli/search-reindex.ts --full   # M14's full rebuild (name per M14's README)
+$C exec worker node --import tsx src/cli/search.ts rebuild --popularity   # M14: blue/green full rebuild
+$C exec worker node --import tsx src/cli/search.ts status                 # document count, index sizes
 ```
 
 If the volume is broken or the version jump needs a fresh store:
 
 ```bash
-$C stop meilisearch
+$C rm --stop --force meilisearch          # the volume cannot be removed while a container uses it
 docker volume rm pretoscop-prod_meilidata
 $C up -d --wait meilisearch
-$C exec worker node --import tsx src/cli/search-reindex.ts --full
+$C exec worker node --import tsx src/cli/search.ts rebuild --popularity
 ```
 
 Search is degraded (empty results) until the rebuild finishes; product pages, history and
 click-outs keep working because they read PostgreSQL. Upgrade Meilisearch by changing the image tag
-in `infra/docker-compose.prod.yml` (pinned, `getmeili/meilisearch:v1.56.0`), on staging first; read
-the release notes for dump/upgrade requirements between versions.
+in `infra/docker-compose.prod.yml` (pinned, `getmeili/meilisearch:v1.56.0`), on staging first, and
+deploying with `RECREATE_DATA_SERVICES=1` (a normal deploy keeps the running container; `deploy.md`);
+read the release notes for dump/upgrade requirements between versions.
 
-The exact CLI of the rebuild belongs to M14 (search); check `packages/search/README.md` once M14 is
-merged and update the command above if it differs.
+The commands are M14's search CLI (`apps/worker/src/cli/search.ts`, on `mod/M14-search` until it is
+merged; `packages/search/README.md`). The nightly `search.index` job does the same rebuild.

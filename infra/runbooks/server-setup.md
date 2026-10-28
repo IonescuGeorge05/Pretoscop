@@ -32,14 +32,14 @@ As `deploy`, in `/srv/pretoscop/prod`:
 ```bash
 cp .env.example .env && chmod 600 .env
 cp infra/env/backup.env.example .env.backup && chmod 600 .env.backup
-for k in POSTGRES_PASSWORD MEILI_MASTER_KEY BETTER_AUTH_SECRET REVALIDATE_TOKEN HASH_SALT_SECRET; do
+for k in POSTGRES_PASSWORD MEILI_MASTER_KEY BETTER_AUTH_SECRET REVALIDATE_TOKEN HASH_SALT_SECRET ALERTS_SECRET; do
   printf '%s=%s\n' "$k" "$(openssl rand -hex 32)"; done   # paste into .env
 openssl rand -base64 48   # → PGBACKREST_REPO1_CIPHER_PASS in .env.backup (also into both password managers)
 ```
 
 Fill in `.env`: `APP_ENV=prod`, `DEPLOY_ENV=prod`, `PUBLIC_BASE_URL=https://pretoscop.ro`,
 `IMAGE_REGISTRY=ghcr.io/OWNER`, R2 (`BLOB_DRIVER=s3`, `S3_ENDPOINT=https://<account>.r2.cloudflarestorage.com`,
-`S3_BUCKET=pretoscop-prod`, keys), Resend (`MAIL_DRIVER=resend`, `RESEND_API_KEY`), `ADMIN_EMAILS`,
+`S3_BUCKET=pretoscop-prod`, keys), Resend (`MAIL_DRIVER=resend`, `RESEND_API_KEY`, and `RESEND_WEBHOOK_SECRET` for M19 bounces), `ADMIN_EMAILS`,
 `OPS_ALERT_*`, the four heartbeat URLs (`infra/monitoring/README.md`), `CRAWL_ENABLED` (true only when
 the recorder moves here; see §5), `BOT_EGRESS_IPS` (M17), and the Deployment section as documented.
 `.env.backup`: the `pretoscop-backups` R2 bucket and its own token.

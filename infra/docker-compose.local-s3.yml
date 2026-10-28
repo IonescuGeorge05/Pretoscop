@@ -65,5 +65,18 @@ services:
     volumes:
       - ${LOCAL_S3_CERTS_DIR}:/etc/ssl/local-s3:ro
 
+  # The web replicas read licensed images from the blob store when MEDIA_BASE_URL is unset (/media).
+  web-1:
+    environment:
+      NODE_EXTRA_CA_CERTS: /etc/ssl/local-s3/ca.crt
+    volumes:
+      - ${LOCAL_S3_CERTS_DIR}:/etc/ssl/local-s3:ro
+
+  web-2:
+    environment:
+      NODE_EXTRA_CA_CERTS: /etc/ssl/local-s3/ca.crt
+    volumes:
+      - ${LOCAL_S3_CERTS_DIR}:/etc/ssl/local-s3:ro
+
 volumes:
   miniodata:

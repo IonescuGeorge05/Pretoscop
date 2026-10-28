@@ -226,9 +226,27 @@ staging="$(curl -sSk -D - -o /dev/null --resolve staging.localhost:8443:127.0.0.
 grep -qi '^x-robots-tag: noindex, nofollow' <<<"$staging" || fail "staging host is not marked noindex"
 health="$(curl -fsSk "$BASE/api/health")"
 [[ "$health" == *'"status":"ok"'* && "$health" == *"\"version\":\"${TAG_A}\""* ]] || fail "unexpected /api/health: ${health}"
+curl -fsSk "$BASE/api/ready" | grep -q '"status":"ready"' || fail "/api/ready (the edge's readiness check) does not answer ready"
 [[ -z "$(app exec -T web-1 printenv ZYTE_API_KEY || true)" ]] || fail "the web replicas can read a worker-only secret (ZYTE_API_KEY)"
 [[ -n "$(app exec -T worker printenv ZYTE_API_KEY || true)" ]] || fail "the worker lost ZYTE_API_KEY"
 ok "HTTPS + 308 + HSTS, staging noindex, /api/health ${TAG_A}; vendor keys reach the worker only"
+
+step "licensed images: a file the worker stores in S3 is served by the web replicas under /media"
+# A 1×1 PNG put by the worker's blob store (as Icecat and feed images are) and read back through
+# Caddy and a web replica's S3 client; other prefixes (snapshots, backups) are never served.
+nopathconv app exec -T worker node --import tsx --input-type=module -e "
+  import { createBlobStore } from '@pretoscop/storage';
+  import { getEnv } from '@pretoscop/config/env';
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+  const blob = createBlobStore(getEnv());
+  await blob.put('images/m18/pixel.png', png, 'image/png');
+  await blob.put('backups/m18/secret.png', png, 'image/png');
+" || fail "the worker could not write to the blob store"
+media="$(curl -fsSk -D "$WORK/media.h" -o "$WORK/pixel.png" -w '%{size_download}' "$BASE/media/images/m18/pixel.png" || true)"
+if [[ "$media" != "68" ]] || ! grep -qi '^content-type: image/png' "$WORK/media.h"; then fail "/media did not serve the image from S3 (${media:-no answer})"; fi
+hidden="$(curl -sk -o /dev/null -w '%{http_code}' "$BASE/media/backups/m18/secret.png")"
+[[ "$hidden" == "404" ]] || fail "/media served a key outside images/ (HTTP ${hidden})"
+ok "images/ served from S3 by the web replicas (68 bytes, image/png); backups/ refused (404)"
 
 step "metrics: worker and Caddy expose every series the alert rules and the dashboard use"
 metrics="$(app exec -T worker curl -fsS http://127.0.0.1:9464/metrics)"
@@ -375,6 +393,7 @@ read -r total bad <"$WORK/probe.out"
 echo "probe: ${total} requests during the deploy, ${bad} not 200"
 ((bad == 0)) || fail "${bad} of ${total} requests failed during the rolling deploy"
 grep -q 'NOTE: postgres has a new image or new settings' "$WORK/deploy-b.log" || fail "deploy.sh did not report the waiting database image"
+for svc in web-1 web-2; do grep -q "draining ${svc}" "$WORK/deploy-b.log" || fail "deploy.sh did not drain ${svc} before replacing it"; done
 [[ "$(app ps -q postgres)" == "$pg_before" ]] || fail "the release restarted PostgreSQL"
 SMOKE_URL="$BASE/api/health" SMOKE_CURL_OPTS=-k infra/scripts/rollback.sh prod
 curl -fsSk "$BASE/api/health" | grep -q "\"version\":\"${TAG_A}\"" || fail "rollback did not bring ${TAG_A} back"

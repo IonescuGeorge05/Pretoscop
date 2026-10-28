@@ -47,9 +47,11 @@ export interface ReviewItem {
  * most valuable first: priority = expected traffic (offers and clicks of the best candidate) ×
  * uncertainty (how close the score is to the middle of the gray zone).
  */
-export async function reviewQueue(db: Db, limit = 50): Promise<{ total: number; items: ReviewItem[] }> {
+export async function reviewQueue(db: Db, limit = 50, opts: { q?: string } = {}): Promise<{ total: number; items: ReviewItem[] }> {
+  const q = opts.q?.trim() ? `%${opts.q.trim().replace(/[%_\\]/g, (c) => `\\${c}`)}%` : null;
+  const filter = q ? sql`AND coalesce(o.title_clean, o.title_raw) ILIKE ${q}` : sql``;
   const total = await db.execute<{ n: string }>(sql`
-    SELECT count(*)::text AS n FROM offers WHERE match_status = 'pending' AND matched_at IS NOT NULL AND active AND NOT blacklisted`);
+    SELECT count(*)::text AS n FROM offers o WHERE o.match_status = 'pending' AND o.matched_at IS NOT NULL AND o.active AND NOT o.blacklisted ${filter}`);
   const rows = await db.execute<{
     id: string; shop: string; shop_name: string; url: string; title: string; brand: string | null; mpn: string | null; gtin14: string | null;
     price: string; total: string; condition: string; seller_type: string; attributes: Record<string, unknown>; category: string | null;
@@ -62,7 +64,7 @@ export async function reviewQueue(db: Db, limit = 50): Promise<{ total: number; 
           LEFT JOIN LATERAL (SELECT count(*) AS n FROM clicks k WHERE k.product_id = p.id AND k.ts > now() - interval '30 days') c30 ON true
           WHERE mc.offer_id = o.id) AS traffic
       FROM offers o JOIN shops s ON s.id = o.shop_id
-      WHERE o.match_status = 'pending' AND o.matched_at IS NOT NULL AND o.active AND NOT o.blacklisted
+      WHERE o.match_status = 'pending' AND o.matched_at IS NOT NULL AND o.active AND NOT o.blacklisted ${filter}
     )
     SELECT id::text, shop, shop_name, url, coalesce(title_clean, title_raw) AS title, brand_name AS brand, coalesce(mpn_raw, mpn_norm) AS mpn, gtin14,
       price::text, total_price::text AS total, condition, seller_type, attributes, category_slug AS category, match_score AS score, match_reason AS reason,

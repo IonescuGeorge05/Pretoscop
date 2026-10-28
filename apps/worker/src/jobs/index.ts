@@ -1,9 +1,11 @@
 import { alertsDeliverJob, alertsEvaluateJob, alertsRetentionJob } from './alerts';
+import { affiliateSyncJob, commissionsImportJob } from './affiliate';
 import { heartbeatJob } from './heartbeat';
 import { partitionsJob, requestLogPruneJob } from './maintenance';
 import { backupJob, restoreTestJob, schedulerTickJob, sourceRunJob } from './recorder';
 import { icecatSyncJob } from './icecat';
 import { matchPendingJob } from './matching';
+import { merchantValidateJob, merchantVerifyDomainJob } from './merchants';
 import { fxRatesJob, rollupDailyJob, rollupTouchJob } from './rollup';
 import type { JobDefinition } from './types';
 
@@ -24,5 +26,9 @@ export const jobs: JobDefinition<any>[] = [
   alertsEvaluateJob,
   alertsDeliverJob,
   alertsRetentionJob,
+  affiliateSyncJob,
+  commissionsImportJob,
   icecatSyncJob,
+  merchantValidateJob,
+  merchantVerifyDomainJob,
 ];

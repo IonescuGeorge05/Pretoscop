@@ -33,3 +33,14 @@ pg-boss workers: ingest, crawl, match, rollup, alerts, index, maintenance.
 - CLIs: `pnpm --filter @pretoscop/worker alerts:run [--products 1,2]` (evaluate + deliver now) and
   `pnpm alerts:simulate <productId> <percent>` (a "[SIMULARE]" message to every active alert of the
   product; no price event, no change to the alert's state).
+
+## Merchant feeds (M20)
+
+- `merchant.validate` fetches a merchant's feed (as `PretoscopBot-Feed`, purpose `feed`) or reads the uploaded file,
+  inspects it (`inspectFeed`), normalizes a preview of 20 offers and stores the report in `merchants.validation`.
+- `merchant.verify_domain` looks for the DNS TXT record on the apex, then for the token file on the domain and on `www.`.
+- Approved merchants get a source `<slug>:feed:merchant` (`config.origin = 'merchant'`, `requireDomain`, `priceFormat`,
+  `uploadedAt` for uploads). `runSource` applies the chosen price format and drops offers off the merchant's domain;
+  `shops:sync` never disables these sources (they are owned by the portal, not by the YAML registry).
+- The fetcher's dispatcher refuses non-public addresses at connect time (`createGuardedDispatcher`), so a feed URL
+  cannot reach the internal network; `FETCH_ALLOW_PRIVATE_HOSTS=true` lifts that in development only.

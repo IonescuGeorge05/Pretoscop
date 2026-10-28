@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 // The throwaway product of packages/db/src/fixtures/e2e.ts, created in global setup.
@@ -30,8 +31,16 @@ export function runTsx(cwd: string, args: string[], env: NodeJS.ProcessEnv = pro
   });
 }
 
-export function fixtureCli(cmd: 'create' | 'drop' | 'clicks'): unknown {
-  const out = runTsx(DB_DIR, ['src/cli/e2e-fixture.ts', cmd]);
+type FixtureCommand =
+  | 'create'
+  | 'drop'
+  | 'clicks'
+  | 'affiliate-allow'
+  | 'affiliate-sync-forbidden'
+  | 'affiliate-restore';
+
+export function fixtureCli(cmd: FixtureCommand, ...args: string[]): unknown {
+  const out = runTsx(DB_DIR, ['src/cli/e2e-fixture.ts', cmd, ...args]);
   const line = out
     .trim()
     .split('\n')
@@ -45,4 +54,16 @@ export function fixture(): E2eFixture {
   const raw = process.env.E2E_FIXTURE;
   if (!raw) throw new Error('E2E_FIXTURE missing: global setup did not run');
   return JSON.parse(raw) as E2eFixture;
+}
+
+/** REVALIDATE_TOKEN from the repo's .env (as the web server under test reads it), else the dev default. */
+export function revalidateToken(): string {
+  try {
+    const env = readFileSync(fileURLToPath(new URL('../../../.env', import.meta.url)), 'utf8');
+    return (
+      /^REVALIDATE_TOKEN=(.+)$/m.exec(env)?.[1]?.trim() || 'dev-only-insecure-secret-change-me'
+    );
+  } catch {
+    return 'dev-only-insecure-secret-change-me';
+  }
 }

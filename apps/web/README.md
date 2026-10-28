@@ -94,3 +94,24 @@ Evidence: `consent_ip_hash`/`confirm_ip_hash` = `hashWithDailySalt('ip', ip)` (t
 UTC day of `consent_at`/`confirmed_at`, derived from HASH_SALT_SECRET), so a claimed IP can be
 checked later while the stored value reveals nothing. Links are signed with ALERTS_SECRET
 (`@pretoscop/notify`). E2E: `E2E_SHARED_FIXTURE=0 pnpm exec playwright test e2e/alerts.spec.ts --project=desktop --workers=1`.
+## Merchant portal (M20)
+
+- **Flag**: `merchants.portal.enabled` (off by default) gates new registrations and submissions; approved feeds keep running
+  when it is off.
+- **Merchant pages**: `/pentru-magazine/autentificare` (magic link, role `merchant`), `/pentru-magazine/cont` (steps: company
+  and CUI with checksum → domain proof → feed URL or upload → price format and delivery → terms and submit; then the pending,
+  approved (dashboard), rejected and suspended views), `/pentru-magazine/termeni` (merchant terms, `merchantTerms.v1`).
+  Forms are server actions with redirect-after-post, so they work without JavaScript; `AutoRefresh` only reloads while a
+  worker check runs.
+- **Domain proof** (the abuse guard against listing someone else's feed): an email address on the shop's domain, a DNS TXT
+  record `pretoscop-verificare=<token>` on the apex, or the token in `/.well-known/pretoscop-verificare.txt`; an admin can
+  also verify manually. Approval requires it, and the worker drops feed offers whose URL is not on that domain.
+- **Checks run in the worker** (`merchant.validate`, `merchant.verify_domain`): feed fetches go through `@pretoscop/fetch`
+  as `PretoscopBot-Feed` (robots.txt, 5 s spacing, public addresses only). The web app only enqueues and shows results.
+- **Upload**: `POST /api/merchant/feed-upload` (multipart, same-site, ≤ `FETCH_MAX_BODY_BYTES`) stores the file in the blob
+  store; an approved upload source is observed at upload time and never scheduled.
+- **Admin**: `/admin/comercianti` (queue and detail): approve (creates or attaches the shop and the
+  `<slug>:feed:merchant` source, every 4 hours), reject / suspend with a statement of reasons (category + facts, emailed;
+  P2B art. 4), reinstate, manual domain verification, re-check, run now. Every decision is in `audit_log`.
+- **Development only**: with `FETCH_ALLOW_PRIVATE_HOSTS=true` (refused in staging and production) a feed URL may point to a
+  local IP and port, which the e2e flow uses.

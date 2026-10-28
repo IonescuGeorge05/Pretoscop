@@ -153,7 +153,7 @@ The consent choice itself is stored only in the visitor's browser (`localStorage
 | Transfers | Resend (US): DPF or SCCs |
 | Retention | While the account is active and 3 years after it is closed (evidence of decisions and of the contract; general limitation period); invoices per the accounting law (setup B4). Job pending |
 | Security | Magic-link login; a merchant only lists offers whose product URLs are on the domain it proved it controls; feed URLs are fetched by the worker, which refuses private addresses |
-| Implementation | `merchants` (migration 0014), `/pentru-magazine/cont`, `/admin/comercianti` |
+| Implementation | `merchants` (migration 0015), `/pentru-magazine/cont`, `/admin/comercianti` |
 
 ### P10. Error monitoring
 
@@ -193,7 +193,7 @@ The consent choice itself is stored only in the visitor's browser (`localStorage
 | Transfers | None beyond the mailbox provider (`dpa-list.md`) |
 | Retention | While the shop is in the registry; deleted with the shop |
 | Security | Admin only (magic link + email allowlist); every change in `audit_log`; guidance to never store guessed personal addresses (`infra/bot-program/outreach-templates.md`) |
-| Implementation | `outreach` (migration 0016) |
+| Implementation | `outreach` (migration 0018), `/admin/contactari` |
 
 ## Technical and organisational measures (Art. 32, summary)
 

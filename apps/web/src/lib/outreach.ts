@@ -39,3 +39,60 @@ export const OUTREACH_TEMPLATES: Record<string, string> = {
 export function isContacted(status: OutreachStatus): boolean {
   return status !== 'planned';
 }
+
+/** `value` is an own key of `record` (never `constructor`, `__proto__`, … from the prototype). */
+export function isOwnKey<K extends string>(record: Record<K, unknown>, value: string): value is K {
+  return Object.hasOwn(record, value);
+}
+
+/**
+ * Free mailbox providers: an address there is a private person's, not a shop's business channel,
+ * so the tracker refuses it (data minimization, docs/legal/ropa.md P12).
+ */
+const PERSONAL_MAIL_DOMAINS = new Set([
+  'gmail.com',
+  'googlemail.com',
+  'yahoo.com',
+  'yahoo.ro',
+  'ymail.com',
+  'hotmail.com',
+  'outlook.com',
+  'live.com',
+  'msn.com',
+  'icloud.com',
+  'me.com',
+  'aol.com',
+  'gmx.com',
+  'gmx.net',
+  'mail.com',
+  'proton.me',
+  'protonmail.com',
+]);
+
+export type ContactCheck = { ok: true; value: string | null } | { ok: false; reason: 'format' | 'personal' };
+
+/**
+ * The tracker keeps one business channel per contact: a role address (`parteneriate@magazin.ro`),
+ * a contact-form URL or a switchboard number. Names of people, free text and addresses at free
+ * mailbox providers are refused.
+ */
+export function checkContact(raw: string): ContactCheck {
+  const v = raw.trim();
+  if (v === '') return { ok: true, value: null };
+  if (v.length > 200) return { ok: false, reason: 'format' };
+  if (/^[^\s@<>()",;:]+@([a-z0-9-]+\.)+[a-z]{2,}$/i.test(v)) {
+    const domain = v.slice(v.lastIndexOf('@') + 1).toLowerCase();
+    return PERSONAL_MAIL_DOMAINS.has(domain) ? { ok: false, reason: 'personal' } : { ok: true, value: v.toLowerCase() };
+  }
+  if (/^https?:\/\/\S+$/i.test(v)) {
+    try {
+      const url = new URL(v);
+      return url.username || url.password ? { ok: false, reason: 'format' } : { ok: true, value: url.href };
+    } catch {
+      return { ok: false, reason: 'format' };
+    }
+  }
+  const digits = v.replace(/\D/g, '');
+  if (/^\+?[\d\s().\-/]+$/.test(v) && digits.length >= 6 && digits.length <= 15) return { ok: true, value: v };
+  return { ok: false, reason: 'format' };
+}

@@ -207,6 +207,8 @@ export async function dropE2eFixture(db: Db): Promise<number> {
   await db.execute(sql`DELETE FROM clicks WHERE offer_id IN (SELECT id FROM offers WHERE external_id LIKE ${like})`);
   await db.execute(sql`DELETE FROM offer_aliases WHERE external_id LIKE ${like}`);
   await db.execute(sql`DELETE FROM offers WHERE external_id LIKE ${like}`);
+  // Throwaway shops of the admin e2e flows (M21 outreach): never crawled, no offers; cascades remove their rows.
+  await db.execute(sql`DELETE FROM shops WHERE slug LIKE ${like} AND NOT EXISTS (SELECT 1 FROM offers o WHERE o.shop_id = shops.id)`);
   if (productIds.length) {
     const ids = sql.param(productIds);
     await db.execute(sql`DELETE FROM product_merges WHERE from_product_id = ANY(${ids}::bigint[]) OR into_product_id = ANY(${ids}::bigint[])`);

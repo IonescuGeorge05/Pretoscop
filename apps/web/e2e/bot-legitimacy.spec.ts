@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { DIRECTORY_MEDIA_TYPE, jwkThumbprint, verifyDirectoryResponse, type DirectoryJwk } from '@pretoscop/fetch/signing';
 import { expect, test, type Page } from '@playwright/test';
@@ -10,8 +11,22 @@ import { expect, test, type Page } from '@playwright/test';
 
 const MAILPIT = 'http://localhost:8025/api/v1';
 const ADMIN = 'admin@pretoscop.test';
-const DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://pretoscop:pretoscop@localhost:5432/pretoscop';
+/** The database the web server under test uses: the environment, else the repo's .env (as `getEnv` reads it). */
+function databaseUrl(): string {
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+  try {
+    const env = readFileSync(new URL('../../../.env', import.meta.url), 'utf8');
+    const fromFile = /^DATABASE_URL=(.+)$/m.exec(env)?.[1]?.trim();
+    if (fromFile) return fromFile;
+  } catch {
+    // no .env: the dev default below
+  }
+  return 'postgres://pretoscop:pretoscop@localhost:5432/pretoscop';
+}
+const DATABASE_URL = databaseUrl();
 const ui = expect.configure({ timeout: 20_000 });
+/** Throwaway shop of the outreach test; `dropE2eFixture` removes leftovers (`e2e-fixture-` slugs). */
+const OUTREACH_SHOP = 'e2e-fixture-outreach';
 
 const requireFromDb = createRequire(new URL('../../../packages/db/package.json', import.meta.url));
 interface PgClient {
@@ -96,22 +111,34 @@ test.describe('bot legitimacy', () => {
     await expect(page.getByRole('link', { name: 'contul de magazin' })).toHaveAttribute('href', '/pentru-magazine/cont');
   });
 
-  test('the outreach tracker records a contact and its answer', async ({ page }) => {
+  test('the outreach tracker keeps business contacts only, audits without them, and erases on request', async ({ page }) => {
     test.setTimeout(120_000);
-    const [shop] = await query<{ id: string; name: string }>(`SELECT id::text, name FROM shops WHERE slug = 'pcgarage'`);
-    expect(shop).toBeTruthy();
-    await query(`DELETE FROM outreach WHERE shop_id = $1`, [shop!.id]);
+    // A throwaway shop (paused, no sources: never crawled), so real outreach entries are never touched.
+    await query(`DELETE FROM shops WHERE slug = $1`, [OUTREACH_SHOP]);
+    const [shop] = await query<{ id: string; name: string }>(
+      `INSERT INTO shops (slug, name, domain, website_url, status, access_mode) VALUES ($1, $2, 'e2e-fixture-outreach.test', 'https://www.e2e-fixture-outreach.test', 'paused', 'off') RETURNING id::text, name`,
+      [OUTREACH_SHOP, 'Magazin contactări (produs de test E2E)'],
+    );
     try {
       await login(page);
       await page.goto('/admin/contactari');
       const before = Number(await page.getByTestId('outreach-contacted').innerText());
       const form = page.getByTestId('outreach-form');
-      await form.getByLabel('Magazin').selectOption({ value: shop!.id });
-      await form.getByLabel('Scop').selectOption('feed_or_allowlist');
-      await form.getByLabel('Canal').selectOption('email');
-      await form.getByLabel('Șablon').selectOption('feed-listing-v1');
-      await form.getByLabel('Contact (adresă de rol, formular, centrală)').fill('marketing@pcgarage.ro');
-      await form.getByRole('button', { name: 'Adaugă' }).click();
+      const fill = async (contact: string) => {
+        await form.getByLabel('Magazin').selectOption({ value: shop!.id });
+        await form.getByLabel('Scop').selectOption('feed_or_allowlist');
+        await form.getByLabel('Canal').selectOption('email');
+        await form.getByLabel('Șablon').selectOption('feed-listing-v1');
+        await form.getByLabel('Contact (adresă de rol, formular, centrală)').fill(contact);
+        await form.getByRole('button', { name: 'Adaugă' }).click();
+      };
+
+      // A private mailbox is refused, nothing stored.
+      await fill('ion.popescu@gmail.com');
+      await ui(page.getByRole('alert')).toContainText('Nu păstrăm adrese personale');
+      expect(await query(`SELECT 1 FROM outreach WHERE shop_id = $1`, [shop!.id])).toHaveLength(0);
+
+      await fill('marketing@e2e-fixture-outreach.test');
       await ui(page.getByRole('status')).toHaveText('Contactarea a fost adăugată.');
       await expect(page.getByTestId('outreach-contacted')).toHaveText(String(before + 1));
 
@@ -122,10 +149,24 @@ test.describe('bot legitimacy', () => {
       await tr.getByRole('button', { name: 'Salvează' }).click();
       await ui(page.getByRole('status')).toHaveText('Contactarea a fost actualizată.');
       await expect(page.getByTestId(`outreach-row-${row!.id}`)).toContainText('Au răspuns');
-      const audit = await query<{ action: string }>(`SELECT action FROM audit_log WHERE entity = 'outreach' AND entity_id = $1 ORDER BY id`, [row!.id]);
-      expect(audit.map((a) => a.action)).toEqual(['outreach.create', 'outreach.update']);
+
+      await page.getByTestId(`outreach-row-${row!.id}`).getByLabel(`Confirm ștergerea contactării pentru ${shop!.name}`).check();
+      await page.getByTestId(`outreach-row-${row!.id}`).getByRole('button', { name: 'Șterge' }).click();
+      await ui(page.getByRole('status')).toHaveText('Contactarea a fost ștearsă.');
+      await expect(page.getByTestId(`outreach-row-${row!.id}`)).toHaveCount(0);
+      expect(await query(`SELECT 1 FROM outreach WHERE shop_id = $1`, [shop!.id])).toHaveLength(0);
+
+      const audit = await query<{ action: string; data: string }>(
+        `SELECT action, coalesce(before::text, '') || coalesce(after::text, '') AS data FROM audit_log WHERE entity = 'outreach' AND entity_id = $1 ORDER BY id`,
+        [row!.id],
+      );
+      expect(audit.map((a) => a.action)).toEqual(['outreach.create', 'outreach.update', 'outreach.delete']);
+      for (const a of audit) {
+        expect(a.data).not.toContain('marketing@');
+        expect(a.data).not.toContain('echipa tehnică');
+      }
     } finally {
-      await query(`DELETE FROM outreach WHERE shop_id = $1`, [shop!.id]);
+      await query(`DELETE FROM shops WHERE slug = $1`, [OUTREACH_SHOP]);
     }
   });
 });

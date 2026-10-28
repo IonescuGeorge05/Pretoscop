@@ -14,7 +14,8 @@
     "replay": "tsx src/cli/replay.ts",
     "backup": "tsx src/cli/backup.ts",
     "stats:show": "tsx src/cli/stats-show.ts",
-    "match:run": "tsx src/cli/match-run.ts"
+    "match:run": "tsx src/cli/match-run.ts",
+    "bot:check": "tsx src/cli/bot-check.ts"
   },
   "devDependencies": {
     "pino-pretty": "^13.2.0"

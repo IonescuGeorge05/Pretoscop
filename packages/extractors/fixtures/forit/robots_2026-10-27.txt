@@ -1,0 +1,202 @@
+# robots.txt
+
+User-agent: *
+Disallow: /lib/
+Disallow: /account/
+Disallow: /checkout/
+Disallow: /pay/
+Disallow: /compare-products/
+Disallow: /cauta/
+# Capcanele de filtre: adancime mare (_f de 4+ ori) si /filtre/ cu 2+ segmente. Restul: permis.
+# 🔴 NU readauga `Disallow: /*+`. Pare sa prinda filtre combinate (brand1+brand2), dar in
+# logul de trafic nu exista NICIUN URL de filtru cu `+` in cale — filtrele sunt `_f{id}-{val}`
+# sau `/filtre/{nume}/`. In schimb prinde pagini de PRODUS reale, pentru ca `+` ramane in slug
+# din numele comercial: `dvd+r`, `80+ gold`, `super-a3+`, `4+128gb`, `fonta-pura+capac`.
+# Google Merchant le-a respins cu `landing_page_crawling_not_allowed` (74 produse, 01.08.2026).
+Disallow: /*_f*/
+# 02.08.2026: largit la ORICE /filtre/
+Disallow: /*/filtre/
+
+
+# ── AI / search crawlers ──
+# ATENTIE: un grup specific de User-agent IGNORA complet "User-agent: *",
+# deci repetam Disallow-urile in fiecare grup. Blocam DOAR filtrele; restul e permis.
+
+User-agent: ClaudeBot
+Crawl-delay: 10
+Disallow: /lib/
+Disallow: /account/
+Disallow: /checkout/
+Disallow: /pay/
+Disallow: /compare-products/
+Disallow: /cauta/
+Disallow: /*_f*/
+Disallow: /*/filtre/
+
+# Claude-SearchBot este un UA DISTINCT de ClaudeBot (cel mai agresiv acum)
+User-agent: Claude-SearchBot
+Crawl-delay: 10
+Disallow: /lib/
+Disallow: /account/
+Disallow: /checkout/
+Disallow: /pay/
+Disallow: /compare-products/
+Disallow: /cauta/
+Disallow: /*_f*/
+Disallow: /*/filtre/
+
+
+# Adaugati 02.08.2026 (cerere Octav: lasam Claude, ChatGPT, Gemini, Perplexity).
+# *-User / *-SearchBot = agentul care aduce pagina cand un OM intreaba asistentul;
+# e alt UA decat crawlerul de antrenament, deci trebuie permis separat.
+
+# OAI-AdsBot = crawlerul care valideaza landing page-ul unei reclame ChatGPT Ads.
+# OBLIGATORIU permis, altfel reclama e respinsa la review (06.09.2026).
+# Fara Crawl-delay: validarea reclamei trebuie sa fie rapida.
+User-agent: OAI-AdsBot
+Allow: /
+Disallow: /lib/
+Disallow: /account/
+Disallow: /checkout/
+Disallow: /pay/
+Disallow: /compare-products/
+Disallow: /cauta/
+Disallow: /*_f*/
+Disallow: /*/filtre/
+
+User-agent: OAI-SearchBot
+Crawl-delay: 10
+Disallow: /lib/
+Disallow: /account/
+Disallow: /checkout/
+Disallow: /pay/
+Disallow: /compare-products/
+Disallow: /cauta/
+Disallow: /*_f*/
+Disallow: /*/filtre/
+
+User-agent: ChatGPT-User
+Crawl-delay: 10
+Disallow: /lib/
+Disallow: /account/
+Disallow: /checkout/
+Disallow: /pay/
+Disallow: /compare-products/
+Disallow: /cauta/
+Disallow: /*_f*/
+Disallow: /*/filtre/
+
+User-agent: Claude-User
+Crawl-delay: 10
+Disallow: /lib/
+Disallow: /account/
+Disallow: /checkout/
+Disallow: /pay/
+Disallow: /compare-products/
+Disallow: /cauta/
+Disallow: /*_f*/
+Disallow: /*/filtre/
+
+User-agent: Perplexity-User
+Crawl-delay: 10
+Disallow: /lib/
+Disallow: /account/
+Disallow: /checkout/
+Disallow: /pay/
+Disallow: /compare-products/
+Disallow: /cauta/
+Disallow: /*_f*/
+Disallow: /*/filtre/
+
+# meta-webindexer (crawler de indexare Meta) — BLOCAT COMPLET. ~85% din trafic, fara valoare SEO.
+# Nu afecteaza preview share Facebook/Instagram (acela = facebookexternalhit).
+User-agent: meta-webindexer
+Disallow: /
+
+User-agent: meta-externalagent
+Disallow: /lib/
+Disallow: /account/
+Disallow: /checkout/
+Disallow: /pay/
+Disallow: /compare-products/
+Disallow: /cauta/
+Disallow: /*_f*/
+Disallow: /*/filtre/
+
+User-agent: GPTBot
+Crawl-delay: 10
+Disallow: /lib/
+Disallow: /account/
+Disallow: /checkout/
+Disallow: /pay/
+Disallow: /compare-products/
+Disallow: /cauta/
+Disallow: /*_f*/
+Disallow: /*/filtre/
+
+User-agent: PerplexityBot
+Crawl-delay: 10
+Disallow: /lib/
+Disallow: /account/
+Disallow: /checkout/
+Disallow: /pay/
+Disallow: /compare-products/
+Disallow: /cauta/
+Disallow: /*_f*/
+Disallow: /*/filtre/
+
+User-agent: bingbot
+Crawl-delay: 10
+Disallow: /lib/
+Disallow: /account/
+Disallow: /checkout/
+Disallow: /pay/
+Disallow: /compare-products/
+Disallow: /cauta/
+Disallow: /*_f*/
+Disallow: /*/filtre/
+
+User-agent: AhrefsBot
+Crawl-delay: 30
+Disallow: /lib/
+Disallow: /account/
+Disallow: /checkout/
+Disallow: /pay/
+Disallow: /compare-products/
+Disallow: /cauta/
+Disallow: /*_f*/
+Disallow: /*/filtre/
+
+User-agent: Google-Extended
+Crawl-delay: 10
+Disallow: /cauta/
+Disallow: /*_f*/
+Disallow: /*/filtre/
+
+
+# Harta de sitemap-uri (sitemapindex). Google descopera de aici toate fisierele
+# copil: categorii+branduri si cele 5 bucati de produse cu imagini.
+Sitemap: https://www.forit.ro/sitemap.xml
+
+# respecta Crawl-delay
+User-agent: Applebot
+Crawl-delay: 10
+Disallow: /lib/
+Disallow: /account/
+Disallow: /checkout/
+Disallow: /pay/
+Disallow: /compare-products/
+Disallow: /cauta/
+Disallow: /*_f*/
+Disallow: /*/filtre/
+
+# ignora Crawl-delay (politica Google) - conteaza doar Disallow
+User-agent: GoogleOther
+Disallow: /lib/
+Disallow: /account/
+Disallow: /checkout/
+Disallow: /pay/
+Disallow: /compare-products/
+Disallow: /cauta/
+Disallow: /*_f*/
+Disallow: /*/filtre/

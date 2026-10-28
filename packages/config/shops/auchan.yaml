@@ -1,3 +1,7 @@
+# Auchan — hypermarket chain on VTEX IO. M10 (2026-10-27): electronics and appliance category
+# pages, read from the page's embedded VTEX state (EAN, price, list price, stock). The VTEX catalogue
+# JSON API is public and allowed by robots.txt but is not used: HTML pages are enough and an API
+# call would need a founder decision (terms not reviewed).
 slug: auchan
 name: "Auchan"
 domain: auchan.ro
@@ -8,13 +12,140 @@ access_mode: direct
 trust_tier: 2
 categories: [electronice, electrocasnice]
 legal:
-  basis_ref: "robots.txt allows product pages; recon 2026-10-27 served the honest bot"
+  basis_ref: "robots.txt allows product and category pages; recon 2026-10-27 served the honest bot"
+  robots_note: "Disallows /account/, /checkout/, /busca/, /*?map=, /*?order=, /*?query= (and & forms); explicitly allows /*?page=. The site's own pagination links use ?map= (disallowed): the parser builds ?page=N instead."
 shipping:
-  notes: "De verificat la onboarding."
+  notes: "Livrarea depinde de metoda aleasă (domiciliu, ridicare) și de localitate; «costurile de transport și taxele sunt calculate la Coș» (pagina de categorie, 2026-10-27). Necunoscut."
   verified: false
 crawl_policy:
   min_interval_ms: 5000
   max_pages_per_day: 1000
-  freshness_slo_hours: 72
-notes: "VTEX; JSON-LD; public VTEX catalogue JSON only if robots and terms allow (M10)."
-sources: []
+  freshness_slo_hours: 26
+probes:
+  - date: "2026-10-27"
+    vantage: "founder home connection (Mac), PretoscopBot via @pretoscop/fetch (M10)"
+    result: served
+    note: "robots, sitemap index, category sitemap 200; /…/televizoare → 301 /…/televizoare/c?v=bot (bot rendering) 200, 4.4 MB: 24 products in the state, only 4 priced (in stock), 117 in the category; ?page=2 200 with 0 priced"
+notes: "Online electronics range is small and mostly unavailable (Price 0 in the state = not sold online): such products are skipped and the listing stops at the first page without a priced product. Brand field unreliable (TCL televisions carry the supplier 'AEC'); EAN on every SKU."
+sources:
+  - key: auchan:listing:televizoare
+    kind: listing
+    url: https://www.auchan.ro/electro-climatizare-si-aparate-ingrijire/electronice/televizoare/c
+    parser_key: vtex-listing
+    schedule: "20 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 5
+      label: "Televizoare"
+      tier: B
+  - key: auchan:listing:telefoane
+    kind: listing
+    url: https://www.auchan.ro/electro-climatizare-si-aparate-ingrijire/electronice/telefoane/c
+    parser_key: vtex-listing
+    schedule: "23 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 5
+      label: "Telefoane"
+      tier: B
+  - key: auchan:listing:wearables
+    kind: listing
+    url: https://www.auchan.ro/electro-climatizare-si-aparate-ingrijire/electronice/wearables/c
+    parser_key: vtex-listing
+    schedule: "26 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 3
+      label: "Wearables"
+      tier: B
+  - key: auchan:listing:audio
+    kind: listing
+    url: https://www.auchan.ro/electro-climatizare-si-aparate-ingrijire/electronice/audio/c
+    parser_key: vtex-listing
+    schedule: "29 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 3
+      label: "Audio"
+      tier: B
+  - key: auchan:listing:electrocasnice-mari
+    kind: listing
+    url: https://www.auchan.ro/electro-climatizare-si-aparate-ingrijire/electrocasnice/electrocasnice-mari/c
+    parser_key: vtex-listing
+    schedule: "32 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 5
+      label: "Electrocasnice mari"
+      tier: B
+  - key: auchan:listing:cuptoare-cu-microunde
+    kind: listing
+    url: https://www.auchan.ro/electro-climatizare-si-aparate-ingrijire/electrocasnice/cuptoare-cu-microunde/c
+    parser_key: vtex-listing
+    schedule: "35 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 3
+      label: "Cuptoare cu microunde"
+      tier: B
+  - key: auchan:listing:aspiratoare
+    kind: listing
+    url: https://www.auchan.ro/electro-climatizare-si-aparate-ingrijire/electrocasnice/aspiratoare/c
+    parser_key: vtex-listing
+    schedule: "38 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 3
+      label: "Aspiratoare"
+      tier: B
+  - key: auchan:listing:espressoare-si-cafetiere
+    kind: listing
+    url: https://www.auchan.ro/electro-climatizare-si-aparate-ingrijire/electrocasnice/espressoare-si-cafetiere/c
+    parser_key: vtex-listing
+    schedule: "41 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 3
+      label: "Espressoare și cafetiere"
+      tier: B
+  - key: auchan:listing:roboti-mixere-si-blendere
+    kind: listing
+    url: https://www.auchan.ro/electro-climatizare-si-aparate-ingrijire/electrocasnice/roboti-mixere-si-blendere/c
+    parser_key: vtex-listing
+    schedule: "44 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 3
+      label: "Roboți, mixere și blendere"
+      tier: B
+  - key: auchan:listing:friteuze-si-gratare-electrice
+    kind: listing
+    url: https://www.auchan.ro/electro-climatizare-si-aparate-ingrijire/electrocasnice/friteuze-si-gratare-electrice/c
+    parser_key: vtex-listing
+    schedule: "47 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 3
+      label: "Friteuze și grătare electrice"
+      tier: B
+  - key: auchan:listing:aparate-aer-conditionat
+    kind: listing
+    url: https://www.auchan.ro/electro-climatizare-si-aparate-ingrijire/climatizare/aparate-aer-conditionat/c
+    parser_key: vtex-listing
+    schedule: "50 3 * * *"
+    enabled: true
+    freshness_slo_hours: 26
+    config:
+      max_pages: 3
+      label: "Aparate de aer condiționat"
+      tier: B

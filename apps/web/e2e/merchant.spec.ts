@@ -238,7 +238,8 @@ test.describe('merchant portal', () => {
         async () => {
           const [r] = await query<{ slug: string }>(
             `SELECT p.slug FROM offers o JOIN products p ON p.id = o.product_id JOIN shops s ON s.id = o.shop_id
-             WHERE s.domain = $1 AND o.external_id = 'TS-1' AND o.match_status IN ('auto','manual')`,
+             WHERE s.domain = $1 AND o.active AND o.match_status IN ('auto','manual') AND p.status = 'active'
+             ORDER BY o.external_id LIMIT 1`,
             [DOMAIN],
           );
           slug = r?.slug ?? '';

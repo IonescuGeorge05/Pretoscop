@@ -19,7 +19,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { db, serverEnv } from '@/lib/db';
 import {
-  CHECK_COOLDOWN_SECONDS,
+  checkRefusal,
   emailVerifies,
   enqueueCheck,
   ensureMerchant,
@@ -29,7 +29,6 @@ import {
   PORTAL_PATH,
   requirePortalUser,
   runSourceNow,
-  secondsSince,
   setMerchantFeedFreshness,
 } from '@/lib/merchant';
 import { mailSubmitted } from '@/lib/merchant-mail';
@@ -118,8 +117,8 @@ export async function checkDomain(): Promise<void> {
   const m = await merchantOf(user.id);
   if (!m?.domain) back({ eroare: 'site' }, 'pas-1');
   if (m.domainVerifiedAt) back({ ok: 'domeniu' }, 'pas-2');
-  if (secondsSince(m.domainCheck?.requestedAt) < CHECK_COOLDOWN_SECONDS.verifyDomain) back({ eroare: 'asteapta' }, 'pas-2');
-  if (await overDailyLimit(m.id, 'domainChecks')) back({ eroare: 'limita' }, 'pas-2');
+  const refusal = await checkRefusal(m, 'domain');
+  if (refusal) back({ eroare: refusal }, 'pas-2');
   await audit(`merchant:${user.id}`, 'merchant.domain_check', m.id, { domain: m.domain });
   await enqueueCheck('verifyDomain', m.id);
   revalidatePath(PORTAL_PATH);
@@ -151,8 +150,8 @@ export async function saveFeedUrl(form: FormData): Promise<void> {
   if (foreign) back({ eroare: 'gazda' }, 'pas-3');
   const formatRaw = String(form.get('feedFormat') ?? 'auto');
   const feedFormat = FORMATS.has(formatRaw as MerchantFeedFormat) ? (formatRaw as MerchantFeedFormat) : null;
-  if (secondsSince(m.validation?.requestedAt) < CHECK_COOLDOWN_SECONDS.validate) back({ eroare: 'asteapta' }, 'pas-3');
-  if (await overDailyLimit(m.id, 'feedChecks')) back({ eroare: 'limita' }, 'pas-3');
+  const refusal = await checkRefusal(m, 'feed');
+  if (refusal) back({ eroare: refusal }, 'pas-3');
   await db().update(merchants).set({ feedUrl: url.toString(), feedUploadKey: null, feedUploadedAt: null, feedFormat }).where(eq(merchants.id, m.id));
   if (m.status === 'approved' || m.status === 'suspended') {
     // Offers must still link to the verified domain (requireDomain), so a new address needs no new approval.
@@ -174,8 +173,8 @@ export async function recheckFeed(): Promise<void> {
   const user = await requirePortalUser();
   const m = await merchantOf(user.id);
   if (!m || (!m.feedUrl && !m.feedUploadKey)) back({ eroare: 'fara_feed' }, 'pas-3');
-  if (secondsSince(m.validation?.requestedAt) < CHECK_COOLDOWN_SECONDS.validate) back({ eroare: 'asteapta' }, 'pas-3');
-  if (await overDailyLimit(m.id, 'feedChecks')) back({ eroare: 'limita' }, 'pas-3');
+  const refusal = await checkRefusal(m, 'feed');
+  if (refusal) back({ eroare: refusal }, 'pas-3');
   await audit(`merchant:${user.id}`, 'merchant.feed_recheck', m.id, {});
   await enqueueCheck('validate', m.id);
   revalidatePath(PORTAL_PATH);
@@ -203,8 +202,8 @@ export async function saveSettings(form: FormData): Promise<void> {
   if (freeOver === 'invalid' || flat === 'invalid' || lockerFlat === 'invalid') back({ eroare: 'livrare' }, 'pas-4');
   const recheck = Boolean(m.feedUrl || m.feedUploadKey);
   // The report must be redone with the new settings: refuse while a check would be refused.
-  if (recheck && secondsSince(m.validation?.requestedAt) < CHECK_COOLDOWN_SECONDS.validate) back({ eroare: 'asteapta' }, 'pas-4');
-  if (recheck && (await overDailyLimit(m.id, 'feedChecks'))) back({ eroare: 'limita' }, 'pas-4');
+  const refusal = recheck ? await checkRefusal(m, 'feed') : null;
+  if (refusal) back({ eroare: refusal }, 'pas-4');
   const shippingRules = { free_over: freeOver, flat, locker_flat: lockerFlat };
   await db().update(merchants).set({ priceFormat, shippingRules }).where(eq(merchants.id, m.id));
   if (m.status === 'approved' || m.status === 'suspended') {

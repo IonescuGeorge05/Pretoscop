@@ -95,7 +95,7 @@ describe('dashboardHints', () => {
     expect(text).toMatch(/5 produse din ultima citire au fost respinse/);
     expect(text).toMatch(/60% dintre oferte nu sunt încă potrivite/);
     expect(text).toMatch(/codul EAN la 30 oferte/);
-    expect(text).toMatch(/5 oferte nu au mai fost confirmate de feed în ultimele 72 ore/);
+    expect(text).toMatch(/5 oferte nu au mai fost confirmate de feed în ultimele 72 de ore/);
     expect(text).toMatch(/La 12 oferte nu știm costul livrării/);
   });
 });

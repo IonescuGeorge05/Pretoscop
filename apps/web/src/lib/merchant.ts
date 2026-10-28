@@ -76,6 +76,25 @@ export async function overDailyLimit(merchantId: number, kind: keyof typeof MERC
 }
 
 /**
+ * Why a check the merchant asks for must wait (null: it may run now). The cooldown holds whatever
+ * address is given (a new URL is no way around it), an upload waits a minute after the previous
+ * one, and every kind has a rolling 24-hour cap.
+ */
+export async function checkRefusal(
+  m: Pick<Merchant, 'id' | 'validation' | 'domainCheck' | 'feedUploadedAt'>,
+  kind: 'feed' | 'upload' | 'domain',
+): Promise<'asteapta' | 'limita' | null> {
+  if (kind === 'domain') {
+    if (secondsSince(m.domainCheck?.requestedAt) < CHECK_COOLDOWN_SECONDS.verifyDomain) return 'asteapta';
+    return (await overDailyLimit(m.id, 'domainChecks')) ? 'limita' : null;
+  }
+  if (secondsSince(m.validation?.requestedAt) < CHECK_COOLDOWN_SECONDS.validate) return 'asteapta';
+  if (kind === 'upload' && secondsSince(m.feedUploadedAt) < CHECK_COOLDOWN_SECONDS.upload) return 'asteapta';
+  if (kind === 'upload' && (await overDailyLimit(m.id, 'uploads'))) return 'limita';
+  return (await overDailyLimit(m.id, 'feedChecks')) ? 'limita' : null;
+}
+
+/**
  * Queues a worker check. The queues are pg-boss `stately`: with the merchant id as singleton key,
  * one check per merchant waits and one runs; the waiting one reads the latest state when it starts.
  */

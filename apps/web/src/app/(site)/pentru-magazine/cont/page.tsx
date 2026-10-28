@@ -11,7 +11,7 @@ import { SignOutButton } from '@/components/merchant/sign-out';
 import { Button } from '@/components/ui/button';
 import { Container } from '@/components/ui/container';
 import { cn } from '@/lib/cn';
-import { formatDateTime, formatLei, formatRelative } from '@/lib/format';
+import { formatDateTime, formatLei, formatRelative, plural } from '@/lib/format';
 import { merchantDashboard, merchantOf, portalOpen, requirePortalUser, uploadFreshnessHours, type Merchant } from '@/lib/merchant';
 import { listingReportProblem } from '@pretoscop/db';
 import { dashboardHints, FORMAT_LABELS, STATUS_LABELS } from '@/lib/merchant-hints';
@@ -205,7 +205,7 @@ function FeedForms({ m, uploadHours }: { m: Merchant; uploadHours: number }) {
         <summary className="cursor-pointer text-sm font-semibold text-ink">Nu ai o adresă? Încarcă fișierul</summary>
         <form action="/api/merchant/feed-upload" method="post" encType="multipart/form-data" className="mt-3 space-y-3">
           <p className="text-sm">
-            Un fișier încărcat nu se actualizează singur: prețurile lui apar ca „verificate” la momentul încărcării și devin gri după {uploadHours >= 48 ? `${uploadHours / 24} zile` : `${uploadHours} ore`}. Recomandăm o adresă.
+            Un fișier încărcat nu se actualizează singur: prețurile lui apar ca „verificate” la momentul încărcării și devin gri după {uploadHours % 24 === 0 ? plural(uploadHours / 24, 'zi', 'zile') : plural(uploadHours, 'oră', 'ore')}. Recomandăm o adresă.
           </p>
           <label id="feedFile-label" htmlFor="feedFile" className={label}>
             Fișierul feed-ului (XML sau CSV, cel mult 15 MB)
@@ -351,7 +351,7 @@ async function Dashboard({ m }: { m: Merchant }) {
     ['Potrivite cu produse', `${matchedPct}%`, `${d.matched} oferte`],
     ['Clicuri (30 de zile)', new Intl.NumberFormat('ro-RO').format(d.clicks30)],
     ['Ultima citire reușită', d.source?.last_success_at ? formatRelative(d.source.last_success_at) : '—', d.source?.health === 'ok' ? 'fără probleme' : d.source ? `stare: ${d.source.health}` : undefined],
-    ['Oferte proaspete', `${freshPct}%`, `confirmate de feed în ultimele ${d.freshnessHours} ore`],
+    ['Oferte proaspete', `${freshPct}%`, `confirmate de feed în ultimele ${plural(d.freshnessHours, 'oră', 'ore')}`],
   ];
   return (
     <section id="panou" aria-labelledby="panou-titlu" className="space-y-6">

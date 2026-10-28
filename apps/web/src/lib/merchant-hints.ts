@@ -1,4 +1,5 @@
 import type { MerchantFeedReport, MerchantStatus } from '@pretoscop/db/schema';
+import { plural } from './format';
 
 /** Why a feed check cannot support a submission or an approval (`listingReportProblem` in @pretoscop/db). */
 export const REPORT_PROBLEM_LABELS = {
@@ -151,7 +152,7 @@ export function dashboardHints(s: {
   if (s.activeOffers > 0 && s.withGtin < s.activeOffers) {
     out.push({ level: 'info', text: `Adaugă codul EAN la ${s.activeOffers - s.withGtin} oferte.` });
   }
-  if (s.stale > 0) out.push({ level: 'warn', text: `${s.stale} oferte nu au mai fost confirmate de feed în ultimele ${s.freshnessHours} ore și apar cu gri.` });
+  if (s.stale > 0) out.push({ level: 'warn', text: `${s.stale} oferte nu au mai fost confirmate de feed în ultimele ${plural(s.freshnessHours, 'oră', 'ore')} și apar cu gri.` });
   if (s.shippingUnknown > 0) out.push({ level: 'info', text: `La ${s.shippingUnknown} oferte nu știm costul livrării: adaugă-l în feed sau completează regulile de livrare.` });
   return out;
 }

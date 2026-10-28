@@ -3,17 +3,7 @@ import { createBlobStore } from '@pretoscop/storage';
 import { getSession } from '@/lib/auth';
 import { readBodyCapped } from '@/lib/body';
 import { db, serverEnv } from '@/lib/db';
-import {
-  CHECK_COOLDOWN_SECONDS,
-  enqueueCheck,
-  merchantOf,
-  overDailyLimit,
-  PORTAL_LOGIN_PATH,
-  PORTAL_PATH,
-  runSourceNow,
-  secondsSince,
-  setMerchantFeedFreshness,
-} from '@/lib/merchant';
+import { checkRefusal, enqueueCheck, merchantOf, PORTAL_LOGIN_PATH, PORTAL_PATH, runSourceNow, setMerchantFeedFreshness } from '@/lib/merchant';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -47,10 +37,8 @@ export async function POST(req: Request): Promise<Response> {
   const m = await merchantOf(session.user.id);
   if (!m) return to(`${PORTAL_PATH}?eroare=site#pas-1`);
   if (m.status === 'pending') return to(`${PORTAL_PATH}?eroare=stare#pas-3`);
-  if (secondsSince(m.feedUploadedAt) < CHECK_COOLDOWN_SECONDS.upload || secondsSince(m.validation?.requestedAt) < CHECK_COOLDOWN_SECONDS.validate) {
-    return fail('asteapta');
-  }
-  if ((await overDailyLimit(m.id, 'uploads')) || (await overDailyLimit(m.id, 'feedChecks'))) return fail('limita');
+  const refusal = await checkRefusal(m, 'upload');
+  if (refusal) return fail(refusal);
 
   const env = serverEnv();
   const max = env.FETCH_MAX_BODY_BYTES;

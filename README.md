@@ -86,6 +86,7 @@ Magazinele pot fi citite dintr-un **feed XML/CSV** în loc de scraping. Formatel
 Ce știm (10.2026) despre programele de afiliere relevante:
 - **eMAG** (Profitshare) interzice comparatoarele, deci rămâne prin scraping, fără link de afiliere.
 - **evoMAG** (2Performant) are peste 15 feed-uri.
+- **Atenție, 2Performant §9:** datele din feed nu pot fi folosite „pentru a crea o bază de date proprie”. Afișarea în comparator e permisă; pentru **istoricul** construit din feed cerem acordul lor în scris (detalii în `docs/email-magazine.md`).
 - **PC Garage** e inactiv pe Profitshare.
 - **Flanco** și **Altex** și-au închis programele.
 - **QuickMobile**, **EuroGSM**, **cel.ro** și **Vexio** au programe; de verificat regulile fiecăruia.

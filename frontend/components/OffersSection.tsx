@@ -141,7 +141,7 @@ function cityOf(location: string | null): string | null {
 }
 
 function GoButton({ o }: { o: Offer }) {
-  return (
+  const button = (
     <a
       href={IS_STATIC ? o.shop_url : o.out_url}
       target="_blank"
@@ -150,6 +150,16 @@ function GoButton({ o }: { o: Offer }) {
     >
       Mergi la magazin
     </a>
+  );
+  // linkurile de afiliere se marchează lângă buton (Legea 148/2000, ghidul ANPC)
+  if (!o.is_affiliate) return button;
+  return (
+    <span className="inline-flex flex-col items-end gap-0.5">
+      {button}
+      <span className="text-[10px] text-muted" title="Dacă cumperi, magazinul ne poate plăti un comision. Prețul tău e același.">
+        Link afiliat
+      </span>
+    </span>
   );
 }
 

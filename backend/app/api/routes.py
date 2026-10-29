@@ -73,6 +73,7 @@ def offer_out(
         fake_discount=schemas.FakeDiscountOut(**asdict(fake)) if fake else None,
         price_outlier=outlier,
         preorder=o.preorder,
+        is_affiliate=bool(o.affiliate_url),
         colors=colors or [],
         variants=variants,
     )

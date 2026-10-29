@@ -44,6 +44,7 @@ class OfferOut(BaseModel):
     is_marketplace: bool  # vândut de un terț -> nu intră în minimul pieței și în recomandare
     suspicious_price: bool  # second hand mult sub MSRP: posibil țeapă / defect / greșeală
     preorder: bool = False  # se poate comanda acum, livrare ulterioară
+    is_affiliate: bool = False  # butonul duce printr-un link de afiliere (marcat pe site)
     colors: list[str] = []  # culorile găsite la același magazin (unite într-un rând)
     variants: int = 1  # câte pagini (culori) are magazinul pentru produs
     price_outlier: str | None = None  # ofertă nouă cu preț aberant (motivul); exclusă din minimul pieței

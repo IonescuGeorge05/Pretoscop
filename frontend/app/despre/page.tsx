@@ -9,15 +9,19 @@ export const metadata: Metadata = {
     "Cum calculăm prețul final real, de unde vin prețurile, cum detectăm reducerile false și cum generăm recomandările.",
 };
 
-function H2({ children }: { children: React.ReactNode }) {
-  return <h2 className="mt-8 text-lg font-semibold">{children}</h2>;
+function H2({ id, children }: { id?: string; children: React.ReactNode }) {
+  return (
+    <h2 id={id} className="mt-10 scroll-mt-6 font-display text-2xl font-extrabold tracking-tight">
+      {children}
+    </h2>
+  );
 }
 
 export default function Despre() {
   const name = appName();
   return (
     <article className="max-w-2xl text-[15px] leading-relaxed">
-      <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Cum funcționează {name}</h1>
+      <h1 className="font-display text-4xl font-extrabold tracking-tight sm:text-[46px]">Cum funcționează {name}</h1>
       <p className="mt-3 text-muted">
         Comparăm prețurile din cât mai multe magazine — nu doar din cele care ne plătesc — și le comparăm corect, cu tot
         ce plătești de fapt. Acum urmărim consolele <strong className="text-ink">PlayStation 5</strong> (toate modelele) și
@@ -45,9 +49,13 @@ preț final = preț + transport + penalizare garanție`}
       <H2>De unde vin prețurile</H2>
       <ul className="mt-3 list-disc space-y-2 pl-5">
         <li>
-          <strong>Magazine</strong> — citim paginile publice de produs (preț, stoc, preț tăiat) respectând robots.txt și
-          un ritm de maximum o cerere la câteva secunde. Magazinele care blochează accesul automat nu sunt ocolite; pentru
-          ele cerem un feed de produse.
+          <strong>Magazine</strong> — robotul nostru,{" "}
+          <Link href="/bot" className="underline">
+            PretoscopBot
+          </Link>
+          , citește paginile publice de produs (preț, stoc, preț tăiat) respectând robots.txt și un ritm de maximum o
+          cerere la câteva secunde. Magazinele care blochează accesul automat nu sunt ocolite: pe pagina fiecărui produs
+          scriem care magazine lipsesc și punem un link să verifici singur. Pentru ele cerem un feed de produse.
         </li>
         <li>
           <strong>Feed-uri</strong> — unde un magazin sau o rețea de afiliere ne dă un fișier cu produsele, îl folosim în
@@ -63,6 +71,31 @@ preț final = preț + transport + penalizare garanție`}
           comparația principală. Anunțurile cu preț sub 40% din MSRP sunt marcate „preț suspect de mic”.
         </li>
       </ul>
+
+      <H2 id="ordonare">Cum ordonăm ofertele</H2>
+      <p className="mt-3">Ordinea ofertelor noi de pe pagina unui produs depinde doar de criteriile de mai jos, în ordinea asta:</p>
+      <ol className="mt-3 list-decimal space-y-2 pl-5">
+        <li>
+          <strong>În stoc înainte de epuizat.</strong> Precomenzile contează ca disponibile și sunt marcate „Precomandă”.
+        </li>
+        <li>
+          <strong>Prețul final</strong>, de la mic la mare: preț + transport + penalizarea pentru garanție mai scurtă
+          (calculul de mai sus).
+        </li>
+        <li>
+          <strong>Ce nu intră în „cel mai bun preț”:</strong> ofertele de pe marketplace (vândute de terți), pachetele cu
+          jocuri sau accesorii și prețurile neobișnuit de mari. Ele apar în listă, marcate, dar nu stabilesc minimul
+          pieței.
+        </li>
+      </ol>
+      <p className="mt-3">
+        <strong>Nimeni nu plătește ca să apară mai sus.</strong> Dacă vreodată vom avea oferte promovate, vor fi marcate
+        „Promovat” chiar lângă ele și nu vor schimba ordinea după prețul final. Vezi și{" "}
+        <Link href="/cum-castigam-bani" className="underline">
+          cum câștigăm bani
+        </Link>
+        .
+      </p>
 
       <H2>MSRP</H2>
       <p className="mt-3">
@@ -118,9 +151,12 @@ preț final = preț + transport + penalizare garanție`}
 
       <H2>Linkuri și bani</H2>
       <p className="mt-3">
-        Butonul „Mergi la magazin” duce direct pe pagina produsului. Unele linkuri pot fi în viitor linkuri de afiliere:
-        dacă cumperi prin ele, magazinul ne poate plăti un comision, fără cost suplimentar pentru tine. Asta nu schimbă
-        ordinea ofertelor — sortăm mereu după prețul final. Vezi și{" "}
+        Butonul „Mergi la magazin” duce direct pe pagina produsului. Detalii despre linkurile de afiliere și despre cum ne
+        finanțăm:{" "}
+        <Link href="/cum-castigam-bani" className="underline">
+          Cum câștigăm bani
+        </Link>
+        . Vezi și{" "}
         <Link href="/confidentialitate" className="underline">
           confidențialitatea
         </Link>

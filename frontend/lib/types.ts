@@ -42,6 +42,7 @@ export interface Offer {
   suspicious_price: boolean;
   price_outlier?: string | null;
   preorder?: boolean;
+  is_affiliate?: boolean;
   colors?: string[];
   variants?: number;
   condition: "new" | "refurbished" | "used";

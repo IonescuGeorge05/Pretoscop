@@ -69,9 +69,18 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="rounded-3xl bg-soft px-6 py-5 text-sm text-muted">
             {name} — prototip. Prețurile pot diferi de cele din magazin; verifică întotdeauna pe site-ul magazinului.
             Recomandările sunt informative, nu sfaturi financiare.
-            <span className="mt-3 flex gap-5 font-medium">
+            <span className="mt-3 flex flex-wrap gap-x-5 gap-y-1 font-medium">
               <Link href="/despre" className="underline hover:text-ink">
                 Cum calculăm
+              </Link>
+              <Link href="/despre#ordonare" className="underline hover:text-ink">
+                Cum ordonăm ofertele
+              </Link>
+              <Link href="/cum-castigam-bani" className="underline hover:text-ink">
+                Cum câștigăm bani
+              </Link>
+              <Link href="/bot" className="underline hover:text-ink">
+                Robotul nostru
               </Link>
               <Link href="/confidentialitate" className="underline hover:text-ink">
                 Confidențialitate

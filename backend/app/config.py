@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     scrape_interval_hours: float = 6
     scrape_jitter_minutes: int = 30
     scraper_contact: str = "contact@example.com"
+    # pagina publică despre bot (ce colectăm, cum ne blocați, contact); apare în User-Agent
+    bot_info_url: str = "https://ionescugeorge05.github.io/Pretoscop/bot"
 
     # alerte OLX pe email (opțional): căsuța în care OLX trimite notificările căutărilor salvate
     imap_host: str = ""  # gol = dedus din adresa de email (vezi imap_server)

@@ -57,7 +57,9 @@ def agent_token() -> str:
 
 
 def user_agent() -> str:
-    return f"{agent_token()}/0.1 (+price comparison prototype; contact: {settings.scraper_contact})"
+    # formatul standard al boților identificați: „compatible; NumeBot/versiune; +pagina-despre-bot”.
+    # Contactul e pe pagina bot-ului, nu în fiecare cerere.
+    return f"Mozilla/5.0 (compatible; {agent_token()}/0.2; +{settings.bot_info_url})"
 
 
 BLOCK_MARKERS = ("captcha", "cf-challenge", "challenge-platform", "attention required", "access denied")

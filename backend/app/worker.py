@@ -17,15 +17,35 @@ log = logging.getLogger("worker")
 
 
 def all_scrapable_shops() -> list[str]:
-    """Magazinele cu scraper dedicat + cele configurate în shops.yaml cu `crawl` sau `feed`."""
+    """Magazinele cu scraper dedicat + cele configurate în shops.yaml cu `crawl` sau `feed` (doar cele pornite)."""
+    return list(last_runs())
+
+
+def last_runs() -> dict[str, datetime | None]:
+    """slug -> ultima rulare, pentru magazinele care se pot citi și sunt pornite (`enabled`)."""
     from sqlalchemy import select
 
     from app.db import SessionLocal
     from app.models import Shop
 
     with SessionLocal() as session:
-        configured = [s.slug for s in session.scalars(select(Shop)) if s.crawl or (s.feed and s.feed.get("url"))]
-    return list(dict.fromkeys([*REGISTRY, *configured]))
+        shops = {s.slug: s for s in session.scalars(select(Shop))}
+    slugs = [*REGISTRY, *(s.slug for s in shops.values() if s.crawl or (s.feed and s.feed.get("url")))]
+    return {
+        slug: shops[slug].last_scraped_at if slug in shops else None
+        for slug in dict.fromkeys(slugs)
+        if slug not in shops or shops[slug].enabled
+    }
+
+
+def first_run_at(last: datetime | None, now: datetime, interval: timedelta) -> datetime:
+    """Prima rulare după pornirea worker-ului: niciodată mai devreme decât `ultima rulare + interval`.
+    Altfel fiecare restart / rebuild ar citi din nou toate magazinele (așa am ajuns la CAPTCHA-ul eMAG)."""
+    soon = now + timedelta(seconds=random.randint(60, 600))  # eșalonat, ca magazinele să nu pornească odată
+    if last is None:
+        return soon
+    last = last if last.tzinfo else last.replace(tzinfo=UTC)
+    return max(soon, last + interval)
 
 
 def main() -> None:
@@ -36,9 +56,10 @@ def main() -> None:
 
     scheduler = BlockingScheduler(timezone=UTC)
     jitter_s = settings.scrape_jitter_minutes * 60
-    for slug in all_scrapable_shops():
-        # primul run eșalonat (1-10 min după pornire), apoi la fiecare N ore +/- jitter
-        first = datetime.now(UTC) + timedelta(seconds=random.randint(60, 600))
+    interval = timedelta(hours=settings.scrape_interval_hours)
+    for slug, last in last_runs().items():
+        # primul run: după intervalul de la ultima rulare (sau în 1-10 min dacă n-a rulat niciodată), apoi la N ore +/- jitter
+        first = first_run_at(last, datetime.now(UTC), interval)
         scheduler.add_job(
             run_shop,
             IntervalTrigger(hours=settings.scrape_interval_hours, jitter=jitter_s, start_date=first),

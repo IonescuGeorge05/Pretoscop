@@ -67,3 +67,22 @@ def test_emag_511_captcha_page_stops_the_run():
     client = PoliteClient(min_delay=0, max_delay=0, transport=httpx.MockTransport(handler))
     with pytest.raises(BlockedError):
         client.get("https://www.emag.ro/x/pd/ABC/")
+
+
+def test_user_agent_names_the_bot_and_links_its_page():
+    from scrapers.base import user_agent
+
+    ua = user_agent()
+    assert "PretoscopBot/0.2" in ua and "+https://" in ua and "@" not in ua  # fără adrese de email în cereri
+
+
+def test_restart_does_not_rescrape_before_the_interval():
+    from datetime import UTC, datetime, timedelta
+
+    from app.worker import first_run_at
+
+    now = datetime(2026, 10, 30, 12, 0, tzinfo=UTC)
+    six = timedelta(hours=6)
+    assert first_run_at(now - timedelta(hours=1), now, six) == now + timedelta(hours=5)  # a rulat acum o oră
+    assert now < first_run_at(now - timedelta(days=2), now, six) <= now + timedelta(minutes=10)  # restanță
+    assert now < first_run_at(None, now, six) <= now + timedelta(minutes=10)  # niciodată

@@ -1,4 +1,5 @@
 # Magazinele urmărite. `search_url_template` primește {query} (url-encoded).
+# `enabled: false` oprește imediat orice citire a magazinului (ex. dacă ne cere în scris); implicit true.
 # ATENȚIE: shipping_rules și default_warranty_months sunt PLACEHOLDERE.
 # Cât timp shipping_verified: false, UI-ul afișează "transport estimat".
 # kind: retail (produse noi) | refurbished | secondhand — doar `retail` intră în comparația principală.

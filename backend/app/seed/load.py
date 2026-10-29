@@ -46,6 +46,7 @@ def upsert_seed(session: Session) -> None:
                 setattr(product, key, value)
 
     for row in load_yaml("shops.yaml"):
+        row.setdefault("enabled", True)
         shop = session.scalar(select(Shop).where(Shop.slug == row["slug"]))
         if shop is None:
             session.add(Shop(**row))

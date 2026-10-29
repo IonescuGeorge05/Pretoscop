@@ -63,6 +63,7 @@ class Shop(Base):
     crawl: Mapped[dict | None] = mapped_column(JSONType)  # {"type": "sitemap", "sitemap"?, "max_products"?}
     status_reason: Mapped[str | None] = mapped_column(Text)
     last_scraped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    enabled: Mapped[bool] = mapped_column(Boolean, default=True)  # false = nu-l citim deloc (buton de oprire)
     last_run: Mapped[dict | None] = mapped_column(JSONType)  # rezumatul ultimei rulări (status, matched, unmatched...)
 
     offers: Mapped[list["Offer"]] = relationship(back_populates="shop")

@@ -124,6 +124,9 @@ def _run_locked(session: Session, slug: str, skip_blocked: bool, summary: dict, 
     if shop is None or (slug not in REGISTRY and not (shop.feed and shop.feed.get("url")) and not shop.crawl):
         summary["status"] = "no_scraper"
         return
+    if not shop.enabled:
+        summary["status"] = "disabled"
+        return
     if skip_blocked and shop.status == "blocked" and _recently_tried(shop):
         summary["status"] = "skipped_blocked"
         return

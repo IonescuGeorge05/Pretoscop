@@ -151,6 +151,12 @@ class ProductList(BaseModel):
     products: list[ProductSummary]
 
 
+class MissingShopOut(BaseModel):
+    name: str
+    search_url: str  # căutarea produsului pe site-ul magazinului (preț neverificat de noi)
+    reason: str
+
+
 class ProductDetail(ProductWithFamily):
     source: str
     is_demo: bool
@@ -160,6 +166,7 @@ class ProductDetail(ProductWithFamily):
     refurbished: list[OfferOut]
     secondhand: list[OfferOut]
     recommendation: RecommendationOut
+    missing_shops: list[MissingShopOut] = []
 
 
 class EventOut(BaseModel):

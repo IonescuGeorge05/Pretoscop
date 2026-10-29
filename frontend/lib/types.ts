@@ -108,6 +108,12 @@ export interface ProductList {
   products: ProductSummary[];
 }
 
+export interface MissingShop {
+  name: string;
+  search_url: string;
+  reason: string;
+}
+
 export interface ProductDetail extends ProductBase {
   family_slug: string;
   source: string;
@@ -118,6 +124,7 @@ export interface ProductDetail extends ProductBase {
   refurbished: Offer[];
   secondhand: Offer[];
   recommendation: Recommendation;
+  missing_shops?: MissingShop[];
 }
 
 export interface CalendarEvent {

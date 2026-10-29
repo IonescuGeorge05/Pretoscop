@@ -73,3 +73,11 @@ def test_color_of_reads_ro_and_en_names():
     assert color_of("Telefon mobil Apple iPhone 18 Pro, 2TB, 5G, Silver") == "Argintiu"
     assert color_of("Apple iPhone 18 Pro Max 512GB - Glacier") == "Glacier"
     assert color_of("PlayStation 5 Slim 1TB") is None
+
+
+def test_search_query_for_other_shops_drops_brackets_and_commas():
+    from app.models import Product
+    from app.services.catalog import search_query
+
+    p = Product(name="PlayStation 5 Slim Digital Edition, 825 GB (E-Chassis)")
+    assert search_query(p) == "PlayStation 5 Slim Digital Edition 825 GB"

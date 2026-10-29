@@ -191,6 +191,14 @@ def product_detail(slug: str, source: str | None = SourceParam, session: Session
         ],
         secondhand=[offer_out(v) for v in used if v.offer.condition != "refurbished"],
         recommendation=recommendation_out(rec),
+        missing_shops=[
+            schemas.MissingShopOut(
+                name=s.name,
+                search_url=url,
+                reason="nu permite citirea automată" if s.enabled else "oprit la cererea magazinului",
+            )
+            for s, url in catalog.missing_shops(session, p)
+        ],
     )
 
 

@@ -6,6 +6,7 @@ from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from functools import lru_cache
 from statistics import median
+from urllib.parse import quote_plus
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session, selectinload
@@ -182,6 +183,22 @@ def product_recommendation(product: Product, offers: list[Offer], today: date | 
     histories = [to_history(o) for o in comparable(offers)]
     msrp = float(product.msrp_ron) if product.msrp_ron is not None else None
     return recommend(histories, today or date.today(), calendar(), msrp=msrp)
+
+
+def search_query(product: Product) -> str:
+    """Textul de căutat la alt magazin: numele fără paranteze și virgule, ex. „PlayStation 5 Slim Digital Edition 825 GB”."""
+    name = re.sub(r"\(.*?\)", " ", product.name)
+    return re.sub(r"\s+", " ", name.replace(",", " ")).strip()
+
+
+def missing_shops(session: Session, product: Product) -> list[tuple[Shop, str]]:
+    """Magazinele cu produse noi pe care nu le putem citi (blocate sau oprite), cu link spre căutarea lor."""
+    shops = session.scalars(select(Shop).where(Shop.kind == "retail").order_by(Shop.name))
+    return [
+        (s, s.search_url_template.format(query=quote_plus(search_query(product))))
+        for s in shops
+        if (s.status == "blocked" or not s.enabled) and s.search_url_template
+    ]
 
 
 def get_product(session: Session, slug: str) -> Product | None:

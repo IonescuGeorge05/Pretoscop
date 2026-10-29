@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import DemoBanner from "@/components/DemoBanner";
 import FakeDiscountAlert from "@/components/FakeDiscountAlert";
+import MissingShops from "@/components/MissingShops";
 import OfferTabs from "@/components/OfferTabs";
 import OffersSection from "@/components/OffersSection";
 import PriceChart from "@/components/PriceChart";
@@ -174,6 +175,7 @@ export default async function ProductPage({ params, searchParams }: Props) {
         </section>
 
         <OfferTabs offers={product.offers} refurbished={product.refurbished} secondhand={product.secondhand} retired={retired} />
+        <MissingShops shops={product.missing_shops ?? []} />
         {!retired && <SavingsCard offers={product.offers} refurbished={product.refurbished} secondhand={product.secondhand} />}
         <PriceChart
           initial={history}

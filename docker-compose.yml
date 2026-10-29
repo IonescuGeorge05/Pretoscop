@@ -61,6 +61,40 @@ services:
       api:
         condition: service_healthy
 
+  # backup zilnic al bazei de date în ./backups (pe discul calculatorului, fără servicii plătite);
+  # păstrează ultimele BACKUP_KEEP copii. Restaurare: bash scripts/restore-db.sh backups/<fișier>.sql.gz
+  backup:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER:-pretoscop}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-pretoscop}
+      PGDATABASE: ${POSTGRES_DB:-pretoscop}
+      BACKUP_KEEP: ${BACKUP_KEEP:-14}
+      BACKUP_EVERY_HOURS: ${BACKUP_EVERY_HOURS:-24}
+    volumes:
+      - ./backups:/backups
+    depends_on:
+      db:
+        condition: service_healthy
+    # primul backup la pornire, apoi la fiecare BACKUP_EVERY_HOURS; scrie întâi în .tmp, ca un backup întrerupt să nu
+    # pară bun; la final șterge copiile vechi peste BACKUP_KEEP
+    command:
+      - sh
+      - -c
+      - |
+        while true; do
+          f=/backups/pretoscop-$$(date -u +%Y%m%d-%H%M).sql.gz
+          if pg_dump --no-owner | gzip > "$$f.tmp" && mv "$$f.tmp" "$$f"; then
+            echo "backup ok: $$f ($$(du -h "$$f" | cut -f1))"
+          else
+            echo "backup EȘUAT"; rm -f "$$f.tmp"
+          fi
+          ls -1t /backups/pretoscop-*.sql.gz 2>/dev/null | tail -n +$$((BACKUP_KEEP + 1)) | xargs -r rm -f
+          sleep $$((BACKUP_EVERY_HOURS * 3600))
+        done
+
   web:
     build: ./frontend
     restart: unless-stopped

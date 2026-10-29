@@ -48,3 +48,22 @@ def test_empty_disallow_and_missing_file():
     assert Robots("User-agent: *\nDisallow:\n").allowed("x", "https://x.ro/anything")
     assert Robots(allow_all=True).allowed("x", "https://x.ro/")
     assert not Robots(disallow_all=True).allowed("x", "https://x.ro/")
+
+
+def test_emag_511_captcha_page_stops_the_run():
+    """eMAG (AWS WAF) răspunde 511 cu o pagină CAPTCHA: trebuie să oprim rularea, nu să continuăm pagină cu pagină."""
+    import httpx
+    import pytest
+
+    from scrapers.base import BlockedError, PoliteClient
+
+    captcha = '<html><head><title>eMAG Captcha</title></head><body>Am detectat trafic neobișnuit</body></html>'
+
+    def handler(request):
+        if request.url.path == "/robots.txt":
+            return httpx.Response(200, text="User-agent: *\nAllow: /\n")
+        return httpx.Response(511, text=captcha)
+
+    client = PoliteClient(min_delay=0, max_delay=0, transport=httpx.MockTransport(handler))
+    with pytest.raises(BlockedError):
+        client.get("https://www.emag.ro/x/pd/ABC/")

@@ -136,7 +136,8 @@ class PoliteClient:
                     }
                 )
             )
-            if resp.status_code in (403, 401) or "cf-mitigated" in resp.headers:
+            # 511: eMAG (AWS WAF) răspunde așa cu pagina CAPTCHA „trafic neobișnuit”, ca semnal să ne oprim
+            if resp.status_code in (403, 401, 511) or "cf-mitigated" in resp.headers:
                 raise BlockedError(f"HTTP {resp.status_code} la {url}")
             if resp.status_code in (429, 500, 502, 503, 504):
                 if resp.status_code == 503 and "cf-ray" in resp.headers:
@@ -148,7 +149,8 @@ class PoliteClient:
                 wait = min(int(retry_after), 120) if retry_after.isdigit() else 2**attempt * 3
                 time.sleep(max(wait, 2**attempt * 3))
                 continue
-            if resp.status_code == 200 and len(resp.text) < 20000:
+            # o pagină mică de verificare (CAPTCHA / challenge) nu e niciodată date, oricare ar fi codul HTTP
+            if len(resp.text) < 20000:
                 head = resp.text[:5000].lower()
                 if any(m in head for m in BLOCK_MARKERS):
                     raise BlockedError(f"Pagină de verificare anti-bot la {url}")

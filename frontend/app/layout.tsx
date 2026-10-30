@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Bricolage_Grotesque, DM_Sans } from "next/font/google";
 import Link from "next/link";
 
+import ThemeToggle, { THEME_SCRIPT } from "@/components/ThemeToggle";
 import { appName } from "@/lib/format";
 
 import "./globals.css";
@@ -46,13 +47,17 @@ const NAV = [
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const name = appName();
   return (
-    <html lang="ro" className={`${display.variable} ${body.variable}`}>
+    // suppressHydrationWarning: scriptul de temă pune data-theme pe <html> înainte de React
+    <html lang="ro" className={`${display.variable} ${body.variable}`} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_SCRIPT }} />
+      </head>
       <body className="min-h-screen font-sans antialiased">
         <header className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-4 sm:px-6">
           <Link href="/" aria-label={`${name} — prima pagină`}>
             <Logo name={name} />
           </Link>
-          <nav className="flex flex-wrap gap-1 text-[15px] font-medium">
+          <nav className="flex flex-wrap items-center gap-1 text-[15px] font-medium">
             {NAV.map((n) => (
               <Link
                 key={n.href}
@@ -62,6 +67,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 {n.label}
               </Link>
             ))}
+            <ThemeToggle />
           </nav>
         </header>
         <main className="mx-auto max-w-6xl px-4 pb-10 pt-2 sm:px-6">{children}</main>

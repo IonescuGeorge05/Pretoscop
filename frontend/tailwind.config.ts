@@ -2,7 +2,11 @@ import type { Config } from "tailwindcss";
 
 export default {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
-  darkMode: "media",
+  // întunecat: după sistem, cu excepția cazului în care s-a ales altfel din buton (data-theme pe <html>)
+  darkMode: [
+    "variant",
+    ["@media (prefers-color-scheme: dark) { &:where(:root:not([data-theme=light]) *) }", "&:where([data-theme=dark] *)"],
+  ],
   theme: {
     extend: {
       colors: {

@@ -52,7 +52,13 @@ function useCssVars(names: string[]): Record<string, string> {
     read();
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
     mq.addEventListener("change", read);
-    return () => mq.removeEventListener("change", read);
+    // tema aleasă din buton schimbă atributul data-theme de pe <html>
+    const obs = new MutationObserver(read);
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+    return () => {
+      mq.removeEventListener("change", read);
+      obs.disconnect();
+    };
   }, [key]);
   return vars;
 }

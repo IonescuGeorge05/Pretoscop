@@ -31,8 +31,9 @@
   color-scheme: light;
 }
 
+/* întunecat: după sistem, dacă nu s-a ales „deschis” din buton */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
     --surface: 24 21 19;
     --card: 33 30 27;
     --ink: 245 245 244;
@@ -58,6 +59,34 @@
     --chart-muted: #a9a89f;
     color-scheme: dark;
   }
+}
+
+/* întunecat ales din buton */
+:root[data-theme="dark"] {
+  --surface: 24 21 19;
+  --card: 33 30 27;
+  --ink: 245 245 244;
+  --muted: 176 170 165;
+  --line: 64 59 55;
+  --brand: 251 146 60;
+  --brand-ink: 28 25 23;
+  --accent: 251 146 60;
+  --warm: 48 33 22;
+  --soft: 41 37 34;
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-8: #e66767;
+  --chart-ink: #f0efec;
+  --chart-grid: #34342f;
+  --chart-event: #8f8e86;
+  --chart-muted: #a9a89f;
+  color-scheme: dark;
 }
 
 body {

@@ -1,6 +1,5 @@
 from dataclasses import asdict
 from datetime import UTC, date, datetime, timedelta
-from decimal import Decimal
 from statistics import median
 from typing import Literal
 
@@ -15,14 +14,13 @@ from app.config import settings
 from app.families import families, family_slug
 from app.db import get_session
 from app.models import Click, DiscoveredShop, ManualMatch, Offer, Product, Shop, UnmatchedListing
-from app.services.ingest import record_offer
-from scrapers.base import ScrapedOffer
+from app.services.ingest import offer_from_unmatched, record_offer
 from app.services import catalog
 from app.services.pricing import compare as compare_breakdowns
 from app.services import olx_email, web_search
 from app.services.feed_import import import_feed
 from app.services.shop_check import check_shop
-from app.services.scrape_runner import ingest_offers, run_shop
+from app.services.scrape_runner import ingest_offers, rematch_unmatched, run_shop
 from recommender.calendar import events_between
 from recommender.rules import DEAL_WINDOW_DAYS, FakeDiscount, Recommendation, days_until, point_at, real_drop, upcoming_events
 from scrapers.olx import CATEGORY_URL as OLX_CATEGORY_URL
@@ -455,31 +453,16 @@ def _resolve_unmatched(session: Session, row_id: int, product: Product | None, i
     mm.is_bundle, mm.ignored = is_bundle, ignored
     if product is not None and row.raw.get("price"):
         # oferta apare imediat, din datele colectate deja; scrape-urile următoare o actualizează
-        raw = row.raw
-        record_offer(
-            session,
-            session.get(Shop, row.shop_id),
-            product,
-            ScrapedOffer(
-                shop_slug="",
-                url=row.url,
-                title=row.title,
-                price=Decimal(raw["price"]),
-                old_price=Decimal(raw["old_price"]) if raw.get("old_price") else None,
-                in_stock=bool(raw.get("in_stock", True)),
-                ean=None,
-                mpn=raw.get("mpn"),
-                warranty_months=raw.get("warranty_months"),
-                condition=raw.get("condition") or "new",
-                scraped_at=row.scraped_at,
-                seller=raw.get("seller"),
-                grade=raw.get("grade"),
-                location=raw.get("location"),
-            ),
-            is_bundle,
-        )
+        record_offer(session, session.get(Shop, row.shop_id), product, offer_from_unmatched(row), is_bundle)
     session.delete(row)
     session.commit()
+
+
+@router.post("/admin/unmatched/rematch", dependencies=[Depends(require_admin)])
+def admin_rematch(session: Session = Depends(get_session)):
+    """Reaplică regulile actuale ale matcher-ului pe toate anunțurile nepotrivite."""
+    stats = rematch_unmatched(session)
+    return {k: stats[k] for k in ("listings", "matched", "bundles", "matched_manual", "unmatched", "accessory", "excluded")}
 
 
 @router.post("/admin/unmatched/{row_id}/assign", status_code=204, dependencies=[Depends(require_admin)])

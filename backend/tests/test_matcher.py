@@ -172,3 +172,22 @@ def test_slim_e_chassis_825_and_d_chassis_1tb_are_different_products():
     assert match_title("Consola PlayStation 5 (PS5) Slim, 1TB SSD, E-Chassis").product_slug == "ps5-slim-disc-1tb"
     r = match_title("Consola PlayStation 5 Slim Disc Edition 825GB")
     assert r.kind == "unmatched" and "nu există" in r.reason
+
+
+@pytest.mark.parametrize(
+    "title",
+    [
+        "Controler mobil wireless Trust Mylox GXT 735 pentru iOS, Android, PS5, Xbox si PC",
+        "Pedale Thrustmaster Raceline III, set 3 pedale, pentru PC/PS4/PS5/XBOX",
+        "Panouri laterale PlayStation 5 Slim D/E-Chassis, Marvel’s Wolverine Battle Yellow Limited Edition",
+        "Unitate Optica Sony PS5 Slim Digital Edition 4K Blu-ray Alb",
+    ],
+)
+def test_more_accessories_from_real_listings(title):
+    assert match_title(title).kind == "accessory"
+
+
+def test_without_disc_means_digital_and_cd_player_means_disc():
+    assert match_title("Vand PS5 Slim 1TB fara disk", allow_used=True).product_slug == "ps5-slim-digital-1tb"
+    r = match_title("Consolă Sony Playstation 5 slim cu CD player și 2 jocuri", allow_used=True)
+    assert r.product_slug == "ps5-slim-disc-1tb" and r.is_bundle

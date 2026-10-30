@@ -54,6 +54,16 @@ def main() -> None:
         BlockingScheduler().start()  # rămâne pornit, fără joburi
         return
 
+    # după un rebuild regulile matcher-ului pot fi altele: anunțurile nepotrivite trec din nou prin ele (doar baza de date)
+    try:
+        from app.db import SessionLocal
+        from app.services.scrape_runner import rematch_unmatched
+
+        with SessionLocal() as session:
+            rematch_unmatched(session)
+    except Exception:
+        log.exception("re-potrivirea anunțurilor nepotrivite a eșuat")
+
     scheduler = BlockingScheduler(timezone=UTC)
     jitter_s = settings.scrape_jitter_minutes * 60
     interval = timedelta(hours=settings.scrape_interval_hours)

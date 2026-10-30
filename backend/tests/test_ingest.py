@@ -105,3 +105,22 @@ def test_all_outliers_are_kept_so_the_page_is_not_empty():
 
     offers = [_offer(1, "7999"), _offer(2, "8200")]
     assert [o.id for o in comparable(offers)] == [1, 2]
+
+
+def test_rematch_turns_old_unmatched_into_offers_and_drops_accessories(session):
+    from app.models import Offer, UnmatchedListing
+    from app.services.ingest import record_unmatched
+    from app.services.scrape_runner import rematch_unmatched
+
+    shop = session.scalar(select(Shop))
+    pro = scraped("3899.99")
+    pad = scraped("223.99")
+    pad.url, pad.title = "https://www.pcgarage.ro/controler/", "Controler mobil Trust pentru PS5"
+    record_unmatched(session, shop, pro, "generație neclară (regula veche)")
+    record_unmatched(session, shop, pad, "generație neclară (regula veche)")
+    session.commit()
+
+    stats = rematch_unmatched(session)
+    assert stats["matched"] == 1 and stats["accessory"] == 1
+    assert session.scalar(select(func.count(UnmatchedListing.id))) == 0
+    assert session.scalar(select(Offer)).url == pro.url

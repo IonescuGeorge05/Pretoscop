@@ -85,14 +85,15 @@ PS5_SLUGS = {
 }
 CONSOLE_RE = re.compile(r"\b(consola|console)\b")
 PS5_ACCESSORY_RE = re.compile(
-    r"\b(controller|dualsense|joystick|gamepad|joc|jocuri|game|games|husa|skin|stand|suport|incarcator|incarcare|charging|"
+    r"\b(controller|controler\w*|pedale|panou\w*|dualsense|joystick|gamepad|joc|jocuri|game|games|husa|skin|stand|suport|incarcator|incarcare|charging|"
     r"surse?|sursa|monitor|setup|capac\w*|adaptor|adapter|hub|dock|cooler|optical drive|filtru|filter|"
     r"casti|headset|cablu|cover|capac|carcasa|faceplate|ssd (?:intern|nvme|m\.?2)|camera|telecomanda|remote|"
-    r"volan|vr2?|geanta|ventilator|cooling|sticker|abonament|card|portal)\b|\b(pentru|for|compatibil\w*)\s+ps5\b"
+    r"volan|vr2?|geanta|ventilator|cooling|sticker|abonament|card|portal)\b|\b(pentru|for|compatibil\w*)\s+ps5\b|"
+    r"^unitate optica"  # unitatea optică vândută separat (pentru Slim Digital)
 )
 PS5_BUNDLE_RE = re.compile(
     r"\+|\bbundle\b|\bpachet\b|\bcu (joc|jocul)\b|\bincluding\b|\blimited\b|\beditie limitata\b|"
-    r"\b\d+ control+ere?\b|\bextra controller\b|\bcontroller suplimentar\b|\banniversary\b|\b30th\b|\bchroma\b|"
+    r"\b\d+ control+ere?\b|\b\d+ (jocuri|manete)\b|\bextra controller\b|\bcontroller suplimentar\b|\banniversary\b|\b30th\b|\bchroma\b|"
     r"\bcamo\b|\bfortnite\b|\bcall of duty\b|\bfc ?2\d\b|\bfifa\b|"
     r"\bgran turismo\b|\bgod of war\b|\bspider-?man\b|\bastro bot\b|\bhorizon\b|\bvoucher\b"
 )
@@ -132,8 +133,10 @@ def _ps5(t: str, allow_used: bool) -> MatchResult:
     else:
         return MatchResult("unmatched", is_bundle=is_bundle, reason="generație neclară (fără Slim/825GB/1TB/cod model)")
 
-    digital = bool(re.search(r"\bdigital\b", t))
-    disc = bool(re.search(r"\b(disc|disk|standard|blu-?ray|unitate optica|cu unitate)\b", t))
+    # „fără disc” = ediția digitală; „cu CD player” (anunțuri) = cu unitate optică
+    no_disc = bool(re.search(r"\bfara (disc|disk|cd|unitate optica)\b", t))
+    digital = no_disc or bool(re.search(r"\bdigital\b", t))
+    disc = not no_disc and bool(re.search(r"\b(disc|disk|standard|blu-?ray|unitate optica|cu unitate|cd player|cu cd)\b", t))
     if digital and disc and not is_bundle:
         return MatchResult("unmatched", is_bundle=is_bundle, reason="ediție ambiguă (și Digital, și Disc)")
     if digital:
@@ -181,6 +184,8 @@ def _iphone(t: str, allow_used: bool) -> MatchResult:
         return MatchResult("accessory", reason=f"accesoriu ({accessory.group(0).strip()})")
     # „Camera Tripla 48 + 48 + 48 MP” nu e pachet
     is_bundle = bool(IPHONE_BUNDLE_RE.search(re.sub(r"\d+\s*\+\s*(?=\d)", " ", t)))
+    # „iphone 18 pro 512” (anunțuri, fără unitate): 256 / 512 lipite de model sunt doar stocare
+    t = re.sub(r"\b(pro max|pro) (256|512)\b(?!gb)", r"\1 \2gb", t)
     storages = set(re.findall(r"\b(256gb|512gb|1tb|2tb)\b", t))
     if len(storages) != 1:
         reason = "stocare neclară (lipsește 256GB/512GB/1TB/2TB)" if not storages else "mai multe stocări în titlu"

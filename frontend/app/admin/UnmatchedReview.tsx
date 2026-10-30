@@ -208,6 +208,27 @@ function OlxImport({ token, onImported }: { token: string; onImported: () => voi
   );
 }
 
+/** Trece din nou anunțurile prin regulile actuale (după o schimbare în matcher). Se face și automat la pornirea worker-ului. */
+function RematchButton({ token, onDone }: { token: string; onDone: () => void }) {
+  const [msg, setMsg] = useState<string | null>(null);
+  const run = async () => {
+    setMsg("Se reaplică…");
+    const res = await fetch("/api/admin/unmatched/rematch", { method: "POST", headers: { "x-admin-token": token } });
+    if (!res.ok) return setMsg(`Eroare ${res.status}`);
+    const r = await res.json();
+    setMsg(`${r.matched + r.bundles} asociate, ${r.accessory + r.excluded} scoase (accesorii / excluse), ${r.unmatched} rămase`);
+    onDone();
+  };
+  return (
+    <>
+      <button onClick={run} className="rounded-lg border border-line px-3 py-1 text-ink hover:bg-soft">
+        Reaplică regulile
+      </button>
+      {msg && <span>{msg}</span>}
+    </>
+  );
+}
+
 export default function UnmatchedReview({ products }: { products: { slug: string; name: string }[] }) {
   const [token, setToken] = useState("");
   const [input, setInput] = useState("");
@@ -270,7 +291,10 @@ export default function UnmatchedReview({ products }: { products: { slug: string
       {items === null && !error && <p className="text-sm text-muted">Se încarcă…</p>}
       {items && (
         <>
-          <p className="text-sm text-muted">{items.length} anunțuri de verificat</p>
+          <p className="flex flex-wrap items-center gap-3 text-sm text-muted">
+            {items.length} anunțuri de verificat
+            <RematchButton token={token} onDone={() => load(token)} />
+          </p>
           <ul className="mt-3 space-y-3">
             {items.map((u) => (
               <Row key={u.id} u={u} products={products} token={token} onDone={(id) => setItems((xs) => xs!.filter((x) => x.id !== id))} />

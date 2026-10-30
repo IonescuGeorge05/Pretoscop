@@ -37,3 +37,8 @@ def test_iphone_titles(title, used, kind, slug, bundle):
 def test_ps5_rules_unchanged_by_iphone_dispatch():
     assert match_title("Consola Sony PlayStation 5 Slim PS5 E-Chassis 1TB Disc Edition Alb").product_slug == "ps5-slim-disc-1tb"
     assert match_title("Laptop Lenovo IdeaPad").reason == "produs neurmărit"
+
+
+def test_storage_number_without_unit_right_after_model():
+    assert match_title("vand iphone 18 pro 512", allow_used=True).product_slug == "iphone-18-pro-512gb"
+    assert match_title("iphone 18 pro max", allow_used=True).kind == "unmatched"

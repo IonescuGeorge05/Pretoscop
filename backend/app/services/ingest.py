@@ -1,6 +1,8 @@
 """Scrierea ofertelor în DB. `price_points` primește rând nou DOAR la schimbare de preț / preț tăiat / stoc;
 altfel se actualizează doar `offers.last_seen_at` și `confirmed_at` pe ultimul punct (prețul e încă valabil)."""
 
+from datetime import UTC
+from decimal import Decimal
 from urllib.parse import quote
 
 from sqlalchemy import select
@@ -102,3 +104,25 @@ def record_unmatched(session: Session, shop: Shop, scraped: ScrapedOffer, reason
         "warranty_months": scraped.warranty_months,
     }
     session.flush()
+
+
+def offer_from_unmatched(row: UnmatchedListing) -> ScrapedOffer:
+    """Anunțul nepotrivit, refăcut din datele salvate (pentru asocierea din admin și pentru re-potrivire)."""
+    raw = row.raw
+    scraped_at = row.scraped_at if row.scraped_at.tzinfo else row.scraped_at.replace(tzinfo=UTC)
+    return ScrapedOffer(
+        shop_slug="",
+        url=row.url,
+        title=row.title,
+        price=Decimal(raw["price"]),
+        old_price=Decimal(raw["old_price"]) if raw.get("old_price") else None,
+        in_stock=bool(raw.get("in_stock", True)),
+        ean=raw.get("ean"),
+        mpn=raw.get("mpn"),
+        warranty_months=raw.get("warranty_months"),
+        condition=raw.get("condition") or "new",
+        scraped_at=scraped_at,
+        seller=raw.get("seller"),
+        grade=raw.get("grade"),
+        location=raw.get("location"),
+    )

@@ -12,8 +12,8 @@ from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
-from app.models import ManualMatch, Product, Shop
-from app.services.ingest import record_offer, record_unmatched
+from app.models import ManualMatch, Product, Shop, UnmatchedListing
+from app.services.ingest import offer_from_unmatched, record_offer, record_unmatched
 from scrapers.base import BlockedError, PoliteClient, RobotsDisallowed, ScrapedOffer
 from scrapers.feed_scraper import FeedScraper
 from scrapers.sitemap_scraper import SitemapScraper
@@ -73,6 +73,24 @@ def ingest_offers(session: Session, shop: Shop, scraped_offers: Iterable[Scraped
         else:
             stats[result.kind] += 1
         refs = [ProductRef(p.slug, p.ean, p.model_code) for p in products.values()]  # EAN-uri noi
+    return stats
+
+
+def rematch_unmatched(session: Session) -> Counter:
+    """Trece din nou anunțurile nepotrivite prin regulile actuale (după o schimbare în matcher): cele care se potrivesc
+    acum devin oferte, accesoriile / excluderile dispar, restul rămân la verificare cu motivul nou."""
+    stats: Counter = Counter()
+    for shop in session.scalars(select(Shop)):
+        rows = list(session.scalars(select(UnmatchedListing).where(UnmatchedListing.shop_id == shop.id)))
+        if not rows:
+            continue
+        offers = [offer_from_unmatched(r) for r in rows if r.raw.get("price")]
+        for r in rows:
+            session.delete(r)
+        session.flush()
+        stats.update(ingest_offers(session, shop, offers))
+    session.commit()
+    log.info(json.dumps({"event": "rematch_done", **stats}))
     return stats
 
 

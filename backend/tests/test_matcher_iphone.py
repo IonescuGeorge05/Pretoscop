@@ -17,7 +17,7 @@ CASES = [
     ("Telefon Apple iPhone 18 Pro Max 256GB + Husa MagSafe", False, "product", "iphone-18-pro-max-256gb", True),
     # capcane
     ("Iphone 18  Pro Max", True, "unmatched", None, False),  # fără stocare
-    ("iPhone 17 Pro Max 256GB Cosmic Orange | 100% Baterie", True, "accessory", None, False),  # alt model
+    ("iPhone 17 Pro Max 256GB Cosmic Orange | 100% Baterie", True, "product", "iphone-17-pro-max-256gb", False),
     ("Vand Iphone 16 pro max 265gb", True, "accessory", None, False),
     ("Apple iPhone 18 256GB Black", False, "accessory", None, False),  # iPhone 18 simplu, nu Pro
     ("Husa silicon MagSafe pentru Apple iPhone 18 Pro Max, Negru", False, "accessory", None, False),

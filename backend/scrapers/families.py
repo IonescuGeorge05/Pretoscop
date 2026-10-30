@@ -16,11 +16,12 @@ URL_RES: dict[str, re.Pattern] = {
     "switch2": re.compile(r"(?i)switch-?2(?!\d)"),
     "xbox": re.compile(r"(?i)(consol|console).*xbox-?series|xbox-?series-?[xs]-(digital|512|1-?tb|1000|robot|carbon)"),
     "iphone": re.compile(r"(?i)iphone-?18-?pro"),
+    "iphone17": re.compile(r"(?i)iphone-?(17|air)(?![0-9])"),
     "galaxy": re.compile(r"(?i)s26-?ultra"),
 }
 
 # titluri (feed-uri) din familiile urmărite, înainte de matcher: feed-urile au tot catalogul magazinului
-TITLE_RE = re.compile(r"(?i)\b(ps ?5|playstation ?5|iphone ?18|switch ?2\b|xbox series|s26 ultra)")
+TITLE_RE = re.compile(r"(?i)\b(ps ?5|playstation ?5|iphone ?1[78]|iphone air|switch ?2\b|xbox series|s26 ultra)")
 
 
 def url_family(url: str) -> str | None:

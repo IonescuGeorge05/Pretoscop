@@ -1,6 +1,6 @@
 """Potrivire listare -> produs. Ordine: EAN, MPN, reguli pe titlu; altfel `unmatched` (nu ghicim).
 
-Regulile pe titlu sunt pe familii de produse (PS5, Switch 2, Xbox Series, iPhone 18 Pro, Galaxy S26 Ultra). Familie nouă: o funcție `_<familie>(t, allow_used)`
+Regulile pe titlu sunt pe familii de produse (PS5, Switch 2, Xbox Series, iPhone 17 / 18 Pro, Galaxy S26 Ultra). Familie nouă: o funcție `_<familie>(t, allow_used)`
 și o ramură în `match_title`."""
 
 import re
@@ -227,7 +227,7 @@ def _xbox(t: str, allow_used: bool) -> MatchResult:
     return MatchResult("product", "xbox-series-x-1tb", is_bundle)
 
 
-# ---------- iPhone 18 Pro / Pro Max
+# ---------- iPhone (gama 17: 17, 17e, Air, 17 Pro, 17 Pro Max; gama 18: Pro, Pro Max)
 
 PHONE_RE = re.compile(r"\b(telefon|smartphone)\b")
 # accesoriile de telefon, comune iPhone / Galaxy
@@ -238,15 +238,31 @@ PHONE_ACCESSORY_RE = re.compile(
 )
 PHONE_BUNDLE_RE = re.compile(r"\+|\bbundle\b|\bpachet\b|\bcu (husa|airpods|apple watch|ceas|galaxy (watch|buds))\b")
 IPHONE_MODEL_RE = re.compile(r"\biphone (\d+)\s*(pro max|pro|plus|air|mini|e)?\b")
+# (generație, variantă) urmărite -> prefixul slug-ului și stocările care există (altele = greșeală de titlu)
+IPHONES = {
+    ("18", "pro"): ("iphone-18-pro", {"256gb", "512gb", "1tb", "2tb"}),
+    ("18", "pro max"): ("iphone-18-pro-max", {"256gb", "512gb", "1tb", "2tb"}),
+    ("17", None): ("iphone-17", {"256gb", "512gb"}),
+    ("17", "e"): ("iphone-17e", {"256gb", "512gb"}),
+    ("17", "air"): ("iphone-air", {"256gb", "512gb", "1tb"}),
+    ("17", "pro"): ("iphone-17-pro", {"256gb", "512gb", "1tb"}),
+    ("17", "pro max"): ("iphone-17-pro-max", {"256gb", "512gb", "1tb", "2tb"}),
+}
+
+
+def _iphone_model(t: str) -> tuple[str, str | None] | None:
+    if re.search(r"\biphone air\b", t):  # „iPhone Air” nu are număr; e din generația 17
+        return ("17", "air")
+    m = IPHONE_MODEL_RE.search(t)
+    return (m.group(1), m.group(2)) if m else None
 
 
 def _iphone(t: str, allow_used: bool) -> MatchResult:
-    m = IPHONE_MODEL_RE.search(t)
-    if not m or m.group(1) != "18":
-        return MatchResult("accessory", reason="alt model de iPhone (urmărim doar iPhone 18 Pro / Pro Max)")
-    variant = m.group(2)
-    if variant not in ("pro", "pro max"):
-        return MatchResult("accessory", reason=f"iPhone 18 {variant or ''} (urmărim doar Pro / Pro Max)".replace("  ", " "))
+    model = _iphone_model(t)
+    if model not in IPHONES:
+        name = " ".join(x for x in (model or ()) if x)
+        return MatchResult("accessory", reason=f"iPhone {name} neurmărit (urmărim gama 17 și 18 Pro / Pro Max)".replace("  ", " "))
+    prefix, allowed = IPHONES[model]
     if not allow_used and CONDITION_RE.search(t):
         return MatchResult("excluded", reason="nu este nou (resigilat/refurbished/second hand)")
     phone = PHONE_RE.search(t)
@@ -256,14 +272,16 @@ def _iphone(t: str, allow_used: bool) -> MatchResult:
         return MatchResult("accessory", reason=f"accesoriu ({accessory.group(0).strip()})")
     # „Camera Tripla 48 + 48 + 48 MP” nu e pachet
     is_bundle = bool(PHONE_BUNDLE_RE.search(re.sub(r"\d+\s*\+\s*(?=\d)", " ", t)))
-    # „iphone 18 pro 512” (anunțuri, fără unitate): 256 / 512 lipite de model sunt doar stocare
-    t = re.sub(r"\b(pro max|pro) (256|512)\b(?!gb)", r"\1 \2gb", t)
+    # „iphone 18 pro 512”, „iphone 17 256” (anunțuri, fără unitate): 256 / 512 lipite de model sunt doar stocare
+    t = re.sub(r"\b(pro max|pro|air|e|17|18) (256|512)\b(?!gb)", r"\1 \2gb", t)
     storages = set(re.findall(r"\b(256gb|512gb|1tb|2tb)\b", t))
     if len(storages) != 1:
         reason = "stocare neclară (lipsește 256GB/512GB/1TB/2TB)" if not storages else "mai multe stocări în titlu"
         return MatchResult("unmatched", is_bundle=is_bundle, reason=reason)
-    model = "pro-max" if variant == "pro max" else "pro"
-    return MatchResult("product", f"iphone-18-{model}-{storages.pop()}", is_bundle)
+    storage = storages.pop()
+    if storage not in allowed:
+        return MatchResult("unmatched", is_bundle=is_bundle, reason=f"stocare inexistentă la acest model ({storage})")
+    return MatchResult("product", f"{prefix}-{storage}", is_bundle)
 
 
 # ---------- Samsung Galaxy S26 Ultra

@@ -284,3 +284,188 @@
   msrp_ron: 9949
   msrp_verified: false
   msrp_note: "preț de lansare Samsung România, 02.2026; posibil scumpit ulterior"
+
+# ---------- gama iPhone 17 (09.2025; 17e din 02.2026). 17 Pro / Pro Max retrase de Apple la 09.09.2026 -> doar stoc
+# rămas, refurbished și second hand. Prețuri Apple Franța (curente pentru modelele în vânzare, de lansare pentru cele retrase).
+
+- slug: iphone-17-256gb
+  name: Apple iPhone 17, 256 GB
+  family: iPhone 17
+  edition: standard
+  storage_gb: 256
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_eur: 1119  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
+  msrp_verified: false
+  msrp_note: "preț Apple Franța, 10.2026"
+
+- slug: iphone-17-512gb
+  name: Apple iPhone 17, 512 GB
+  family: iPhone 17
+  edition: standard
+  storage_gb: 512
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_eur: 1369  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
+  msrp_verified: false
+  msrp_note: "preț Apple Franța, 10.2026"
+
+- slug: iphone-17e-256gb
+  name: Apple iPhone 17e, 256 GB
+  family: iPhone 17
+  edition: e
+  storage_gb: 256
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_eur: 869  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
+  msrp_verified: false
+  msrp_note: "preț Apple Franța, 10.2026"
+
+- slug: iphone-17e-512gb
+  name: Apple iPhone 17e, 512 GB
+  family: iPhone 17
+  edition: e
+  storage_gb: 512
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_eur: 1119  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
+  msrp_verified: false
+  msrp_note: "preț Apple Franța, 10.2026"
+
+- slug: iphone-air-256gb
+  name: Apple iPhone Air, 256 GB
+  family: iPhone 17
+  edition: air
+  storage_gb: 256
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_eur: 1329  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
+  msrp_verified: false
+  msrp_note: "preț Apple Franța, 10.2026"
+
+- slug: iphone-air-512gb
+  name: Apple iPhone Air, 512 GB
+  family: iPhone 17
+  edition: air
+  storage_gb: 512
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_eur: 1579  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
+  msrp_verified: false
+  msrp_note: "preț Apple Franța, 10.2026"
+
+- slug: iphone-air-1tb
+  name: Apple iPhone Air, 1 TB
+  family: iPhone 17
+  edition: air
+  storage_gb: 1000
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_eur: 2079  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
+  msrp_verified: false
+  msrp_note: "preț Apple Franța, 10.2026"
+
+- slug: iphone-17-pro-256gb
+  name: Apple iPhone 17 Pro, 256 GB
+  family: iPhone 17
+  edition: pro
+  storage_gb: 256
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_eur: 1329  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
+  msrp_verified: false
+  msrp_note: "preț de lansare Apple Franța, 09.2025; nu se mai vinde de Apple"
+  lifecycle: retired  # Apple l-a scos din vânzare la lansarea 18 Pro (09.09.2026)
+  successor: iphone-18-pro-256gb
+
+- slug: iphone-17-pro-512gb
+  name: Apple iPhone 17 Pro, 512 GB
+  family: iPhone 17
+  edition: pro
+  storage_gb: 512
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_eur: 1579  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
+  msrp_verified: false
+  msrp_note: "preț de lansare Apple Franța, 09.2025; nu se mai vinde de Apple"
+  lifecycle: retired  # Apple l-a scos din vânzare la lansarea 18 Pro (09.09.2026)
+  successor: iphone-18-pro-512gb
+
+- slug: iphone-17-pro-1tb
+  name: Apple iPhone 17 Pro, 1 TB
+  family: iPhone 17
+  edition: pro
+  storage_gb: 1000
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_eur: 1829  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
+  msrp_verified: false
+  msrp_note: "preț de lansare Apple Franța, 09.2025; nu se mai vinde de Apple"
+  lifecycle: retired  # Apple l-a scos din vânzare la lansarea 18 Pro (09.09.2026)
+  successor: iphone-18-pro-1tb
+
+- slug: iphone-17-pro-max-256gb
+  name: Apple iPhone 17 Pro Max, 256 GB
+  family: iPhone 17
+  edition: pro-max
+  storage_gb: 256
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_eur: 1479  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
+  msrp_verified: false
+  msrp_note: "preț de lansare Apple Franța, 09.2025; nu se mai vinde de Apple"
+  lifecycle: retired  # Apple l-a scos din vânzare la lansarea 18 Pro (09.09.2026)
+  successor: iphone-18-pro-max-256gb
+
+- slug: iphone-17-pro-max-512gb
+  name: Apple iPhone 17 Pro Max, 512 GB
+  family: iPhone 17
+  edition: pro-max
+  storage_gb: 512
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_eur: 1729  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
+  msrp_verified: false
+  msrp_note: "preț de lansare Apple Franța, 09.2025; nu se mai vinde de Apple"
+  lifecycle: retired  # Apple l-a scos din vânzare la lansarea 18 Pro (09.09.2026)
+  successor: iphone-18-pro-max-512gb
+
+- slug: iphone-17-pro-max-1tb
+  name: Apple iPhone 17 Pro Max, 1 TB
+  family: iPhone 17
+  edition: pro-max
+  storage_gb: 1000
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_eur: 1979  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
+  msrp_verified: false
+  msrp_note: "preț de lansare Apple Franța, 09.2025; nu se mai vinde de Apple"
+  lifecycle: retired  # Apple l-a scos din vânzare la lansarea 18 Pro (09.09.2026)
+  successor: iphone-18-pro-max-1tb
+
+- slug: iphone-17-pro-max-2tb
+  name: Apple iPhone 17 Pro Max, 2 TB
+  family: iPhone 17
+  edition: pro-max
+  storage_gb: 2000
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_eur: 2479  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
+  msrp_verified: false
+  msrp_note: "preț de lansare Apple Franța, 09.2025; nu se mai vinde de Apple"
+  lifecycle: retired  # Apple l-a scos din vânzare la lansarea 18 Pro (09.09.2026)
+  successor: iphone-18-pro-max-2tb

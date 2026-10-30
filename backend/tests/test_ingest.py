@@ -124,3 +124,24 @@ def test_rematch_turns_old_unmatched_into_offers_and_drops_accessories(session):
     assert stats["matched"] == 1 and stats["accessory"] == 1
     assert session.scalar(select(func.count(UnmatchedListing.id))) == 0
     assert session.scalar(select(Offer)).url == pro.url
+
+
+def test_older_data_does_not_overwrite_a_newer_offer(session):
+    shop, product = session.scalar(select(Shop)), session.scalar(select(Product))
+    fresh = scraped("3399.90", minutes=600)
+    fresh.preorder = True
+    record_offer(session, shop, product, fresh, False)
+    stale = scraped("4499.00", minutes=0)  # ex. anunț nepotrivit salvat înainte, asociat abia acum
+    offer, changed = record_offer(session, shop, product, stale, False)
+    assert not changed and offer.preorder is True
+    assert session.scalar(select(func.count(PricePoint.id))) == 1
+
+
+def test_unmatched_listing_keeps_preorder(session):
+    from app.models import UnmatchedListing
+    from app.services.ingest import offer_from_unmatched, record_unmatched
+
+    s = scraped("3399.90")
+    s.preorder = True
+    record_unmatched(session, session.scalar(select(Shop)), s, "test")
+    assert offer_from_unmatched(session.scalar(select(UnmatchedListing))).preorder is True

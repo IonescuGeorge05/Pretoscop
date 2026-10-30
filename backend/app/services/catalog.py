@@ -119,6 +119,8 @@ COLORS = {
     "glacier": "Glacier", "burgundy": "Burgundy", "albastru": "Albastru", "blue": "Albastru", "rosu": "Roșu",
     "roșu": "Roșu", "red": "Roșu", "portocaliu": "Portocaliu", "orange": "Portocaliu", "gri": "Gri", "gray": "Gri",
     "grey": "Gri", "auriu": "Auriu", "gold": "Auriu", "verde": "Verde", "green": "Verde", "mov": "Mov", "purple": "Mov",
+    "lavender": "Lavandă", "lavanda": "Lavandă", "sage": "Salvie", "salvie": "Salvie", "pink": "Roz", "roz": "Roz",
+    "violet": "Violet",
 }
 COLOR_RE = re.compile(r"(?i)\b(" + "|".join(sorted(COLORS, key=len, reverse=True)) + r")\b")
 

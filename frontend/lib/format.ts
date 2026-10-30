@@ -28,6 +28,8 @@ export const variantLabel = (p: { edition: string; storage_gb: number }, long = 
     "series-x": "Series X cu unitate disc",
     "series-x-digital": "Series X Digital",
     ultra: "Ultra",
+    air: "Air",
+    e: "17e",
   };
   return `${edition[p.edition] ?? p.edition} · ${formatStorage(p.storage_gb)}`;
 };

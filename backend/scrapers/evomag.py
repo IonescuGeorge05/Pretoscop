@@ -1,14 +1,14 @@
 from collections.abc import Iterable
 
 from scrapers.base import BaseScraper
-from scrapers.util import galaxy_link, iphone18pro_link, ps5_link, switch2_link, xbox_link
+from scrapers.util import galaxy_link, iphone17_link, iphone18pro_link, ps5_link, switch2_link, xbox_link
 
 
 class EvomagScraper(BaseScraper):
     shop_slug = "evomag"
     listings = [
         ("https://www.evomag.ro/componente-pc-gaming-gaming-console/sony/", ps5_link),
-        ("https://www.evomag.ro/telefoane-tablete-accesorii-telefoane/apple/", iphone18pro_link),
+        ("https://www.evomag.ro/telefoane-tablete-accesorii-telefoane/apple/", lambda u: iphone18pro_link(u) or iphone17_link(u)),
         ("https://www.evomag.ro/componente-pc-gaming-gaming-console/nintendo/", switch2_link),
         ("https://www.evomag.ro/componente-pc-gaming-gaming-console/microsoft/", xbox_link),
         ("https://www.evomag.ro/telefoane-tablete-accesorii-telefoane/samsung/", galaxy_link),

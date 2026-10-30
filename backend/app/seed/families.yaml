@@ -20,6 +20,11 @@
   category: telefoane
   title: iPhone 18 Pro și Pro Max
   description: Telefoane noi (toate culorile), comparate pe model și stocare.
+- slug: iphone-17
+  family: iPhone 17
+  category: telefoane
+  title: iPhone 17, 17e, Air, 17 Pro și Pro Max
+  description: Gama de anul trecut. 17 Pro și Pro Max nu se mai fabrică — le găsești mai ales refurbished și second hand.
 - slug: galaxy-s26-ultra
   family: Galaxy S26 Ultra
   category: telefoane

@@ -37,6 +37,8 @@ OLX_QUERIES = [
     "site:olx.ro ps5 pro",
     "site:olx.ro iphone 18 pro",
     "site:olx.ro iphone 18 pro max",
+    "site:olx.ro iphone 17",
+    "site:olx.ro iphone air",
     "site:olx.ro nintendo switch 2",
     "site:olx.ro xbox series x",
     "site:olx.ro galaxy s26 ultra",

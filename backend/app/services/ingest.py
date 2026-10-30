@@ -12,6 +12,10 @@ from app.models import Offer, PricePoint, Product, Shop, UnmatchedListing
 from scrapers.base import ScrapedOffer
 
 
+def _utc(dt):
+    return dt if dt.tzinfo else dt.replace(tzinfo=UTC)
+
+
 def latest_point(session: Session, offer: Offer) -> PricePoint | None:
     return session.scalar(
         select(PricePoint).where(PricePoint.offer_id == offer.id).order_by(PricePoint.ts.desc()).limit(1)
@@ -33,6 +37,12 @@ def record_offer(
     if offer is None:
         offer = Offer(shop_id=shop.id, url=scraped.url, source=source)
         session.add(offer)
+    elif offer.last_seen_at is not None and _utc(scraped.scraped_at) < _utc(offer.last_seen_at):
+        # date mai vechi decât oferta (ex. un anunț nepotrivit asociat acum): nu suprascriu ce știm deja mai nou
+        offer.product_id = product.id
+        offer.is_bundle = is_bundle
+        session.flush()
+        return offer, False
     offer.product_id = product.id
     offer.title = scraped.title
     offer.warranty_months = scraped.warranty_months
@@ -102,6 +112,7 @@ def record_unmatched(session: Session, shop: Shop, scraped: ScrapedOffer, reason
         "location": scraped.location,
         "condition": scraped.condition,
         "warranty_months": scraped.warranty_months,
+        "preorder": scraped.preorder,
     }
     session.flush()
 
@@ -125,4 +136,5 @@ def offer_from_unmatched(row: UnmatchedListing) -> ScrapedOffer:
         seller=raw.get("seller"),
         grade=raw.get("grade"),
         location=raw.get("location"),
+        preorder=bool(raw.get("preorder")),
     )

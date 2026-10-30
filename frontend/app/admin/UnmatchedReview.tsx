@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { formatLei } from "@/lib/format";
 import type { Unmatched } from "@/lib/types";
 
+import ReportsPanel from "./ReportsPanel";
 import SourcesPanel from "./SourcesPanel";
 
 const TOKEN_KEY = "pretoscop-admin-token";
@@ -285,6 +286,7 @@ export default function UnmatchedReview({ products }: { products: { slug: string
   return (
     <div className="mt-6">
       <SourcesPanel token={token} />
+      <ReportsPanel token={token} />
       <FeedImport token={token} />
       <OlxImport token={token} onImported={() => load(token)} />
       {error && <p className="text-sm text-red-700 dark:text-red-400">{error}</p>}

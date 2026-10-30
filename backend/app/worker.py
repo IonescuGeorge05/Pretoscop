@@ -48,6 +48,14 @@ def first_run_at(last: datetime | None, now: datetime, interval: timedelta) -> d
     return max(soon, last + interval)
 
 
+def run_alerts() -> None:
+    from app.db import SessionLocal
+    from app.services import alerts
+
+    with SessionLocal() as session:
+        alerts.check_all(session)
+
+
 def main() -> None:
     if not settings.scraping_enabled:
         log.info("SCRAPING_ENABLED=false — worker-ul nu programează nimic")
@@ -93,6 +101,16 @@ def main() -> None:
             misfire_grace_time=3600,
         )
         log.info("alerte OLX pe email: verificare la fiecare %d minute", settings.email_poll_minutes)
+    # alerte de preț / stoc pe email (doar baza de date + SMTP; nicio cerere către magazine)
+    scheduler.add_job(
+        run_alerts,
+        IntervalTrigger(minutes=settings.alert_check_minutes),
+        id="price-alerts",
+        next_run_time=datetime.now(UTC) + timedelta(minutes=3),
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=3600,
+    )
     if settings.brave_api_key:
         scheduler.add_job(
             web_search.run_olx_search,

@@ -41,6 +41,7 @@ const NAV = [
   { href: "/#telefoane", label: "Telefoane" },
   { href: "/second-hand", label: "Second hand" },
   { href: "/reduceri", label: "Reduceri reale", highlight: true },
+  { href: "/black-friday", label: "Black Friday" },
   { href: "/despre", label: "Cum calculăm" },
 ];
 

@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from typing import Literal
 
 from pydantic import BaseModel
 
@@ -135,6 +136,7 @@ class ProductSummary(ProductWithFamily):
     refurbished_last: float | None = None  # cel mai mic preț refurbished, chiar dacă e epuizat acum
     secondhand_count: int = 0
     secondhand_cities: list[str] = []  # orașele cu cele mai multe anunțuri
+    secondhand_median: float | None = None  # mediana prețurilor cerute second hand (min. 3 anunțuri): „cât iei pe el”
     recommendation: RecommendationBadge
 
 
@@ -169,6 +171,8 @@ class ProductDetail(ProductWithFamily):
     secondhand: list[OfferOut]
     recommendation: RecommendationOut
     missing_shops: list[MissingShopOut] = []
+    community_reports: list["CommunityReportOut"] = []  # „Am găsit mai ieftin”, verificate de mână
+    alerts_enabled: bool = False  # serverul poate trimite emailuri (SMTP configurat)
 
 
 class EventOut(BaseModel):
@@ -260,3 +264,60 @@ class AssignIn(BaseModel):
 
 for _m in (DealOut, FakeDealOut, DealsOut):
     _m.model_rebuild()
+
+
+class CommunityReportOut(BaseModel):
+    domain: str
+    url: str
+    price: float
+    reviewed_at: datetime  # când l-am verificat de mână
+
+
+class AlertIn(BaseModel):
+    email: str
+    product_slug: str
+    kind: Literal["price", "stock"]
+    target_price: float | None = None
+
+
+class ReportIn(BaseModel):
+    product_slug: str
+    url: str
+    price: str
+    note: str | None = None
+    website: str | None = None  # câmp ascuns (capcană pentru roboți); oamenii îl lasă gol
+
+
+class AdminReportOut(BaseModel):
+    id: int
+    product_slug: str
+    product_name: str
+    url: str
+    domain: str
+    price: float
+    note: str | None
+    status: str
+    created_at: datetime
+    best_price: float | None  # cel mai mic preț al nostru acum, pentru comparație
+
+
+class EventReportRow(BaseModel):
+    product: ProductWithFamily
+    baseline: float | None
+    baseline_days: int
+    event_low: float | None
+    change_pct: float | None
+    verdict: Literal["pending", "real", "small", "none", "no_data"]
+
+
+class EventReportOut(BaseModel):
+    source: str
+    is_demo: bool
+    event: EventOut
+    status: Literal["upcoming", "running", "ended"]
+    days_until: int
+    baseline_days: int  # lungimea ferestrei de referință (30)
+    rows: list[EventReportRow]
+
+
+ProductDetail.model_rebuild()  # community_reports e definit mai jos

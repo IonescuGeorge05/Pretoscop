@@ -1,5 +1,6 @@
 from dataclasses import asdict
 from datetime import UTC, date, datetime, timedelta
+from decimal import Decimal
 from statistics import median
 from typing import Literal
 
@@ -13,9 +14,9 @@ from app import schemas
 from app.config import settings
 from app.families import families, family_slug
 from app.db import get_session
-from app.models import Click, DiscoveredShop, ManualMatch, Offer, Product, Shop, UnmatchedListing
+from app.models import Click, DiscoveredShop, ManualMatch, Offer, Product, Shop, UnmatchedListing, UserReport
 from app.services.ingest import offer_from_unmatched, record_offer
-from app.services import catalog
+from app.services import alerts, catalog, event_report, reports
 from app.services.pricing import compare as compare_breakdowns
 from app.services import olx_email, web_search
 from app.services.feed_import import import_feed
@@ -107,6 +108,17 @@ def _cheapest(views: list[catalog.OfferView], condition: str) -> float | None:
     return min(prices) if prices else None
 
 
+def _asking_median(views: list[catalog.OfferView]) -> tuple[float | None, int]:
+    """„Cât iei pe el”: mediana prețurilor cerute în anunțurile second hand active (fără pachete și prețuri suspecte).
+    E preț cerut, nu preț de vânzare; cu sub 3 anunțuri nu spunem nimic."""
+    prices = [
+        float(v.point.price)
+        for v in views
+        if v.offer.condition == "used" and not v.offer.is_bundle and not catalog.suspicious_price(v.offer, v.point.price)
+    ]
+    return (median(prices), len(prices)) if len(prices) >= 3 else (None, len(prices))
+
+
 def _top_cities(views: list[catalog.OfferView], n: int = 3) -> list[str]:
     """Orașele anunțurilor second hand, după număr (sectoarele -> București)."""
     counts: dict[str, int] = {}
@@ -147,6 +159,7 @@ def list_products(source: str | None = SourceParam, session: Session = Depends(g
                 refurbished_last=_cheapest(all_used, "refurbished"),
                 secondhand_count=sum(v.offer.condition == "used" for v in used),
                 secondhand_cities=_top_cities(used),
+                secondhand_median=_asking_median(used)[0],
                 recommendation=schemas.RecommendationBadge(
                     verdict=rec.verdict, label=catalog.VERDICT_LABELS[rec.verdict], confidence=rec.confidence
                 ),
@@ -198,6 +211,11 @@ def product_detail(slug: str, source: str | None = SourceParam, session: Session
             )
             for s, url in catalog.missing_shops(session, p)
         ],
+        community_reports=[
+            schemas.CommunityReportOut(domain=r.domain, url=r.url, price=float(r.price), reviewed_at=r.reviewed_at)
+            for r in reports.visible(session, p)
+        ],
+        alerts_enabled=alerts.mail_enabled(),
     )
 
 
@@ -236,6 +254,89 @@ def deals(source: str | None = SourceParam, session: Session = Depends(get_sessi
         deals=sorted(found, key=lambda d: -d.real_drop_pct),
         fake=fake,
     )
+
+
+@router.get("/events/{slug}/report", response_model=schemas.EventReportOut)
+def event_report_view(slug: str, source: str | None = SourceParam, session: Session = Depends(get_session)):
+    """Raportul unui eveniment de reduceri (ex. black_friday): referința dinainte vs. cel mai mic preț din eveniment."""
+    today = date.today()
+    event = event_report.pick_occurrence(catalog.calendar(), slug, today)
+    if event is None:
+        raise HTTPException(404, "Eveniment necunoscut")
+    src = catalog.resolve_source(source)
+    rows = []
+    for p in session.scalars(select(Product).where(Product.lifecycle != "retired").order_by(Product.id)):
+        histories = [catalog.to_history(o) for o in catalog.comparable(catalog.load_offers(session, p.id, src))]
+        r = event_report.event_row(histories, event, today)
+        rows.append(schemas.EventReportRow(product=schemas.ProductWithFamily(**product_base(p)), **asdict(r)))
+    status = "upcoming" if today < event.start else "running" if today <= event.end else "ended"
+    return schemas.EventReportOut(
+        source=src,
+        is_demo=src == "mock",
+        event=schemas.EventOut(slug=event.slug, name=event.name, date=event.date, start=event.start, end=event.end),
+        status=status,
+        days_until=max((event.start - today).days, 0),
+        baseline_days=event_report.BASELINE_DAYS,
+        rows=rows,
+    )
+
+
+# ---------- alerte pe email și „Am găsit mai ieftin” (formulare publice, cu plafon per IP)
+
+ALERT_LIMIT = reports.RateLimit(per_hour=10)
+REPORT_LIMIT = reports.RateLimit(per_hour=10)
+
+
+def _client_ip(request: Request) -> str:
+    return (request.headers.get("x-forwarded-for") or (request.client.host if request.client else "")).split(",")[0].strip()
+
+
+@router.post("/alerts", status_code=202)
+def create_alert(body: schemas.AlertIn, request: Request, session: Session = Depends(get_session)):
+    if not alerts.mail_enabled():
+        raise HTTPException(503, "Alertele pe email nu sunt încă active.")
+    if not ALERT_LIMIT.allow(_client_ip(request)):
+        raise HTTPException(429, "Prea multe cereri. Încearcă din nou peste o oră.")
+    p = catalog.get_product(session, body.product_slug)
+    if p is None:
+        raise HTTPException(404, "Produs inexistent")
+    target = Decimal(str(body.target_price)) if body.target_price is not None else None
+    try:
+        alerts.create(session, body.email, p, body.kind, target)
+    except alerts.AlertError as exc:
+        raise HTTPException(422, str(exc)) from None
+    except OSError:  # SMTP indisponibil
+        session.rollback()
+        raise HTTPException(503, "Nu am putut trimite emailul de confirmare. Încearcă mai târziu.") from None
+    return {"status": "confirmation_sent"}
+
+
+@router.get("/alerts/confirm")
+def confirm_alert(token: str, session: Session = Depends(get_session)):
+    ok = alerts.confirm(session, token) is not None
+    return RedirectResponse(settings.public_site_url.rstrip("/") + ("/alerte/confirmat" if ok else "/alerte/invalid"), 303)
+
+
+@router.get("/alerts/unsubscribe")
+def unsubscribe_alert(token: str, session: Session = Depends(get_session)):
+    alerts.unsubscribe(session, token)
+    return RedirectResponse(settings.public_site_url.rstrip("/") + "/alerte/dezabonat", 303)
+
+
+@router.post("/reports", status_code=202)
+def create_report(body: schemas.ReportIn, request: Request, session: Session = Depends(get_session)):
+    if body.website:  # capcana pentru roboți: răspundem normal, dar nu salvăm
+        return {"status": "received"}
+    if not REPORT_LIMIT.allow(_client_ip(request)):
+        raise HTTPException(429, "Prea multe semnalări. Încearcă din nou peste o oră.")
+    p = catalog.get_product(session, body.product_slug)
+    if p is None:
+        raise HTTPException(404, "Produs inexistent")
+    try:
+        reports.create(session, p, body.url, body.price, body.note)
+    except reports.ReportError as exc:
+        raise HTTPException(422, str(exc)) from None
+    return {"status": "received"}
 
 
 RANGES = {"30d": 30, "90d": 90, "1y": 365}
@@ -455,6 +556,31 @@ def _resolve_unmatched(session: Session, row_id: int, product: Product | None, i
         # oferta apare imediat, din datele colectate deja; scrape-urile următoare o actualizează
         record_offer(session, session.get(Shop, row.shop_id), product, offer_from_unmatched(row), is_bundle)
     session.delete(row)
+    session.commit()
+
+
+@router.get("/admin/reports", response_model=list[schemas.AdminReportOut], dependencies=[Depends(require_admin)])
+def admin_reports(session: Session = Depends(get_session)):
+    """Prețurile semnalate de cititori: întâi cele noi, de verificat (deschizi linkul și compari)."""
+    rows = session.scalars(select(UserReport).order_by((UserReport.status != "new"), UserReport.created_at.desc()).limit(200))
+    out = []
+    for r in rows:
+        best, _ = alerts.best_now(session, r.product)
+        out.append(schemas.AdminReportOut(
+            id=r.id, product_slug=r.product.slug, product_name=r.product.name, url=r.url, domain=r.domain,
+            price=float(r.price), note=r.note, status=r.status, created_at=r.created_at,
+            best_price=float(best) if best is not None else None,
+        ))
+    return out
+
+
+@router.post("/admin/reports/{row_id}/{action}", status_code=204, dependencies=[Depends(require_admin)])
+def admin_review_report(row_id: int, action: Literal["accept", "reject"], session: Session = Depends(get_session)):
+    r = session.get(UserReport, row_id)
+    if r is None:
+        raise HTTPException(404, "Semnalare inexistentă")
+    r.status = "accepted" if action == "accept" else "rejected"
+    r.reviewed_at = datetime.now(UTC)
     session.commit()
 
 

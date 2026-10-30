@@ -20,7 +20,7 @@ export default function Confidentialitate() {
 
       <H2>Pe scurt</H2>
       <ul className="mt-3 list-disc space-y-2 pl-5">
-        <li>Nu ai cont și nu îți cerem date personale.</li>
+        <li>Nu ai cont. Singura dată personală pe care o poți lăsa e adresa de email, dacă ceri o alertă de preț.</li>
         <li>Nu folosim cookie-uri de marketing, reclame sau trackere de la terți.</li>
         <li>Nu vindem și nu transmitem date despre vizitatori.</li>
       </ul>
@@ -40,6 +40,29 @@ export default function Confidentialitate() {
           <strong>Preferințe locale</strong>: unele setări (de ex. filtrele graficului) pot fi ținute doar în browserul tău.
         </li>
       </ul>
+
+      <H2>Alertele de preț pe email</H2>
+      <ul className="mt-3 list-disc space-y-2 pl-5">
+        <li>
+          Când ceri o alertă, păstrăm <strong>adresa de email, produsul și prețul țintă</strong>, doar ca să-ți trimitem
+          emailul cerut (temeiul: consimțământul tău, art. 6 alin. 1 lit. a GDPR).
+        </li>
+        <li>
+          Alerta pornește doar după ce confirmi din emailul primit. Dacă nu confirmi, ștergem adresa automat după 48 de
+          ore.
+        </li>
+        <li>
+          Fiecare email are un link de dezabonare care <strong>șterge</strong> alerta și adresa. Alerta „în stoc” se
+          șterge singură după ce îți scriem.
+        </li>
+        <li>Nu folosim adresa pentru reclame sau newslettere și nu o dăm nimănui.</li>
+      </ul>
+
+      <H2>„Am găsit mai ieftin”</H2>
+      <p className="mt-3">
+        Formularul cere doar linkul, prețul și, opțional, o notă. Nu cerem nume sau email. Ca să oprim spamul, ținem cel
+        mult o oră, doar în memoria serverului (nu în baza de date), adresa IP de la care s-a trimis formularul.
+      </p>
 
       <H2>Datele despre prețuri</H2>
       <p className="mt-3">

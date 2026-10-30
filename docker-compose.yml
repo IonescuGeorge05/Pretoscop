@@ -15,6 +15,12 @@ x-backend-env: &backend-env
   IMAP_FOLDER: ${IMAP_FOLDER:-INBOX}
   OLX_ALERT_SENDER: ${OLX_ALERT_SENDER:-olx.ro}
   BRAVE_API_KEY: ${BRAVE_API_KEY:-}
+  SMTP_HOST: ${SMTP_HOST:-}
+  SMTP_PORT: ${SMTP_PORT:-587}
+  SMTP_USER: ${SMTP_USER:-}
+  SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+  MAIL_FROM: ${MAIL_FROM:-}
+  PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-http://localhost:3000}
 
 services:
   db:

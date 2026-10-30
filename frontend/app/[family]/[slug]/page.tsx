@@ -7,9 +7,12 @@ import FakeDiscountAlert from "@/components/FakeDiscountAlert";
 import MissingShops from "@/components/MissingShops";
 import OfferTabs from "@/components/OfferTabs";
 import OffersSection from "@/components/OffersSection";
+import PriceAlertForm from "@/components/PriceAlertForm";
 import PriceChart from "@/components/PriceChart";
 import RecommendationCard from "@/components/RecommendationCard";
+import ReportCheaper from "@/components/ReportCheaper";
 import SavingsCard from "@/components/SavingsCard";
+import TradeIn from "@/components/TradeIn";
 import { NotFound, getHistory, getProduct, getProducts } from "@/lib/api";
 import { IS_STATIC } from "@/lib/static";
 import { formatLei, formatLeiShort, productHref, variantLabel, vsMsrp, withSource } from "@/lib/format";
@@ -68,6 +71,13 @@ export default async function ProductPage({ params, searchParams }: Props) {
   const successor = retired && product.successor ? await getProduct(product.successor, source).catch(() => null) : null;
   const successorBest = successor?.offers.find((o) => o.in_stock);
   const refurb = product.refurbished.find((o) => !o.suspicious_price) ?? null;
+  // „cât iei pe cel vechi”: modelele din aceeași categorie (întâi aceeași familie), cu anunțuri second hand
+  const list = await getProducts(source).catch(() => null);
+  const category = list?.families.find((f) => f.slug === product.family_slug)?.category;
+  const sameCategory = new Set(list?.families.filter((f) => f.category === category).map((f) => f.family));
+  const tradeIn = (list?.products ?? [])
+    .filter((p) => p.slug !== product.slug && sameCategory.has(p.family) && p.secondhand_median)
+    .sort((a, b) => Number(b.family === product.family) - Number(a.family === product.family));
 
   return (
     <>
@@ -174,8 +184,20 @@ export default async function ProductPage({ params, searchParams }: Props) {
           </div>
         </section>
 
+        {!retired && (
+          <section className="grid gap-5 lg:grid-cols-2">
+            <PriceAlertForm
+              slug={product.slug}
+              bestPrice={best?.breakdown.final_price ?? null}
+              enabled={!IS_STATIC && !!product.alerts_enabled}
+            />
+            {best && <TradeIn newPrice={best.breakdown.final_price} candidates={tradeIn} />}
+          </section>
+        )}
+
         <OfferTabs offers={product.offers} refurbished={product.refurbished} secondhand={product.secondhand} retired={retired} />
         <MissingShops shops={product.missing_shops ?? []} />
+        <ReportCheaper slug={product.slug} reports={product.community_reports ?? []} canSubmit={!IS_STATIC} />
         {!retired && <SavingsCard offers={product.offers} refurbished={product.refurbished} secondhand={product.secondhand} />}
         <PriceChart
           initial={history}

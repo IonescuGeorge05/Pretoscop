@@ -13,6 +13,9 @@ async function proxy(req: NextRequest, { params }: { params: { path: string[] } 
     const v = req.headers.get(h);
     if (v) headers.set(h, v);
   }
+  // IP-ul vizitatorului, pentru plafonul formularelor publice (alerte, semnalări)
+  const ip = req.headers.get("x-forwarded-for") ?? req.ip;
+  if (ip) headers.set("x-forwarded-for", ip);
   const res = await fetch(url, {
     method: req.method,
     headers,

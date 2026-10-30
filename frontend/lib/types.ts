@@ -100,6 +100,7 @@ export interface ProductSummary extends ProductBase {
   refurbished_last?: number | null;
   secondhand_count?: number;
   secondhand_cities?: string[];
+  secondhand_median?: number | null; // mediana prețurilor cerute în anunțuri (min. 3)
   recommendation: { verdict: Verdict; label: string; confidence: number };
 }
 
@@ -127,6 +128,34 @@ export interface ProductDetail extends ProductBase {
   secondhand: Offer[];
   recommendation: Recommendation;
   missing_shops?: MissingShop[];
+  community_reports?: CommunityReport[];
+  alerts_enabled?: boolean;
+}
+
+export interface CommunityReport {
+  domain: string;
+  url: string;
+  price: number;
+  reviewed_at: string;
+}
+
+export interface EventReportRow {
+  product: ProductBase & { family_slug: string };
+  baseline: number | null;
+  baseline_days: number;
+  event_low: number | null;
+  change_pct: number | null;
+  verdict: "pending" | "real" | "small" | "none" | "no_data";
+}
+
+export interface EventReport {
+  source: string;
+  is_demo: boolean;
+  event: CalendarEvent;
+  status: "upcoming" | "running" | "ended";
+  days_until: number;
+  baseline_days: number;
+  rows: EventReportRow[];
 }
 
 export interface CalendarEvent {

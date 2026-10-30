@@ -30,6 +30,16 @@ class Settings(BaseSettings):
     olx_alert_sender: str = "olx.ro"
     email_poll_minutes: int = 30
 
+    # emailuri trimise de site (alerte de preț): SMTP, ex. Gmail cu „parolă pentru aplicații”. Gol = alerte oprite.
+    smtp_host: str = ""
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    mail_from: str = ""  # gol = smtp_user
+    # adresa publică a site-ului, pentru linkurile din emailuri (confirmare, dezabonare, produs)
+    public_site_url: str = "http://localhost:3000"
+    alert_check_minutes: int = 60
+
     # căutare web prin Brave Search API (opțional): anunțuri OLX din index + descoperire de magazine
     brave_api_key: str = ""
     search_interval_hours: float = 12

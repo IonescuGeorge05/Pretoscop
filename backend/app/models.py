@@ -184,3 +184,42 @@ class ProcessedEmail(Base):
     received_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     offers_found: Mapped[int] = mapped_column(Integer, default=0)
     processed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+
+
+class PriceAlert(Base):
+    """Alertă cerută de un vizitator: email când prețul final scade sub țintă (`price`) sau când apare stoc (`stock`).
+    Activă doar după confirmarea din email; dezabonarea șterge rândul (nu păstrăm adresa)."""
+
+    __tablename__ = "price_alerts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    email: Mapped[str] = mapped_column(String(254), index=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"))
+    kind: Mapped[str] = mapped_column(String(10))  # price | stock
+    target_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+    token: Mapped[str] = mapped_column(String(64), unique=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_sent_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
+
+    product: Mapped["Product"] = relationship()
+
+
+class UserReport(Base):
+    """Preț semnalat de un cititor („Am găsit mai ieftin”). Apare pe site doar după verificarea manuală din admin
+    și separat de comparație (nu e citit de robotul nostru, deci nu intră în minimul pieței)."""
+
+    __tablename__ = "user_reports"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    product_id: Mapped[int] = mapped_column(ForeignKey("products.id", ondelete="CASCADE"))
+    url: Mapped[str] = mapped_column(Text)
+    domain: Mapped[str] = mapped_column(String(200))
+    price: Mapped[Decimal] = mapped_column(Numeric(10, 2))
+    note: Mapped[str | None] = mapped_column(Text)
+    status: Mapped[str] = mapped_column(String(10), default="new")  # new | accepted | rejected
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    product: Mapped["Product"] = relationship()

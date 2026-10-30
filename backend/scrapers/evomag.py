@@ -1,7 +1,7 @@
 from collections.abc import Iterable
 
 from scrapers.base import BaseScraper
-from scrapers.util import iphone18pro_link, ps5_link
+from scrapers.util import galaxy_link, iphone18pro_link, ps5_link, switch2_link, xbox_link
 
 
 class EvomagScraper(BaseScraper):
@@ -9,6 +9,9 @@ class EvomagScraper(BaseScraper):
     listings = [
         ("https://www.evomag.ro/componente-pc-gaming-gaming-console/sony/", ps5_link),
         ("https://www.evomag.ro/telefoane-tablete-accesorii-telefoane/apple/", iphone18pro_link),
+        ("https://www.evomag.ro/componente-pc-gaming-gaming-console/nintendo/", switch2_link),
+        ("https://www.evomag.ro/componente-pc-gaming-gaming-console/microsoft/", xbox_link),
+        ("https://www.evomag.ro/telefoane-tablete-accesorii-telefoane/samsung/", galaxy_link),
     ]
     # prețul curent vine din microdata; prețul tăiat apare doar vizual în blocul de preț.
     # TODO verify pe un produs redus (la testare, 10.2026, niciun PS5 nu avea reducere).

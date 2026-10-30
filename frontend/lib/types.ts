@@ -85,6 +85,7 @@ export interface ProductBase {
 export interface Family {
   slug: string;
   family: string;
+  category: string; // console | telefoane
   title: string;
   description: string;
 }

@@ -37,8 +37,8 @@ function Logo({ name }: { name: string }) {
 }
 
 const NAV = [
-  { href: "/#ps5", label: "PS5" },
-  { href: "/#iphone-18-pro", label: "iPhone 18 Pro" },
+  { href: "/#console", label: "Console" },
+  { href: "/#telefoane", label: "Telefoane" },
   { href: "/second-hand", label: "Second hand" },
   { href: "/reduceri", label: "Reduceri reale", highlight: true },
   { href: "/despre", label: "Cum calculăm" },

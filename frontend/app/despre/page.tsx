@@ -24,9 +24,11 @@ export default function Despre() {
       <h1 className="font-display text-4xl font-extrabold tracking-tight sm:text-[46px]">Cum funcționează {name}</h1>
       <p className="mt-3 text-muted">
         Comparăm prețurile din cât mai multe magazine — nu doar din cele care ne plătesc — și le comparăm corect, cu tot
-        ce plătești de fapt. Acum urmărim consolele <strong className="text-ink">PlayStation 5</strong> (toate modelele) și
-        telefoanele <strong className="text-ink">iPhone 18 Pro / Pro Max</strong> (toate stocările; culorile sunt oferte ale
-        aceluiași produs).
+        ce plătești de fapt. Acum urmărim consolele <strong className="text-ink">PlayStation 5</strong>,{" "}
+        <strong className="text-ink">Nintendo Switch 2</strong> și <strong className="text-ink">Xbox Series X|S</strong>{" "}
+        (toate modelele) și telefoanele <strong className="text-ink">iPhone 18 Pro / Pro Max</strong> și{" "}
+        <strong className="text-ink">Samsung Galaxy S26 Ultra</strong> (toate stocările; culorile sunt oferte ale aceluiași
+        produs).
       </p>
 
       <H2>Prețul final real</H2>

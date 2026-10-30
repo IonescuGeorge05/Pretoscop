@@ -23,6 +23,11 @@ export const variantLabel = (p: { edition: string; storage_gb: number }, long = 
     digital: long ? "Digital (fără unitate disc)" : "Digital",
     pro: "Pro",
     "pro-max": "Pro Max",
+    standard: "Standard",
+    "series-s": "Series S (digital)",
+    "series-x": "Series X cu unitate disc",
+    "series-x-digital": "Series X Digital",
+    ultra: "Ultra",
   };
   return `${edition[p.edition] ?? p.edition} · ${formatStorage(p.storage_gb)}`;
 };
@@ -35,3 +40,7 @@ export const vsMsrp = (price: number, msrp: number) => {
   const pct = (price / msrp - 1) * 100;
   return `${pct > 0 ? "+" : ""}${pct.toFixed(1).replace(".", ",")}% față de MSRP`;
 };
+
+/** Categoriile din meniu și de pe prima pagină (familiile au `category` în seed/families.yaml). */
+export const CATEGORIES: Record<string, string> = { console: "Console", telefoane: "Telefoane" };
+export const categoryLabel = (c: string) => CATEGORIES[c] ?? "Altele";

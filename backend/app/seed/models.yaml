@@ -184,3 +184,103 @@
   msrp_eur: 3129  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
   msrp_note: "preț Apple Franța, lansare 18.09.2026"
+
+# ---------- Nintendo Switch 2 (o singură variantă de consolă, 256 GB; pachetele cu jocuri sunt oferte „pachet”)
+- slug: nintendo-switch-2
+  name: Nintendo Switch 2
+  family: Nintendo Switch 2
+  edition: standard
+  storage_gb: 256
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_eur: 499.99  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
+  msrp_verified: false
+  msrp_note: "preț UE Nintendo din 01.09.2026 (anunțat 08.05.2026, de la 469,99 €)"
+
+# ---------- Xbox Series X|S — prețuri UE Microsoft din 01.08.2026 (Series X 2 TB s-a retras din vânzare)
+- slug: xbox-series-s-512gb
+  name: Xbox Series S, 512 GB
+  family: Xbox Series
+  edition: series-s
+  storage_gb: 512
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_eur: 499.99  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
+  msrp_verified: false
+  msrp_note: "preț UE Microsoft din 01.08.2026"
+
+- slug: xbox-series-s-1tb
+  name: Xbox Series S, 1 TB
+  family: Xbox Series
+  edition: series-s
+  storage_gb: 1000
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_eur: 599.99  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
+  msrp_verified: false
+  msrp_note: "preț UE Microsoft din 01.08.2026"
+
+- slug: xbox-series-x-digital-1tb
+  name: Xbox Series X Digital Edition, 1 TB
+  family: Xbox Series
+  edition: series-x-digital
+  storage_gb: 1000
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_eur: 749.99  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
+  msrp_verified: false
+  msrp_note: "preț UE Microsoft din 01.08.2026"
+
+- slug: xbox-series-x-1tb
+  name: Xbox Series X (cu unitate disc), 1 TB
+  family: Xbox Series
+  edition: series-x
+  storage_gb: 1000
+  model_code: null
+  ean: null
+  image_url: null
+  msrp_eur: 799.99  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
+  msrp_verified: false
+  msrp_note: "preț UE Microsoft din 01.08.2026"
+
+# ---------- Samsung Galaxy S26 Ultra (SM-S948B). MSRP în lei: prețul de lansare Samsung România (02.2026);
+# presa a raportat scumpiri ulterioare (09.2026) — de verificat pe samsung.com/ro.
+- slug: galaxy-s26-ultra-256gb
+  name: Samsung Galaxy S26 Ultra, 256 GB
+  family: Galaxy S26 Ultra
+  edition: ultra
+  storage_gb: 256
+  model_code: SM-S948B
+  ean: null
+  image_url: null
+  msrp_ron: 7399
+  msrp_verified: false
+  msrp_note: "preț de lansare Samsung România, 02.2026; posibil scumpit ulterior"
+
+- slug: galaxy-s26-ultra-512gb
+  name: Samsung Galaxy S26 Ultra, 512 GB
+  family: Galaxy S26 Ultra
+  edition: ultra
+  storage_gb: 512
+  model_code: SM-S948B
+  ean: null
+  image_url: null
+  msrp_ron: 8399
+  msrp_verified: false
+  msrp_note: "preț de lansare Samsung România, 02.2026; posibil scumpit ulterior"
+
+- slug: galaxy-s26-ultra-1tb
+  name: Samsung Galaxy S26 Ultra, 1 TB
+  family: Galaxy S26 Ultra
+  edition: ultra
+  storage_gb: 1000
+  model_code: SM-S948B
+  ean: null
+  image_url: null
+  msrp_ron: 9949
+  msrp_verified: false
+  msrp_note: "preț de lansare Samsung România, 02.2026; posibil scumpit ulterior"

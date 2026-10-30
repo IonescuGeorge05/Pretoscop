@@ -10,6 +10,7 @@ from decimal import Decimal
 from selectolax.parser import HTMLParser
 
 from scrapers.base import BaseScraper, ScrapedOffer
+from scrapers.families import url_family
 
 GRADES = {"BUN": "Bun", "FOARTE_BUN": "Foarte bun", "EXCELENT": "Excelent", "CA_NOU": "Ca nou", "UZAT": "Uzat"}
 
@@ -61,7 +62,7 @@ class FlipScraper(BaseScraper):
     def discover_product_urls(self) -> Iterable[str]:
         xml = self.client.get(self.sitemap_url).text
         for loc in re.findall(r"<loc>([^<]+)</loc>", xml):
-            if "/magazin/" in loc and ("playstation-5" in loc or "iphone-18-pro" in loc):
+            if "/magazin/" in loc and ("playstation-5" in loc or url_family(loc) not in (None, "ps5")):
                 yield loc
 
     def scrape(self) -> Iterator[ScrapedOffer]:

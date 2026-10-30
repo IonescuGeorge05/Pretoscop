@@ -17,7 +17,10 @@ SEARCHES = [
     for q in ("ps5", "playstation+5", "playstation5")
 ] + [
     ("https://www.publi24.ro/anunturi/electronice/telefoane-mobile/", q)
-    for q in ("iphone+18+pro", "iphone18+pro", "iphone+18+pro+max")
+    for q in ("iphone+18+pro", "iphone18+pro", "iphone+18+pro+max", "galaxy+s26+ultra", "s26+ultra")
+] + [
+    ("https://www.publi24.ro/anunturi/electronice/console-jocuri/console/", q)
+    for q in ("nintendo+switch+2", "switch+2", "xbox+series+x", "xbox+series+s")
 ]
 
 

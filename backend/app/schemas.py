@@ -141,6 +141,7 @@ class ProductSummary(ProductWithFamily):
 class FamilyOut(BaseModel):
     slug: str
     family: str
+    category: str = "altele"  # console | telefoane (meniu și prima pagină)
     title: str
     description: str
 

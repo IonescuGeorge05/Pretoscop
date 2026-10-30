@@ -1,9 +1,27 @@
 # Familiile de produse: `family` din models.yaml -> slug folosit în URL-uri (/<slug>/<produs>) și titlu afișat.
+# `category`: grupul din meniu și de pe prima pagină (console, telefoane). Ordinea de aici e ordinea afișării.
 - slug: ps5
   family: PlayStation 5
+  category: console
   title: PlayStation 5 — toate modelele
   description: Console PS5 noi, cu preț final real, istoric și recomandare.
+- slug: nintendo-switch-2
+  family: Nintendo Switch 2
+  category: console
+  title: Nintendo Switch 2
+  description: Consola și pachetele cu jocuri (pachetele apar marcate, separat de prețul consolei).
+- slug: xbox-series
+  family: Xbox Series
+  category: console
+  title: Xbox Series X și Series S
+  description: Toate modelele în vânzare, după scumpirea din august 2026.
 - slug: iphone-18-pro
   family: iPhone 18 Pro
+  category: telefoane
   title: iPhone 18 Pro și Pro Max
   description: Telefoane noi (toate culorile), comparate pe model și stocare.
+- slug: galaxy-s26-ultra
+  family: Galaxy S26 Ultra
+  category: telefoane
+  title: Samsung Galaxy S26 Ultra
+  description: Toate stocările; culorile sunt oferte ale aceluiași produs.

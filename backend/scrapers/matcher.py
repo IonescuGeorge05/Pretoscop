@@ -1,6 +1,6 @@
 """Potrivire listare -> produs. Ordine: EAN, MPN, reguli pe titlu; altfel `unmatched` (nu ghicim).
 
-Regulile pe titlu sunt pe familii de produse (PS5, iPhone 18 Pro). Familie nouă: o funcție `_<familie>(t, allow_used)`
+Regulile pe titlu sunt pe familii de produse (PS5, Switch 2, Xbox Series, iPhone 18 Pro, Galaxy S26 Ultra). Familie nouă: o funcție `_<familie>(t, allow_used)`
 și o ramură în `match_title`."""
 
 import re
@@ -52,6 +52,9 @@ def normalize(title: str) -> str:
     t = re.sub(r"play\s*station\s*5|\bps\s*5\b", "ps5", t)
     t = re.sub(r"\biphone\s*(\d+)\s*", r"iphone \1 ", t)  # iphone18pro -> iphone 18 pro
     t = re.sub(r"\bpro\s*max\b|\bpromax\b", "pro max", t)
+    t = re.sub(r"\b(nintendo\s*)?switch\s*2\b", "switch2", t)
+    t = re.sub(r"\bxbox\s*series\s*([xs])\b", r"xbox-series-\1", t)
+    t = re.sub(r"\b(samsung\s*)?(galaxy\s*)?s\s*26\s*ultra\b", "galaxy s26 ultra", t)
     t = re.sub(r"(\d+)\s*(gb|tb)\b", r"\1\2", t)
     return re.sub(r"\s+", " ", t).strip()
 
@@ -70,6 +73,12 @@ def match_title(title: str, allow_used: bool = False) -> MatchResult:
         return _iphone(t, allow_used)
     if "ps5" in t:
         return _ps5(t, allow_used)
+    if "switch2" in t:
+        return _switch2(t, allow_used)
+    if "xbox-series-" in t:
+        return _xbox(t, allow_used)
+    if "galaxy s26 ultra" in t:
+        return _galaxy(t, allow_used)
     return MatchResult("accessory", reason="produs neurmărit")
 
 
@@ -157,14 +166,77 @@ def _ps5(t: str, allow_used: bool) -> MatchResult:
     return MatchResult("product", PS5_SLUGS[(gen, edition)], is_bundle)
 
 
+# ---------- Nintendo Switch 2
+
+SWITCH2_ACCESSORY_RE = re.compile(
+    r"\b(joc|jocuri|game|games|husa|carcasa|folie|sticla|joy-?con\w*|controller|controler\w*|gamepad|card|microsd\w*|"
+    r"incarcator|dock|stand|suport|geanta|cablu|adaptor|amiibo|camera|casti|headset|grip|volan|abonament|"
+    r"switch2 edition)\b|\b(pentru|for|compatibil\w*)\s+switch2\b"
+)
+SWITCH2_BUNDLE_RE = re.compile(
+    r"\+|\bbundle\b|\bpachet\b|\bset\b|\bcu (joc|jocul)\b|\b\d+ (jocuri|controllere?)\b|\bmario\b|\bpokemon\b|"
+    r"\bdonkey kong\b|\bzelda\b|\bkirby\b|\bhogwarts\b|\bswitch sports\b|\bsports resort\b|\bpokopia\b|\bmetroid\b|"
+    r"\bsplatoon\b|\banimal crossing\b|\bfc ?2\d\b|\bnba\b"
+)
+
+
+def _switch2(t: str, allow_used: bool) -> MatchResult:
+    if not allow_used and CONDITION_RE.search(t):
+        return MatchResult("excluded", reason="nu este nou (resigilat/refurbished/second hand)")
+    console = CONSOLE_RE.search(t)
+    accessory = SWITCH2_ACCESSORY_RE.search(t)
+    # „Joc X - Nintendo Switch 2 Edition” = joc; „Consolă Nintendo Switch 2 + joc” = consolă (pachet)
+    if accessory and (not console or accessory.start() < console.start()):
+        return MatchResult("accessory", reason=f"accesoriu ({accessory.group(0).strip()})")
+    return MatchResult("product", "nintendo-switch-2", bool(SWITCH2_BUNDLE_RE.search(t)))
+
+
+# ---------- Xbox Series X / S
+
+XBOX_ACCESSORY_RE = re.compile(
+    r"\b(joc|jocuri|game|games|game ?pass|abonament|controller|controler\w*|gamepad|maneta|husa|skin|stand|suport|"
+    r"incarcator|baterie|acumulator|card de extindere|expansion|storage|hard ?disk|ssd extern|casti|headset|cablu|"
+    r"adaptor|volan|ventilator|cooler|telecomanda|remote)\b|\b(pentru|for|compatibil\w*)\s+(microsoft )?xbox\b"
+)
+XBOX_BUNDLE_RE = re.compile(
+    r"\+|\bbundle\b|\bpachet\b|\bcu (joc|jocul)\b|\b\d+ (jocuri|controllere?|manete)\b|\bextra controller\b"
+)
+
+
+def _xbox(t: str, allow_used: bool) -> MatchResult:
+    if not allow_used and CONDITION_RE.search(t):
+        return MatchResult("excluded", reason="nu este nou (resigilat/refurbished/second hand)")
+    console = CONSOLE_RE.search(t)
+    accessory = XBOX_ACCESSORY_RE.search(t)
+    if accessory and (not console or accessory.start() < console.start()):
+        return MatchResult("accessory", reason=f"accesoriu ({accessory.group(0).strip()})")
+    is_bundle = bool(XBOX_BUNDLE_RE.search(t))
+    has_x, has_s = "xbox-series-x" in t, "xbox-series-s" in t
+    if has_x == has_s:
+        return MatchResult("unmatched", is_bundle=is_bundle, reason="Series X sau Series S?")
+    if has_s:
+        storages = set(re.findall(r"\b(512gb|1tb)\b", t))
+        if len(storages) != 1:
+            return MatchResult("unmatched", is_bundle=is_bundle, reason="Series S: stocare neclară (512GB sau 1TB?)")
+        return MatchResult("product", f"xbox-series-s-{storages.pop()}", is_bundle)
+    if "2tb" in t:
+        return MatchResult("excluded", reason="Series X 2 TB (Galaxy Black, nu se mai produce; neurmărit)")
+    # convenția magazinelor: „Xbox Series X” fără „Digital” = modelul cu unitate disc (1 TB); varianta digitală e numită
+    if re.search(r"\b(all[ -])?digital\b|\bfara (disc|disk|unitate)\b", t):
+        return MatchResult("product", "xbox-series-x-digital-1tb", is_bundle)
+    return MatchResult("product", "xbox-series-x-1tb", is_bundle)
+
+
 # ---------- iPhone 18 Pro / Pro Max
 
 PHONE_RE = re.compile(r"\b(telefon|smartphone)\b")
-IPHONE_ACCESSORY_RE = re.compile(
+# accesoriile de telefon, comune iPhone / Galaxy
+PHONE_ACCESSORY_RE = re.compile(
     r"\b(husa|carcasa|folie|sticla|protectie|cablu|incarcator|adaptor|magsafe|case|cover|lentil\w*|suport|curea|"
-    r"baterie externa|powerbank|stylus|skin|dummy|macheta)\b|\b(pentru|for|compatibil\w*)\s+(apple )?iphone\b"
+    r"baterie externa|powerbank|stylus|s ?pen|skin|dummy|macheta)\b|"
+    r"\b(pentru|for|compatibil\w*)\s+(apple |samsung )?(iphone|galaxy)\b"
 )
-IPHONE_BUNDLE_RE = re.compile(r"\+|\bbundle\b|\bpachet\b|\bcu (husa|airpods|apple watch|ceas)\b")
+PHONE_BUNDLE_RE = re.compile(r"\+|\bbundle\b|\bpachet\b|\bcu (husa|airpods|apple watch|ceas|galaxy (watch|buds))\b")
 IPHONE_MODEL_RE = re.compile(r"\biphone (\d+)\s*(pro max|pro|plus|air|mini|e)?\b")
 
 
@@ -178,12 +250,12 @@ def _iphone(t: str, allow_used: bool) -> MatchResult:
     if not allow_used and CONDITION_RE.search(t):
         return MatchResult("excluded", reason="nu este nou (resigilat/refurbished/second hand)")
     phone = PHONE_RE.search(t)
-    accessory = IPHONE_ACCESSORY_RE.search(t)
+    accessory = PHONE_ACCESSORY_RE.search(t)
     # "Husă pentru iPhone 18 Pro" = accesoriu; "Telefon mobil Apple iPhone 18 Pro ... + husă" = telefon (pachet)
     if accessory and (not phone or accessory.start() < phone.start()):
         return MatchResult("accessory", reason=f"accesoriu ({accessory.group(0).strip()})")
     # „Camera Tripla 48 + 48 + 48 MP” nu e pachet
-    is_bundle = bool(IPHONE_BUNDLE_RE.search(re.sub(r"\d+\s*\+\s*(?=\d)", " ", t)))
+    is_bundle = bool(PHONE_BUNDLE_RE.search(re.sub(r"\d+\s*\+\s*(?=\d)", " ", t)))
     # „iphone 18 pro 512” (anunțuri, fără unitate): 256 / 512 lipite de model sunt doar stocare
     t = re.sub(r"\b(pro max|pro) (256|512)\b(?!gb)", r"\1 \2gb", t)
     storages = set(re.findall(r"\b(256gb|512gb|1tb|2tb)\b", t))
@@ -192,6 +264,25 @@ def _iphone(t: str, allow_used: bool) -> MatchResult:
         return MatchResult("unmatched", is_bundle=is_bundle, reason=reason)
     model = "pro-max" if variant == "pro max" else "pro"
     return MatchResult("product", f"iphone-18-{model}-{storages.pop()}", is_bundle)
+
+
+# ---------- Samsung Galaxy S26 Ultra
+
+
+def _galaxy(t: str, allow_used: bool) -> MatchResult:
+    if not allow_used and CONDITION_RE.search(t):
+        return MatchResult("excluded", reason="nu este nou (resigilat/refurbished/second hand)")
+    phone = PHONE_RE.search(t)
+    accessory = PHONE_ACCESSORY_RE.search(t)
+    if accessory and (not phone or accessory.start() < phone.start()):
+        return MatchResult("accessory", reason=f"accesoriu ({accessory.group(0).strip()})")
+    is_bundle = bool(PHONE_BUNDLE_RE.search(re.sub(r"\d+\s*\+\s*(?=\d)", " ", t)))
+    t = re.sub(r"\bultra (256|512)\b(?!gb)", r"ultra \1gb", t)
+    storages = set(re.findall(r"\b(256gb|512gb|1tb)\b", t))
+    if len(storages) != 1:
+        reason = "stocare neclară (lipsește 256GB/512GB/1TB)" if not storages else "mai multe stocări în titlu"
+        return MatchResult("unmatched", is_bundle=is_bundle, reason=reason)
+    return MatchResult("product", f"galaxy-s26-ultra-{storages.pop()}", is_bundle)
 
 
 # ---------- potrivire completă

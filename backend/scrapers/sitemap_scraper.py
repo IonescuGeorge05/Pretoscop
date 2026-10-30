@@ -2,7 +2,7 @@
 
 Un magazin nou = câteva rânduri în shops.yaml (`crawl: {type: sitemap}`), fără cod:
 1. sitemap-urile din robots.txt (sau <site>/sitemap.xml), inclusiv indexuri de sitemap și .xml.gz;
-2. doar URL-urile de produs ale familiilor urmărite (PS5, iPhone 18 Pro), fără accesorii evidente;
+2. doar URL-urile de produs ale familiilor urmărite (scrapers/families.py), fără accesorii evidente;
 3. fiecare pagină de produs prin extractorii comuni (JSON-LD -> microdata -> OpenGraph).
 Totul trece prin PoliteClient: robots.txt, 3-5 s între cereri, Retry-After la 429.
 """
@@ -15,23 +15,18 @@ from urllib.parse import urljoin
 from collections.abc import Iterable
 
 from scrapers.base import BaseScraper, PoliteClient
+from scrapers.families import interleave, url_family
 
 log = logging.getLogger("scrapers")
 
-# URL-uri de produs din familiile urmărite. La PS5 cerem semne de consolă (altfel trec jocuri, volane,
-# videoproiectoare „compatibile PS5”); la iPhone, modelul exact.
-PS5_URL_RE = re.compile(
-    r"(?i)(consol|console).*(play-?station-?5|ps-?5)|(play-?station-?5|ps-?5).*(consol|console)"
-    r"|(play-?station-?5|ps-?5)-(slim|pro|digital|disc|disk|standard)"
-)
-IPHONE_URL_RE = re.compile(r"(?i)iphone-?18-?pro")
 LOC_RE = re.compile(r"<loc>\s*(?:<!\[CDATA\[)?\s*([^<\]]+?)\s*(?:\]\]>)?\s*</loc>")  # Gomag pune adresele în CDATA
 # accesorii / jocuri evidente după URL (economisim cereri; ce trece, filtrează oricum matcher-ul)
 ACCESSORY_URL_RE = re.compile(
     r"(?i)(\bjoc-|jocuri|-joc-|game-|accesori|trigger|controller|dualsense|maneta|husa|husă|huse|folie|folii|carcasa|stand-|suport|incarcator|"
     r"cablu|casti|headset|volan|skin|sticla|protectie|portal|camera|telecomanda|cover|case-|magsafe|capac|"
     r"adaptor|adapter|hub-|dock|cooler|ventilator|optical-drive|unitate-optica|filter|filtru|for-ps5|for-iphone|"
-    r"pentru-ps5|pentru-playstation|pentru-iphone|compatibil)"
+    r"pentru-ps5|pentru-playstation|pentru-iphone|compatibil|joy-?con|pro-controller|microsd|amiibo|card-de-extindere|"
+    r"expansion-card|game-pass|videoproiector|proiector|monitor|televizor|pentru-xbox|pentru-nintendo|pentru-samsung|pentru-galaxy|nintendo-switch-2-edition)"
 )
 HREF_RE = re.compile(r'href="([^"#]+)"')
 SITEMAP_PRIORITY_RE = re.compile(r"(?i)(product|produs)")
@@ -48,7 +43,7 @@ class SitemapScraper(BaseScraper):
 
     @staticmethod
     def relevant(url: str) -> bool:
-        return bool(PS5_URL_RE.search(url) or IPHONE_URL_RE.search(url)) and not ACCESSORY_URL_RE.search(url)
+        return url_family(url) is not None and not ACCESSORY_URL_RE.search(url)
 
     def _same_site(self, url: str) -> bool:
         def host(u: str) -> str:
@@ -83,7 +78,7 @@ class SitemapScraper(BaseScraper):
                 url = urljoin(page, href).split("#")[0].split("?")[0]
                 if self._same_site(url) and self.relevant(url):
                     found.append(url)
-        return list(dict.fromkeys(found))
+        return interleave(list(dict.fromkeys(found)))
 
     def discover_product_urls(self) -> Iterable[str]:
         if self.crawl.get("listing_pages"):
@@ -109,6 +104,6 @@ class SitemapScraper(BaseScraper):
                 queue.extend(children)
             else:
                 products += [u for u in locs if self.relevant(u)]
-        unique = list(dict.fromkeys(products))
+        unique = interleave(list(dict.fromkeys(products)))
         log.info(json.dumps({"event": "sitemap_discovered", "shop": self.shop_slug, "sitemaps": len(visited), "product_urls": len(unique)}))
         return unique

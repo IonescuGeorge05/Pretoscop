@@ -5,7 +5,7 @@ export default function NotFoundPage() {
     <div className="py-16 text-center">
       <h1 className="text-2xl font-bold">Pagina nu există</h1>
       <Link href="/" className="mt-4 inline-block text-brand underline">
-        Înapoi la modelele PS5
+        Înapoi la prima pagină
       </Link>
     </div>
   );

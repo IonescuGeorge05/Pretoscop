@@ -223,3 +223,25 @@ def test_emag_edition_hint_ignored_when_title_names_the_edition():
     "seller":{"@type":"Organization","name":"eMAG"}}}</script>"""
     offer = EmagScraper(client=None).parse_product("https://www.emag.ro/x/pd/D4LQQL3BM/", page)
     assert offer.match_hints == "" and offer.preorder and offer.in_stock
+
+
+def test_sitemap_url_filter_new_families():
+    from scrapers.families import interleave
+    from scrapers.sitemap_scraper import SitemapScraper
+
+    keep = [
+        "https://www.example.ro/consola-nintendo-switch-2-mario-kart-world-bundle",
+        "https://www.example.ro/consola-microsoft-xbox-series-x-1tb-black",
+        "https://www.example.ro/telefon-mobil-samsung-galaxy-s26-ultra-512gb-titanium-black",
+    ]
+    drop = [
+        "https://www.example.ro/joc-the-legend-of-zelda-nintendo-switch-2-edition",
+        "https://www.example.ro/controller-wireless-pentru-xbox-series-x-s",
+        "https://www.example.ro/husa-samsung-galaxy-s26-ultra-clear",
+        "https://www.example.ro/joy-con-2-nintendo-switch-2",
+    ]
+    assert all(SitemapScraper.relevant(u) for u in keep)
+    assert not any(SitemapScraper.relevant(u) for u in drop)
+    assert interleave(["a/iphone-18-pro-1", "a/iphone-18-pro-2", "a/consola-ps5-slim"]) == [
+        "a/iphone-18-pro-1", "a/consola-ps5-slim", "a/iphone-18-pro-2"
+    ]

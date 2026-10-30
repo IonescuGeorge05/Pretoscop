@@ -91,7 +91,7 @@ SCENARIOS["iphone-18-pro-256gb"] = Scenario(trend_pct_per_year=-8, flash_sale_sh
 SCENARIOS["iphone-18-pro-max-256gb"] = Scenario(trend_pct_per_year=-60)
 
 # istoricul începe la lansare pentru produsele noi (nu există prețuri înainte)
-LAUNCH_DATE = {"iPhone 18 Pro": date(2026, 9, 18)}
+LAUNCH_DATE = {"iPhone 18 Pro": date(2026, 9, 18), "Galaxy S26 Ultra": date(2026, 3, 11)}
 # produsele fără preț de bază fix pornesc de la MSRP x acest factor
 DEFAULT_BASE_OF_MSRP = 0.97
 
@@ -255,7 +255,7 @@ def _add_offer(session, product, shop, url, title, changes, now, **fields) -> in
 def add_secondary_offers(session, product, shops, today, rng, now, base: float) -> int:
     """Oferte demo în afara comparației principale: marketplace, refurbished (Flip), second hand (OLX)."""
     n = 0
-    is_phone = product.family != "PlayStation 5"
+    is_phone = product.family in ("iPhone 18 Pro", "Galaxy S26 Ultra")
     first_day = LAUNCH_DATE.get(product.family, today - timedelta(days=60))
     if product.slug == "ps5-slim-digital-1tb" and "emag" in shops:
         # vânzător terț pe eMAG cu preț umflat: apare cu eticheta „Marketplace”, nu în minimul pieței
@@ -286,7 +286,7 @@ def add_secondary_offers(session, product, shops, today, rng, now, base: float) 
             posted = today - timedelta(days=rng.randint(1, 20))
             n += _add_offer(
                 session, product, shops["olx"],
-                url=shops["olx"].search_url_template.format(query="iphone-18-pro" if is_phone else "playstation-5") + f"#demo-{product.slug}-{k}",
+                url=shops["olx"].search_url_template.format(query=quote_plus(product.name.split(",")[0].lower()).replace("+", "-")) + f"#demo-{product.slug}-{k}",
                 title=f"[DEMO] Vând {product.name.split(',')[0]}, stare foarte bună",
                 changes=[(posted, Decimal(int(price / 50) * 50), True)],
                 now=now, condition="used", is_bundle=False, seller="persoană fizică", warranty_months=0,

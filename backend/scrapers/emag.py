@@ -4,7 +4,7 @@ from collections.abc import Iterable
 from decimal import Decimal
 
 from scrapers.base import BaseScraper, ScrapedOffer
-from scrapers.util import iphone18pro_link, ps5_link
+from scrapers.util import galaxy_link, iphone18pro_link, ps5_link, switch2_link, xbox_link
 
 # obiectul de preț din pagină: {"current":4999.99, ..., "lowest_price_30_days":{"amount":..,"is_visible":..}, "initial":..}
 PRICE_BLOCK_RE = re.compile(r'"price":\{"current":([\d.]+).*?"lowest_price_30_days":(\{[^}]*\}),"initial":([\d.]+)\}')
@@ -42,6 +42,9 @@ class EmagScraper(BaseScraper):
     listings = [
         ("https://www.emag.ro/search/consola+playstation+5", lambda u: "consola" in u.lower() and ps5_link(u)),
         ("https://www.emag.ro/search/iphone+18+pro", lambda u: "telefon-mobil" in u.lower() and iphone18pro_link(u)),
+        ("https://www.emag.ro/search/consola+nintendo+switch+2", lambda u: "consola" in u.lower() and switch2_link(u)),
+        ("https://www.emag.ro/search/consola+xbox+series", lambda u: "consola" in u.lower() and xbox_link(u)),
+        ("https://www.emag.ro/search/galaxy+s26+ultra", lambda u: "telefon-mobil" in u.lower() and galaxy_link(u)),
     ]
 
     def discover_product_urls(self) -> Iterable[str]:

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import VerdictBadge from "@/components/VerdictBadge";
-import { formatLei, formatLeiShort, productHref, variantLabel } from "@/lib/format";
+import { categoryLabel, formatLei, formatLeiShort, productHref, variantLabel } from "@/lib/format";
 import type { Family, ProductSummary, Verdict } from "@/lib/types";
 
 export type Tab = "new" | "used";
@@ -34,8 +34,8 @@ const msrpRatio = (p: ProductSummary, tab: Tab) => {
   return v !== Infinity && p.msrp_ron ? v / p.msrp_ron : Infinity;
 };
 
-function FamilyIcon({ slug }: { slug: string }) {
-  return slug.startsWith("iphone") ? (
+function CategoryIcon({ category }: { category: string }) {
+  return category === "telefoane" ? (
     <svg width="26" height="30" viewBox="0 0 26 32" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
       <rect x="4" y="2" width="18" height="28" rx="4" />
       <path d="M10 6h6" />
@@ -92,6 +92,15 @@ export default function Catalog({
   }, [inTab, q, family, verdict, inStock, sort, tab, price]);
 
   const filtering = q || family || (tab === "new" && verdict) || inStock || sort !== "default";
+  // categoriile, în ordinea familiilor din seed/families.yaml
+  const categories = useMemo(() => {
+    const out: { key: string; families: Family[] }[] = [];
+    for (const f of families) {
+      const c = out.find((x) => x.key === f.category) ?? out[out.push({ key: f.category, families: [] }) - 1];
+      c.families.push(f);
+    }
+    return out;
+  }, [families]);
   const field = "rounded-full border border-line bg-card px-4 py-2.5 text-sm";
 
   return (
@@ -133,7 +142,7 @@ export default function Catalog({
                 type="search"
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
-                placeholder="PS5 Slim, iPhone 18 Pro 512…"
+                placeholder="PS5 Slim, Switch 2, Galaxy S26 Ultra…"
                 className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted"
               />
             </label>
@@ -143,18 +152,22 @@ export default function Catalog({
           </form>
         </div>
         <div className="flex flex-[1_1_280px] flex-col gap-3">
-          {families.map((f) => {
-            const fam = inTab.filter((p) => p.family === f.family);
-            const from = Math.min(...fam.map(price));
+          {categories.map((c) => {
+            const names = new Set(c.families.map((f) => f.family));
+            const inCat = inTab.filter((p) => names.has(p.family));
+            const from = Math.min(...inCat.map(price));
             return (
-              <a key={f.slug} href={`#${f.slug}`} className="flex items-center gap-4 rounded-[20px] bg-card p-4 hover:ring-2 hover:ring-accent/40">
+              <a key={c.key} href={`#${c.key}`} className="flex items-center gap-4 rounded-[20px] bg-card p-4 hover:ring-2 hover:ring-accent/40">
                 <span className="inline-flex h-14 w-14 flex-none items-center justify-center rounded-2xl bg-warm text-brand">
-                  <FamilyIcon slug={f.slug} />
+                  <CategoryIcon category={c.key} />
                 </span>
-                <span>
-                  <strong className="block text-[17px]">{f.title}</strong>
+                <span className="min-w-0">
+                  <strong className="block text-[17px]">{categoryLabel(c.key)}</strong>
+                  <span className="block truncate text-sm text-muted">
+                    {c.families.map((f) => f.family).join(" · ")}
+                  </span>
                   <span className="text-sm text-muted">
-                    {fam.length} modele{from !== Infinity ? ` · de la ${formatLeiShort(from)}` : ""}
+                    {inCat.length} modele{from !== Infinity ? ` · de la ${formatLeiShort(from)}` : ""}
                   </span>
                 </span>
               </a>
@@ -193,10 +206,14 @@ export default function Catalog({
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <select value={family} onChange={(e) => setFamily(e.target.value)} aria-label="Familie" className={field}>
           <option value="">Toate produsele</option>
-          {families.map((f) => (
-            <option key={f.slug} value={f.slug}>
-              {f.title}
-            </option>
+          {categories.map((c) => (
+            <optgroup key={c.key} label={categoryLabel(c.key)}>
+              {c.families.map((f) => (
+                <option key={f.slug} value={f.slug}>
+                  {f.title}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
         {tab === "new" && (
@@ -229,11 +246,16 @@ export default function Catalog({
           <ProductGrid products={filtered} source={source} tab={tab} />
         </section>
       ) : (
-        families.map((fam) => (
-          <section key={fam.slug} id={fam.slug} className="mt-12 scroll-mt-6">
-            <h2 className="font-display text-3xl font-extrabold tracking-tight">{fam.title}</h2>
-            <p className="mt-1 text-muted">{fam.description}</p>
-            <ProductGrid products={filtered.filter((p) => p.family === fam.family)} source={source} tab={tab} />
+        categories.map((c) => (
+          <section key={c.key} id={c.key} className="mt-14 scroll-mt-6">
+            <h2 className="font-display text-4xl font-extrabold tracking-tight">{categoryLabel(c.key)}</h2>
+            {c.families.map((fam) => (
+              <div key={fam.slug} id={fam.slug} className="mt-8 scroll-mt-6">
+                <h3 className="font-display text-2xl font-extrabold tracking-tight">{fam.title}</h3>
+                <p className="mt-1 text-muted">{fam.description}</p>
+                <ProductGrid products={filtered.filter((p) => p.family === fam.family)} source={source} tab={tab} />
+              </div>
+            ))}
           </section>
         ))
       )}

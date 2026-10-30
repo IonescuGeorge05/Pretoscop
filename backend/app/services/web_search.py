@@ -37,12 +37,18 @@ OLX_QUERIES = [
     "site:olx.ro ps5 pro",
     "site:olx.ro iphone 18 pro",
     "site:olx.ro iphone 18 pro max",
+    "site:olx.ro nintendo switch 2",
+    "site:olx.ro xbox series x",
+    "site:olx.ro galaxy s26 ultra",
 ]
 DISCOVERY_QUERIES = [
     "consola PlayStation 5 Slim Digital pret",
     "consola PS5 Pro pret magazin",
     "iPhone 18 Pro 256GB pret",
     "iPhone 18 Pro Max 256GB pret",
+    "consola Nintendo Switch 2 pret",
+    "consola Xbox Series X pret",
+    "Samsung Galaxy S26 Ultra 256GB pret",
 ]
 # domenii care nu sunt magazine (comparatoare, presă, forumuri, social, anunțuri deja acoperite)
 NOT_SHOPS = {

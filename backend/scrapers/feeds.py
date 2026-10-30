@@ -19,6 +19,7 @@ from datetime import UTC, datetime
 from decimal import Decimal
 
 from scrapers.base import ScrapedOffer
+from scrapers.families import TITLE_RE
 from scrapers.jsonld import normalize_gtin, parse_price
 
 # denumiri de câmpuri întâlnite în feed-uri -> câmpul nostru (comparate fără majuscule, prefix g:, _ și -)
@@ -37,7 +38,7 @@ FIELD_ALIASES = {
 }
 # rânduri relevante înainte de matcher (feed-urile au tot catalogul magazinului)
 VAT = Decimal("1.21")  # TVA România (din 08.2025)
-RELEVANT_RE = re.compile(r"(?i)\b(ps ?5|playstation ?5|iphone ?18)")
+RELEVANT_RE = TITLE_RE  # scrapers/families.py
 
 
 def _key(name: str) -> str:

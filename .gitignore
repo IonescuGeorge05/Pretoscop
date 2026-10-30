@@ -10,3 +10,4 @@ node_modules/
 frontend/public/data/
 frontend/out/
 backups/
+logs/

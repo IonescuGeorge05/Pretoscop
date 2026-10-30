@@ -54,3 +54,8 @@ def test_evomag_switch2_titles_with_game_names_are_bundles():
     assert match_title(f"{base}, Negru").is_bundle is False
     assert match_title(f"{base}, Hogwarts Legacy, Negru").is_bundle is True
     assert match_title("Consola Microsoft Xbox Series X Disc Edition 1TB, 1 controller, Negru").product_slug == "xbox-series-x-1tb"
+
+
+def test_tera_in_listings_means_tb():
+    r = match_title("Vând sau schimb Samsung s26 ultra memorie de 1 tera", allow_used=True)
+    assert r.product_slug == "galaxy-s26-ultra-1tb"

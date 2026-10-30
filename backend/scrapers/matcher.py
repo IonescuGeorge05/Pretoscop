@@ -55,6 +55,7 @@ def normalize(title: str) -> str:
     t = re.sub(r"\b(nintendo\s*)?switch\s*2\b", "switch2", t)
     t = re.sub(r"\bxbox\s*series\s*([xs])\b", r"xbox-series-\1", t)
     t = re.sub(r"\b(samsung\s*)?(galaxy\s*)?s\s*26\s*ultra\b", "galaxy s26 ultra", t)
+    t = re.sub(r"\b([12])\s*tera\w*\b", r"\1tb", t)  # anunțuri: „memorie de 1 tera”
     t = re.sub(r"(\d+)\s*(gb|tb)\b", r"\1\2", t)
     return re.sub(r"\s+", " ", t).strip()
 

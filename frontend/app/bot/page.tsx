@@ -1,19 +1,12 @@
 import type { Metadata } from "next";
-import { unstable_noStore as noStore } from "next/cache";
+import Link from "next/link";
 
-import { IS_STATIC } from "@/lib/static";
+import { projectContact } from "@/lib/contact";
 
 export const metadata: Metadata = {
   title: "PretoscopBot",
   description: "Ce colectează robotul Pretoscop, cum se identifică, cât de des citește și cum îl puteți opri sau încetini.",
 };
-
-/** Adresa vine din .env (SCRAPER_CONTACT -> BOT_CONTACT); exemplul implicit nu se afișează. */
-function botContact(): string | null {
-  if (!IS_STATIC) noStore(); // în containerul web adresa există doar la rulare, nu la build
-  const c = process.env.BOT_CONTACT;
-  return c && !c.endsWith("@example.com") ? c : null;
-}
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
@@ -25,7 +18,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 }
 
 export default function BotPage() {
-  const contact = botContact();
+  const contact = projectContact();
   return (
     <article className="max-w-3xl">
       <h1 className="font-display text-4xl font-extrabold tracking-tight sm:text-[46px]">PretoscopBot</h1>
@@ -86,8 +79,12 @@ export default function BotPage() {
             </>
           ) : null}
           : <strong>oprim citirea magazinului dumneavoastră în cel mult o zi lucrătoare</strong> de la cererea scrisă.
-          Dacă preferați să ne trimiteți un feed de produse (formatul compari.ro sau Google Shopping), îl folosim în locul
-          citirii paginilor.
+          Dacă preferați să ne trimiteți un feed de produse (formatul compari.ro, Google Shopping sau Pricy), îl folosim
+          în locul citirii paginilor — vedeți{" "}
+          <Link href="/pentru-magazine" className="font-medium text-ink underline">
+            pagina pentru magazine
+          </Link>
+          .
         </p>
       </Section>
 

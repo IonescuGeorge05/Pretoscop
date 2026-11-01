@@ -89,6 +89,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/bot" className="underline hover:text-ink">
                 Robotul nostru
               </Link>
+              <Link href="/pentru-magazine" className="underline hover:text-ink">
+                Pentru magazine
+              </Link>
               <Link href="/confidentialitate" className="underline hover:text-ink">
                 Confidențialitate
               </Link>

@@ -84,3 +84,16 @@ def test_2performant_csv_without_vat_and_affiliate_link():
     assert ps5.old_price == Decimal("5000.00")
     assert ps5.raw["affiliate_url"].startswith("https://event.2performant.com/")
     assert match_title(offers[1].title).kind == "accessory"
+
+
+PRICY_CSV = '''"Url","Cod produs","Cod de bare","Pret","Marca","Denumire","Imagini","Categorie","Descriere","Stare stoc"
+"https://magazin.ro/ps5-pro","CFI-7116B","0711719595027","3.899,99","Sony","Consola Sony PlayStation 5 Pro 2TB","https://magazin.ro/a.jpg","Gaming > Console","…","in stoc"
+"https://magazin.ro/xbox-x","RRT-00010","0889842640809","3999","Microsoft","Consola Xbox Series X 1TB","","Gaming > Console","","fara stoc"
+'''
+
+
+def test_pricy_style_csv_that_shops_already_have():
+    offers = parse_feed(PRICY_CSV.encode(), "magazin")
+    pro, xbox = offers
+    assert (pro.price, pro.mpn, pro.ean, pro.in_stock) == (Decimal("3899.99"), "CFI-7116B", "0711719595027", True)
+    assert xbox.in_stock is False

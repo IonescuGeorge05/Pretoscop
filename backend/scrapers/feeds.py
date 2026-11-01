@@ -4,10 +4,11 @@ Formate suportate (detectate automat):
 - compari.ro: <products><product><Name>, <ProductUrl>, <Price>, <ProductNumber> …
 - Google Merchant (RSS 2.0 / Atom cu prefix g:): <item><title>, <link>, <g:price>123.45 RON</g:price>, <g:gtin> …
 - 2Performant / Profitshare: CSV sau XML cu coloane title, url, price, old_price, aff_link …
+- CSV-ul cerut de pricy.ro (Url, Cod produs, Cod de bare, Pret, Denumire, Stare stoc …): magazinele îl au deja.
 - orice CSV/XML cu nume de câmpuri uzuale (vezi FIELD_ALIASES).
 
 Feed-urile pot avea zeci de mii de produse: se citesc în flux și se păstrează doar rândurile care par să fie
-din familiile urmărite (PS5, iPhone 18 Pro); restul filtrării o face matcher-ul, ca la scraping.
+din familiile urmărite (scrapers/families.py); restul filtrării o face matcher-ul, ca la scraping.
 """
 
 import csv
@@ -29,9 +30,9 @@ FIELD_ALIASES = {
     "affiliate_url": ["aff_link", "affiliate_link", "affiliateurl", "afflink", "tracking_link"],
     "price": ["sale_price", "saleprice", "price_discounted", "pret_redus", "price", "pret", "price_vat"],
     "old_price": ["old_price", "oldprice", "regular_price", "list_price", "pret_vechi", "price_old"],
-    "availability": ["availability", "stock", "in_stock", "instock", "stoc", "active", "status"],
-    "ean": ["gtin", "ean", "ean13", "gtin13", "barcode"],
-    "mpn": ["mpn", "productnumber", "part_number", "cod_producator", "model"],
+    "availability": ["availability", "stock", "in_stock", "instock", "stoc", "stare_stoc", "active", "status"],
+    "ean": ["gtin", "ean", "ean13", "gtin13", "barcode", "cod_de_bare"],
+    "mpn": ["mpn", "productnumber", "part_number", "cod_producator", "cod_produs", "model"],
     "condition": ["condition", "stare"],
     "shipping": ["shipping", "delivery_cost", "deliverycost", "shipping_cost", "transport"],
     "warranty": ["warranty", "garantie", "warranty_months"],
@@ -65,7 +66,10 @@ def _in_stock(value: str | None) -> bool:
     if value is None:
         return True
     v = value.strip().lower()
-    return not (v in ("0", "false", "no", "nu", "inactive", "inactiv") or "out" in v or "indisponibil" in v or "epuizat" in v)
+    return not (
+        v in ("0", "false", "no", "nu", "inactive", "inactiv")
+        or any(w in v for w in ("out", "indisponibil", "epuizat", "fara stoc", "fără stoc", "lipsa", "lipsă", "nu este in stoc"))
+    )
 
 
 def _condition(value: str | None) -> str:

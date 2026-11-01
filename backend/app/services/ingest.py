@@ -29,6 +29,7 @@ def record_offer(
     scraped: ScrapedOffer,
     is_bundle: bool,
     source: str = "real",
+    origin: str = "scrape",
 ) -> tuple[Offer, bool]:
     """Upsert ofertă + punct de preț doar la schimbare. Întoarce (ofertă, s-a_scris_punct_nou)."""
     offer = session.scalar(
@@ -76,11 +77,12 @@ def record_offer(
                 price=scraped.price,
                 old_price=scraped.old_price,
                 in_stock=scraped.in_stock,
-                origin="scrape",
+                origin=origin,
             )
         )
     else:
         last.confirmed_at = scraped.scraped_at
+        last.origin = origin  # un preț reconfirmat de mână rămâne „manual” (expiră mai repede), unul citit de robot devine „scrape”
 
     # EAN găsit de scraper -> se salvează pe produs dacă lipsește (nu din pachete, nu dacă e deja folosit)
     if scraped.ean and not is_bundle and scraped.condition == "new" and product.ean is None:

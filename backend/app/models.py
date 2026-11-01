@@ -111,7 +111,7 @@ class PricePoint(Base):
     old_price: Mapped[Decimal | None] = mapped_column(Numeric(10, 2))
     in_stock: Mapped[bool] = mapped_column(Boolean, default=True)
     confirmed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    origin: Mapped[str] = mapped_column(String(10), default="scrape")  # scrape | wayback
+    origin: Mapped[str] = mapped_column(String(10), default="scrape")  # scrape | wayback | manual (verificat de om)
 
     offer: Mapped[Offer] = relationship(back_populates="price_points")
 

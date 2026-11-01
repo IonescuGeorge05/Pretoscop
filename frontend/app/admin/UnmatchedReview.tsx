@@ -6,6 +6,7 @@ import { formatLei } from "@/lib/format";
 import type { Unmatched } from "@/lib/types";
 
 import FeedLinks from "./FeedLinks";
+import ManualPrices from "./ManualPrices";
 import ReportsPanel from "./ReportsPanel";
 import SourcesPanel from "./SourcesPanel";
 
@@ -287,6 +288,7 @@ export default function UnmatchedReview({ products }: { products: { slug: string
     <div className="mt-6">
       <SourcesPanel token={token} />
       <ReportsPanel token={token} />
+      <ManualPrices token={token} products={products} />
       <FeedLinks token={token} />
       <FeedImport token={token} />
       <OlxImport token={token} onImported={() => load(token)} />

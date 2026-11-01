@@ -45,7 +45,8 @@ class OfferOut(BaseModel):
     is_marketplace: bool  # vândut de un terț -> nu intră în minimul pieței și în recomandare
     suspicious_price: bool  # second hand mult sub MSRP: posibil țeapă / defect / greșeală
     preorder: bool = False  # se poate comanda acum, livrare ulterioară
-    is_affiliate: bool = False  # butonul duce printr-un link de afiliere (marcat pe site)
+    is_affiliate: bool = False
+    manual_checked_at: datetime | None = None  # prețul l-a verificat un om pe site-ul magazinului (nu robotul)  # butonul duce printr-un link de afiliere (marcat pe site)
     colors: list[str] = []  # culorile găsite la același magazin (unite într-un rând)
     variants: int = 1  # câte pagini (culori) are magazinul pentru produs
     price_outlier: str | None = None  # ofertă nouă cu preț aberant (motivul); exclusă din minimul pieței
@@ -271,6 +272,29 @@ class CommunityReportOut(BaseModel):
     url: str
     price: float
     reviewed_at: datetime  # când l-am verificat de mână
+
+
+class ManualPriceIn(BaseModel):
+    product_slug: str
+    shop_slug: str
+    url: str  # pagina produsului pe site-ul magazinului (butonul „Mergi la magazin”)
+    price: str
+    old_price: str | None = None
+    in_stock: bool = True
+    preorder: bool = False
+
+
+class ManualPriceOut(BaseModel):
+    offer_id: int
+    product_slug: str
+    product_name: str
+    shop: str
+    url: str
+    price: float
+    in_stock: bool
+    preorder: bool
+    checked_at: datetime
+    expired: bool  # mai vechi de 24 de ore: nu mai apare pe site până nu e reconfirmat
 
 
 class FeedLinkIn(BaseModel):

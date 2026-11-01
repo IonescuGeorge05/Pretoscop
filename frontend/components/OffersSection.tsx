@@ -7,6 +7,13 @@ import { compareOffers } from "@/lib/compare";
 import { IS_STATIC } from "@/lib/static";
 import type { Compare, Offer } from "@/lib/types";
 
+/** „azi, 10:30” / „ieri, 18:05” pentru prețurile verificate de mână (expiră după 24 de ore). */
+function checkedLabel(iso: string): string {
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString("ro-RO", { hour: "2-digit", minute: "2-digit" });
+  return `${new Date().toDateString() === d.toDateString() ? "azi" : "ieri"}, ${time}`;
+}
+
 function Estimated({ show, title }: { show: boolean; title: string }) {
   if (!show) return null;
   return (
@@ -87,6 +94,14 @@ function OfferDetails({ o, isBest }: { o: Offer; isBest: boolean }) {
           title="Prețul e sub 40% din prețul recomandat de producător. Verifică atent: poate fi țeapă, consolă defectă sau o greșeală în anunț."
         >
           ⚠ Preț suspect de mic
+        </div>
+      )}
+      {o.manual_checked_at && (
+        <div
+          className="mt-0.5 inline-block rounded-full bg-soft px-2 py-0.5 text-[11px] font-bold text-muted"
+          title="Magazinul nu permite citirea automată; prețul l-am verificat noi, de mână, pe site-ul lui. Expiră după 24 de ore."
+        >
+          Verificat manual {checkedLabel(o.manual_checked_at)}
         </div>
       )}
       {o.preorder && (

@@ -19,6 +19,8 @@ from recommender.rules import HistoryPoint, OfferHistory, Recommendation, recomm
 
 # o ofertă reală nevăzută de atâtea zile nu mai apare în tabelul de oferte curente
 STALE_AFTER = timedelta(days=3)
+# un preț verificat de mână pe site-ul magazinului e valabil o zi: apoi trebuie reconfirmat din admin
+MANUAL_VALID = timedelta(hours=24)
 # un preț rămâne valabil până la ultima confirmare + toleranță; după aceea e gol în istoric
 # (scrape la 6 ore -> o zi acoperă o noapte cu calculatorul oprit)
 CONFIRMATION_GRACE = timedelta(days=1)
@@ -157,6 +159,8 @@ def current_views(offers: list[Offer]) -> list[OfferView]:
         if o.source == "real" and now - _aware(o.last_seen_at) > STALE_AFTER:
             continue
         point = o.price_points[-1]
+        if point.origin == "manual" and now - _aware(point.confirmed_at) > MANUAL_VALID:
+            continue
         views.append(OfferView(o, point, breakdown(o, point.price)))
     # sortare: în stoc întâi, apoi după preț final
     return sorted(views, key=lambda v: (not v.point.in_stock, v.breakdown.final_price))

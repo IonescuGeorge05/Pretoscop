@@ -158,3 +158,21 @@ def test_rematch_drops_listings_not_seen_for_two_weeks(session):
     session.commit()
     assert rematch_unmatched(session)["expired"] == 1
     assert session.scalar(select(func.count(UnmatchedListing.id))) == 0
+
+
+def test_manual_price_is_shown_for_24_hours_then_hidden(session):
+    from app.services.catalog import current_views
+
+    shop, product = session.scalar(select(Shop)), session.scalar(select(Product))
+    s = scraped("3399.90")
+    s.scraped_at = datetime.now(UTC) - timedelta(hours=2)
+    offer, _ = record_offer(session, shop, product, s, False, origin="manual")
+    session.flush()
+    assert [v.offer.id for v in current_views([offer])] == [offer.id]
+    offer.price_points[-1].confirmed_at = datetime.now(UTC) - timedelta(hours=30)
+    assert current_views([offer]) == []  # expirat: trebuie reconfirmat din admin
+    # robotul citește aceeași pagină mai târziu: prețul devine „scrape” și nu mai expiră la 24 h
+    s2 = scraped("3399.90")
+    s2.scraped_at = datetime.now(UTC)
+    record_offer(session, shop, product, s2, False)
+    assert offer.price_points[-1].origin == "scrape" and current_views([offer])

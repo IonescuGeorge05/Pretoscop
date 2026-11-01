@@ -28,6 +28,8 @@ from app.services.scrape_runner import ingest_offers, rematch_unmatched, run_sho
 from recommender.calendar import events_between
 from recommender.rules import DEAL_WINDOW_DAYS, FakeDiscount, Recommendation, days_until, point_at, real_drop, upcoming_events
 from scrapers.olx import CATEGORY_URL as OLX_CATEGORY_URL
+from scrapers.base import ScrapedOffer
+from scrapers.jsonld import parse_price
 from scrapers.matcher import title_family
 from scrapers.olx import parse_olx_listing
 from scrapers.registry import REGISTRY
@@ -91,6 +93,7 @@ def offer_out(
         price_outlier=outlier,
         preorder=o.preorder,
         is_affiliate=bool(o.affiliate_url),
+        manual_checked_at=p.confirmed_at if p.origin == "manual" else None,
         colors=colors or [],
         variants=variants,
     )
@@ -232,6 +235,7 @@ def product_detail(slug: str, source: str | None = SourceParam, session: Session
                 reason="nu permite citirea automată" if s.enabled else "oprit la cererea magazinului",
             )
             for s, url in catalog.missing_shops(session, p)
+            if s.id not in {v.offer.shop_id for v in views}  # are deja un preț (ex. verificat manual)
         ],
         community_reports=[
             schemas.CommunityReportOut(domain=r.domain, url=r.url, price=float(r.price), reviewed_at=r.reviewed_at)
@@ -749,6 +753,66 @@ def admin_shops(session: Session = Depends(get_session)):
         }
         for s in session.scalars(select(Shop).order_by(Shop.id))
     ]
+
+
+# ---------- prețuri verificate de mână (magazinele care nu ne lasă robotul: eMAG, Altex, Flanco, PC Garage…)
+
+
+@router.post("/admin/manual-price", status_code=201, dependencies=[Depends(require_admin)])
+def admin_manual_price(body: schemas.ManualPriceIn, session: Session = Depends(get_session)):
+    """Preț citit de un om pe site-ul magazinului. Intră în comparație ca orice ofertă, marcat „verificat manual”, și
+    expiră după 24 de ore dacă nu e reconfirmat."""
+    p = catalog.get_product(session, body.product_slug)
+    shop = session.scalar(select(Shop).where(Shop.slug == body.shop_slug))
+    if p is None or shop is None:
+        raise HTTPException(404, "Produs sau magazin inexistent")
+    try:
+        url, _, price = reports.parse_report(p, body.url, body.price)
+    except reports.ReportError as exc:
+        raise HTTPException(422, str(exc)) from None
+    old = parse_price(body.old_price) if body.old_price else None
+    offer, _ = record_offer(
+        session, shop, p,
+        ScrapedOffer(
+            shop_slug=shop.slug, url=url, title=p.name, price=price,
+            old_price=old if old and old > price else None, in_stock=body.in_stock or body.preorder,
+            ean=None, mpn=None, warranty_months=None, condition="new", scraped_at=datetime.now(UTC),
+            seller=shop.name, preorder=body.preorder,
+        ),
+        is_bundle=False, origin="manual",
+    )
+    session.commit()
+    return {"offer_id": offer.id}
+
+
+@router.post("/admin/manual-price/{offer_id}/confirm", status_code=204, dependencies=[Depends(require_admin)])
+def admin_manual_confirm(offer_id: int, session: Session = Depends(get_session)):
+    """„Am verificat din nou: același preț” -> încă 24 de ore pe site."""
+    offer = session.get(Offer, offer_id)
+    if offer is None or not offer.price_points:
+        raise HTTPException(404, "Ofertă inexistentă")
+    now = datetime.now(UTC)
+    offer.last_seen_at = now
+    offer.price_points[-1].confirmed_at = now
+    offer.price_points[-1].origin = "manual"
+    session.commit()
+
+
+@router.get("/admin/manual-prices", response_model=list[schemas.ManualPriceOut], dependencies=[Depends(require_admin)])
+def admin_manual_prices(session: Session = Depends(get_session)):
+    """Prețurile introduse de mână, cele expirate întâi (de reverificat)."""
+    out = []
+    for o in session.scalars(select(Offer).where(Offer.source == "real").options(selectinload(Offer.price_points), selectinload(Offer.shop), selectinload(Offer.product))):
+        if not o.price_points or o.price_points[-1].origin != "manual":
+            continue
+        pt = o.price_points[-1]
+        checked = pt.confirmed_at if pt.confirmed_at.tzinfo else pt.confirmed_at.replace(tzinfo=UTC)
+        out.append(schemas.ManualPriceOut(
+            offer_id=o.id, product_slug=o.product.slug, product_name=o.product.name, shop=o.shop.name, url=o.url,
+            price=float(pt.price), in_stock=pt.in_stock, preorder=o.preorder, checked_at=checked,
+            expired=datetime.now(UTC) - checked > catalog.MANUAL_VALID,
+        ))
+    return sorted(out, key=lambda m: (not m.expired, m.shop, m.product_name))
 
 
 @router.post("/admin/shops/{slug}/feed", dependencies=[Depends(require_admin)])

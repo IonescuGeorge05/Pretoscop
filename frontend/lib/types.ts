@@ -43,6 +43,7 @@ export interface Offer {
   price_outlier?: string | null;
   preorder?: boolean;
   is_affiliate?: boolean;
+  manual_checked_at?: string | null; // prețul l-a verificat un om pe site-ul magazinului
   colors?: string[];
   variants?: number;
   condition: "new" | "refurbished" | "used";

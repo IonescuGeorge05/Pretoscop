@@ -48,6 +48,31 @@ def first_run_at(last: datetime | None, now: datetime, interval: timedelta) -> d
     return max(soon, last + interval)
 
 
+def schedule_shop(scheduler, slug: str, last: datetime | None) -> datetime:
+    first = first_run_at(last, datetime.now(UTC), timedelta(hours=settings.scrape_interval_hours))
+    scheduler.add_job(
+        run_shop,
+        IntervalTrigger(hours=settings.scrape_interval_hours, jitter=settings.scrape_jitter_minutes * 60, start_date=first),
+        args=[slug],
+        kwargs={"skip_blocked": True},
+        id=f"scrape-{slug}",
+        next_run_time=first,
+        max_instances=1,
+        coalesce=True,
+        misfire_grace_time=3600,
+        replace_existing=True,
+    )
+    return first
+
+
+def sync_schedule(scheduler) -> None:
+    """Adaugă în program magazinele devenite citibile între timp (feed pus din admin, magazin nou)."""
+    for slug, last in last_runs().items():
+        if scheduler.get_job(f"scrape-{slug}") is None:
+            first = schedule_shop(scheduler, slug, last)
+            log.info("magazin nou în program: scrape-%s, primul run la %s", slug, first.strftime("%H:%M:%S"))
+
+
 def run_alerts() -> None:
     from app.db import SessionLocal
     from app.services import alerts
@@ -73,22 +98,9 @@ def main() -> None:
         log.exception("re-potrivirea anunțurilor nepotrivite a eșuat")
 
     scheduler = BlockingScheduler(timezone=UTC)
-    jitter_s = settings.scrape_jitter_minutes * 60
-    interval = timedelta(hours=settings.scrape_interval_hours)
     for slug, last in last_runs().items():
         # primul run: după intervalul de la ultima rulare (sau în 1-10 min dacă n-a rulat niciodată), apoi la N ore +/- jitter
-        first = first_run_at(last, datetime.now(UTC), interval)
-        scheduler.add_job(
-            run_shop,
-            IntervalTrigger(hours=settings.scrape_interval_hours, jitter=jitter_s, start_date=first),
-            args=[slug],
-            kwargs={"skip_blocked": True},
-            id=f"scrape-{slug}",
-            next_run_time=first,
-            max_instances=1,
-            coalesce=True,
-            misfire_grace_time=3600,
-        )
+        first = schedule_shop(scheduler, slug, last)
         log.info("programat scrape-%s, primul run la %s", slug, first.strftime("%H:%M:%S"))
     if settings.imap_user:
         scheduler.add_job(
@@ -101,6 +113,16 @@ def main() -> None:
             misfire_grace_time=3600,
         )
         log.info("alerte OLX pe email: verificare la fiecare %d minute", settings.email_poll_minutes)
+    # magazine noi / feed-uri puse din admin intră în program fără repornirea worker-ului
+    scheduler.add_job(
+        sync_schedule,
+        IntervalTrigger(minutes=30),
+        args=[scheduler],
+        id="sync-schedule",
+        max_instances=1,
+        coalesce=True,
+    )
+
     # alerte de preț / stoc pe email (doar baza de date + SMTP; nicio cerere către magazine)
     scheduler.add_job(
         run_alerts,

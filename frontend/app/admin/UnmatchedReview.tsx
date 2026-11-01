@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { formatLei } from "@/lib/format";
 import type { Unmatched } from "@/lib/types";
 
+import FeedLinks from "./FeedLinks";
 import ReportsPanel from "./ReportsPanel";
 import SourcesPanel from "./SourcesPanel";
 
@@ -131,8 +132,7 @@ function FeedImport({ token }: { token: string }) {
       <h2 className="font-semibold">Import feed de la magazin</h2>
       <p className="mt-1 text-sm text-muted">
         Fișier XML/CSV primit de la un magazin sau din 2Performant/Profitshare (formatele compari.ro, Google Merchant și
-        CSV-urile de afiliere sunt recunoscute automat). Feed-urile cu link permanent se pun în <code>shops.yaml</code> și
-        se actualizează singure.
+        CSV-urile de afiliere sunt recunoscute automat). Pentru un link permanent folosește secțiunea de mai sus.
       </p>
       <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
         <select value={shop} onChange={(e) => setShop(e.target.value)} className="rounded-lg border border-line bg-surface px-2 py-1.5" aria-label="Magazin">
@@ -287,6 +287,7 @@ export default function UnmatchedReview({ products }: { products: { slug: string
     <div className="mt-6">
       <SourcesPanel token={token} />
       <ReportsPanel token={token} />
+      <FeedLinks token={token} />
       <FeedImport token={token} />
       <OlxImport token={token} onImported={() => load(token)} />
       {error && <p className="text-sm text-red-700 dark:text-red-400">{error}</p>}

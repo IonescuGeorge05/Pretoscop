@@ -1,3 +1,4 @@
+import re
 import secrets
 import time
 from dataclasses import asdict
@@ -692,6 +693,7 @@ def admin_shops(session: Session = Depends(get_session)):
             "status_reason": None if method(s) == "email" else s.status_reason,
             "method": method(s),
             "has_feed": bool(s.feed and s.feed.get("url")),
+            "feed_url": (s.feed or {}).get("url"),
             "last_scraped_at": s.last_scraped_at,
             "last_run": s.last_run,
             "active_offers": active.get(s.id, 0),
@@ -699,6 +701,44 @@ def admin_shops(session: Session = Depends(get_session)):
         }
         for s in session.scalars(select(Shop).order_by(Shop.id))
     ]
+
+
+@router.post("/admin/shops/{slug}/feed", dependencies=[Depends(require_admin)])
+def admin_set_feed(slug: str, body: schemas.FeedLinkIn, session: Session = Depends(get_session)):
+    """Linkul permanent al feed-ului primit de la magazin (are prioritate față de citirea paginilor). Se citește la
+    rulările programate; magazinul nou intră în program în cel mult 30 de minute."""
+    shop = session.scalar(select(Shop).where(Shop.slug == slug))
+    if shop is None:
+        raise HTTPException(404, "Magazin inexistent")
+    url = (body.url or "").strip()
+    if url and not url.startswith(("http://", "https://")):
+        raise HTTPException(422, "Linkul feed-ului trebuie să înceapă cu https://")
+    # explicit_permission: feed-ul l-a dat chiar magazinul, deci îl citim fără restricțiile din robots.txt
+    shop.feed = {"url": url, "vat_included": body.vat_included, "explicit_permission": True, "source": "admin"} if url else None
+    if url:
+        shop.status, shop.status_reason = "active", None
+    session.commit()
+    return {"slug": slug, "feed": shop.feed}
+
+
+@router.post("/admin/shops", status_code=201, dependencies=[Depends(require_admin)])
+def admin_new_shop(body: schemas.NewShopIn, session: Session = Depends(get_session)):
+    """Magazin nou (de obicei unul care ne-a trimis un feed). Transportul rămâne „estimat” până îl verificăm."""
+    base = body.base_url.strip().rstrip("/")
+    if not base.startswith(("http://", "https://")):
+        base = "https://" + base
+    host = httpx.URL(base).host.removeprefix("www.")
+    slug = re.sub(r"[^a-z0-9]+", "-", host.rsplit(".", 1)[0].lower()).strip("-")
+    if not slug or not body.name.strip():
+        raise HTTPException(422, "Numele și adresa site-ului sunt obligatorii")
+    if session.scalar(select(Shop).where(Shop.slug == slug)) is not None:
+        raise HTTPException(409, f"Magazinul „{slug}” există deja")
+    session.add(Shop(
+        slug=slug, name=body.name.strip(), base_url=base, kind="retail",
+        shipping_rules={"free_over": None, "flat": 25}, shipping_verified=False, default_warranty_months=24,
+    ))
+    session.commit()
+    return {"slug": slug}
 
 
 # ---------- surse care cer configurare: alerte OLX pe email, căutare web (Brave)

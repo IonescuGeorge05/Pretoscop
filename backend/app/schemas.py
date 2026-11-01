@@ -273,6 +273,16 @@ class CommunityReportOut(BaseModel):
     reviewed_at: datetime  # când l-am verificat de mână
 
 
+class FeedLinkIn(BaseModel):
+    url: str | None = None  # gol = scoate feed-ul
+    vat_included: bool = True
+
+
+class NewShopIn(BaseModel):
+    name: str
+    base_url: str
+
+
 class AlertIn(BaseModel):
     email: str
     product_slug: str

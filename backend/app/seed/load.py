@@ -52,6 +52,9 @@ def upsert_seed(session: Session) -> None:
             session.add(Shop(**row))
         else:
             for key, value in row.items():
+                # un feed pus din /admin rămâne până când shops.yaml spune explicit altceva
+                if key == "feed" and not value and (shop.feed or {}).get("source") == "admin":
+                    continue
                 setattr(shop, key, value)
     session.commit()
 

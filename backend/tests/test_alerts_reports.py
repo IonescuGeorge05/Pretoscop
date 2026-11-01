@@ -87,3 +87,21 @@ def test_owner_is_emailed_only_on_status_changes(monkeypatch):
     _notify_change("iSTYLE", "blocked", {"status": "ok", "listings": 12})
     _notify_change("Anze", "active", {"status": "ok"})  # rulare normală: fără email
     assert sent == ["iSTYLE ne-a blocat", "iSTYLE merge din nou"]
+
+
+def test_feed_set_from_admin_survives_the_seed_reload():
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import Session
+
+    from app.models import Base, Shop
+    from app.seed.load import upsert_seed
+
+    engine = create_engine("sqlite://")
+    Base.metadata.create_all(engine)
+    with Session(engine) as s:
+        upsert_seed(s)
+        shop = s.scalar(select(Shop).where(Shop.slug == "istyle"))
+        shop.feed = {"url": "https://istyle.ro/feed.xml", "vat_included": True, "explicit_permission": True, "source": "admin"}
+        s.commit()
+        upsert_seed(s)  # ex. la repornirea api-ului
+        assert s.scalar(select(Shop).where(Shop.slug == "istyle")).feed["url"] == "https://istyle.ro/feed.xml"

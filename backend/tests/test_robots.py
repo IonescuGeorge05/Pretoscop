@@ -86,3 +86,31 @@ def test_restart_does_not_rescrape_before_the_interval():
     assert first_run_at(now - timedelta(hours=1), now, six) == now + timedelta(hours=5)  # a rulat acum o oră
     assert now < first_run_at(now - timedelta(days=2), now, six) <= now + timedelta(minutes=10)  # restanță
     assert now < first_run_at(None, now, six) <= now + timedelta(minutes=10)  # niciodată
+
+
+def test_crawl_delay_for_our_bot_or_star_but_not_for_other_bots():
+    istyle = "User-agent: AhrefsBot\nCrawl-delay: 10\n\nUser-agent: *\nDisallow: /cart\n"
+    assert Robots(istyle).crawl_delay("PretoscopBot") is None  # cerut doar pentru AhrefsBot
+    assert Robots("User-agent: *\nCrawl-delay: 7\nDisallow: /x\n").crawl_delay("PretoscopBot") == 7
+    ours = "User-agent: PretoscopBot\nCrawl-delay: 20\nAllow: /\n\nUser-agent: *\nCrawl-delay: 5\n"
+    assert Robots(ours).crawl_delay("PretoscopBot") == 20
+
+
+def test_persistent_429_stops_the_whole_shop_run(monkeypatch):
+    """Shopify (iSTYLE) răspunde 429 la fiecare pagină: după pauzele cerute ne oprim, nu trecem la pagina următoare."""
+    import httpx
+    import pytest
+
+    from scrapers import base
+    from scrapers.base import PoliteClient, RateLimited
+
+    monkeypatch.setattr(base.time, "sleep", lambda s: None)
+
+    def handler(request):
+        if request.url.path == "/robots.txt":
+            return httpx.Response(200, text="User-agent: *\nAllow: /\n")
+        return httpx.Response(429, headers={"retry-after": "60"}, text="Too Many Requests")
+
+    client = PoliteClient(min_delay=0, max_delay=0, transport=httpx.MockTransport(handler))
+    with pytest.raises(RateLimited):
+        client.get("https://istyle.ro/products/iphone-17")

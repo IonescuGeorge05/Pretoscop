@@ -91,8 +91,8 @@
   base_url: https://www.anze.ro
   search_url_template: https://www.anze.ro/catalogsearch/result/?q={query}
   crawl: {type: sitemap, max_products: 40}
-  shipping_rules: {free_over: null, flat: 25}  # estimat: singura informație e lockerul la 25 lei (listarea Anze Media pe eMAG)
-  shipping_verified: false
+  shipping_rules: {free_over: 800, flat: 25}  # anze.ro/livrare (01.11.2026): curier 25 lei sub 800 lei, gratuit de la 800
+  shipping_verified: true
   default_warranty_months: 24  # garanție legală pentru produse noi
   affiliate_url_template: null
 
@@ -133,8 +133,8 @@
   base_url: https://www.f64.ro
   search_url_template: null
   crawl: {type: sitemap, max_products: 40}
-  shipping_rules: {free_over: 299, flat: 25}  # estimat: pragul de 299 lei apare pe un agregator de cupoane (07.2026)
-  shipping_verified: false
+  shipping_rules: {free_over: 499, flat: 18}  # f64.ro/livrare (01.11.2026): 18 lei sub 499 lei, gratuit de la 499
+  shipping_verified: true
   default_warranty_months: 24
   affiliate_url_template: null
 
@@ -143,8 +143,8 @@
   base_url: https://www.forit.ro
   search_url_template: null
   crawl: {type: sitemap, max_products: 40}
-  shipping_rules: {free_over: null, flat: 25}  # estimat
-  shipping_verified: false
+  shipping_rules: {free_over: 300, flat: 22.99}  # forit.ro/transport-si-livrare (01.11.2026): gratuit peste 300 lei; sub prag 21,99 (Buc.) / 22,99 lei
+  shipping_verified: true
   default_warranty_months: 24
   affiliate_url_template: null
 
@@ -164,8 +164,8 @@
   base_url: https://www.gamers.ro
   search_url_template: null
   crawl: {type: sitemap, listing_pages: ["https://www.gamers.ro/playstation5/console", "https://www.gamers.ro/playstation5/console/pagina-2"], max_products: 40}
-  shipping_rules: {free_over: null, flat: 25}  # estimat
-  shipping_verified: false
+  shipping_rules: {free_over: null, flat: 19.5}  # gamers.ro/info/livrare (01.11.2026): taxa standard 19,5 lei, fără prag de gratuitate
+  shipping_verified: true
   default_warranty_months: 24
   affiliate_url_template: null
 
@@ -174,7 +174,7 @@
   name: Buy2Play
   base_url: https://buy2play.ro
   search_url_template: null
-  crawl: {type: sitemap, max_products: 15}
+  crawl: {type: sitemap, max_products: 25}
   shipping_rules: {free_over: null, flat: 25}  # estimat
   shipping_verified: false
   default_warranty_months: 24

@@ -3,7 +3,7 @@
 Înlocuiește `urllib.robotparser`, care: (1) nu înțelege wildcard-urile `*` și `$`, deci ignoră reguli
 ca `Disallow: /*?q=`; (2) taie un `?` final, transformând `Disallow: /anunturi/?` în `Disallow: /anunturi/`.
 Reguli: se aplică grupul cu numele robotului nostru, altfel grupul `*`; câștigă regula cea mai lungă care
-se potrivește, iar la egalitate `Allow`.
+se potrivește, iar la egalitate `Allow`. `Crawl-delay` (nestandard, dar respectat de noi) e citit per grup.
 """
 
 import re
@@ -21,8 +21,10 @@ class Robots:
         self.allow_all, self.disallow_all = allow_all, disallow_all
         self.sitemaps = re.findall(r"(?im)^\s*sitemap:\s*(\S+)", text)
         self.groups: list[tuple[set[str], list[tuple[bool, str, re.Pattern]]]] = []
+        self.delays: list[tuple[set[str], float]] = []
         agents: set[str] = set()
         rules: list = []
+        delay: float | None = None
         last_was_agent = False
         for raw in text.splitlines():
             line = raw.split("#", 1)[0].strip()
@@ -32,18 +34,38 @@ class Robots:
             key = key.lower()
             if key == "user-agent":
                 if not last_was_agent and (agents or rules):
-                    self.groups.append((agents, rules))
-                    agents, rules = set(), []
+                    self._close(agents, rules, delay)
+                    agents, rules, delay = set(), [], None
                 agents.add(value.lower())
                 last_was_agent = True
             elif key in ("allow", "disallow"):
                 last_was_agent = False
                 if value:  # „Disallow:” gol = totul permis
                     rules.append((key == "allow", value, _pattern(value)))
+            elif key == "crawl-delay":
+                last_was_agent = False
+                try:
+                    delay = float(value)
+                except ValueError:
+                    pass
             else:
                 last_was_agent = False
         if agents or rules:
-            self.groups.append((agents, rules))
+            self._close(agents, rules, delay)
+
+    def _close(self, agents: set[str], rules: list, delay: float | None) -> None:
+        self.groups.append((agents, rules))
+        if delay is not None:
+            self.delays.append((agents, delay))
+
+    def crawl_delay(self, agent: str) -> float | None:
+        """Pauza cerută între cereri (secunde) pentru robotul nostru; grupul specific are prioritate față de `*`."""
+        agent = agent.lower()
+        specific = [d for agents, d in self.delays if agent in agents]
+        if specific or any(agent in agents for agents, _ in self.groups):
+            return max(specific) if specific else None
+        general = [d for agents, d in self.delays if "*" in agents]
+        return max(general) if general else None
 
     def _rules_for(self, agent: str) -> list:
         agent = agent.lower()

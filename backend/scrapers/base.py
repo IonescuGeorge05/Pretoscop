@@ -47,6 +47,11 @@ class BlockedError(Exception):
     """Magazinul ne blochează (403 / Cloudflare / CAPTCHA). Nu încercăm să ocolim."""
 
 
+class RateLimited(BlockedError):
+    """Site-ul ne cere în continuare să încetinim (429) și după pauzele cerute: oprim toată rularea magazinului
+    (ca la blocare, reîncercăm peste o zi), în loc să trecem la pagina următoare."""
+
+
 class RobotsDisallowed(Exception):
     pass
 
@@ -83,6 +88,7 @@ class PoliteClient:
         )
         self._last_request: dict[str, float] = {}
         self._robots: dict[str, Robots] = {}
+        self._crawl_delay: dict[str, float | None] = {}
 
     def close(self) -> None:
         self.http.close()
@@ -90,7 +96,9 @@ class PoliteClient:
     def _wait(self, domain: str) -> None:
         last = self._last_request.get(domain)
         if last is not None:
-            delay = random.uniform(self.min_delay, self.max_delay) - (time.monotonic() - last)
+            # Crawl-delay din robots.txt, dacă cere mai mult decât pauza noastră obișnuită (plafonat la 60 s)
+            floor = min(self._crawl_delay.get(domain) or 0, 60)
+            delay = max(random.uniform(self.min_delay, self.max_delay), floor) - (time.monotonic() - last)
             if delay > 0:
                 time.sleep(delay)
         self._last_request[domain] = time.monotonic()
@@ -111,6 +119,7 @@ class PoliteClient:
             except httpx.HTTPError:
                 robots = Robots(disallow_all=True)  # fără robots.txt lizibil nu riscăm
             self._robots[origin] = robots
+            self._crawl_delay[parts.netloc] = robots.crawl_delay(agent_token())
         return self._robots[origin]
 
     def get(self, url: str, respect_robots: bool = True) -> httpx.Response:
@@ -145,6 +154,8 @@ class PoliteClient:
                 if resp.status_code == 503 and "cf-ray" in resp.headers:
                     raise BlockedError(f"Cloudflare 503 la {url}")
                 if attempt == self.retries:
+                    if resp.status_code == 429:
+                        raise RateLimited(f"HTTP 429 persistent la {url}")
                     resp.raise_for_status()
                 # 429: site-ul ne cere să încetinim -> respectăm Retry-After (plafonat), altfel backoff exponențial
                 retry_after = resp.headers.get("retry-after", "")

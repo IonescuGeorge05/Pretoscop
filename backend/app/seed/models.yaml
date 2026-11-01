@@ -96,7 +96,7 @@
   storage_gb: 256
   model_code: null
   ean: null
-  image_url: /produse/iphone-18-pro.jpg
+  image_url: /produse/iphone-18-pro.webp
   msrp_eur: 1479  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
   msrp_note: "preț Apple Franța, lansare 18.09.2026"
@@ -108,7 +108,7 @@
   storage_gb: 512
   model_code: null
   ean: null
-  image_url: /produse/iphone-18-pro.jpg
+  image_url: /produse/iphone-18-pro.webp
   msrp_eur: 1729  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
   msrp_note: "preț Apple Franța, lansare 18.09.2026"
@@ -120,7 +120,7 @@
   storage_gb: 1000
   model_code: null
   ean: null
-  image_url: /produse/iphone-18-pro.jpg
+  image_url: /produse/iphone-18-pro.webp
   msrp_eur: 2229  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
   msrp_note: "preț Apple Franța, lansare 18.09.2026"
@@ -132,7 +132,7 @@
   storage_gb: 2000
   model_code: null
   ean: null
-  image_url: /produse/iphone-18-pro.jpg
+  image_url: /produse/iphone-18-pro.webp
   msrp_eur: 2979  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
   msrp_note: "preț Apple Franța, lansare 18.09.2026"
@@ -144,7 +144,7 @@
   storage_gb: 256
   model_code: null
   ean: null
-  image_url: /produse/iphone-18-pro.jpg
+  image_url: /produse/iphone-18-pro.webp
   msrp_eur: 1629  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
   msrp_note: "preț Apple Franța, lansare 18.09.2026"
@@ -156,7 +156,7 @@
   storage_gb: 512
   model_code: null
   ean: null
-  image_url: /produse/iphone-18-pro.jpg
+  image_url: /produse/iphone-18-pro.webp
   msrp_eur: 1879  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
   msrp_note: "preț Apple Franța, lansare 18.09.2026"
@@ -168,7 +168,7 @@
   storage_gb: 1000
   model_code: null
   ean: null
-  image_url: /produse/iphone-18-pro.jpg
+  image_url: /produse/iphone-18-pro.webp
   msrp_eur: 2379  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
   msrp_note: "preț Apple Franța, lansare 18.09.2026"
@@ -180,7 +180,7 @@
   storage_gb: 2000
   model_code: null
   ean: null
-  image_url: /produse/iphone-18-pro.jpg
+  image_url: /produse/iphone-18-pro.webp
   msrp_eur: 3129  # msrp_ron = msrp_eur x EUR_RON (app/seed/load.py)
   msrp_verified: false
   msrp_note: "preț Apple Franța, lansare 18.09.2026"

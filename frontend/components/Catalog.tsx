@@ -26,6 +26,22 @@ const VERDICTS: { value: Verdict | ""; label: string }[] = [
   { value: "NEUTRAL", label: "Preț obișnuit" },
 ];
 
+/** Text de căutare normalizat, aplicat la fel și pe produs, și pe ce scrie vizitatorul: fără diacritice, prescurtări
+ *  uzuale („ps5” = PlayStation 5, „pro max” = promax), „1 TB” = „1tb”. */
+export function searchText(s: string): string {
+  return s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/play\s*station\s*5|\bps\s*5\b/g, "ps5")
+    .replace(/\bnintendo\s+switch\s*2\b|\bswitch\s*2\b/g, "switch2")
+    .replace(/\bpro\s*max\b/g, "promax")
+    .replace(/\bs\s*26\b/g, "s26")
+    .replace(/(\d+)\s*(gb|tb)\b/g, "$1$2")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 const isCurrent = (p: ProductSummary) => p.lifecycle !== "retired";
 const newPrice = (p: ProductSummary) => p.best_offer?.breakdown.final_price ?? Infinity;
 // fila „second hand și refurbished”: cel mai mic dintre refurbished în stoc și second hand
@@ -35,18 +51,21 @@ const msrpRatio = (p: ProductSummary, tab: Tab) => {
   return v !== Infinity && p.msrp_ron ? v / p.msrp_ron : Infinity;
 };
 
+// iconițe după Lucide (licență ISC): smartphone și gamepad-2
 function CategoryIcon({ category }: { category: string }) {
+  const common = { width: 30, height: 30, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round" as const, strokeLinejoin: "round" as const, "aria-hidden": true };
   return category === "telefoane" ? (
-    <svg width="26" height="30" viewBox="0 0 26 32" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-      <rect x="4" y="2" width="18" height="28" rx="4" />
-      <path d="M10 6h6" />
+    <svg {...common}>
+      <rect width="14" height="20" x="5" y="2" rx="2" ry="2" />
+      <path d="M12 18h.01" />
     </svg>
   ) : (
-    <svg width="30" height="30" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden>
-      <path d="M10 12h12a6 6 0 016 6v1a4 4 0 01-7 2.6L19 19h-6l-2 2.6A4 4 0 014 19v-1a6 6 0 016-6z" />
-      <path d="M10 15v4M8 17h4" />
-      <circle cx="21" cy="16" r="1" />
-      <circle cx="23" cy="18.5" r="1" />
+    <svg {...common}>
+      <line x1="6" x2="10" y1="11" y2="11" />
+      <line x1="8" x2="8" y1="9" y2="13" />
+      <line x1="15" x2="15.01" y1="12" y2="12" />
+      <line x1="18" x2="18.01" y1="10" y2="10" />
+      <path d="M17.32 5H6.68a4 4 0 0 0-3.978 3.59c-.006.052-.01.101-.017.152C2.604 9.416 2 14.456 2 16a3 3 0 0 0 3 3c1 0 1.5-.5 2-1l1.414-1.414A2 2 0 0 1 9.828 16h4.344a2 2 0 0 1 1.414.586L17 18c.5.5 1 1 2 1a3 3 0 0 0 3-3c0-1.545-.604-6.584-.685-7.258-.007-.05-.011-.1-.017-.151A4 4 0 0 0 17.32 5z" />
     </svg>
   );
 }
@@ -75,9 +94,9 @@ export default function Catalog({
   const price = tab === "new" ? newPrice : usedPrice;
 
   const filtered = useMemo(() => {
-    const words = q.toLowerCase().split(/\s+/).filter(Boolean);
+    const words = searchText(q).split(" ").filter(Boolean);
     const list = inTab.filter((p) => {
-      const hay = `${p.name} ${variantLabel(p)} ${p.model_code ?? ""} ${p.family}`.toLowerCase();
+      const hay = searchText(`${p.name} ${variantLabel(p)} ${p.model_code ?? ""} ${p.family}`);
       return (
         words.every((w) => hay.includes(w)) &&
         (!family || p.family_slug === family) &&

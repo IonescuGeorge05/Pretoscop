@@ -105,7 +105,8 @@ def test_confidence_lower_for_short_history():
 
 def test_calendar_file_loads_with_black_friday_2026():
     cal = load_calendar()
-    assert any(e.slug == "black_friday" and e.date == date(2026, 11, 27) for e in cal)
+    # ziua eMAG (anunțată oficial pentru 2026); sezonul ține până la Black Friday-ul internațional
+    assert any(e.slug == "black_friday" and e.date == date(2026, 11, 6) and e.end == date(2026, 11, 30) for e in cal)
 
 
 def test_msrp_context_in_reasons_and_metrics():

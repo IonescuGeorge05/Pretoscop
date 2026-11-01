@@ -11,7 +11,12 @@ export default async function AdminPage() {
   if (IS_STATIC) {
     return <p className="py-16 text-center text-muted">Pagina de admin e disponibilă doar în aplicația locală.</p>;
   }
-  const { products } = await getProducts();
+  const { products, families } = await getProducts();
+  // în ordinea familiilor de pe site; în fiecare familie, modelele actuale întâi
+  const order = (family: string) => families.findIndex((f) => f.family === family);
+  const adminProducts = products
+    .map((p) => ({ slug: p.slug, name: p.name, family: p.family, retired: p.lifecycle === "retired" }))
+    .sort((a, b) => order(a.family) - order(b.family) || Number(a.retired) - Number(b.retired));
   return (
     <>
       <h1 className="text-2xl font-bold tracking-tight">Admin</h1>
@@ -22,7 +27,7 @@ export default async function AdminPage() {
         scrape-urile următoare anunțul e recunoscut automat. <strong className="text-ink">Ignoră</strong> pentru anunțuri
         care nu sunt console PS5 (PS4 modat, accesorii etc.).
       </p>
-      <UnmatchedReview products={products.map((p) => ({ slug: p.slug, name: p.name }))} />
+      <UnmatchedReview products={adminProducts} />
     </>
   );
 }

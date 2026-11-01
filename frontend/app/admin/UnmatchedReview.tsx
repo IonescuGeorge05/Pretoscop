@@ -7,6 +7,7 @@ import type { Unmatched } from "@/lib/types";
 
 import FeedLinks from "./FeedLinks";
 import ManualPrices from "./ManualPrices";
+import ProductOptions, { type AdminProduct } from "./ProductOptions";
 import ReportsPanel from "./ReportsPanel";
 import SourcesPanel from "./SourcesPanel";
 
@@ -27,7 +28,7 @@ function Row({
   token,
 }: {
   u: Unmatched;
-  products: { slug: string; name: string }[];
+  products: AdminProduct[];
   onDone: (id: number) => void;
   token: string;
 }) {
@@ -72,11 +73,7 @@ function Row({
           aria-label="Model"
         >
           <option value="">— alege modelul —</option>
-          {products.map((p) => (
-            <option key={p.slug} value={p.slug}>
-              {p.name}
-            </option>
-          ))}
+          <ProductOptions products={products} />
         </select>
         <label className="flex items-center gap-1.5">
           <input type="checkbox" checked={bundle} onChange={(e) => setBundle(e.target.checked)} />
@@ -231,7 +228,7 @@ function RematchButton({ token, onDone }: { token: string; onDone: () => void })
   );
 }
 
-export default function UnmatchedReview({ products }: { products: { slug: string; name: string }[] }) {
+export default function UnmatchedReview({ products }: { products: AdminProduct[] }) {
   const [token, setToken] = useState("");
   const [input, setInput] = useState("");
   const [items, setItems] = useState<Unmatched[] | null>(null);

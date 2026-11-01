@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 
 import { formatLeiShort } from "@/lib/format";
 
+import ProductOptions, { type AdminProduct } from "./ProductOptions";
+
 type Manual = {
   offer_id: number;
   product_slug: string;
@@ -32,7 +34,7 @@ const EMPTY = {
 
 /** Prețurile verificate de mână la magazinele care nu ne lasă robotul (eMAG, Altex, Flanco, PC Garage…).
  *  Rutina zilnică: deschizi linkul, iar dacă prețul e același apeși „Același preț”; altfel completezi formularul. */
-export default function ManualPrices({ token, products }: { token: string; products: { slug: string; name: string }[] }) {
+export default function ManualPrices({ token, products }: { token: string; products: AdminProduct[] }) {
   const [items, setItems] = useState<Manual[]>([]);
   const [shops, setShops] = useState<Shop[]>([]);
   const [form, setForm] = useState(EMPTY);
@@ -126,11 +128,7 @@ export default function ManualPrices({ token, products }: { token: string; produ
         </select>
         <select value={form.product_slug} onChange={(e) => set("product_slug", e.target.value)} className={field} aria-label="Produs">
           <option value="">— produsul —</option>
-          {products.map((p) => (
-            <option key={p.slug} value={p.slug}>
-              {p.name}
-            </option>
-          ))}
+          <ProductOptions products={products} />
         </select>
         <input
           value={form.url}

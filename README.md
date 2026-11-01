@@ -51,6 +51,31 @@ Scenarii incluse intenționat:
 
 Bifează două oferte în tabel ca să vezi comparatorul side-by-side (ex.: eMAG vs evoMAG).
 
+## Pe server (VPS)
+
+Pe server rulează tot ce rulează acasă, plus **Caddy** (HTTPS automat). Doar Caddy e expus în internet; baza de date
+și API-ul nu. Fișierele: `docker-compose.prod.yml`, `deploy/Caddyfile`, `deploy/server-setup.sh`.
+
+1. **Cheie SSH** (o singură dată, pe calculatorul tău): `ssh-keygen -t ed25519` → conținutul lui
+   `~/.ssh/id_ed25519.pub` îl pui la crearea serverului (Hetzner: „SSH keys”).
+2. **Server**: Ubuntu 24.04, minim 2 vCPU / 4 GB RAM. Apoi, ca root:
+   `ssh root@IP` → `curl -fsSL https://raw.githubusercontent.com/IonescuGeorge05/Pretoscop/main/deploy/server-setup.sh | bash`
+   (Docker, firewall doar 22/80/443, actualizări automate de securitate, 2 GB swap, utilizatorul `pretoscop`, proiectul).
+3. **Setări**: `scp .env pretoscop@IP:Pretoscop/.env`, apoi pe server, în `.env`: `DATA_MODE=real`,
+   `PUBLIC_SITE_URL=http://IP` (sau `https://domeniu`), `SITE_ADDRESS=:80` (sau domeniul).
+4. **Istoricul de acasă**: `scp backups/<cel-mai-nou>.sql.gz pretoscop@IP:Pretoscop/backups/`, apoi pe server
+   `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d db` și
+   `bash scripts/restore-db.sh backups/<fișierul>.sql.gz`.
+5. **Pornire**: `docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build`.
+6. **Acasă**: `SCRAPING_ENABLED=false` în `.env` și `docker compose up -d worker` — altfel citim magazinele de două ori.
+7. **Admin fără domeniu**: doar prin tunel (token-ul nu circulă necriptat):
+   `ssh -L 3000:localhost:3000 pretoscop@IP` → http://localhost:3000/admin.
+8. **Domeniu** (când există): în DNS, o înregistrare `A` spre IP-ul serverului; în `.env`
+   `SITE_ADDRESS=domeniu.ro` și `PUBLIC_SITE_URL=https://domeniu.ro`; repornire. Caddy cere singur certificatul HTTPS.
+9. **Lansare**: `NOINDEX=0` în `.env` (paginile pot apărea în Google) și repornirea serviciului `web`.
+
+Actualizare după un push: pe server `git pull && docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build`.
+
 ## Site public (GitHub Pages)
 
 O copie **statică** a site-ului, cu datele reale din baza locală, se publică pe GitHub Pages:

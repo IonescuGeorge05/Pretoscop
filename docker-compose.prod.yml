@@ -1,0 +1,41 @@
+# Pe server (VPS), peste docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+# Diferențe: doar Caddy ascultă din internet (porturile 80/443, HTTPS automat pentru domeniu); baza de date, API-ul
+# și site-ul nu mai sunt expuse direct; containerele repornesc singure după un restart al serverului.
+services:
+  db:
+    ports: !reset []
+    restart: always
+  api:
+    ports: !reset []
+    restart: always
+  worker:
+    restart: always
+  backup:
+    restart: always
+  web:
+    # doar pe serverul însuși: admin-ul fără domeniu se folosește printr-un tunel SSH
+    #   ssh -L 3000:localhost:3000 pretoscop@IP  ->  http://localhost:3000/admin
+    ports: !override
+      - "127.0.0.1:3000:3000"
+    restart: always
+
+  caddy:
+    image: caddy:2-alpine
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # domeniul (ex. pretoscop.ro) -> certificat HTTPS automat; fără domeniu: „:80” (doar HTTP, pe adresa IP)
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+volumes:
+  caddy_data:
+  caddy_config:

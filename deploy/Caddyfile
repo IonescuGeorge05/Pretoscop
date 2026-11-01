@@ -1,0 +1,23 @@
+# Caddy: singurul serviciu expus în internet. HTTPS automat (Let's Encrypt) când SITE_ADDRESS e un domeniu.
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	# zona de administrare și API-ul de admin: doar prin HTTPS (token-ul nu circulă necriptat)
+	@admin_http {
+		protocol http
+		path /admin* /api/admin*
+	}
+	respond @admin_http "Administrarea merge doar prin HTTPS." 403
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		-Server
+	}
+
+	reverse_proxy web:3000 {
+		header_up X-Forwarded-For {remote_host}
+	}
+}

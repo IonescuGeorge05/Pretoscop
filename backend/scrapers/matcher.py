@@ -31,6 +31,8 @@ CONDITION_RE = re.compile(
 )
 # anunțuri care nu sunt oferte de vânzare: cereri de cumpărare, servicii
 NOT_FOR_SALE_RE = re.compile(r"^\W*(cumpar|caut|colectez)\b|\b(curatare|igienizare|reparatii|reparatie|service)\b")
+# telefoane false din anunțuri: „replică”, „1 la 1”, „are android”, „clonă”
+FAKE_RE = re.compile(r"\b(replica|replici|clona|clone|fake|1 la 1|are android|cu android)\b")
 
 
 USED_TITLE_RE = re.compile(r"\b(second[ -]?hand|sh|folosit\w*|utilizat\w*|ca nou[a]?)\b")
@@ -56,6 +58,7 @@ def normalize(title: str) -> str:
     t = re.sub(r"\bxbox\s*series\s*([xs])\b", r"xbox-series-\1", t)
     t = re.sub(r"\b(samsung\s*)?(galaxy\s*)?s\s*26\s*ultra\b", "galaxy s26 ultra", t)
     t = re.sub(r"\b([12])\s*tera\w*\b", r"\1tb", t)  # anunțuri: „memorie de 1 tera”
+    t = re.sub(r"\b([12])\s*t\b", r"\1tb", t)  # „5G, 1T, 16GB RAM”
     t = re.sub(r"(\d+)\s*(gb|tb)\b", r"\1\2", t)
     return re.sub(r"\s+", " ", t).strip()
 
@@ -70,6 +73,8 @@ def match_title(title: str, allow_used: bool = False) -> MatchResult:
     t = normalize(title)
     if NOT_FOR_SALE_RE.search(t):
         return MatchResult("excluded", reason="nu e o ofertă de vânzare (cerere de cumpărare / serviciu)")
+    if FAKE_RE.search(t):
+        return MatchResult("excluded", reason="replică / clonă (nu e produsul original)")
     if re.search(r"\biphone\b", t):
         return _iphone(t, allow_used)
     if "ps5" in t:
@@ -233,7 +238,7 @@ def _xbox(t: str, allow_used: bool) -> MatchResult:
 PHONE_RE = re.compile(r"\b(telefon|smartphone)\b")
 # accesoriile de telefon, comune iPhone / Galaxy
 PHONE_ACCESSORY_RE = re.compile(
-    r"\b(husa|carcasa|folie|sticla|protectie|cablu|incarcator|adaptor|magsafe|case|cover|lentil\w*|suport|curea|"
+    r"\b(husa|huse|carcasa|folie|folii|sticla|protectie|cablu|incarcator|adaptor|magsafe|case|cover|lentil\w*|suport|curea|"
     r"baterie externa|powerbank|stylus|s ?pen|skin|dummy|macheta)\b|"
     r"\b(pentru|for|compatibil\w*)\s+(apple |samsung )?(iphone|galaxy)\b"
 )
@@ -273,9 +278,7 @@ def _iphone(t: str, allow_used: bool) -> MatchResult:
         return MatchResult("accessory", reason=f"accesoriu ({accessory.group(0).strip()})")
     # „Camera Tripla 48 + 48 + 48 MP” nu e pachet
     is_bundle = bool(PHONE_BUNDLE_RE.search(re.sub(r"\d+\s*\+\s*(?=\d)", " ", t)))
-    # „iphone 18 pro 512”, „iphone 17 256” (anunțuri, fără unitate): 256 / 512 lipite de model sunt doar stocare
-    t = re.sub(r"\b(pro max|pro|air|e|17|18) (256|512)\b(?!gb)", r"\1 \2gb", t)
-    storages = set(re.findall(r"\b(256gb|512gb|1tb|2tb)\b", t))
+    storages = _phone_storages(t, ("256gb", "512gb", "1tb", "2tb"))
     if len(storages) != 1:
         reason = "stocare neclară (lipsește 256GB/512GB/1TB/2TB)" if not storages else "mai multe stocări în titlu"
         return MatchResult("unmatched", is_bundle=is_bundle, reason=reason)
@@ -283,6 +286,15 @@ def _iphone(t: str, allow_used: bool) -> MatchResult:
     if storage not in allowed:
         return MatchResult("unmatched", is_bundle=is_bundle, reason=f"stocare inexistentă la acest model ({storage})")
     return MatchResult("product", f"{prefix}-{storage}", is_bundle)
+
+
+def _phone_storages(t: str, known: tuple[str, ...]) -> set[str]:
+    """Stocările din titlu. Dacă nu apare nicio unitate, „256” / „512” singure (ex. „iPhone 17 Pro Max Blue 256”) sunt
+    stocarea: la telefoane nu au alt sens plauzibil (camerele sunt în MP, RAM-ul în GB cu unitate)."""
+    found = set(re.findall(r"\b(" + "|".join(known) + r")\b", t))
+    if not found:
+        found = {f"{n}gb" for n in re.findall(r"\b(256|512)\b(?!\s*(?:gb|mb|mp|hz|mah))", t)}
+    return found
 
 
 # ---------- Samsung Galaxy S26 Ultra
@@ -296,8 +308,7 @@ def _galaxy(t: str, allow_used: bool) -> MatchResult:
     if accessory and (not phone or accessory.start() < phone.start()):
         return MatchResult("accessory", reason=f"accesoriu ({accessory.group(0).strip()})")
     is_bundle = bool(PHONE_BUNDLE_RE.search(re.sub(r"\d+\s*\+\s*(?=\d)", " ", t)))
-    t = re.sub(r"\bultra (256|512)\b(?!gb)", r"ultra \1gb", t)
-    storages = set(re.findall(r"\b(256gb|512gb|1tb)\b", t))
+    storages = _phone_storages(t, ("256gb", "512gb", "1tb"))
     if len(storages) != 1:
         reason = "stocare neclară (lipsește 256GB/512GB/1TB)" if not storages else "mai multe stocări în titlu"
         return MatchResult("unmatched", is_bundle=is_bundle, reason=reason)

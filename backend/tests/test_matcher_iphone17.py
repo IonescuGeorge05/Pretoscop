@@ -28,3 +28,20 @@ def test_iphone17_traps():
     assert match_title("Apple iPhone 17 1TB").kind == "unmatched"  # iPhone 17 simplu nu are 1 TB
     assert match_title("iPhone 17 Pro Max ca nou", allow_used=True).kind == "unmatched"  # fără stocare
     assert match_title("Apple iPhone 16 Pro 256GB").kind == "accessory"  # generație neurmărită
+
+
+@pytest.mark.parametrize(
+    "title, kind, slug",
+    [
+        ("iPhone 17 Pro Max Blue 256 Neverlocked 1 Incarcare Nou", "product", "iphone-17-pro-max-256gb"),
+        ("Telefon SAMSUNG Galaxy S26 Ultra 5G, 1T, 16GB RAM, Dual SIM, Black", "product", "galaxy-s26-ultra-1tb"),
+        ("iPhone 17 replica 1tb", "excluded", None),
+        ("iphone 17 pro max 1 la 1", "excluded", None),
+        ("iPhone 17 pro max are android merge foarte bine", "excluded", None),
+        ("Huse Pitaka IPhone 17 Pro, Pro max", "accessory", None),
+        ("Iphone 17 Pro Max Sigilat", "unmatched", None),  # fără stocare: rămâne la verificare
+    ],
+)
+def test_listing_rules_from_real_ads(title, kind, slug):
+    r = match_title(title, allow_used=True)
+    assert (r.kind, r.product_slug) == (kind, slug)

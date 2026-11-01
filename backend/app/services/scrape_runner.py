@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from datetime import UTC, datetime, timedelta
 
 import httpx
-from sqlalchemy import select, text
+from sqlalchemy import delete, select, text
 from sqlalchemy.orm import Session
 
 from app.db import SessionLocal
@@ -76,10 +76,16 @@ def ingest_offers(session: Session, shop: Shop, scraped_offers: Iterable[Scraped
     return stats
 
 
+UNMATCHED_TTL = timedelta(days=14)
+
+
 def rematch_unmatched(session: Session) -> Counter:
     """Trece din nou anunțurile nepotrivite prin regulile actuale (după o schimbare în matcher): cele care se potrivesc
     acum devin oferte, accesoriile / excluderile dispar, restul rămân la verificare cu motivul nou."""
     stats: Counter = Counter()
+    # anunțurile nevăzute de 14 zile sunt probabil vândute / șterse: nu le mai ținem la verificare
+    cutoff = datetime.now(UTC) - UNMATCHED_TTL
+    stats["expired"] = session.execute(delete(UnmatchedListing).where(UnmatchedListing.scraped_at < cutoff)).rowcount
     for shop in session.scalars(select(Shop)):
         rows = list(session.scalars(select(UnmatchedListing).where(UnmatchedListing.shop_id == shop.id)))
         if not rows:

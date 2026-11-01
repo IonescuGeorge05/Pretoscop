@@ -145,3 +145,16 @@ def test_unmatched_listing_keeps_preorder(session):
     s.preorder = True
     record_unmatched(session, session.scalar(select(Shop)), s, "test")
     assert offer_from_unmatched(session.scalar(select(UnmatchedListing))).preorder is True
+
+
+def test_rematch_drops_listings_not_seen_for_two_weeks(session):
+    from app.models import UnmatchedListing
+    from app.services.ingest import record_unmatched
+    from app.services.scrape_runner import rematch_unmatched
+
+    old = scraped("3899.99")
+    old.title, old.scraped_at = "PlayStation 5 vand urgent", datetime.now(UTC) - timedelta(days=20)
+    record_unmatched(session, session.scalar(select(Shop)), old, "generație neclară")
+    session.commit()
+    assert rematch_unmatched(session)["expired"] == 1
+    assert session.scalar(select(func.count(UnmatchedListing.id))) == 0

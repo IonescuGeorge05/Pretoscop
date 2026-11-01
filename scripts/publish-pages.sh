@@ -25,7 +25,7 @@ echo "==> 2/4 build static (basePath /$REPO_NAME)"
 # proxy-ul /api nu are sens fără server și blochează `output: export`: îl scoatem pe durata build-ului
 mv "$API_ROUTE" "$API_ROUTE_PARKED"
 trap 'mv "$API_ROUTE_PARKED" "$API_ROUTE" 2>/dev/null || true' EXIT
-OWNER="$(git -C "$ROOT" remote get-url origin | sed -E 's#.*github.com[:/]([^/]+)/.*##' | tr 'A-Z' 'a-z')"
+OWNER="$(git -C "$ROOT" remote get-url origin | sed -E 's#.*github.com[:/]([^/]+)/.*#\1#' | tr 'A-Z' 'a-z')"
 SITE_URL="${SITE_URL:-https://$OWNER.github.io/$REPO_NAME}"
 (cd "$ROOT/frontend" && rm -rf out .next && STATIC_EXPORT=1 BASE_PATH="$REPO_NAME" SITE_URL="$SITE_URL" npm run build >/dev/null)
 mv "$API_ROUTE_PARKED" "$API_ROUTE"

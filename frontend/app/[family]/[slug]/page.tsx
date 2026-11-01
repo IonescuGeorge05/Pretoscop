@@ -52,9 +52,18 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const [p] = await load(params.slug, IS_STATIC ? undefined : searchParams.source);
   const best = p.offers.find((o) => o.in_stock);
   const price = best ? ` de la ${formatLei(best.breakdown.final_price)}` : "";
+  const title = `${p.name} — preț${price}`;
+  const description = `Prețul final real pentru ${p.name} în magazinele din România${price}: transport, garanție, istoric de preț și recomandarea „${p.recommendation.label}”.`;
   return {
-    title: `${p.name} — preț${price}`,
-    description: `Prețul final real pentru ${p.name} în magazinele din România${price}: transport, garanție, istoric de preț și recomandarea „${p.recommendation.label}”.`,
+    title,
+    description,
+    alternates: { canonical: `/${p.family_slug}/${p.slug}` },
+    // la distribuire: numele, prețul și verdictul se văd direct în previzualizare
+    openGraph: {
+      title: `${p.name}${price} · ${p.recommendation.label}`,
+      description,
+      images: p.image_url ? [{ url: p.image_url.replace(/^\//, "") }] : undefined,
+    },
   };
 }
 

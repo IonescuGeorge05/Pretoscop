@@ -18,6 +18,7 @@ const nextConfig = isStatic
         NEXT_PUBLIC_STATIC: "1",
         NEXT_PUBLIC_BASE_PATH: basePath,
         NEXT_PUBLIC_NOINDEX: process.env.NOINDEX ?? "1",
+        NEXT_PUBLIC_SITE_URL: process.env.SITE_URL ?? "",
       },
     }
   : {

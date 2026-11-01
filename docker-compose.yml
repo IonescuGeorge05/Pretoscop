@@ -110,6 +110,8 @@ services:
       APP_NAME: ${APP_NAME:-Pretoscop}
       BOT_CONTACT: ${SCRAPER_CONTACT:-}  # afișat pe pagina /bot
       OPERATOR_NAME: ${OPERATOR_NAME:-}  # cine operează site-ul (pagina /termeni); gol = proiect personal
+      PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-http://localhost:3000}  # linkuri absolute (sitemap, previzualizări)
+      NOINDEX: ${NOINDEX:-1}  # 1 = nu apărem în Google (până la lansare); 0 la lansare
     depends_on:
       api:
         condition: service_healthy

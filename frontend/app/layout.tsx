@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import ThemeToggle, { THEME_SCRIPT } from "@/components/ThemeToggle";
 import { appName } from "@/lib/format";
+import { noIndex, siteUrl } from "@/lib/static";
 
 import "./globals.css";
 
@@ -13,12 +14,17 @@ const body = DM_Sans({ subsets: ["latin", "latin-ext"], weight: ["400", "500", "
 
 export async function generateMetadata(): Promise<Metadata> {
   const name = appName();
+  const description =
+    "Compară prețurile din toate magazinele din România: preț final real (cu transport și garanție), istoric, reduceri false și recomandări.";
   return {
-    // site-ul static nu e încă lansat public: nu-l indexăm (NOINDEX=0 la lansare)
-    robots: process.env.NEXT_PUBLIC_NOINDEX === "1" ? { index: false, follow: false } : undefined,
+    // adresele relative din metadate (previzualizări, canonical) devin absolute pe domeniul site-ului
+    metadataBase: new URL(siteUrl() + "/"),
+    // site-ul nu e încă lansat public: nu-l indexăm (NOINDEX=0 la lansare)
+    robots: noIndex() ? { index: false, follow: false } : undefined,
     title: { default: `${name} — prețuri reale, istoric și recomandări`, template: `%s | ${name}` },
-    description:
-      "Compară prețurile din toate magazinele din România: preț final real (cu transport și garanție), istoric, reduceri false și recomandări.",
+    description,
+    // previzualizarea când cineva trimite un link pe WhatsApp / Facebook
+    openGraph: { siteName: name, locale: "ro_RO", type: "website", description },
   };
 }
 

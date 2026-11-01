@@ -1,3 +1,5 @@
+import secrets
+import time
 from dataclasses import asdict
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
@@ -31,6 +33,20 @@ from scrapers.registry import REGISTRY
 router = APIRouter(prefix="/api")
 
 SourceParam = Query(None, pattern="^(mock|real)$", description="Suprascrie DATA_MODE: mock | real")
+
+# paginile de listă recalculează totul (oferte, istoric, recomandări pentru fiecare produs): ~0,7 s. Datele se schimbă
+# doar la rulările scraperilor (ore), deci un rezultat vechi de câteva minute e la fel de bun.
+CACHE_SECONDS = 300
+_cache: dict[tuple, tuple[float, object]] = {}
+
+
+def cached(key: tuple, build):
+    hit = _cache.get(key)
+    if hit and time.monotonic() - hit[0] < CACHE_SECONDS:
+        return hit[1]
+    value = build()
+    _cache[key] = (time.monotonic(), value)
+    return value
 
 
 def shop_out(offer: Offer) -> schemas.ShopOut:
@@ -136,6 +152,10 @@ def _top_cities(views: list[catalog.OfferView], n: int = 3) -> list[str]:
 def list_products(source: str | None = SourceParam, session: Session = Depends(get_session)):
     """Toate produsele, grupabile pe familii, cu cel mai bun preț final curent (oferte noi, fără pachete, în stoc)."""
     src = catalog.resolve_source(source)
+    return cached(("products", src), lambda: _list_products(src, session))
+
+
+def _list_products(src: str, session: Session) -> schemas.ProductList:
     out = []
     for p in session.scalars(select(Product).order_by(Product.id)):
         offers = catalog.load_offers(session, p.id, src)
@@ -224,6 +244,10 @@ def deals(source: str | None = SourceParam, session: Session = Depends(get_sessi
     """Reduceri reale: oferte (noi, de la magazin) al căror preț de azi e sub mediana ultimelor 30 de zile,
     plus reducerile false (preț tăiat umflat) — separat, ca avertisment."""
     src = catalog.resolve_source(source)
+    return cached(("deals", src), lambda: _deals(src, session))
+
+
+def _deals(src: str, session: Session) -> schemas.DealsOut:
     today = date.today()
     found, fake = [], []
     for p in session.scalars(select(Product).order_by(Product.id)):
@@ -500,8 +524,9 @@ def out(offer_id: int, request: Request, session: Session = Depends(get_session)
 def require_admin(x_admin_token: str | None = Header(None)) -> None:
     if not settings.admin_token:
         raise HTTPException(503, "ADMIN_TOKEN nu este configurat")
-    if x_admin_token != settings.admin_token:
+    if not secrets.compare_digest((x_admin_token or "").encode(), settings.admin_token.encode()):
         raise HTTPException(401, "Token invalid")
+    _cache.clear()  # o acțiune din admin (asociere, semnalare acceptată…) se vede imediat pe site
 
 
 @router.post("/admin/scrape", response_model=schemas.ScrapeStarted, status_code=202, dependencies=[Depends(require_admin)])

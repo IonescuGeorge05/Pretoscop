@@ -289,6 +289,10 @@ def event_report_view(slug: str, source: str | None = SourceParam, session: Sess
     if event is None:
         raise HTTPException(404, "Eveniment necunoscut")
     src = catalog.resolve_source(source)
+    return cached(("event", slug, src, today), lambda: _event_report(event, src, today, session))
+
+
+def _event_report(event, src: str, today: date, session: Session) -> schemas.EventReportOut:
     rows = []
     for p in session.scalars(select(Product).where(Product.lifecycle != "retired").order_by(Product.id)):
         histories = [catalog.to_history(o) for o in catalog.comparable(catalog.load_offers(session, p.id, src))]

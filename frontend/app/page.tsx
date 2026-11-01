@@ -1,6 +1,7 @@
 import Catalog from "@/components/Catalog";
 import DemoBanner from "@/components/DemoBanner";
-import { getProducts } from "@/lib/api";
+import EventBanner from "@/components/EventBanner";
+import { getEventReport, getProducts } from "@/lib/api";
 import { IS_STATIC } from "@/lib/static";
 
 const PROMISES = [
@@ -11,11 +12,12 @@ const PROMISES = [
 
 export default async function Home({ searchParams }: { searchParams: { source?: string } }) {
   const source = IS_STATIC ? undefined : searchParams.source; // site static: fără parametri în URL
-  const data = await getProducts(source);
+  const [data, event] = await Promise.all([getProducts(source), getEventReport("black_friday", source).catch(() => null)]);
 
   return (
     <>
       <DemoBanner isDemo={data.is_demo} path="/" />
+      <EventBanner report={event} />
       <Catalog families={data.families} products={data.products} source={source} />
       <section className="mt-14 grid gap-5 sm:grid-cols-3">
         {PROMISES.map(([title, text]) => (

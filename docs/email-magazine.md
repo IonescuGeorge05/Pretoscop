@@ -11,16 +11,16 @@ Bună ziua,
 
 Mă numesc [Nume Prenume] și dezvolt **[Pretoscop]**, un comparator de prețuri pentru electronice din România, momentan în fază de prototip. Comparăm prețul final real (preț + transport + garanție), afișăm istoricul de preț și semnalăm reducerile reale.
 
-Am dori să includem produsele [magazin.ro], începând cu consolele PlayStation 5 și telefoanele iPhone 18 Pro. Fiecare ofertă trimite cumpărătorul direct pe pagina produsului de pe [magazin.ro].
+Am dori să includem produsele [magazin.ro], începând cu consolele (PlayStation 5, Nintendo Switch 2, Xbox Series) și telefoanele (iPhone 17 / 18 Pro, Galaxy S26 Ultra). Fiecare ofertă trimite cumpărătorul direct pe pagina produsului de pe [magazin.ro].
 
-Pentru că respectăm protecțiile site-ului dumneavoastră, nu colectăm automat date de pe paginile [magazin.ro]. De aceea vă întreb dacă ne puteți oferi **link-ul unui feed de produse** (XML sau CSV). Dacă aveți deja un feed pentru compari.ro sau Google Merchant, îl putem folosi exact așa cum este. Ne ajută câmpurile: denumire, URL, preț (și preț vechi, dacă există), stoc, EAN.
+Pentru că respectăm protecțiile site-ului dumneavoastră, nu colectăm automat date de pe paginile [magazin.ro]. De aceea vă întreb dacă ne puteți oferi **link-ul unui feed de produse** (XML sau CSV). Dacă aveți deja un feed pentru compari.ro, Pricy, Google Merchant sau 2Performant, îl putem folosi exact așa cum este. Ne ajută câmpurile: denumire, URL, preț (și preț vechi, dacă există), stoc, EAN.
 
 Ce oferim:
 - listare gratuită, cu link direct către produsele dumneavoastră;
 - actualizare a prețurilor o dată pe zi (sau cum preferați), fără încărcare suplimentară a site-ului;
 - dacă aveți un program de afiliere, folosim link-urile de afiliere ale programului.
 
-Puteți vedea prototipul aici: [link GitHub Pages]. Rămân disponibil pentru orice detalii.
+Toate detaliile pentru magazine (formate, ce date folosim, cum ordonăm ofertele): [link pagina /pentru-magazine]. Rămân disponibil pentru orice detalii.
 
 Cu stimă,
 [Nume Prenume]
@@ -32,19 +32,20 @@ Cu stimă,
 
 - **Cui:** caută pe site „Parteneriate”, „Marketing”, „Contact companie” sau „Afiliere”. Pe LinkedIn, „E-commerce Manager” sau „Online Marketing Manager” la magazinul respectiv.
 - **Ce faci cu răspunsul:** pui link-ul în `backend/app/seed/shops.yaml` la magazin (`feed: {url: ..., explicit_permission: true}`) și repornești `api` și `worker`. Dacă primești un fișier, îl încarci în `/admin` → „Import feed de la magazin”.
-- **eMAG:** nu îl contacta pentru afiliere. Programul lor interzice comparatoarele; eMAG rămâne prin scraping (permis de robots.txt), fără link de afiliere.
+- **eMAG:** nu îl contacta pentru afiliere (programul lor interzice comparatoarele), dar **cererea de feed** are sens: eMAG apare pe Pricy, deci dă feed comparatoarelor.
+- **iSTYLE, Buy2Play** (Shopify, ne limitează cu 429) și **Altex** (robots.txt interzice căutarea): tot prin cererea de feed.
 
 ---
 
-## Variantă scurtă pentru magazinele de pe compari.ro (PC Garage, Vexio, evoMAG, cel.ro)
+## Variantă scurtă pentru magazinele de pe compari.ro / Pricy (PC Garage, Altex, Flanco, eMAG, Vexio, evoMAG, cel.ro)
 
-Ei trimit deja un feed către compari.ro, deci cererea e mai mică: doar URL-ul.
+Ei trimit deja un feed către compari.ro sau Pricy (pe pricy.ro apar eMAG, Altex, Flanco, PC Garage), deci cererea e mai mică: doar URL-ul.
 
 **Subiect:** URL-ul feed-ului compari.ro pentru [Pretoscop]
 
 Bună ziua,
 
-Dezvolt **[Pretoscop]**, un comparator de prețuri pentru electronice (preț final cu transport, istoric de preț, reduceri verificate). Știu că trimiteți deja un feed de produse către compari.ro: ne puteți da și nouă **același URL**? Îl citim de câteva ori pe zi, fără să mai încărcăm site-ul, iar fiecare ofertă duce direct pe pagina produsului de pe [magazin.ro]. Listarea e gratuită.
+Dezvolt **[Pretoscop]**, un comparator de prețuri pentru electronice (preț final cu transport, istoric de preț, reduceri verificate). Știu că trimiteți deja un feed de produse către comparatoare (compari.ro, Pricy): ne puteți da și nouă **același URL**? Instrucțiunile sunt la [link pagina /pentru-magazine]. Îl citim de câteva ori pe zi, fără să mai încărcăm site-ul, iar fiecare ofertă duce direct pe pagina produsului de pe [magazin.ro]. Listarea e gratuită.
 
 Dacă preferați să nu dați feed-ul, o alternativă e să permiteți robotul nostru, PretoscopBot (descris la [link pagina /bot]), în setările de protecție ale site-ului.
 

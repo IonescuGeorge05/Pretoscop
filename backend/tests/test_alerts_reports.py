@@ -74,3 +74,16 @@ def test_pick_occurrence_prefers_running_or_recent_then_next():
     old = Event(slug="black_friday", name="BF", date=date(2025, 11, 28), start=date(2025, 11, 21), end=date(2025, 12, 1))
     assert pick_occurrence([old, BF], "black_friday", date(2026, 10, 30)) == BF
     assert pick_occurrence([old, BF], "black_friday", date(2025, 12, 20)) == old
+
+
+def test_owner_is_emailed_only_on_status_changes(monkeypatch):
+    from app.services import alerts
+    from app.services.scrape_runner import _notify_change
+
+    sent = []
+    monkeypatch.setattr(alerts, "notify_owner", lambda subject, body: sent.append(subject))
+    _notify_change("iSTYLE", "active", {"status": "blocked", "reason": "RateLimited: 429"})
+    _notify_change("iSTYLE", "blocked", {"status": "blocked"})  # tot blocat: fără email nou
+    _notify_change("iSTYLE", "blocked", {"status": "ok", "listings": 12})
+    _notify_change("Anze", "active", {"status": "ok"})  # rulare normală: fără email
+    assert sent == ["iSTYLE ne-a blocat", "iSTYLE merge din nou"]

@@ -51,6 +51,16 @@ def send_email(to: str, subject: str, body: str) -> None:
         smtp.send_message(msg)
 
 
+def notify_owner(subject: str, body: str) -> None:
+    """Email scurt către proprietar (monitorizare). Nu oprește niciodată fluxul care l-a cerut."""
+    if not (mail_enabled() and settings.owner_email):
+        return
+    try:
+        send_email(settings.owner_email, f"[{settings.app_name}] {subject}", body)
+    except (smtplib.SMTPException, OSError) as exc:
+        log.warning(json.dumps({"event": "owner_notify_failed", "error": str(exc)}))
+
+
 def _site(path: str) -> str:
     return settings.public_site_url.rstrip("/") + path
 

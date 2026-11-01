@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import ProductImage from "@/components/ProductImage";
 import VerdictBadge from "@/components/VerdictBadge";
 import { categoryLabel, formatLei, formatLeiShort, productHref, variantLabel } from "@/lib/format";
 import type { Family, ProductSummary, Verdict } from "@/lib/types";
@@ -324,6 +325,7 @@ function ProductGrid({ products, source, tab }: { products: ProductSummary[]; so
                   <MsrpPill p={p} value={usedPrice(p) === Infinity ? null : usedPrice(p)} />
                 )}
               </div>
+              <ProductImage src={p.image_url} alt="" className="mx-auto mt-4 h-32 w-full" />
               <span className="mt-4 text-base font-bold leading-snug">{p.name}</span>
               <span className="text-sm text-muted">
                 {variantLabel(p)}

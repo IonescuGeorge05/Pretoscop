@@ -8,6 +8,7 @@ import MissingShops from "@/components/MissingShops";
 import OfferTabs from "@/components/OfferTabs";
 import OffersSection from "@/components/OffersSection";
 import PriceAlertForm from "@/components/PriceAlertForm";
+import ProductImage from "@/components/ProductImage";
 import PriceChart from "@/components/PriceChart";
 import RecommendationCard from "@/components/RecommendationCard";
 import ReportCheaper from "@/components/ReportCheaper";
@@ -88,12 +89,17 @@ export default async function ProductPage({ params, searchParams }: Props) {
         </Link>{" "}
         › {variantLabel(product)}
       </nav>
-      <h1 className="mt-2 font-display text-4xl font-extrabold leading-tight tracking-tight sm:text-[46px]">{product.name}</h1>
-      <p className="mt-1 text-muted">
-        {variantLabel(product, true)}
-        {product.model_code && ` · cod model ${product.model_code}`}
-        {product.ean && ` · EAN ${product.ean}`}
-      </p>
+      <div className="mt-2 flex items-center gap-5">
+        <ProductImage src={product.image_url} alt={product.name} className="h-24 w-24 flex-none sm:h-28 sm:w-28" />
+        <div className="min-w-0">
+          <h1 className="font-display text-4xl font-extrabold leading-tight tracking-tight sm:text-[46px]">{product.name}</h1>
+          <p className="mt-1 text-muted">
+            {variantLabel(product, true)}
+            {product.model_code && ` · cod model ${product.model_code}`}
+            {product.ean && ` · EAN ${product.ean}`}
+          </p>
+        </div>
+      </div>
 
       <div className="mt-6 space-y-10">
         <FakeDiscountAlert items={rec.fake_discounts} />

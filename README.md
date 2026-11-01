@@ -1,4 +1,4 @@
-# Pretoscop — prototip comparator de prețuri (PlayStation 5, iPhone 18 Pro)
+# Pretoscop — prototip comparator de prețuri (console și telefoane)
 
 > Numele e de lucru și se schimbă dintr-un singur loc: `APP_NAME` / `APP_SLUG` în `.env`
 > (UI, title/meta, User-Agent-ul scraperului, numele containerelor).
@@ -99,7 +99,15 @@ python -m venv .venv && .venv/Scripts/pip install -r requirements.txt   # Linux/
 .venv/Scripts/python -m pytest
 # sau în container:
 docker compose exec api pytest
+
+cd frontend
+npx tsc --noEmit                               # tipuri
+npm test                                       # teste unitare (vitest): formatare, comparatorul din browser
+SMOKE_URL=http://localhost:3000 npm run test:smoke   # cu stack-ul pornit: toate paginile + un produs din fiecare familie
 ```
+
+La fiecare push, GitHub Actions rulează testele backend, tipurile și testele frontend (`.github/workflows/teste.yml`).
+Niciun test nu face cereri către magazine: folosesc HTML și feed-uri salvate, plus SQLite în memorie.
 
 Testele acoperă:
 
@@ -213,8 +221,12 @@ Scraperul generic (`scrapers/sitemap_scraper.py`):
 
 | Familie | Produse | URL |
 |---|---|---|
-| PlayStation 5 | 5 modele (Standard, Digital, Slim Disc, Slim Digital, Pro) | `/ps5/<slug>` |
-| iPhone 18 Pro | Pro și Pro Max × 256 GB / 512 GB / 1 TB / 2 TB (8 produse; culorile nu sunt produse separate) | `/iphone-18-pro/<slug>` |
+| PlayStation 5 *(console)* | 6 modele: original Disc / Digital, Slim Disc 1 TB, Slim Digital 1 TB / 825 GB, Pro (3 retrase) | `/ps5/<slug>` |
+| Nintendo Switch 2 *(console)* | consola; pachetele cu jocuri sunt oferte „pachet” | `/nintendo-switch-2/<slug>` |
+| Xbox Series *(console)* | Series S 512 GB / 1 TB, Series X Digital / cu disc | `/xbox-series/<slug>` |
+| iPhone 18 Pro *(telefoane)* | Pro și Pro Max × 256 GB – 2 TB (8 produse; culorile nu sunt produse separate) | `/iphone-18-pro/<slug>` |
+| iPhone 17 *(telefoane)* | 17, 17e, Air, 17 Pro și 17 Pro Max (ultimele două retrase de Apple la 09.09.2026) | `/iphone-17/<slug>` |
+| Galaxy S26 Ultra *(telefoane)* | 256 GB / 512 GB / 1 TB | `/galaxy-s26-ultra/<slug>` |
 
 MSRP-ul iPhone vine din prețurile Apple din zona euro (Franța: Pro de la 1 479 €, Pro Max de la 1 629 €) × cursul `EUR_RON` (5,35 lei/€). Apple nu are magazin oficial în România, deci valorile rămân „estimat”.
 
@@ -222,12 +234,21 @@ MSRP-ul iPhone vine din prețurile Apple din zona euro (Franța: Pro de la 1 479
 
 ## Cum adaugi un produs nou
 
-1. Adaugă variantele în `backend/app/seed/models.yaml` și familia în `backend/app/seed/families.yaml` (slug pentru URL, titlu, descriere).
+1. Adaugă variantele în `backend/app/seed/models.yaml` și familia în `backend/app/seed/families.yaml` (slug pentru URL, titlu, descriere, `category`: `console` / `telefoane`), iar filtrele de URL / titlu în `backend/scrapers/families.py`.
 2. Matcher (`backend/scrapers/matcher.py`): o funcție `_<familie>(t, allow_used)` care întoarce slug-ul produsului din titlu, plus o ramură în `match_title`. EAN/MPN funcționează deja generic.
 3. Scraperi: adaugă pagina de listare a familiei în `listings` / `SEARCHES` la fiecare magazin.
 4. Frontend: nimic. Ruta `/[family]/[slug]` și prima pagină se adaptează singure; doar eticheta variantei (`variantLabel` din `lib/format.ts`) poate avea nevoie de un nume nou.
 
 Restul (prețul final, istoricul, recomandările, API-ul) nu depinde de familia de produse.
+
+### Poze de produs
+
+1. Pune poza în `frontend/public/produse/` (ex. `ps5-pro.webp`; ideal `.webp` / `.png` cu fundal transparent, ~600×600 px, sub 100 KB).
+2. În `models.yaml`, la produs: `image_url: /produse/ps5-pro.webp` (variantele identice ca aspect pot folosi aceeași poză).
+3. `docker compose up -d --build api web`.
+
+Folosește poze oficiale de presă (Apple Newsroom, PlayStation Press, Samsung Newsroom, Nintendo, Xbox Wire), nu poze
+copiate de pe site-urile magazinelor. Produsele fără poză se afișează normal, fără imagine.
 
 ## Decizii luate (unde specificația era ambiguă)
 

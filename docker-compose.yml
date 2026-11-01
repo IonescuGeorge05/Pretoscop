@@ -21,6 +21,7 @@ x-backend-env: &backend-env
   SMTP_PASSWORD: ${SMTP_PASSWORD:-}
   MAIL_FROM: ${MAIL_FROM:-}
   PUBLIC_SITE_URL: ${PUBLIC_SITE_URL:-http://localhost:3000}
+  OWNER_EMAIL: ${OWNER_EMAIL:-}
 
 services:
   db:
@@ -108,6 +109,7 @@ services:
       API_INTERNAL_URL: ${API_INTERNAL_URL:-http://api:8000}
       APP_NAME: ${APP_NAME:-Pretoscop}
       BOT_CONTACT: ${SCRAPER_CONTACT:-}  # afișat pe pagina /bot
+      OPERATOR_NAME: ${OPERATOR_NAME:-}  # cine operează site-ul (pagina /termeni); gol = proiect personal
     depends_on:
       api:
         condition: service_healthy

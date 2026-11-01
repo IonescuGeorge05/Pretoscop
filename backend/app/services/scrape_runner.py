@@ -149,6 +149,7 @@ def _run_locked(session: Session, slug: str, skip_blocked: bool, summary: dict, 
         summary["status"] = "skipped_blocked"
         return
     client = PoliteClient(timeout=180) if shop.feed else PoliteClient()  # feed-urile pot fi mari
+    was = shop.status
     try:
         summary.update(scrape_shop(session, shop, client))
         shop.status, shop.status_reason = "active", None
@@ -168,6 +169,20 @@ def _run_locked(session: Session, slug: str, skip_blocked: bool, summary: dict, 
         summary["duration_s"] = round(time.monotonic() - started, 1)
         shop.last_run = {k: v for k, v in summary.items() if k not in ("event", "shop")}
         session.commit()
+        _notify_change(shop.name, was, summary)
+
+
+def _notify_change(name: str, was: str, summary: dict) -> None:
+    """Monitorizare: email la proprietar doar la schimbări (blocat / revenit) și la erori de cod, nu la fiecare rulare."""
+    from app.services.alerts import notify_owner
+
+    status, reason = summary.get("status"), summary.get("reason", "")
+    if status == "blocked" and was != "blocked":
+        notify_owner(f"{name} ne-a blocat", f"Rularea s-a oprit: {reason}\nReîncercăm automat peste 24 de ore.")
+    elif status == "ok" and was == "blocked":
+        notify_owner(f"{name} merge din nou", f"Rulare reușită: {summary.get('listings', 0)} anunțuri citite.")
+    elif status == "error":
+        notify_owner(f"Eroare în scraperul {name}", f"{reason}\nDetalii în logurile worker-ului.")
 
 
 def run_all(skip_blocked: bool = False) -> list[dict]:

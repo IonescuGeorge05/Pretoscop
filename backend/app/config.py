@@ -39,6 +39,8 @@ class Settings(BaseSettings):
     # adresa publică a site-ului, pentru linkurile din emailuri (confirmare, dezabonare, produs)
     public_site_url: str = "http://localhost:3000"
     alert_check_minutes: int = 60
+    # adresa ta: primești un email când un magazin ne blochează / își revine sau un scraper cade (gol = fără emailuri)
+    owner_email: str = ""
 
     # căutare web prin Brave Search API (opțional): anunțuri OLX din index + descoperire de magazine
     brave_api_key: str = ""

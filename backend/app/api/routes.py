@@ -92,6 +92,7 @@ def offer_out(
         fake_discount=schemas.FakeDiscountOut(**asdict(fake)) if fake else None,
         price_outlier=outlier,
         preorder=o.preorder,
+        gift=o.gift,
         is_affiliate=bool(o.affiliate_url),
         manual_checked_at=p.confirmed_at if p.origin == "manual" else None,
         colors=colors or [],
@@ -771,13 +772,15 @@ def admin_manual_price(body: schemas.ManualPriceIn, session: Session = Depends(g
     except reports.ReportError as exc:
         raise HTTPException(422, str(exc)) from None
     old = parse_price(body.old_price) if body.old_price else None
+    gift_value = parse_price(body.gift_value) if body.gift_value else None
+    gift = {"title": body.gift_title.strip(), "value": float(gift_value)} if body.gift_title and gift_value else None
     offer, _ = record_offer(
         session, shop, p,
         ScrapedOffer(
             shop_slug=shop.slug, url=url, title=p.name, price=price,
             old_price=old if old and old > price else None, in_stock=body.in_stock or body.preorder,
             ean=None, mpn=None, warranty_months=None, condition="new", scraped_at=datetime.now(UTC),
-            seller=shop.name, preorder=body.preorder,
+            seller=shop.name, preorder=body.preorder, gift=gift,
         ),
         is_bundle=False, origin="manual",
     )

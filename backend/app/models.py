@@ -83,6 +83,7 @@ class Offer(Base):
     condition: Mapped[str] = mapped_column(String(20), default="new")
     is_bundle: Mapped[bool] = mapped_column(Boolean, default=False)
     preorder: Mapped[bool] = mapped_column(Boolean, default=False)  # disponibil la precomandă
+    gift: Mapped[dict | None] = mapped_column(JSONType)  # {"title", "value"}: cadou inclus, afișat separat de preț
     last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
     source: Mapped[str] = mapped_column(String(10), default="real")  # real | mock
     seller: Mapped[str | None] = mapped_column(Text)  # cine vinde efectiv (marketplace); None = magazinul

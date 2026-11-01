@@ -18,7 +18,17 @@ type Manual = {
 };
 type Shop = { slug: string; name: string; kind: string; status: string };
 
-const EMPTY = { product_slug: "", shop_slug: "", url: "", price: "", old_price: "", in_stock: true, preorder: false };
+const EMPTY = {
+  product_slug: "",
+  shop_slug: "",
+  url: "",
+  price: "",
+  old_price: "",
+  in_stock: true,
+  preorder: false,
+  gift_title: "",
+  gift_value: "",
+};
 
 /** Prețurile verificate de mână la magazinele care nu ne lasă robotul (eMAG, Altex, Flanco, PC Garage…).
  *  Rutina zilnică: deschizi linkul, iar dacă prețul e același apeși „Același preț”; altfel completezi formularul. */
@@ -46,12 +56,12 @@ export default function ManualPrices({ token, products }: { token: string; produ
     const res = await fetch("/api/admin/manual-price", {
       method: "POST",
       headers: { "x-admin-token": token, "content-type": "application/json" },
-      body: JSON.stringify({ ...form, old_price: form.old_price || null }),
+      body: JSON.stringify({ ...form, old_price: form.old_price || null, gift_title: form.gift_title || null, gift_value: form.gift_value || null }),
     });
     const r = await res.json().catch(() => null);
     if (!res.ok) return setMsg(r?.detail ?? `Eroare ${res.status}`);
     setMsg("Salvat: apare pe site 24 de ore.");
-    setForm((f) => ({ ...f, url: "", price: "", old_price: "", preorder: false }));
+    setForm((f) => ({ ...f, url: "", price: "", old_price: "", preorder: false, gift_title: "", gift_value: "" }));
     load();
   };
 
@@ -136,6 +146,20 @@ export default function ManualPrices({ token, products }: { token: string; produ
           placeholder="preț tăiat (opț.)"
           aria-label="Preț tăiat"
           className={`${field} w-32`}
+        />
+        <input
+          value={form.gift_title}
+          onChange={(e) => set("gift_title", e.target.value)}
+          placeholder="cadou (opț.), ex. Marvel's Wolverine"
+          aria-label="Cadou"
+          className={`${field} w-56`}
+        />
+        <input
+          value={form.gift_value}
+          onChange={(e) => set("gift_value", e.target.value)}
+          placeholder="valoare cadou"
+          aria-label="Valoarea cadoului"
+          className={`${field} w-28`}
         />
         <label className="flex items-center gap-1.5">
           <input type="checkbox" checked={form.in_stock} onChange={(e) => set("in_stock", e.target.checked)} /> în stoc

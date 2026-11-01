@@ -40,6 +40,7 @@ class ScrapedOffer:
     location: str | None = None  # second hand: orașul din anunț
     posted_label: str | None = None  # second hand: data afișată în anunț
     preorder: bool = False  # disponibil doar la precomandă (livrare ulterioară)
+    gift: dict | None = None  # {"title", "value"}: cadou inclus (nu scade din prețul final)
     match_hints: str = ""  # text suplimentar pentru matcher (ex. „Standard Edition” din specificații), neafișat
 
 

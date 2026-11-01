@@ -96,6 +96,14 @@ function OfferDetails({ o, isBest }: { o: Offer; isBest: boolean }) {
           ⚠ Preț suspect de mic
         </div>
       )}
+      {o.gift && (
+        <div
+          className="mt-0.5 inline-block rounded-full bg-green-100 px-2 py-0.5 text-[11px] font-bold text-green-900 dark:bg-green-950 dark:text-green-200"
+          title="Valoarea cadoului e cea declarată de magazin. Nu o scădem din prețul final: dacă nu-ți trebuie cadoul, la revânzare iei de obicei mai puțin."
+        >
+          🎁 Cadou: {o.gift.title} ({formatLei(o.gift.value)}) · efectiv {formatLei(Math.max(0, o.breakdown.final_price - o.gift.value))}
+        </div>
+      )}
       {o.manual_checked_at && (
         <div
           className="mt-0.5 inline-block rounded-full bg-soft px-2 py-0.5 text-[11px] font-bold text-muted"

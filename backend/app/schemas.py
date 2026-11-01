@@ -45,6 +45,7 @@ class OfferOut(BaseModel):
     is_marketplace: bool  # vândut de un terț -> nu intră în minimul pieței și în recomandare
     suspicious_price: bool  # second hand mult sub MSRP: posibil țeapă / defect / greșeală
     preorder: bool = False  # se poate comanda acum, livrare ulterioară
+    gift: dict | None = None  # {"title", "value"}: cadou inclus; „efectiv” = preț final - valoare, doar afișat
     is_affiliate: bool = False
     manual_checked_at: datetime | None = None  # prețul l-a verificat un om pe site-ul magazinului (nu robotul)  # butonul duce printr-un link de afiliere (marcat pe site)
     colors: list[str] = []  # culorile găsite la același magazin (unite într-un rând)
@@ -282,6 +283,8 @@ class ManualPriceIn(BaseModel):
     old_price: str | None = None
     in_stock: bool = True
     preorder: bool = False
+    gift_title: str | None = None
+    gift_value: str | None = None
 
 
 class ManualPriceOut(BaseModel):

@@ -51,6 +51,7 @@ def record_offer(
     offer.is_bundle = is_bundle
     offer.seller = scraped.seller
     offer.preorder = scraped.preorder
+    offer.gift = scraped.gift
     offer.grade = scraped.grade
     offer.location = scraped.location
     offer.posted_label = scraped.posted_label

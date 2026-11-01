@@ -112,6 +112,7 @@ def record_unmatched(session: Session, shop: Shop, scraped: ScrapedOffer, reason
         "location": scraped.location,
         "condition": scraped.condition,
         "warranty_months": scraped.warranty_months,
+        "posted_label": scraped.posted_label,
         "preorder": scraped.preorder,
     }
     session.flush()
@@ -136,5 +137,6 @@ def offer_from_unmatched(row: UnmatchedListing) -> ScrapedOffer:
         seller=raw.get("seller"),
         grade=raw.get("grade"),
         location=raw.get("location"),
+        posted_label=raw.get("posted_label"),
         preorder=bool(raw.get("preorder")),
     )

@@ -28,6 +28,7 @@ from app.services.scrape_runner import ingest_offers, rematch_unmatched, run_sho
 from recommender.calendar import events_between
 from recommender.rules import DEAL_WINDOW_DAYS, FakeDiscount, Recommendation, days_until, point_at, real_drop, upcoming_events
 from scrapers.olx import CATEGORY_URL as OLX_CATEGORY_URL
+from scrapers.matcher import title_family
 from scrapers.olx import parse_olx_listing
 from scrapers.registry import REGISTRY
 
@@ -366,6 +367,49 @@ def create_report(body: schemas.ReportIn, request: Request, session: Session = D
     except reports.ReportError as exc:
         raise HTTPException(422, str(exc)) from None
     return {"status": "received"}
+
+
+# anunțurile second hand recente din familiile urmărite, la care vânzătorul n-a scris modelul exact
+UNSPECIFIED_MAX_AGE = timedelta(days=7)
+
+
+@router.get("/secondhand/unspecified", response_model=schemas.UnspecifiedOut)
+def secondhand_unspecified(source: str | None = SourceParam, session: Session = Depends(get_session)):
+    """Ex. „Vând PS5 slim 1TB” (Digital sau cu disc?): sigur e un PS5, dar nu-l putem pune la un model fără să ghicim.
+    Apar separat, pe familii, fără să intre în prețurile vreunui model. Prețurile sub 40% din cel mai mic MSRP al
+    familiei (țepe, piese, greșeli) sau peste 150% din cel mai mare nu apar."""
+    src = catalog.resolve_source(source)
+    if src != "real":
+        return schemas.UnspecifiedOut(source=src, listings=[])
+    return cached(("unspecified",), lambda: _secondhand_unspecified(session))
+
+
+def _secondhand_unspecified(session: Session) -> schemas.UnspecifiedOut:
+    msrps: dict[str, list[Decimal]] = {}
+    for p in session.scalars(select(Product).where(Product.msrp_ron.is_not(None))):
+        msrps.setdefault(p.family, []).append(p.msrp_ron)
+    since = datetime.now(UTC) - UNSPECIFIED_MAX_AGE
+    rows = session.execute(
+        select(UnmatchedListing, Shop)
+        .join(Shop, Shop.id == UnmatchedListing.shop_id)
+        .where(Shop.kind == "secondhand", UnmatchedListing.scraped_at >= since)
+        .order_by(UnmatchedListing.scraped_at.desc())
+    ).all()
+    out = []
+    for row, shop in rows:
+        family = title_family(row.title)
+        price = Decimal(row.raw["price"]) if row.raw.get("price") else None
+        if family is None or price is None or family not in msrps:
+            continue
+        low, high = min(msrps[family]), max(msrps[family])
+        if not (low * Decimal(str(catalog.SUSPICIOUS_BELOW_MSRP)) <= price <= high * Decimal("1.5")):
+            continue
+        out.append(schemas.UnspecifiedListingOut(
+            family=family, family_slug=family_slug(family), title=row.title, price=float(price),
+            location=row.raw.get("location"), posted_label=row.raw.get("posted_label"), url=row.url,
+            shop=shop.name, reason=row.reason or "",
+        ))
+    return schemas.UnspecifiedOut(source="real", listings=out)
 
 
 RANGES = {"30d": 30, "90d": 90, "1y": 365}

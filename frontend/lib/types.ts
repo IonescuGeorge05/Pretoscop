@@ -217,3 +217,15 @@ export interface Deals {
   deals: Deal[];
   fake: { product: ProductBase & { family_slug: string }; fake: FakeDiscount }[];
 }
+
+export interface UnspecifiedListing {
+  family: string;
+  family_slug: string;
+  title: string;
+  price: number;
+  location: string | null;
+  posted_label: string | null;
+  url: string;
+  shop: string;
+  reason: string;
+}

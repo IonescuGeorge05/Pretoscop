@@ -283,6 +283,23 @@ class NewShopIn(BaseModel):
     base_url: str
 
 
+class UnspecifiedListingOut(BaseModel):
+    family: str
+    family_slug: str
+    title: str
+    price: float
+    location: str | None
+    posted_label: str | None
+    url: str
+    shop: str
+    reason: str  # ce lipsește din anunț (ediția, stocarea, generația)
+
+
+class UnspecifiedOut(BaseModel):
+    source: str
+    listings: list[UnspecifiedListingOut]
+
+
 class AlertIn(BaseModel):
     email: str
     product_slug: str

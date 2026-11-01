@@ -88,6 +88,24 @@ def match_title(title: str, allow_used: bool = False) -> MatchResult:
     return MatchResult("accessory", reason="produs neurmărit")
 
 
+def title_family(title: str) -> str | None:
+    """Familia (numele din families.yaml) unui anunț, chiar dacă modelul exact e neclar: „vând PS5 slim” e sigur un
+    PlayStation 5, deși nu știm ediția. Folosit pentru secțiunea de anunțuri fără model exact."""
+    t = normalize(title)
+    if re.search(r"\biphone\b", t):
+        model = _iphone_model(t)
+        return {"17": "iPhone 17", "18": "iPhone 18 Pro"}.get(model[0]) if model and model in IPHONES else None
+    if "ps5" in t:
+        return "PlayStation 5"
+    if "switch2" in t:
+        return "Nintendo Switch 2"
+    if "xbox-series-" in t:
+        return "Xbox Series"
+    if "galaxy s26 ultra" in t:
+        return "Galaxy S26 Ultra"
+    return None
+
+
 # ---------- PlayStation 5
 
 PS5_SLUGS = {

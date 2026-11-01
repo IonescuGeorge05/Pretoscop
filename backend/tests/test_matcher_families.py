@@ -59,3 +59,14 @@ def test_evomag_switch2_titles_with_game_names_are_bundles():
 def test_tera_in_listings_means_tb():
     r = match_title("Vând sau schimb Samsung s26 ultra memorie de 1 tera", allow_used=True)
     assert r.product_slug == "galaxy-s26-ultra-1tb"
+
+
+def test_family_of_listings_without_exact_model():
+    from scrapers.matcher import title_family
+
+    assert title_family("vand ps5 slim 1tb") == "PlayStation 5"
+    assert title_family("Iphone 17 Pro Max Sigilat") == "iPhone 17"
+    assert title_family("iPhone 18 Pro burgundy") == "iPhone 18 Pro"
+    assert title_family("Iphone Air") == "iPhone 17"
+    assert title_family("xbox series s") == "Xbox Series"
+    assert title_family("iPhone 16 Pro") is None  # generație neurmărită

@@ -32,6 +32,7 @@ def export(out: Path, source: str) -> dict:
     products = save("products.json", "/api/products")
     save("deals.json", "/api/deals")
     save("events/black_friday.json", "/api/events/black_friday/report")
+    save("secondhand/unspecified.json", "/api/secondhand/unspecified")
     for p in products["products"]:
         save(f"product/{p['slug']}.json", f"/api/products/{p['slug']}")
         for r in RANGES:

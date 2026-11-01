@@ -85,6 +85,16 @@
   default_warranty_months: 0  # persoane fizice: fără garanție
   affiliate_url_template: null
 
+- slug: okazii
+  name: Okazii
+  kind: secondhand
+  base_url: https://www.okazii.ro
+  search_url_template: https://www.okazii.ro/cautare/{query}.html
+  shipping_rules: {free_over: null, flat: 0}  # transportul diferă de la vânzător la vânzător (neinclus)
+  shipping_verified: false
+  default_warranty_months: 0  # second hand: garanția depinde de vânzător, nu o presupunem
+  affiliate_url_template: null
+
 # ---------- magazine citite generic din sitemap (crawl: sitemap), fără cod dedicat
 - slug: anze
   name: Anze

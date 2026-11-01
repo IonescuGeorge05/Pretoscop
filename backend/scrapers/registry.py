@@ -7,11 +7,12 @@ from scrapers.emag import EmagScraper
 from scrapers.evomag import EvomagScraper
 from scrapers.flanco import FlancoScraper
 from scrapers.flip import FlipScraper
+from scrapers.okazii import OkaziiScraper
 from scrapers.olx import OlxScraper
 from scrapers.pcgarage import PcGarageScraper
 from scrapers.publi24 import Publi24Scraper
 
 REGISTRY: dict[str, type[BaseScraper]] = {
     cls.shop_slug: cls
-    for cls in (PcGarageScraper, EmagScraper, FlancoScraper, EvomagScraper, AltexScraper, FlipScraper, OlxScraper, Publi24Scraper)
+    for cls in (PcGarageScraper, EmagScraper, FlancoScraper, EvomagScraper, AltexScraper, FlipScraper, OlxScraper, Publi24Scraper, OkaziiScraper)
 }

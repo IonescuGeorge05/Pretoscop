@@ -245,3 +245,19 @@ def test_sitemap_url_filter_new_families():
     assert interleave(["a/iphone-18-pro-1", "a/iphone-18-pro-2", "a/consola-ps5-slim"]) == [
         "a/iphone-18-pro-1", "a/consola-ps5-slim", "a/iphone-18-pro-2"
     ]
+
+
+def test_okazii_listing_keeps_second_hand_cards_only():
+    """Două carduri reale de pe okazii.ro/cautare/ps5+slim.html (01.11.2026): un accesoriu nou și o consolă second hand."""
+    from pathlib import Path
+
+    from scrapers.matcher import match_title
+    from scrapers.okazii import parse_okazii_listing
+
+    html = (Path(__file__).parent / "fixtures" / "okazii_cautare_ps5_slim.html").read_text(encoding="utf-8")
+    offers = parse_okazii_listing(html)
+    assert len(offers) == 1  # standul de răcire (fără „Stare: second hand”) nu e luat
+    o = offers[0]
+    assert (o.condition, o.price) == ("used", Decimal("4236.00"))
+    assert o.url.startswith("https://www.okazii.ro/consola-sony-playstation-5-slim")
+    assert match_title(o.title, allow_used=True).product_slug == "ps5-slim-digital-1tb"

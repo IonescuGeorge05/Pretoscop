@@ -54,6 +54,7 @@
   shipping_verified: true
   default_warranty_months: 24  # „24 de luni de garanție” pe site; garanție legală pentru produse noi
   affiliate_url_template: null
+  interval_hours: 12  # filtrul lor de trafic („Distinct”) ne-a blocat de două ori la citirea la 6 ore
 
 - slug: flip
   name: Flip
@@ -195,7 +196,7 @@
   name: iSTYLE
   base_url: https://istyle.ro
   search_url_template: null
-  crawl: {type: sitemap, max_products: 12}
+  crawl: {type: sitemap, max_products: 12, families: [iPhone 17, iPhone 18 Pro]}  # magazin Apple
   shipping_rules: {free_over: null, flat: 25}  # estimat
   shipping_verified: false
   default_warranty_months: 24

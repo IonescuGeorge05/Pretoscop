@@ -70,6 +70,11 @@ export default function Confidentialitate() {
         prețul și orașul, fără nume sau date de contact; pentru restul, linkul duce la platforma unde a fost publicat
         anunțul.
       </p>
+      <p className="mt-3">
+        Când un anunț nu poate fi asociat automat unui model, îi putem trimite titlul și prețul unui serviciu de
+        inteligență artificială (Anthropic), care ne sugerează modelul; decizia o ia un om. Nu trimitem date despre
+        vizitatorii site-ului, orașul sau vânzătorul din anunț.
+      </p>
 
       <H2>Linkuri către magazine</H2>
       <p className="mt-3">

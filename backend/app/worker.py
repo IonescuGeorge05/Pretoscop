@@ -21,8 +21,8 @@ def all_scrapable_shops() -> list[str]:
     return list(last_runs())
 
 
-def last_runs() -> dict[str, datetime | None]:
-    """slug -> ultima rulare, pentru magazinele care se pot citi și sunt pornite (`enabled`)."""
+def last_runs() -> dict[str, tuple[datetime | None, float]]:
+    """slug -> (ultima rulare, intervalul în ore), pentru magazinele care se pot citi și sunt pornite (`enabled`)."""
     from sqlalchemy import select
 
     from app.db import SessionLocal
@@ -31,8 +31,9 @@ def last_runs() -> dict[str, datetime | None]:
     with SessionLocal() as session:
         shops = {s.slug: s for s in session.scalars(select(Shop))}
     slugs = [*REGISTRY, *(s.slug for s in shops.values() if s.crawl or (s.feed and s.feed.get("url")))]
+    default = settings.scrape_interval_hours
     return {
-        slug: shops[slug].last_scraped_at if slug in shops else None
+        slug: (shops[slug].last_scraped_at, shops[slug].interval_hours or default) if slug in shops else (None, default)
         for slug in dict.fromkeys(slugs)
         if slug not in shops or shops[slug].enabled
     }
@@ -48,11 +49,12 @@ def first_run_at(last: datetime | None, now: datetime, interval: timedelta) -> d
     return max(soon, last + interval)
 
 
-def schedule_shop(scheduler, slug: str, last: datetime | None) -> datetime:
-    first = first_run_at(last, datetime.now(UTC), timedelta(hours=settings.scrape_interval_hours))
+def schedule_shop(scheduler, slug: str, last: datetime | None, hours: float | None = None) -> datetime:
+    hours = hours or settings.scrape_interval_hours
+    first = first_run_at(last, datetime.now(UTC), timedelta(hours=hours))
     scheduler.add_job(
         run_shop,
-        IntervalTrigger(hours=settings.scrape_interval_hours, jitter=settings.scrape_jitter_minutes * 60, start_date=first),
+        IntervalTrigger(hours=hours, jitter=settings.scrape_jitter_minutes * 60, start_date=first),
         args=[slug],
         kwargs={"skip_blocked": True},
         id=f"scrape-{slug}",
@@ -67,9 +69,9 @@ def schedule_shop(scheduler, slug: str, last: datetime | None) -> datetime:
 
 def sync_schedule(scheduler) -> None:
     """Adaugă în program magazinele devenite citibile între timp (feed pus din admin, magazin nou)."""
-    for slug, last in last_runs().items():
+    for slug, (last, hours) in last_runs().items():
         if scheduler.get_job(f"scrape-{slug}") is None:
-            first = schedule_shop(scheduler, slug, last)
+            first = schedule_shop(scheduler, slug, last, hours)
             log.info("magazin nou în program: scrape-%s, primul run la %s", slug, first.strftime("%H:%M:%S"))
 
 
@@ -79,6 +81,14 @@ def run_alerts() -> None:
 
     with SessionLocal() as session:
         alerts.check_all(session)
+
+
+def run_ai_suggestions() -> None:
+    from app.db import SessionLocal
+    from app.services import ai_suggest
+
+    with SessionLocal() as session:
+        ai_suggest.run_pending(session)
 
 
 def main() -> None:
@@ -98,10 +108,10 @@ def main() -> None:
         log.exception("re-potrivirea anunțurilor nepotrivite a eșuat")
 
     scheduler = BlockingScheduler(timezone=UTC)
-    for slug, last in last_runs().items():
+    for slug, (last, hours) in last_runs().items():
         # primul run: după intervalul de la ultima rulare (sau în 1-10 min dacă n-a rulat niciodată), apoi la N ore +/- jitter
-        first = schedule_shop(scheduler, slug, last)
-        log.info("programat scrape-%s, primul run la %s", slug, first.strftime("%H:%M:%S"))
+        first = schedule_shop(scheduler, slug, last, hours)
+        log.info("programat scrape-%s la %s ore, primul run la %s", slug, hours, first.strftime("%H:%M:%S"))
     if settings.imap_user:
         scheduler.add_job(
             olx_email.run,
@@ -122,6 +132,19 @@ def main() -> None:
         max_instances=1,
         coalesce=True,
     )
+
+    if settings.anthropic_api_key:
+        # sugestii AI pentru anunțurile nepotrivite: o dată pe oră, doar cele care n-au încă una
+        scheduler.add_job(
+            run_ai_suggestions,
+            IntervalTrigger(hours=1),
+            id="ai-suggestions",
+            next_run_time=datetime.now(UTC) + timedelta(minutes=4),
+            max_instances=1,
+            coalesce=True,
+            misfire_grace_time=3600,
+        )
+        log.info("sugestii AI pornite (%s), cel mult %d anunțuri pe oră", settings.ai_model, settings.ai_batch_size)
 
     # alerte de preț / stoc pe email (doar baza de date + SMTP; nicio cerere către magazine)
     scheduler.add_job(

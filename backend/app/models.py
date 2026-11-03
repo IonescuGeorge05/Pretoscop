@@ -5,6 +5,7 @@ from sqlalchemy import (
     JSON,
     Boolean,
     DateTime,
+    Float,
     ForeignKey,
     Index,
     Integer,
@@ -64,6 +65,7 @@ class Shop(Base):
     status_reason: Mapped[str | None] = mapped_column(Text)
     last_scraped_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)  # false = nu-l citim deloc (buton de oprire)
+    interval_hours: Mapped[float | None] = mapped_column(Float)  # citire la N ore; gol = SCRAPE_INTERVAL_HOURS
     last_run: Mapped[dict | None] = mapped_column(JSONType)  # rezumatul ultimei rulări (status, matched, unmatched...)
 
     offers: Mapped[list["Offer"]] = relationship(back_populates="shop")

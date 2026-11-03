@@ -19,6 +19,12 @@ type Manual = {
   expired: boolean;
 };
 type Shop = { slug: string; name: string; kind: string; status: string };
+type Todo = {
+  shop_slug: string;
+  shop: string;
+  total: number;
+  missing: { product_slug: string; product_name: string; family: string; search_url: string }[];
+};
 
 const EMPTY = {
   product_slug: "",
@@ -39,11 +45,17 @@ export default function ManualPrices({ token, products }: { token: string; produ
   const [shops, setShops] = useState<Shop[]>([]);
   const [form, setForm] = useState(EMPTY);
   const [msg, setMsg] = useState<string | null>(null);
+  const [todo, setTodo] = useState<Todo[]>([]);
 
   const load = useCallback(async () => {
     const auth = { "x-admin-token": token };
-    const [m, s] = await Promise.all([fetch("/api/admin/manual-prices", { headers: auth }), fetch("/api/admin/shops", { headers: auth })]);
+    const [m, s, t] = await Promise.all([
+      fetch("/api/admin/manual-prices", { headers: auth }),
+      fetch("/api/admin/shops", { headers: auth }),
+      fetch("/api/admin/manual-todo", { headers: auth }),
+    ]);
     if (m.ok) setItems(await m.json());
+    if (t.ok) setTodo(await t.json());
     if (s.ok) {
       const all: Shop[] = (await s.json()).filter((x: Shop) => x.kind === "retail");
       // magazinele blocate (cele pentru care există rutina asta) întâi
@@ -81,6 +93,35 @@ export default function ManualPrices({ token, products }: { token: string; produ
         Pentru magazinele care nu ne lasă robotul. Copiezi prețul de pe pagina produsului (vândut de magazin, nu de pe
         marketplace). Apare pe site marcat „Verificat manual” și dispare după 24 de ore dacă nu-l reconfirmi.
       </p>
+
+      {todo.length > 0 && (
+        <div className="mt-3 grid gap-2 text-sm">
+          <h3 className="font-medium">De verificat azi</h3>
+          {todo.map((t) => (
+            <details key={t.shop_slug} className="rounded-lg border border-line px-3 py-2">
+              <summary className="cursor-pointer">
+                <strong>{t.shop}</strong>: {t.missing.length} din {t.total} produse fără un preț valabil acum
+              </summary>
+              <ul className="mt-2 grid gap-1">
+                {t.missing.map((m) => (
+                  <li key={m.product_slug} className="flex flex-wrap items-center gap-x-3">
+                    <span>{m.product_name}</span>
+                    <a href={m.search_url} target="_blank" rel="noopener" className="underline">
+                      caută la {t.shop} ↗
+                    </a>
+                    <button
+                      onClick={() => setForm({ ...EMPTY, shop_slug: t.shop_slug, product_slug: m.product_slug })}
+                      className="rounded-lg border border-line px-2 py-0.5 hover:bg-soft"
+                    >
+                      Completează
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </details>
+          ))}
+        </div>
+      )}
 
       {items.length > 0 && (
         <ul className="mt-3 divide-y divide-line text-sm">

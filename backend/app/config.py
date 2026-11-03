@@ -42,6 +42,11 @@ class Settings(BaseSettings):
     # adresa ta: primești un email când un magazin ne blochează / își revine sau un scraper cade (gol = fără emailuri)
     owner_email: str = ""
 
+    # sugestii AI pentru anunțurile nepotrivite (opțional): cheie de pe platform.claude.com. Gol = oprite.
+    anthropic_api_key: str = ""
+    ai_model: str = "claude-opus-5-5"
+    ai_batch_size: int = 40  # câte anunțuri pe rulare (o dată pe oră)
+
     # căutare web prin Brave Search API (opțional): anunțuri OLX din index + descoperire de magazine
     brave_api_key: str = ""
     search_interval_hours: float = 12

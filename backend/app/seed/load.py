@@ -47,6 +47,7 @@ def upsert_seed(session: Session) -> None:
 
     for row in load_yaml("shops.yaml"):
         row.setdefault("enabled", True)
+        row.setdefault("interval_hours", None)  # scos din yaml = înapoi la intervalul implicit
         shop = session.scalar(select(Shop).where(Shop.slug == row["slug"]))
         if shop is None:
             session.add(Shop(**row))

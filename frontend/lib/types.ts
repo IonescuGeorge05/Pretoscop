@@ -200,6 +200,7 @@ export interface Unmatched {
   in_stock: boolean | null;
   seller: string | null;
   scraped_at: string;
+  ai?: { product_slug: string | null; is_bundle: boolean; confidence: number; reason: string } | null;
 }
 
 export interface Deal {

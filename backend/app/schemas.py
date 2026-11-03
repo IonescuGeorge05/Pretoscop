@@ -249,6 +249,7 @@ class UnmatchedOut(BaseModel):
     in_stock: bool | None
     seller: str | None
     scraped_at: datetime
+    ai: dict | None = None  # sugestia AI: {product_slug, is_bundle, confidence, reason}; doar propunere
 
 
 class ImportResult(BaseModel):

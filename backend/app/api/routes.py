@@ -5,6 +5,7 @@ from dataclasses import asdict
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 from statistics import median
+from urllib.parse import quote_plus
 from typing import Literal
 
 import httpx
@@ -19,7 +20,7 @@ from app.families import families, family_slug
 from app.db import get_session
 from app.models import Click, DiscoveredShop, ManualMatch, Offer, Product, Shop, UnmatchedListing, UserReport
 from app.services.ingest import offer_from_unmatched, record_offer
-from app.services import alerts, catalog, event_report, reports
+from app.services import ai_suggest, alerts, catalog, event_report, reports
 from app.services.pricing import compare as compare_breakdowns
 from app.services import olx_email, web_search
 from app.services.feed_import import import_feed
@@ -616,9 +617,18 @@ def admin_unmatched(session: Session = Depends(get_session)):
             in_stock=r.raw.get("in_stock"),
             seller=r.raw.get("seller"),
             scraped_at=r.scraped_at,
+            ai=r.raw.get("ai"),
         )
         for r in rows
     ]
+
+
+@router.post("/admin/unmatched/ai", dependencies=[Depends(require_admin)])
+def admin_ai_suggest(session: Session = Depends(get_session)):
+    """Cere acum sugestii AI pentru anunțurile care n-au încă una (altfel le cere worker-ul o dată pe oră)."""
+    if not ai_suggest.enabled():
+        raise HTTPException(503, "Sugestiile AI nu sunt pornite: lipsește ANTHROPIC_API_KEY în .env.")
+    return ai_suggest.run_pending(session)
 
 
 def _resolve_unmatched(session: Session, row_id: int, product: Product | None, is_bundle: bool, ignored: bool) -> None:
@@ -786,6 +796,27 @@ def admin_manual_price(body: schemas.ManualPriceIn, session: Session = Depends(g
     )
     session.commit()
     return {"offer_id": offer.id}
+
+
+@router.get("/admin/manual-todo", dependencies=[Depends(require_admin)])
+def admin_manual_todo(session: Session = Depends(get_session)):
+    """Rutina zilnică: pentru fiecare magazin blocat, produsele în vânzare fără un preț valabil acum (de verificat de mână),
+    cu linkul de căutare pe site-ul magazinului."""
+    shops = list(session.scalars(select(Shop).where(Shop.kind == "retail", Shop.status == "blocked").order_by(Shop.name)))
+    products = list(session.scalars(select(Product).where(Product.lifecycle != "retired").order_by(Product.id)))
+    out = []
+    for shop in shops:
+        # magazinele specializate declară ce vând (`crawl.families` în shops.yaml, ex. iSTYLE doar iPhone); restul: tot
+        sells = set((shop.crawl or {}).get("families") or [])
+        shop_products = [p for p in products if not sells or p.family in sells]
+        missing = []
+        for p in shop_products:
+            views = catalog.current_views([o for o in catalog.load_offers(session, p.id, "real") if o.shop_id == shop.id])
+            if not any(not catalog.is_marketplace(v.offer) for v in views):
+                url = shop.search_url_template.format(query=quote_plus(catalog.search_query(p))) if shop.search_url_template else shop.base_url
+                missing.append({"product_slug": p.slug, "product_name": p.name, "family": p.family, "search_url": url})
+        out.append({"shop_slug": shop.slug, "shop": shop.name, "missing": missing, "total": len(shop_products)})
+    return out
 
 
 @router.post("/admin/manual-price/{offer_id}/confirm", status_code=204, dependencies=[Depends(require_admin)])

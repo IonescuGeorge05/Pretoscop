@@ -98,6 +98,8 @@ def record_unmatched(session: Session, shop: Shop, scraped: ScrapedOffer, reason
     row = session.scalar(
         select(UnmatchedListing).where(UnmatchedListing.shop_id == shop.id, UnmatchedListing.url == scraped.url)
     )
+    # sugestia AI (plătită) rămâne cât timp titlul e același: nu o cerem din nou la fiecare citire
+    ai = scraped.raw.get("ai") or (row.raw.get("ai") if row is not None and row.title == scraped.title else None)
     if row is None:
         row = UnmatchedListing(shop_id=shop.id, url=scraped.url)
         session.add(row)
@@ -117,6 +119,7 @@ def record_unmatched(session: Session, shop: Shop, scraped: ScrapedOffer, reason
         "warranty_months": scraped.warranty_months,
         "posted_label": scraped.posted_label,
         "preorder": scraped.preorder,
+        **({"ai": ai} if ai else {}),
     }
     session.flush()
 
@@ -142,4 +145,5 @@ def offer_from_unmatched(row: UnmatchedListing) -> ScrapedOffer:
         location=raw.get("location"),
         posted_label=raw.get("posted_label"),
         preorder=bool(raw.get("preorder")),
+        raw={"ai": raw["ai"]} if raw.get("ai") else {},
     )

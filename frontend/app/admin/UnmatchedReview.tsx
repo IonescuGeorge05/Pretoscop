@@ -37,13 +37,15 @@ function Row({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const send = async (action: "assign" | "ignore") => {
+  const suggested = u.ai?.product_slug ? products.find((p) => p.slug === u.ai!.product_slug) : undefined;
+
+  const send = async (action: "assign" | "ignore", choice?: { slug: string; bundle: boolean }) => {
     setBusy(true);
     setError(null);
     const res = await fetch(`/api/admin/unmatched/${u.id}/${action}`, {
       method: "POST",
       headers: { "x-admin-token": token, "content-type": "application/json" },
-      body: action === "assign" ? JSON.stringify({ product_slug: slug, is_bundle: bundle }) : "{}",
+      body: action === "assign" ? JSON.stringify({ product_slug: choice?.slug ?? slug, is_bundle: choice?.bundle ?? bundle }) : "{}",
     });
     setBusy(false);
     if (res.ok) onDone(u.id);
@@ -65,6 +67,29 @@ function Row({
           {u.reason && <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">De ce nu s-a potrivit: {u.reason}</p>}
         </div>
       </div>
+      {u.ai && (
+        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg bg-soft px-3 py-2 text-sm">
+          <span className="font-semibold">Sugestie AI:</span>
+          {suggested ? (
+            <>
+              <span>
+                {suggested.name}
+                {u.ai.is_bundle ? " · pachet" : ""} · {Math.round(u.ai.confidence * 100)}% sigur
+              </span>
+              <button
+                disabled={busy}
+                onClick={() => send("assign", { slug: suggested.slug, bundle: u.ai!.is_bundle })}
+                className="rounded-lg bg-brand px-2.5 py-1 font-semibold text-brand-ink disabled:opacity-40"
+              >
+                Acceptă
+              </button>
+            </>
+          ) : (
+            <span className="text-muted">nu se poate stabili modelul</span>
+          )}
+          <span className="basis-full text-xs text-muted">{u.ai.reason}</span>
+        </div>
+      )}
       <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
         <select
           value={slug}
@@ -207,6 +232,27 @@ function OlxImport({ token, onImported }: { token: string; onImported: () => voi
   );
 }
 
+/** Cere acum sugestii AI pentru anunțurile fără sugestie (altfel le cere worker-ul o dată pe oră). */
+function AiButton({ token, onDone }: { token: string; onDone: () => void }) {
+  const [msg, setMsg] = useState<string | null>(null);
+  const run = async () => {
+    setMsg("Se cer sugestii…");
+    const res = await fetch("/api/admin/unmatched/ai", { method: "POST", headers: { "x-admin-token": token } });
+    const r = await res.json().catch(() => null);
+    if (!res.ok) return setMsg(r?.detail ?? `Eroare ${res.status}`);
+    setMsg(`${r.suggested} sugestii, ${r.none} fără model sigur, ${r.failed} fără răspuns`);
+    onDone();
+  };
+  return (
+    <>
+      <button onClick={run} className="rounded-lg border border-line px-3 py-1 text-ink hover:bg-soft">
+        Sugestii AI
+      </button>
+      {msg && <span>{msg}</span>}
+    </>
+  );
+}
+
 /** Trece din nou anunțurile prin regulile actuale (după o schimbare în matcher). Se face și automat la pornirea worker-ului. */
 function RematchButton({ token, onDone }: { token: string; onDone: () => void }) {
   const [msg, setMsg] = useState<string | null>(null);
@@ -296,6 +342,7 @@ export default function UnmatchedReview({ products }: { products: AdminProduct[]
           <p className="flex flex-wrap items-center gap-3 text-sm text-muted">
             {items.length} anunțuri de verificat
             <RematchButton token={token} onDone={() => load(token)} />
+            <AiButton token={token} onDone={() => load(token)} />
           </p>
           <ul className="mt-3 space-y-3">
             {items.map((u) => (

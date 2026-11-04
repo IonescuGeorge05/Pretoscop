@@ -58,7 +58,37 @@ export default async function BlackFridayPage({ searchParams }: { searchParams: 
         )}
       </div>
 
-      <div className="mt-6 overflow-x-auto rounded-3xl border border-line bg-card">
+      {/* pe telefon: carduri (tabelul cu 5 coloane nu încape și coloanele importante ar fi ascunse la dreapta) */}
+      <ul className="mt-6 divide-y divide-line rounded-3xl border border-line bg-card sm:hidden">
+        {rows.map((r) => (
+          <li key={r.product.slug} className="px-4 py-3 text-sm">
+            <div className="flex items-start justify-between gap-3">
+              <Link href={productHref(r.product, source)} className="font-medium hover:underline">
+                {r.product.name}
+              </Link>
+              <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${VERDICT[r.verdict].cls}`}>
+                {VERDICT[r.verdict].label}
+              </span>
+            </div>
+            <dl className="mt-2 grid grid-cols-3 gap-2 text-xs text-muted">
+              <div>
+                <dt>Referință</dt>
+                <dd className="text-sm text-ink tabular-nums">{r.baseline ? formatLeiShort(r.baseline) : "—"}</dd>
+              </div>
+              <div>
+                <dt>În {ev.name}</dt>
+                <dd className="text-sm text-ink tabular-nums">{r.event_low ? formatLeiShort(r.event_low) : "—"}</dd>
+              </div>
+              <div>
+                <dt>Diferență</dt>
+                <dd className="text-sm font-bold text-ink tabular-nums">{r.change_pct !== null ? pct(r.change_pct) : "—"}</dd>
+              </div>
+            </dl>
+          </li>
+        ))}
+      </ul>
+
+      <div className="mt-6 hidden overflow-x-auto rounded-3xl border border-line bg-card sm:block">
         <table className="w-full min-w-[640px] text-left text-sm">
           <thead className="text-xs uppercase tracking-wide text-muted">
             <tr className="border-b border-line">

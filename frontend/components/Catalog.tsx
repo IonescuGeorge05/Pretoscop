@@ -171,7 +171,7 @@ export default function Catalog({
             </button>
           </form>
         </div>
-        <div className="flex flex-[1_1_280px] flex-col gap-3">
+        <div className="flex min-w-0 flex-[1_1_280px] flex-col gap-3">
           {categories.map((c) => {
             const names = new Set(c.families.map((f) => f.family));
             const inCat = inTab.filter((p) => names.has(p.family));

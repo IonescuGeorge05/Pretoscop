@@ -376,3 +376,30 @@ class EventReportOut(BaseModel):
 
 
 ProductDetail.model_rebuild()  # community_reports e definit mai jos
+
+
+class FakeExampleOut(BaseModel):
+    product: str
+    product_slug: str
+    start: date
+    claimed_pct: float
+
+
+class ShopTrustRow(BaseModel):
+    slug: str
+    name: str
+    status: str
+    offers: int
+    judged: int  # reduceri afișate pe care le-am putut verifica
+    fake: int
+    unjudged: int  # reduceri începute înainte să avem destul istoric
+    fake_pct: float | None  # None = prea puține reduceri judecate
+    examples: list[FakeExampleOut]
+
+
+class ShopTrustOut(BaseModel):
+    source: str
+    is_demo: bool
+    window_days: int
+    min_judged: int
+    shops: list[ShopTrustRow]

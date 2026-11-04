@@ -2,6 +2,7 @@
 
 import json
 from decimal import Decimal
+from pathlib import Path
 
 from scrapers.emag import old_price_from_page
 from scrapers.flip import parse_flip_page
@@ -261,3 +262,26 @@ def test_okazii_listing_keeps_second_hand_cards_only():
     assert (o.condition, o.price) == ("used", Decimal("4236.00"))
     assert o.url.startswith("https://www.okazii.ro/consola-sony-playstation-5-slim")
     assert match_title(o.title, allow_used=True).product_slug == "ps5-slim-digital-1tb"
+
+
+def _fixture(name: str) -> str:
+    return (Path(__file__).parent / "fixtures" / name).read_text(encoding="utf-8")
+
+
+def test_strikethrough_price_from_jsonld_gomag_and_woocommerce():
+    from scrapers.jsonld import extract_product
+
+    anze = extract_product(_fixture("anze_produs_pret_taiat.html"))  # Gomag: StrikethroughPrice
+    assert (anze["price"], anze["old_price"]) == (Decimal("7200"), Decimal("8279"))
+    premium = extract_product(_fixture("premiumbrand_produs_pret_taiat.html"))  # WooCommerce: ListPrice, fără „price”
+    assert (premium["price"], premium["old_price"]) == (Decimal("4249.00"), Decimal("4999.00"))
+
+
+def test_sitemap_shop_old_price_from_css_selector():
+    from scrapers.base import PoliteClient
+    from scrapers.sitemap_scraper import SitemapScraper
+
+    s = SitemapScraper(PoliteClient(), "itgalaxy", "https://www.itgalaxy.ro",
+                       {"type": "sitemap", "css_old_price": ".price-box .old_price del"})
+    offer = s.parse_product("https://www.itgalaxy.ro/x/", _fixture("itgalaxy_produs_pret_taiat.html"))
+    assert (offer.price, offer.old_price) == (Decimal("12969.99"), Decimal("13275.99"))

@@ -210,7 +210,7 @@ class BaseScraper(ABC):
         if not title or price is None:
             log.warning(json.dumps({"event": "parse_failed", "shop": self.shop_slug, "url": url}))
             return None
-        old_price = jsonld.parse_price(self._css_text(tree, self.css_old_price))
+        old_price = jsonld.parse_price(self._css_text(tree, self.css_old_price)) or data.get("old_price")
         in_stock = data.get("in_stock")
         if in_stock is None:
             in_stock = og.get("in_stock", True)

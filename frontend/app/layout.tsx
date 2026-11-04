@@ -89,6 +89,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link href="/despre#ordonare" className="underline hover:text-ink">
                 Cum ordonăm ofertele
               </Link>
+              <Link href="/magazine" className="underline hover:text-ink">
+                Reducerile magazinelor
+              </Link>
               <Link href="/cum-castigam-bani" className="underline hover:text-ink">
                 Cum câștigăm bani
               </Link>

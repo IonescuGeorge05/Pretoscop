@@ -163,7 +163,7 @@
   name: IT Galaxy
   base_url: https://www.itgalaxy.ro
   search_url_template: null
-  crawl: {type: sitemap, max_products: 40}
+  crawl: {type: sitemap, max_products: 40, css_old_price: ".price-box .old_price del"}
   shipping_rules: {free_over: null, flat: 25}  # estimat
   shipping_verified: false
   default_warranty_months: 24

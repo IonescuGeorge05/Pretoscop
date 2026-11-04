@@ -82,6 +82,16 @@ def extract_product(html: str) -> dict | None:
             if isinstance(offers, list):
                 offers = offers[0] if offers else {}
             price = offers.get("price", offers.get("lowPrice"))
+            # prețul tăiat: priceSpecification cu priceType StrikethroughPrice (Gomag) sau ListPrice (WooCommerce);
+            # WooCommerce pune și prețul curent tot aici, fără priceType
+            specs = offers.get("priceSpecification") or []
+            specs = [s for s in (specs if isinstance(specs, list) else [specs]) if isinstance(s, dict)]
+            old_price = next(
+                (parse_price(s.get("price")) for s in specs if re.search(r"StrikethroughPrice|ListPrice", str(s.get("priceType", "")))),
+                None,
+            )
+            if price is None:
+                price = next((s.get("price") for s in specs if not s.get("priceType")), None)
             currency = offers.get("priceCurrency", "RON")
             if currency not in ("RON", "LEI"):
                 continue
@@ -94,6 +104,7 @@ def extract_product(html: str) -> dict | None:
                 "seller": seller_name.replace("™", "").strip() if seller_name else None,
                 "title": node.get("name"),
                 "price": parse_price(price),
+                "old_price": old_price,
                 "in_stock": any(a in availability for a in AVAILABLE)
                 if availability
                 else None,

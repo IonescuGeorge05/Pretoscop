@@ -12,6 +12,7 @@ const PAGES = [
   "/second-hand",
   "/reduceri",
   "/black-friday",
+  "/magazine",
   "/despre",
   "/bot",
   "/pentru-magazine",

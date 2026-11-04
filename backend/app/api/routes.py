@@ -20,7 +20,7 @@ from app.families import families, family_slug
 from app.db import get_session
 from app.models import Click, DiscoveredShop, ManualMatch, Offer, Product, Shop, UnmatchedListing, UserReport
 from app.services.ingest import offer_from_unmatched, record_offer
-from app.services import ai_suggest, alerts, catalog, event_report, reports
+from app.services import ai_suggest, alerts, catalog, event_report, reports, shop_trust
 from app.services.pricing import compare as compare_breakdowns
 from app.services import olx_email, web_search
 from app.services.feed_import import import_feed
@@ -286,6 +286,25 @@ def _deals(src: str, session: Session) -> schemas.DealsOut:
         deals=sorted(found, key=lambda d: -d.real_drop_pct),
         fake=fake,
     )
+
+
+@router.get("/shops/trust", response_model=schemas.ShopTrustOut)
+def shops_trust(source: str | None = SourceParam, session: Session = Depends(get_session)):
+    """Pentru fiecare magazin: câte dintre reducerile afișate în ultimele 90 de zile au fost false (preț tăiat umflat
+    sau preț „redus” care nu e sub mediana lunii). Doar oferte noi, vândute direct de magazin, fără pachete."""
+    src = catalog.resolve_source(source)
+    today = date.today()
+
+    def build() -> schemas.ShopTrustOut:
+        rows = [
+            schemas.ShopTrustRow(**{k: getattr(s, k) for k in ("slug", "name", "status", "offers", "judged", "fake",
+                                                               "unjudged", "fake_pct", "examples")})
+            for s in shop_trust.shop_scores(session, src, today)
+        ]
+        return schemas.ShopTrustOut(source=src, is_demo=src == "mock", window_days=shop_trust.WINDOW_DAYS,
+                                    min_judged=shop_trust.MIN_JUDGED, shops=rows)
+
+    return cached(("trust", src, today), build)
 
 
 @router.get("/events/{slug}/report", response_model=schemas.EventReportOut)

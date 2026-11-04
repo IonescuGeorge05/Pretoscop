@@ -126,6 +126,10 @@ export default async function BlackFridayPage({ searchParams }: { searchParams: 
         zile cu preț în stoc înainte de eveniment. Vezi și{" "}
         <Link href="/reduceri" className="underline">
           reducerile reale de azi
+        </Link>{" "}
+        și{" "}
+        <Link href="/magazine" className="underline">
+          cât de cinstite sunt reducerile fiecărui magazin
         </Link>
         .
       </p>

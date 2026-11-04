@@ -232,3 +232,23 @@ export interface UnspecifiedListing {
   shop: string;
   reason: string;
 }
+
+export interface ShopTrust {
+  slug: string;
+  name: string;
+  status: string;
+  offers: number;
+  judged: number; // reduceri afișate pe care le-am putut verifica
+  fake: number;
+  unjudged: number; // începute înainte să avem destul istoric
+  fake_pct: number | null; // null = prea puține reduceri judecate
+  examples: { product: string; product_slug: string; start: string; claimed_pct: number }[];
+}
+
+export interface ShopTrustList {
+  source: string;
+  is_demo: boolean;
+  window_days: number;
+  min_judged: number;
+  shops: ShopTrust[];
+}

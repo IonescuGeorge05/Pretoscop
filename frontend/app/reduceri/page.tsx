@@ -87,7 +87,13 @@ export default async function DealsPage({ searchParams }: { searchParams: { sour
       {data.fake.length > 0 && (
         <section className="mt-10">
           <h2 className="font-display text-2xl font-extrabold tracking-tight">Reduceri false</h2>
-          <p className="mt-1 text-sm text-muted">Preț tăiat afișat, dar prețul nu e de fapt mai mic decât de obicei.</p>
+          <p className="mt-1 text-sm text-muted">
+            Preț tăiat afișat, dar prețul nu e de fapt mai mic decât de obicei. Vezi și{" "}
+            <Link href="/magazine" className="underline">
+              scorul fiecărui magazin
+            </Link>
+            .
+          </p>
           <ul className="mt-3 space-y-3">
             {data.fake.map(({ product, fake }) => (
               <li key={fake.offer_id} className="rounded-3xl border border-red-200 bg-card p-4 text-sm dark:border-red-900">

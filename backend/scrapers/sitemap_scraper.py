@@ -40,6 +40,8 @@ class SitemapScraper(BaseScraper):
         self.base_url = base_url.rstrip("/")
         self.crawl = crawl
         self.max_products = int(crawl.get("max_products", 60))
+        # prețul tăiat, când magazinul nu-l pune în datele structurate (ex. IT Galaxy: „.price-box .old_price del”)
+        self.css_old_price = crawl.get("css_old_price")
 
     @staticmethod
     def relevant(url: str) -> bool:

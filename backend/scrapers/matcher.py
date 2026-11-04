@@ -54,7 +54,7 @@ def normalize(title: str) -> str:
     t = re.sub(r"play\s*station\s*5|\bps\s*5\b", "ps5", t)
     t = re.sub(r"\biphone\s*(\d+)\s*", r"iphone \1 ", t)  # iphone18pro -> iphone 18 pro
     t = re.sub(r"\bpro\s*max\b|\bpromax\b", "pro max", t)
-    t = re.sub(r"\b(nintendo\s*)?switch\s*2\b", "switch2", t)
+    t = re.sub(r"\b(nintendo\s*)?switch\s*2\b", lambda m: "nintendo switch2" if m.group(1) else "switch2", t)
     t = re.sub(r"\bxbox\s*series\s*([xs])\b", r"xbox-series-\1", t)
     t = re.sub(r"\b(samsung\s*)?(galaxy\s*)?s\s*26\s*ultra\b", "galaxy s26 ultra", t)
     t = re.sub(r"\b([12])\s*tera\w*\b", r"\1tb", t)  # anunțuri: „memorie de 1 tera”
@@ -155,6 +155,8 @@ def _ps5(t: str, allow_used: bool) -> MatchResult:
     if re.search(r"\bps5 pro\b|\bpro\b", t) or gen_code == "7":
         if re.search(r"\b(1tb|825gb)\b", t):
             return MatchResult("unmatched", reason="Pro cu stocare neobișnuită")
+        if re.search(r"\b(4|6|8)tb\b", t):  # PS5 Pro are doar 2 TB; „6TB SSD” = mărit de revânzător (eMAG Marketplace)
+            return MatchResult("excluded", reason="SSD mărit de revânzător (nu e un model oficial PS5)")
         return MatchResult("product", PS5_SLUGS[("pro", None)], is_bundle)
     if PS5_UPGRADED_SSD_RE.search(t):
         return MatchResult("excluded", reason="SSD mărit de revânzător (nu e un model oficial PS5)")
@@ -195,7 +197,7 @@ def _ps5(t: str, allow_used: bool) -> MatchResult:
 SWITCH2_ACCESSORY_RE = re.compile(
     r"\b(joc|jocuri|game|games|husa|carcasa|folie|sticla|joy-?con\w*|controller|controler\w*|gamepad|card|microsd\w*|"
     r"incarcator|dock|stand|suport|geanta|cablu|adaptor|amiibo|camera|casti|headset|grip|volan|abonament|"
-    r"switch2 edition)\b|\b(pentru|for|compatibil\w*)\s+switch2\b"
+    r"case|carrying|kvm|port|gang|hub|switch2 edition)\b|\b(pentru|for|compatibil\w*)\s+(nintendo )?switch2\b"
 )
 SWITCH2_BUNDLE_RE = re.compile(
     r"\+|\bbundle\b|\bpachet\b|\bset\b|\bcu (joc|jocul)\b|\b\d+ (jocuri|controllere?)\b|\bmario\b|\bpokemon\b|"
@@ -212,6 +214,12 @@ def _switch2(t: str, allow_used: bool) -> MatchResult:
     # „Joc X - Nintendo Switch 2 Edition” = joc; „Consolă Nintendo Switch 2 + joc” = consolă (pachet)
     if accessory and (not console or accessory.start() < console.start()):
         return MatchResult("accessory", reason=f"accesoriu ({accessory.group(0).strip()})")
+    if "nintendo" not in t and not console and not allow_used:
+        return MatchResult("accessory", reason="produs neurmărit (nu e Nintendo)")  # „wall switch 2-gang”
+    # la magazine consola e „Consolă Nintendo Switch 2 …” sau începe cu „Nintendo Switch 2”;
+    # „MINECRAFT DUNGEONS II Nintendo Switch 2” (PremiumAV) = joc
+    if not console and not allow_used and not re.match(r"(nintendo )?switch2\b", t):
+        return MatchResult("accessory", reason="joc sau accesoriu („Nintendo Switch 2” la final, fără „consolă”)")
     return MatchResult("product", "nintendo-switch-2", bool(SWITCH2_BUNDLE_RE.search(t)))
 
 

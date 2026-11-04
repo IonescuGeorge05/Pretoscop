@@ -96,11 +96,16 @@ def price_outliers(offers: list[Offer]) -> dict[int, str]:
     """offer.id -> motiv, pentru ofertele noi, simple, vândute direct de magazin, cu preț aberant."""
     direct = [o for o in offers if o.condition == "new" and not o.is_bundle and not is_marketplace(o) and o.price_points]
     prices = {o.id: o.price_points[-1].price for o in direct}
-    peers = median(prices.values()) if len(prices) >= 3 else None
+    # mediana se ia din ofertele în stoc (un anunț vechi, fără stoc, nu e piața de azi)
+    pool = [prices[o.id] for o in direct if o.price_points[-1].in_stock]
+    pool = pool if len(pool) >= 3 else list(prices.values())
+    peers = median(pool) if len(pool) >= 3 else None
     out: dict[int, str] = {}
     for o in direct:
         price, msrp = prices[o.id], o.product.msrp_ron
-        if msrp and price > msrp * OUTLIER_OVER_MSRP:
+        # dacă toată piața e peste pragul MSRP (ex. PS5 Pro la 8–9 mii în 11.2026), asta e realitatea, nu o eroare
+        market_high = msrp and peers and peers > msrp * OUTLIER_OVER_MSRP
+        if msrp and not market_high and price > msrp * OUTLIER_OVER_MSRP:
             out[o.id] = f"cu {(price / msrp - 1) * 100:.0f}% peste prețul recomandat de producător"
         elif peers and price > peers * OUTLIER_OVER_PEERS:
             out[o.id] = f"cu {(price / peers - 1) * 100:.0f}% peste mediana celorlalte magazine"

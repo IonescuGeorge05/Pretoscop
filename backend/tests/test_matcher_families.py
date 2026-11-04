@@ -36,10 +36,27 @@ def test_new_families_match(title, slug, bundle):
         "Husa Samsung Galaxy S26 Ultra Silicone Case",
         "Folie sticla pentru Samsung Galaxy S26 Ultra",
         "Consola Nintendo Switch OLED",  # prima generație: neurmărită
+        # titluri reale asociate greșit înainte de 04.11.2026 (PremiumAV, ForIT, IT Galaxy)
+        "MINECRAFT DUNGEONS II Nintendo Switch 2",
+        "TMNT ARCADE WRATH OF THE MUTANTS NINJA EDITION Nintendo Switch 2",
+        "NINTENDO SWITCH 2 ALL IN ONE CARRYING CASE",
+        "Switch KVM Digitus Switch KVM Digitus KVM Digitus Switch 2 Port, Dual Display, 4K, DP",
+        "Switch Digitus KVM switch 2-port 4K60Hz (black)",
+        "Homematic IP wall switch – 2-gang (HmIP-WRC2-A-2), switch anthracite",
     ],
 )
 def test_new_families_accessories_and_other_models(title):
     assert match_title(title).kind == "accessory"
+
+
+def test_switch2_shop_consoles_still_match():
+    for title in (
+        "Consola Nintendo Switch2, Albastru  /Rosu",  # Carrefour
+        "Consola Nintendo Switch 2 7.9inch 256 GB Touchscreen Wi-Fi Negru",
+        "Nintendo Switch 2 256GB Negru",
+    ):
+        assert match_title(title).product_slug == "nintendo-switch-2", title
+    assert match_title("Vand switch 2 ca nou, cu cutie", allow_used=True).product_slug == "nintendo-switch-2"
 
 
 def test_unclear_xbox_and_galaxy_go_to_manual_review():

@@ -100,6 +100,19 @@ def test_price_outliers_by_msrp_and_by_peers():
     assert set(price_outliers(peers)) == {4}
 
 
+def test_whole_market_above_msrp_is_not_an_outlier():
+    from app.services.catalog import comparable, price_outliers
+
+    # PS5 Pro, 04.11.2026: toate magazinele la 8–9 mii; un anunț vechi fără stoc la 3.865 nu trebuie să rămână singur
+    offers = [_offer(1, "7999.99"), _offer(2, "8849.99"), _offer(3, "9199.99"), _offer(4, "3865.90")]
+    offers[3].price_points[-1].in_stock = False
+    assert price_outliers(offers) == {}
+    assert {o.id for o in comparable(offers)} == {1, 2, 3, 4}
+    # tot se prinde un preț mult peste restul pieței
+    offers.append(_offer(5, "12999"))
+    assert set(price_outliers(offers)) == {5}
+
+
 def test_all_outliers_are_kept_so_the_page_is_not_empty():
     from app.services.catalog import comparable
 

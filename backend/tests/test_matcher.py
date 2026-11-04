@@ -121,6 +121,8 @@ def test_for_sale_ad_still_matches():
     [
         ("Consola PlayStation 5 (PS5), 3TB SSD + Extra Controller", "SSD mărit"),  # titluri reale eMAG
         ("Consola PlayStation 5 Digital Edition, 2.8TB SSD, Controller suplimentar", "SSD mărit"),
+        ("Consola PlayStation 5 Pro, Digital Edition, 6TB SSD + Extra controller", "SSD mărit"),  # eMAG Marketplace
+        ("Consola PlayStation 5 Pro, Digital Edition, 4TB SSD", "SSD mărit"),
         ("PlayStation 5 PS5 Disc Nou Sigilat Firmware 5.50 Pentru Modat Jailbreak", "modificată"),  # Publi24
     ],
 )

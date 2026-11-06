@@ -201,3 +201,68 @@
   shipping_verified: false
   default_warranty_months: 24
   affiliate_url_template: null
+
+# Doar prețuri manuale (fără robot: ne blochează sau nu au date pe care le putem citi). Sunt aici ca să poată fi
+# alese în admin la „Prețuri verificate manual” / importul din pagina lipită. Transportul nu e verificat (estimat).
+- slug: mediagalaxy
+  name: Media Galaxy
+  base_url: https://mediagalaxy.ro
+  search_url_template: null
+  shipping_rules: {free_over: null, flat: 25}  # estimat
+  shipping_verified: false
+  default_warranty_months: 24
+  affiliate_url_template: null
+
+- slug: vexio
+  name: Vexio
+  base_url: https://www.vexio.ro
+  search_url_template: null
+  shipping_rules: {free_over: null, flat: 25}  # estimat
+  shipping_verified: false
+  default_warranty_months: 24
+  affiliate_url_template: null
+
+- slug: quickmobile
+  name: QuickMobile
+  base_url: https://www.quickmobile.ro
+  search_url_template: null
+  shipping_rules: {free_over: null, flat: 25}  # estimat
+  shipping_verified: false
+  default_warranty_months: 24
+  affiliate_url_template: null
+
+- slug: gsmnet
+  name: GSMnet
+  base_url: https://www.gsmnet.ro
+  search_url_template: null
+  shipping_rules: {free_over: null, flat: 25}  # estimat
+  shipping_verified: false
+  default_warranty_months: 24
+  affiliate_url_template: null
+
+- slug: eurogsm
+  name: EuroGSM
+  base_url: https://www.eurogsm.ro
+  search_url_template: null
+  shipping_rules: {free_over: null, flat: 25}  # estimat
+  shipping_verified: false
+  default_warranty_months: 24
+  affiliate_url_template: null
+
+- slug: cel
+  name: CEL.ro
+  base_url: https://www.cel.ro
+  search_url_template: null
+  shipping_rules: {free_over: null, flat: 25}  # estimat
+  shipping_verified: false
+  default_warranty_months: 24
+  affiliate_url_template: null
+
+- slug: domo
+  name: Domo
+  base_url: https://www.domo.ro
+  search_url_template: null
+  shipping_rules: {free_over: null, flat: 25}  # estimat
+  shipping_verified: false
+  default_warranty_months: 24
+  affiliate_url_template: null

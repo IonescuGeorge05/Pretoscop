@@ -18,6 +18,8 @@ class Settings(BaseSettings):
     scraping_enabled: bool = True
     scrape_interval_hours: float = 6
     scrape_jitter_minutes: int = 30
+    # în timpul campaniilor mari (Black Friday, 11.11) prețurile se schimbă de mai multe ori pe zi
+    event_scrape_interval_hours: float = 3
     scraper_contact: str = "contact@example.com"
     # pagina publică despre bot (ce colectăm, cum ne blocați, contact); apare în User-Agent
     bot_info_url: str = "https://ionescugeorge05.github.io/Pretoscop/bot"

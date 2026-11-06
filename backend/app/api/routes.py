@@ -20,7 +20,7 @@ from app.families import families, family_slug
 from app.db import get_session
 from app.models import Click, DiscoveredShop, ManualMatch, Offer, Product, Shop, UnmatchedListing, UserReport
 from app.services.ingest import offer_from_unmatched, record_offer
-from app.services import ai_suggest, alerts, catalog, event_report, reports, shop_trust
+from app.services import ai_suggest, alerts, catalog, event_report, manual_import, reports, shop_trust
 from app.services.pricing import compare as compare_breakdowns
 from app.services import olx_email, web_search
 from app.services.feed_import import import_feed
@@ -803,18 +803,60 @@ def admin_manual_price(body: schemas.ManualPriceIn, session: Session = Depends(g
     old = parse_price(body.old_price) if body.old_price else None
     gift_value = parse_price(body.gift_value) if body.gift_value else None
     gift = {"title": body.gift_title.strip(), "value": float(gift_value)} if body.gift_title and gift_value else None
+    offer = _save_manual_price(session, shop, p, url, p.name, price, old, body.in_stock, body.preorder, False, gift)
+    session.commit()
+    return {"offer_id": offer.id}
+
+
+def _save_manual_price(session, shop, p, url, title, price, old, in_stock, preorder, is_bundle, gift=None) -> Offer:
     offer, _ = record_offer(
         session, shop, p,
         ScrapedOffer(
-            shop_slug=shop.slug, url=url, title=p.name, price=price,
-            old_price=old if old and old > price else None, in_stock=body.in_stock or body.preorder,
+            shop_slug=shop.slug, url=url, title=title, price=price,
+            old_price=old if old and old > price else None, in_stock=in_stock or preorder,
             ean=None, mpn=None, warranty_months=None, condition="new", scraped_at=datetime.now(UTC),
-            seller=shop.name, preorder=body.preorder, gift=gift,
+            seller=shop.name, preorder=preorder, gift=gift,
         ),
-        is_bundle=False, origin="manual",
+        is_bundle=is_bundle, origin="manual",
     )
+    return offer
+
+
+@router.post("/admin/manual-import/preview", response_model=list[schemas.ManualImportRowOut],
+             dependencies=[Depends(require_admin)])
+def admin_manual_import_preview(body: schemas.ManualImportIn, session: Session = Depends(get_session)):
+    """Pagina de magazin lipită în admin -> rânduri recunoscute (produs + preț), de bifat înainte de salvare."""
+    shop = session.scalar(select(Shop).where(Shop.slug == body.shop_slug))
+    if shop is None:
+        raise HTTPException(404, "Magazin inexistent")
+    products = {p.slug: p for p in session.scalars(select(Product))}
+    rows = manual_import.build_rows(body.rows[:400], products, (body.page_url or "").strip() or None, shop.base_url)
+    return [schemas.ManualImportRowOut(**asdict(r)) for r in rows]
+
+
+@router.post("/admin/manual-import/save", dependencies=[Depends(require_admin)])
+def admin_manual_import_save(body: schemas.ManualImportSaveIn, session: Session = Depends(get_session)):
+    """Salvează rândurile bifate ca prețuri verificate manual (aceleași reguli: expiră după 24 de ore)."""
+    shop = session.scalar(select(Shop).where(Shop.slug == body.shop_slug))
+    if shop is None:
+        raise HTTPException(404, "Magazin inexistent")
+    saved, errors = 0, []
+    for r in body.rows:
+        p = catalog.get_product(session, r.product_slug)
+        if p is None:
+            errors.append(f"{r.title}: produs inexistent")
+            continue
+        try:
+            url, _, price = reports.parse_report(p, r.url, r.price)
+        except reports.ReportError as exc:
+            errors.append(f"{r.title}: {exc}")
+            continue
+        old = parse_price(r.old_price) if r.old_price else None
+        _save_manual_price(session, shop, p, url, r.title, price, old, r.in_stock, r.preorder, r.is_bundle)
+        saved += 1
     session.commit()
-    return {"offer_id": offer.id}
+    _cache.clear()
+    return {"saved": saved, "errors": errors}
 
 
 @router.get("/admin/manual-todo", dependencies=[Depends(require_admin)])

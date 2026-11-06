@@ -88,6 +88,15 @@ def test_restart_does_not_rescrape_before_the_interval():
     assert now < first_run_at(None, now, six) <= now + timedelta(minutes=10)  # niciodată
 
 
+def test_shops_are_read_more_often_during_black_friday():
+    from datetime import date
+
+    from app.worker import default_interval
+
+    assert default_interval(date(2026, 11, 6)) == 3  # Black Friday 2026 (06.11–30.11)
+    assert default_interval(date(2026, 12, 2)) == 6
+
+
 def test_crawl_delay_for_our_bot_or_star_but_not_for_other_bots():
     istyle = "User-agent: AhrefsBot\nCrawl-delay: 10\n\nUser-agent: *\nDisallow: /cart\n"
     assert Robots(istyle).crawl_delay("PretoscopBot") is None  # cerut doar pentru AhrefsBot

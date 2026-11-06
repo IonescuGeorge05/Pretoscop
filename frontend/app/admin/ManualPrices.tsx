@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 import { formatLeiShort } from "@/lib/format";
 
+import ManualImport from "./ManualImport";
 import ProductOptions, { type AdminProduct } from "./ProductOptions";
 
 type Manual = {
@@ -93,6 +94,8 @@ export default function ManualPrices({ token, products }: { token: string; produ
         Pentru magazinele care nu ne lasă robotul. Copiezi prețul de pe pagina produsului (vândut de magazin, nu de pe
         marketplace). Apare pe site marcat „Verificat manual” și dispare după 24 de ore dacă nu-l reconfirmi.
       </p>
+
+      <ManualImport token={token} shops={shops} onSaved={load} />
 
       {todo.length > 0 && (
         <div className="mt-3 grid gap-2 text-sm">

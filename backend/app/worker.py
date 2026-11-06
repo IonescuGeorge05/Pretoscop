@@ -21,6 +21,20 @@ def all_scrapable_shops() -> list[str]:
     return list(last_runs())
 
 
+BOOST_EVENTS = {"black_friday", "singles_day"}
+
+
+def default_interval(today=None) -> float:
+    """Intervalul implicit: mai des cât ține o campanie mare din calendar, ca istoricul să prindă fiecare schimbare.
+    Magazinele cu interval propriu (ex. evoMAG la 12 ore, ca să nu ne blocheze) nu sunt afectate."""
+    from recommender.calendar import load_calendar
+
+    today = today or datetime.now(UTC).date()
+    if any(e.slug in BOOST_EVENTS and e.start <= today <= e.end for e in load_calendar()):
+        return min(settings.scrape_interval_hours, settings.event_scrape_interval_hours)
+    return settings.scrape_interval_hours
+
+
 def last_runs() -> dict[str, tuple[datetime | None, float]]:
     """slug -> (ultima rulare, intervalul în ore), pentru magazinele care se pot citi și sunt pornite (`enabled`)."""
     from sqlalchemy import select
@@ -31,7 +45,7 @@ def last_runs() -> dict[str, tuple[datetime | None, float]]:
     with SessionLocal() as session:
         shops = {s.slug: s for s in session.scalars(select(Shop))}
     slugs = [*REGISTRY, *(s.slug for s in shops.values() if s.crawl or (s.feed and s.feed.get("url")))]
-    default = settings.scrape_interval_hours
+    default = default_interval()
     return {
         slug: (shops[slug].last_scraped_at, shops[slug].interval_hours or default) if slug in shops else (None, default)
         for slug in dict.fromkeys(slugs)
@@ -68,11 +82,16 @@ def schedule_shop(scheduler, slug: str, last: datetime | None, hours: float | No
 
 
 def sync_schedule(scheduler) -> None:
-    """Adaugă în program magazinele devenite citibile între timp (feed pus din admin, magazin nou)."""
+    """Adaugă în program magazinele devenite citibile între timp (feed pus din admin, magazin nou) și schimbă
+    intervalul celor existente când începe / se termină o campanie mare."""
     for slug, (last, hours) in last_runs().items():
-        if scheduler.get_job(f"scrape-{slug}") is None:
+        job = scheduler.get_job(f"scrape-{slug}")
+        if job is None:
             first = schedule_shop(scheduler, slug, last, hours)
             log.info("magazin nou în program: scrape-%s, primul run la %s", slug, first.strftime("%H:%M:%S"))
+        elif job.trigger.interval != timedelta(hours=hours):
+            first = schedule_shop(scheduler, slug, last, hours)
+            log.info("interval nou: scrape-%s la %s ore, următorul run la %s", slug, hours, first.strftime("%H:%M:%S"))
 
 
 def run_alerts() -> None:

@@ -403,3 +403,39 @@ class ShopTrustOut(BaseModel):
     window_days: int
     min_judged: int
     shops: list[ShopTrustRow]
+
+
+class ManualImportIn(BaseModel):
+    shop_slug: str
+    page_url: str | None = None  # adresa paginii lipite (pentru rândurile fără link)
+    rows: list[dict]  # [{title, url, prices: [text], context}] extrase în browser
+
+
+class ManualImportRowOut(BaseModel):
+    title: str
+    url: str | None
+    product_slug: str | None
+    product_name: str | None
+    price: float | None
+    old_price: float | None
+    in_stock: bool
+    preorder: bool
+    is_bundle: bool
+    selected: bool
+    note: str | None
+
+
+class ManualImportSaveRow(BaseModel):
+    title: str
+    product_slug: str
+    url: str
+    price: str
+    old_price: str | None = None
+    in_stock: bool = True
+    preorder: bool = False
+    is_bundle: bool = False
+
+
+class ManualImportSaveIn(BaseModel):
+    shop_slug: str
+    rows: list[ManualImportSaveRow]

@@ -143,3 +143,43 @@ synthetic); with identifiers masked 98 real-labelled pairs (76 positives, 22 har
 the gray zone. **No real run exists yet** (no API key): the precision of the LLM is unmeasured.
 Masked family negatives are stricter than production, where look-alike variants appear as several
 candidates and stay with a human.
+
+## Books and beauty (M29)
+
+Code: `src/verticals.ts` (which vertical an offer belongs to), `src/books.ts`, `src/beauty.ts`,
+`src/taxonomy.ts` (subtrees `carti`, `frumusete`), `scorePair` (a scorer per vertical). Playbook:
+`docs/playbooks/category-expansion.md`; ADR-028.
+
+- A pair of two books, or two beauty products, is scored by its vertical's rules; a book or a
+  beauty product never matches a product of another vertical or of the launch taxonomy
+  (conflict `vertical`).
+- **Books.** Equal ISBNs accept (1.00) unless a stated fact conflicts; publisher spellings and
+  genres never block them. Different ISBNs never match (`isbn`). Without an ISBN on one side:
+  title core (author suffix, volume, edition and format words removed; one-letter typos in long
+  words tolerated) must not disagree on both sides (`title`: "Harry Potter și piatra filozofală" vs
+  "… camera secretelor"), volume, edition number, format, language and box set must agree when both
+  state them, authors must share a surname, publishers of two known groups conflict; the score
+  (0.6 × title + 0.2 × author + 0.15 × publisher) stays below 0.97. Genres are compatible with each
+  other. An ISBN alone creates a product (`valid ISBN`), provisional like every matcher-made one.
+- **Beauty.** Equal GTINs, or the same stated MPN of the same brand, accept unless size (ml, g),
+  concentration, shade, tester, gift set or refill conflict. Title matches also check gender and
+  flankers ("Sauvage" vs "Sauvage Elixir": `flanker elixir`) and stay below 0.97. Beauty
+  categories are strict (a fragrance is never a shower gel); the root `frumusete` ("type unknown")
+  is compatible with its children.
+
+### Evaluation per category
+
+```bash
+pnpm --filter @pretoscop/worker match:eval:categories           # report + gate
+pnpm --filter @pretoscop/worker match:eval:categories --build   # rebuild from the fixtures, then report
+```
+
+Sets in `src/matching-eval/categories/` (not read by `match:eval`): books from the recorded Libris
+and Elefant fixtures (label `fixture`: a card and its product page, a card and its cover's
+diacritics spelling; `family`: other books of a series or author; `synthetic`: the same ISBN
+written the other shop's way, another ISBN of the same title), beauty synthetic. Gate, also run by
+the core tests: precision ≥ 98 % at the accept threshold with and without identifiers, no accepted
+`family` negative. 9 Nov 2026: books 116 pairs, 2 accepts (ISBN), precision 100 %, 74 of 76 hard
+negatives rejected outright; beauty 95 pairs, 52 of 52 same-GTIN positives accepted, 0 of 43 hard
+negatives. No real cross-shop book pair exists yet (no source runs): founders' labels replace the
+synthetic ones once Libris and Elefant record.

@@ -500,3 +500,18 @@ Source: `research/notes/gaps2_retailers.md`
 | PR7 | AdSense CSP origins | UNVERIFIED against a live ad: `ADSENSE_CSP` in `apps/web/src/lib/csp.ts` lists Google's documented hosts; a missing host only blanks the ad | With D5: a production-like build with the publisher id, watch the console for CSP reports, add what is missing |
 | PR8 | Referer-based click validation behind the production proxy | UNVERIFIED in production: the click-out compares the Referer's host with the request host; Caddy passes the Host header through, so they should match | M18 staging: one promoted click through Cloudflare and Caddy must be billed (otherwise every click is "no_referer", which never overbills but bills nothing) |
 | PR9 | Fraud filters are heuristics (daily-salted session dedupe, bot User-Agents, prefetch headers, referer, rate holds) | BY DESIGN: no fingerprinting (CLAUDE.md); admins refund clicks found invalid later | Review the not-billed reasons and refunds monthly in `/admin/promovare` once live |
+
+---
+
+## Category expansion and CSS readiness (M29): what is still unverified
+
+| # | Item | Status | Who / how it closes |
+|---|---|---|---|
+| CE1 | ≥ 5,000 products with ≥ 2 offers in books and in beauty (plan acceptance) | NOT MET: 0 and 0 (sources off, no feed) | Lead enables the book sources after one watched run; A6 (Libris, Cărturești feeds), C4 (Awin/CJ for Douglas, Notino); `css:readiness` prints the numbers |
+| CE2 | Book matching precision on real cross-shop pairs | UNMEASURED: no two book shops have recorded; the eval set rests on fixtures (one shop each) and synthetic ISBN pairs | Founders label ≥ 50 book pairs with `match:label` after both shops ran; `match:eval:categories` includes them |
+| CE3 | Beauty rules on real feed titles | UNMEASURED: synthetic set only | First approved beauty feed: record a sample, add real pairs |
+| CE4 | Elefant coverage | LIMITED: listing tiles load from a robots-disallowed endpoint, so ≤ ≈ 3,000 books stay fresh at 1,000 requests a day | Ask Elefant for a feed or permission (C3 outreach); its 2Performant status is to verify (Profitshare inactive, "No Feed") |
+| CE5 | Identity re-matching of Libris offers after every listing run (the listing has no ISBN, the stored offer does) | KNOWN, harmless to decisions: an extra `match_decisions` row per offer and run | Recorder fix proposed in `docs/playbooks/category-expansion.md`: compute the identity with the stored GTIN when the observation has none |
+| CE6 | Libris and Elefant listing URLs other than the two recorded ones | UNVERIFIED: taken from Libris's category sitemap and Elefant's own links | The lead's watched run; a failed first page is an error run, never a silent success |
+| CE7 | CSS programme: fees, timeline, partner directory for Romania | NOT PUBLIC (G19, G20, 58) | D4, when `css:readiness` says ELIGIBLE |
+| CE8 | Per-merchant CSS promotion rights | PARTIAL: Libris approval, Elefant/IT Galaxy/forit forbidden, others unknown (`affiliate.css_policy`) | Ask with each programme application (A6, C4) |

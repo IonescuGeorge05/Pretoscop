@@ -45,7 +45,8 @@
     "llm:categories": "tsx src/cli/llm-categories.ts",
     "match:eval:llm": "tsx src/cli/match-eval-llm.ts",
     "match:eval:categories": "tsx src/cli/match-eval-categories.ts",
-    "css:readiness": "tsx src/cli/css-readiness.ts"
+    "css:readiness": "tsx src/cli/css-readiness.ts",
+    "verticals:check": "tsx src/cli/verticals-check.ts"
   },
   "devDependencies": {
     "pino-pretty": "^13.2.0",

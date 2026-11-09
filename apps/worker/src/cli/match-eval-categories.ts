@@ -14,6 +14,7 @@
  *     grijă…), including the Elefant product page against the other Tup volumes;
  *   - `synthetic` pairs: the two ISBN pages against the way the other shop writes them (same ISBN),
  *     and the same titles with another ISBN (other edition).
+ * Founders' labels from `match:label` (human-*.json) join the set of their product's category.
  * Beauty is synthetic (no beauty source records yet): base products × three shop title styles, with
  * generated GTINs, against sizes, concentrations, flankers, testers, gift sets, refills and shades.
  */
@@ -25,6 +26,7 @@ import {
   evaluateCategory,
   gtinCheckDigit,
   normalizeOffer,
+  sideVertical,
   type EvalPair,
   type LabelSource,
   type MatchSide,
@@ -189,10 +191,19 @@ if (process.argv.includes('--build')) {
   writeFileSync(join(OUT_DIR, 'beauty-synthetic.json'), `${JSON.stringify(buildBeauty(), null, 1)}\n`);
 }
 
+// Founders' labels (`match:label`, packages/core/src/matching-eval/human-*.json) count for the
+// category of their product as well.
+const human = readdirSync(join(OUT_DIR, '..'))
+  .filter((f) => f.startsWith('human-') && f.endsWith('.json'))
+  .flatMap((f) => JSON.parse(readFileSync(join(OUT_DIR, '..', f), 'utf8')) as EvalPair[]);
+
 const pct = (x: number) => `${(x * 100).toFixed(1)}%`.padStart(7);
 const failures: string[] = [];
 for (const category of ['books', 'beauty']) {
-  const pairs = files(`${category}-`).flatMap((f) => JSON.parse(readFileSync(join(OUT_DIR, f), 'utf8')) as EvalPair[]);
+  const own = files(`${category}-`).flatMap((f) => JSON.parse(readFileSync(join(OUT_DIR, f), 'utf8')) as EvalPair[]);
+  const labelled = human.filter((p) => sideVertical(p.product) === category || sideVertical(p.offer) === category);
+  const pairs = [...own, ...labelled];
+  if (labelled.length) console.log(`\n${category}: ${labelled.length} founder label(s) from human-*.json`);
   const r = evaluateCategory(category, pairs);
   console.log(`\n== ${category}: ${pairs.length} pairs (${files(`${category}-`).join(', ')})`);
   for (const [label, rep] of [['as seen', r.report], ['identifiers masked', r.masked]] as const) {

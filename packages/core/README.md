@@ -401,6 +401,17 @@ Order: missing → malformed → placeholder → check digit → restricted rang
   the hint is kept, warning `mpn_from_url_confirmed_by_title`). `mpnOrigin` says where the MPN
   came from (`field`, `title`, `url`); `mpnHint` keeps the plausible hint even when unused.
 
+### Books and beauty (M29)
+
+`detectVertical({ title, categoryRaw, gtin14 })` decides first whether an offer is a book or a
+beauty product; `normalizeOffer` then reads the vertical's facts instead of the launch rules: for
+books the ISBN (`validateIsbn`, `isbnsInText`), the publisher as brand (`findPublisher`), no MPN,
+`extractBookAttributes` (author, format, volume, edition, language, box set, pages, year;
+`RawOffer.specs` first); for beauty the brand from its own dictionary (`detectBeautyBrand`) and
+`extractBeautyAttributes` (volume, concentration, shade, gender, gift set, refill, tester). Box sets
+and gift sets are products, not bundles. Matching rules: `MATCHING.md`. Launch offers are
+unchanged (checked on the whole recorded catalogue).
+
 ### Product kind
 
 `explainProductKind` (and `detectProductKind`, its `kind`) decides in this order:

@@ -19,6 +19,8 @@ Everything needed to understand, decide and build Pretoscop. Written 2026-10-27 
 | 11 | [11-glossary.md](11-glossary.md) | everyone | Terms |
 | 12 | [12-blocked-shops-strategy.md](12-blocked-shops-strategy.md) | founders, implementer | How we get prices from shops that limit bots: identity, feeds, partnerships, the assisted-access channel for the prototype, and what stays excluded |
 | 13 | [13-open-items.md](13-open-items.md) | founders | Gap register: every research gap with its status (closed, partial, login-gated) and the exact action that closes it |
+| — | [playbooks/category-expansion.md](playbooks/category-expansion.md) | implementer, founders | How to add a category (taxonomy, dictionary, extractors, sourcing, eval gate, pages), executed for books and prepared for beauty (M29) |
+| — | [playbooks/css-readiness.md](playbooks/css-readiness.md) | founders | Google CSS programme requirements, what `css:readiness` measures, the application checklist (D4) |
 | — | [progress.md](progress.md) | everyone | Live status of modules and gates; founder decisions log; module reports |
 | — | [research/](research/) | reference | The full research notes (sourced) behind the report |
 

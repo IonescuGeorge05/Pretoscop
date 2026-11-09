@@ -1,5 +1,5 @@
 {
-  "id": "19d7f68b-b096-4764-ba79-eeaaf27ea109",
+  "id": "cfa912e8-df5c-443b-af17-af437032b0d6",
   "prevId": "ce4fcbef-a328-40cd-bbfa-ddd3316c9195",
   "version": "7",
   "dialect": "postgresql",
@@ -7654,7 +7654,7 @@
       "checkConstraints": {
         "b2b_digests_status_ck": {
           "name": "b2b_digests_status_ck",
-          "value": "\"b2b_digests\".\"status\" in ('sending','sent','failed')"
+          "value": "\"b2b_digests\".\"status\" in ('sending','sent','empty','failed')"
         }
       },
       "isRLSEnabled": false

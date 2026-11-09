@@ -817,9 +817,10 @@ export async function claimB2bDigest(db: Exec, workspaceId: number, day: string,
 }
 
 export async function finishB2bDigest(db: Exec, workspaceId: number, day: string, userId: string, result: { ok: true; changes: number } | { ok: false; error: string }): Promise<void> {
+  const status = result.ok ? (result.changes > 0 ? 'sent' : 'empty') : 'failed';
   await db.execute(sql`
-    UPDATE b2b_digests SET status = ${result.ok ? 'sent' : 'failed'}, changes = ${result.ok ? result.changes : 0},
-      sent_at = ${result.ok ? sql`now()` : null}, error = ${result.ok ? null : result.error.slice(0, 500)}
+    UPDATE b2b_digests SET status = ${status}, changes = ${result.ok ? result.changes : 0},
+      sent_at = ${result.ok && result.changes > 0 ? sql`now()` : null}, error = ${result.ok ? null : result.error.slice(0, 500)}
     WHERE workspace_id = ${workspaceId} AND day = ${day}::date AND user_id = ${userId}`);
 }
 

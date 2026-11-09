@@ -210,7 +210,7 @@ export const b2bApiUsage = pgTable(
   (t) => [primaryKey({ columns: [t.workspaceId, t.day] })],
 );
 
-/** One daily digest per workspace, day and member: claimed before sending (idempotent job). */
+/** One daily digest per workspace, day and member: claimed before sending (idempotent job); `empty` = nothing changed, no email. */
 export const b2bDigests = pgTable(
   'b2b_digests',
   {
@@ -227,7 +227,7 @@ export const b2bDigests = pgTable(
     sentAt: ts('sent_at'),
     error: text('error'),
   },
-  (t) => [primaryKey({ columns: [t.workspaceId, t.day, t.userId] }), check('b2b_digests_status_ck', sql`${t.status} in ('sending','sent','failed')`)],
+  (t) => [primaryKey({ columns: [t.workspaceId, t.day, t.userId] }), check('b2b_digests_status_ck', sql`${t.status} in ('sending','sent','empty','failed')`)],
 );
 
 /**

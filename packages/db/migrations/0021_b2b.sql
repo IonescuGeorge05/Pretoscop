@@ -37,7 +37,7 @@ CREATE TABLE "b2b_digests" (
 	"sent_at" timestamp with time zone,
 	"error" text,
 	CONSTRAINT "b2b_digests_workspace_id_day_user_id_pk" PRIMARY KEY("workspace_id","day","user_id"),
-	CONSTRAINT "b2b_digests_status_ck" CHECK ("b2b_digests"."status" in ('sending','sent','failed'))
+	CONSTRAINT "b2b_digests_status_ck" CHECK ("b2b_digests"."status" in ('sending','sent','empty','failed'))
 );
 --> statement-breakpoint
 CREATE TABLE "b2b_invites" (

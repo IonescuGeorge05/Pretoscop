@@ -10,6 +10,10 @@ Every module of the plan (M00–M29 and M05B) is merged into `daniel`, verified 
 
 Final regression the same day: every module's `make verify` ran again in sequence on the final `daniel`, and all 31 pass. Four failed on the first pass and were fixed and re-verified (commits prefixed M00, M02, M12, M14): M00's heartbeat check competed with the recorder for the job, M12 ran every later module's specs together, M14's no-result search used a word real products now contain, and a Windows-only lock race in the CLI's file state store. Two specs (M20's merchant flow, M09's flag toggle) had left a flag on in the recorder's database; both flags were turned off (audited) and both specs fixed. The recorder was rebuilt from the final commit, and its data folder was made writable for the hardened image's user (snapshots, nightly backup).
 
+## Review fixes (M30), in progress — branch `mod/M30-review-fixes`
+
+An independent code review of the finished build (9 Nov 2026) found about 25 bugs and gaps that the module reports do not mention. The fixes are on `mod/M30-review-fixes` (not merged, not deployed); work stopped after the first block (dev ports, eMAG Tier A in the YAML, kill switch during a run, history integrity). **`docs/HANDOFF-M30.md`** lists what is done, what is open with file pointers, and the checks to run before merging or deploying. Status: `in_progress`.
+
 ## Build session resumed on the Windows laptop (28 Oct 2026)
 
 The build moved from the old Mac to Daniel's Windows 11 laptop on 28 Oct 2026 (`docs/HANDOFF.md`).

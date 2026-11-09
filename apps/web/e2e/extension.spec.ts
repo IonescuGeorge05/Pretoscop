@@ -16,6 +16,7 @@ const DB_DIR = fileURLToPath(new URL('../../../packages/db', import.meta.url));
 const EXT_DIR = fileURLToPath(new URL('../../extension', import.meta.url));
 const REPO = fileURLToPath(new URL('../../../', import.meta.url));
 const HOST_ID = 'pretoscop-ext-host';
+const STRICT_SHOP_CSP = "default-src 'none'; script-src 'none'; style-src 'self'; img-src 'self'; connect-src 'self'";
 
 interface FxProduct {
   id: number;
@@ -109,7 +110,9 @@ test.beforeAll(async ({}, info) => {
     }
     if (url.startsWith(`${base}/`)) return route.continue();
     const html = pages.get(url);
-    if (html !== undefined && route.request().resourceType() === 'document') return route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: html });
+    // A strict page CSP, as a shop may send: the panel must work under it (constructed stylesheet, no external resource).
+    if (html !== undefined && route.request().resourceType() === 'document')
+      return route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', headers: { 'content-security-policy': STRICT_SHOP_CSP }, body: html });
     return route.abort();
   });
   if (ctx.serviceWorkers().length === 0) await ctx.waitForEvent('serviceworker');
@@ -158,8 +161,14 @@ test('eMAG product page (recorded markup): the panel with history, 30-day low, c
   const after = await lightDom(page);
   expect(after).toEqual(before);
   expect(await page.evaluate((id) => document.documentElement.lastElementChild?.id === id && document.querySelectorAll(`#${id}`).length === 1, HOST_ID)).toBe(true);
-  // Shadow DOM: the page's CSS cannot reach the panel, ours does not leak out.
-  expect(await page.evaluate((id) => !!document.getElementById(id)?.shadowRoot, HOST_ID)).toBe(true);
+  // Shadow DOM: the page's CSS cannot reach the panel, ours does not leak out; styled under the page's strict CSP.
+  expect(
+    await page.evaluate((id) => {
+      const host = document.getElementById(id)!;
+      const box = host.shadowRoot?.querySelector('.panel');
+      return box ? [getComputedStyle(host).position, getComputedStyle(box).borderTopLeftRadius] : null;
+    }, HOST_ID),
+  ).toEqual(['fixed', '12px']);
 
   // Keyboard: Escape with focus in the panel closes it; it stays closed for this page view.
   await panel.getByRole('button', { name: 'Închide panoul Pretoscop' }).focus();

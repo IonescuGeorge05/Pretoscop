@@ -1,5 +1,6 @@
 import {
   categorize,
+  categoryVertical,
   FAMILY_CATEGORIES,
   familyKey,
   familyTitle,
@@ -247,7 +248,7 @@ export interface MatchOutcome {
  */
 export async function matchOffer(db: Db, o: PendingOffer, opts: { dryRun?: boolean; decidedBy?: string } = {}): Promise<MatchOutcome> {
   const decidedBy = opts.decidedBy ?? 'rule';
-  const category = categorize(o.title, o.categoryRaw, { isAccessory: o.isAccessory });
+  const category = categorize(o.title, o.categoryRaw, { isAccessory: o.isAccessory, gtin14: o.gtin14 });
 
   // Sticky human decisions override every rule (docs/03 §6.3).
   const alias = await db.execute<{ product_id: string | null }>(sql`
@@ -261,7 +262,9 @@ export async function matchOffer(db: Db, o: PendingOffer, opts: { dryRun?: boole
   }
 
   const titleAscii = asciiTitle(o.title);
-  const cands = await findCandidates(db, o, category, titleAscii);
+  // Book genres differ between shops (M29: any two are compatible), so title candidates of a book
+  // are looked for in every genre.
+  const cands = await findCandidates(db, o, categoryVertical(category) === 'books' ? null : category, titleAscii);
   const me: MatchSide = { title: o.title, brand: o.brand, mpnNorm: o.mpnNorm, gtin14: o.gtin14, category, attributes: o.attributes, mpnFromTitle: o.mpnSource === 'title' };
   const scored: Array<{ productId: number; score: PairScore; generator: string }> = cands.map((c) => ({ productId: c.productId, generator: c.generator, score: scorePair(me, c.side) }));
   const routed = route(
@@ -345,7 +348,7 @@ export async function decideManually(
   if (action.kind === 'new_product') {
     const [o] = await pendingOffersById(db, [offerId]);
     if (!o) return null;
-    productId = await createProductFromOffer(db, o, categorize(o.title, o.categoryRaw, { isAccessory: o.isAccessory }), 'manual');
+    productId = await createProductFromOffer(db, o, categorize(o.title, o.categoryRaw, { isAccessory: o.isAccessory, gtin14: o.gtin14 }), 'manual');
     await db.execute(sql`UPDATE products SET provisional = false WHERE id = ${productId}`);
   }
   await db.execute(sql`

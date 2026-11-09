@@ -4,6 +4,20 @@
  * replayed from raw snapshots. Defined in core so extractors (M03) and normalization (M06) share
  * one type without a dependency cycle; `@pretoscop/extractors` re-exports it.
  */
+/** Structured product facts stated by a page or feed (`RawOffer.specs`), as seen. */
+export interface OfferSpecs {
+  author?: string | string[];
+  publisher?: string;
+  /** Cover or medium: schema.org `bookFormat` URL, "Cartonata", "Paperback", "eBook" … */
+  format?: string;
+  language?: string;
+  edition?: string;
+  pages?: string | number;
+  year?: string | number;
+  /** The ISBN field when the page states it besides (or instead of) the barcode. */
+  isbn?: string;
+}
+
 export interface RawOffer {
   /** Registry slug of the shop, e.g. `emag`. */
   shopSlug: string;
@@ -56,6 +70,12 @@ export interface RawOffer {
   shippingNote?: string;
   /** The shop's own "lowest price in the last 30 days" (Omnibus), when published. */
   shopLowest30d?: string;
+  /**
+   * Product facts the page or feed states in structured form, as seen (M29): a book's author,
+   * publisher, cover type, language, edition, page count, year and ISBN field (JSON-LD `Book`,
+   * a spec table, a feed column). Normalization reads them for book attributes and the publisher.
+   */
+  specs?: OfferSpecs;
   /** ISO 8601 timestamp of the observation. */
   observedAt: string;
   /** Source-specific fields kept for audit and replay. */

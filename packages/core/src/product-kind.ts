@@ -56,6 +56,10 @@ export type ProductKind =
   | 'mobility'
   | 'power_bank'
   | 'accessory'
+  // M29 verticals: set by normalizeOffer for books and beauty offers, never by the title rules.
+  | 'book'
+  | 'fragrance'
+  | 'cosmetics'
   | 'other';
 
 /** Ordered: the first pattern that matches the start of the title wins. */

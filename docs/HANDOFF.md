@@ -1,234 +1,236 @@
-# Handoff: moving Pretoscop to a new machine (28 Oct 2026)
+# Handoff — 9 Nov 2026: the plan is built; what only the founders can unblock
 
-For the founders setting up the new machine and for the next Claude Code session that continues
-the build. Read this first, then `CLAUDE.md` and `docs/progress.md`.
+For Daniel and George, and for the next Claude Code session. Read this first, then
+`docs/progress.md` (status and one report per module) and `CLAUDE.md`. The previous handoff (the
+move from the Mac to the Windows laptop, 28 Oct) is in `docs/archive/`.
 
 ## 1. Where things stand
 
-- **Integration branch: `daniel`.** It holds M00–M13, M17, M23, M10 and M11, all marked `review` in
-  `docs/progress.md` with their module reports. Every module there passes its `make verify M=XX`.
-- **Ten more modules are implemented or partly implemented on their own branches** (section 4).
-  Parallel agents built them and were stopped mid-work for the move. Their unfinished changes are
-  committed as `WIP` commits; nothing was lost.
-- **Everything is on GitHub** (`origin` = github.com/IonescuGeorge05/Pretoscop), pushed on
-  28 Oct 2026 at Daniel's request: `daniel` and all `mod/*` branches.
-  - GitHub push protection rejected the first push, because three recorded eMAG pages
-    (`packages/extractors/fixtures/emag/*.html`) contained the Mapbox and Google browser keys eMAG
-    embeds in its HTML.
-  - Those keys were redacted with same-length placeholders in every commit from M03 on (`git
-    filter-branch`), so commit hashes from M03 onwards differ from the ones in older notes and
-    agent messages.
-  - The redaction doesn't affect parsing: the parsers never read those keys.
-- **The recorder ran from 27 Oct.** The dev database holds 4,493 offers (eMAG 960, forIT 2,246,
-  IT Galaxy 1,109, Bonami 104, Dedeman 34, Carrefour 24, Flip 12, Auchan 4) and 2,679 products.
-  131 products already have offers from two or more shops. That price history is the most valuable
-  thing to carry over: it starts the 30-day windows that verdicts and the Black Friday report need.
-- **Everything on the old machine is stopped:** agents, Docker containers (volumes kept), Docker
-  Desktop, `caffeinate`, dev servers.
+- **All 31 modules of the plan (M00–M29 and M05B) are built.** Each is merged into `daniel`,
+  verified on this laptop with its `make verify M=XX`, reported in `docs/progress.md` and pushed
+  to GitHub (`daniel` and every `mod/*` branch).
+- Every module is in status **`review`**: each still needs your 5-minute check from
+  `scripts/verify/MXX.checklist.md`. The phase gates G0–G4 need your approval.
+- **Final regression (9 Nov):** `<<SWEEP>>`
+- Modules that handle personal data, money or third-party input had an independent review on top
+  of their own tests. For M19 alerts, M20 merchants, M14–M16 search/deals/SEO and M21 bot program,
+  every high and medium finding was fixed.
+- **Everything that sends messages, moves money, calls a paid vendor or adds a new kind of
+  request ships switched off** (section 4). Only `crawl.enabled` and `source.emag.enabled` are on:
+  your decisions of 27 Oct.
 
-## 2. What comes with the repo (nothing to copy by hand)
+### What works today on this laptop (the MVP)
 
-Everything the new machine needs is in git, on `daniel`, in the folder `handoff/` (see
-`handoff/README.md`). The GitHub repo is **public**, so that folder holds only what is safe to
-publish:
+- **Price recorder** (Docker container `pretoscop-worker-1`):
+  - Crawls nightly, politely and identified as PretoscopBot: eMAG category listings, IT Galaxy,
+    forIT, Carrefour, Dedeman, Auchan, Bonami, and Flip's sitemap.
+  - Then normalizes, matches across shops, writes change-only price history, rolls up stats and
+    verdicts, quarantines anomalies, keeps search and sitemaps in sync, and backs up the database
+    nightly.
+- **Website** (`make dev`, then http://localhost:3000):
+  - product pages with offers ranked by total price, price charts, verdicts and badges;
+  - search with facets and autocomplete; category, brand and shop pages; the deals page;
+  - the legal and trust pages, consent, the reports pages;
+  - SEO: robots.txt, sitemaps, structured data and server-rendered 404s. The site is closed to
+    search engines until `SITE_INDEXABLE=true`.
+- **Admin** (`/admin`; the magic link arrives in Mailpit at http://localhost:8025):
+  - sources and kill switches, runs, flags, the match review queue, products (merge/split), offers,
+    quarantine;
+  - alerts, merchants, revenue, promoted placements, B2B workspaces, outreach and the assisted
+    channel, LLM spend and decisions, and the audit log.
+- **Production stack** (M18): ready to deploy to a server once the accounts exist. The rehearsal
+  passes on this laptop: point-in-time restore, disaster recovery, zero-downtime deploy, rollback,
+  load test.
 
-| In the repo | What it is |
-|---|---|
-| `handoff/dev.env` | The old machine's `.env`. Dev defaults only (no real credentials), plus `CRAWL_ENABLED=true` and `ADMIN_EMAILS` |
-| `handoff/db/pretoscop-dev-2026-10-28.public.sql.gz` | The dev database from 28 Oct 2026 08:19 UTC (plain SQL, gzip): shops, offers, products, matches and all price history. **No login data**: the rows of `users`, `sessions`, `accounts`, `verifications`, `audit_log`, `clicks`, `contact_requests`, `events`, `consent_records`, `email_suppressions`, `alerts` and `alert_sends` are left out, as is the pg-boss queue (the worker recreates it). Test-restored: 4,493 offers, 2,679 products, 4,493 price events, 15 migrations |
-| `handoff/data/` | The old `data/` folder: run snapshots (`blobs/snapshots`), generated reports, probe and discovery notes. The nightly full backups (`blobs/backups`) are left out because they contain the login data |
+### Data (9 Nov, 08:00 UTC)
 
-Kept only on the old Mac (`data/handoff/`): the full custom-format dump with the login data, its
-`.sha256`, and a git bundle of all branches (a fallback if GitHub is unreachable).
+- **Catalogue:** 31,082 products and 57,428 offers from 8 shops. 4,861 products have offers from
+  two or more shops; on 28 Oct there were 153.
+- **Price history** starts 27 Oct but has a **gap from 29 Oct 01:38 UTC to 9 Nov 06:37 UTC**
+  (section 2). Verdicts and deals need 14 observed days: 27–29 Oct plus one per night from 9 Nov puts the first
+  ones around 20 Nov.
 
-## 3. Setting up the new machine
+## 2. What happened between 28 Oct and 9 Nov
 
-Prerequisites:
-- Docker Desktop: give its VM **at least 6 GB** of memory; 3.8 GB was too tight when several test runs shared PostgreSQL.
-- Node 24 (`.nvmrc`). The old shell ran 22.17; everything works on ≥ 22.12, but use 24.
-- `corepack enable` for pnpm 10.34.9, and git.
-- **The machine must stay awake and on power while the recorder runs** (section 6).
+1. **The recorder stopped on 29 Oct at 01:38 UTC** after one complete night: 34,697 offers that
+   night.
+   - The cause: Docker Desktop stopped with the laptop's session. On 2 Nov Windows rebooted (an
+     update) and Docker Desktop did not start again.
+   - **Nothing was recorded for 11 nights, Black Friday (6 Nov) included.** The Black Friday 2026
+     report cannot be made.
+2. **On 9 Nov the lead:**
+   - restarted Docker;
+   - took a backup (`data/blobs/backups/pg/2026-11-09/`);
+   - rebuilt the recorder from `daniel` (all merged code; every new flag off);
+   - let each source run once to catch up (M05's design: one catch-up run, never a backfill);
+   - ran the eMAG part-number renormalization planned since 28 Oct (3,887 offers rewritten; no human
+     decision touched).
+3. **Two shops now push back. The fetch layer paused each for 24 hours, as it must.**
+   - **Carrefour:** answers HTTP 403 from Cloudflare (bot management) since 9 Nov.
+   - **IT Galaxy:** connections time out (10 s connect timeout); either a network problem or IT
+     Galaxy dropping our connections.
+   - Both resume by themselves. If they keep failing, they can only come back through a feed, an
+     allowlist or outreach. We never work around a block.
+
+## 3. Blockers that need you, in priority order
+
+### P0 — keep the price history alive (every missing night is lost for good)
+
+1. **The recording machine.** A laptop is not a reliable recorder. Pick one:
+   - **Recommended: a small server.** M18's production setup is ready; it needs A3, A4, B8–B12
+     (`infra/runbooks/`, `docs/09-external-setup-checklist.md`). The recorder then runs 24/7.
+   - **Or keep this laptop and configure it:**
+     - Docker Desktop → Settings → General → **Start Docker Desktop when you sign in**;
+     - Windows → Power → sleep **Never** on power, and lid → **Do nothing** on power;
+     - pause Windows Update;
+     - never sign out (locking the screen is fine);
+     - check `make recorder-logs` or http://localhost:9464/health now and then.
+2. **eMAG product pages** (Tier A, off since eMAG's CAPTCHA on 27 Oct): keep them off and record
+   listings only (the current state), or ask eMAG and retry slower, or stop eMAG. Pending in the
+   decisions log since 27 Oct.
+3. **Carrefour and IT Galaxy** (section 2.3): watch the next nights in `/admin` (Surse/Rulări). If
+   they stay blocked, use outreach (C3) for a feed or an allowlist; the templates are in
+   `infra/bot-program/`.
+
+### P1 — public launch (Gate G2)
+
+4. **Domain and infrastructure:**
+   - A1: the `pretoscop.ro` domain;
+   - A3/B10: Cloudflare and R2 buckets;
+   - A4: Hetzner server and fixed crawler IPs with reverse DNS;
+   - A5/B11: GitHub environments and secrets, a GHCR plan;
+   - B8: the server bootstrap;
+   - B9: production secrets. Keep the backup passphrase `PGBACKREST_REPO1_CIPHER_PASS` in both
+     password managers: without it the backups cannot be restored.
+   - B12: the ops Telegram bot.
+   - B3: Better Stack uptime checks.
+5. **The SRL and email (B4, B2):**
+   - Every email must name the operator: **production refuses to start without the real
+     `COMPANY_LEGAL_NAME` and `COMPANY_POSTAL_ADDRESS`.**
+   - Resend needs the domain, the mailboxes (contact@, privacy@, bot@) and
+     `RESEND_WEBHOOK_SECRET`.
+6. **Lawyer review (B5):**
+   - the legal pages (`/termeni`, `/confidentialitate`, `/cookies`, `/cum-functioneaza`,
+     `/cum-castigam-bani`, `/bot`);
+   - the consent texts (`alertConsent.v1`, `pushConsent.v1`, `telegramConsent.v1`, `b2bTerms.v1`);
+   - the merchant terms (v0.2 plus the M25 promoted-placement section) and the B2B terms;
+   - the extension privacy section and `docs/legal/*`.
+7. **Search Console (B6)** at launch, and build the production web image with
+   `SITE_INDEXABLE=true`.
+8. **Two technical decisions** (decisions log in `docs/progress.md`):
+   - the JavaScript budget: the framework shell alone is 151 kB, against a 150 kB target;
+   - whether single-offer eMAG/Dedeman products start provisional (noindex), as the docs say, or
+     not, as the code does.
+9. **Your module checks and the gate approvals** (G0–G4 in `docs/progress.md`).
+
+### P2 — more shops and better matching
+
+10. **2Performant (A6/A7)** plus written clearance of its ToS §9. This is the biggest lever: full
+    catalogues of many shops as feeds, including the books shops for M29.
+11. **The merchant portal (M20):** decide when to open it (flag `merchants.portal.enabled`) and who
+    answers the approval queue (one business day is promised).
+12. **The assisted channel (M05B)** for the shops that block bots (Altex, Media Galaxy, Flanco,
+    PC Garage, cel.ro):
+    - A10: the Zyte account with a spend limit, and the written legal opinion;
+    - then set one shop's `access_mode: assisted` in its YAML, record fixtures through the channel,
+      and write the shop parsers.
+13. **Matching quality:**
+    - label 100 pairs: `pnpm --filter @pretoscop/worker match:label`;
+    - A9: an Anthropic API key with a spend limit, for M22 (`match:eval:llm`; switch
+      `llm.matching.enabled` on only if precision reaches 98 %);
+    - B1: Open Icecat for specs and licensed images.
+14. **Books (M29):** enable the Libris and Elefant sources (`enabled: true` in their YAML, then
+    `make shops:sync`), watch one run, and ask Elefant for a feed (C3).
+15. **The registry's human tasks:** confirm delivery fees where shops state none; decide whether
+    Dedeman's "Verifică disponibilitatea online" counts as in stock; read the new shops' terms;
+    decide on Auchan's VTEX API.
+
+### P3 — revenue and growth
+
+16. **D3 Stripe** (accountant: VAT on prepaid wallets, e-Factura): needed for promoted placements
+    (M25) and B2B plans (M28). Email merchants the new terms 15 days before switching promotion on
+    (P2B art. 3).
+17. **D2 Telegram bot and VAPID keys** (M27); **D1 Chrome/Firefox store accounts** (M26).
+    - The extension's release gate is **not met yet**: 69.8 % of eMAG offers resolve, against 70 %
+      required. Re-measure with `pnpm ext:resolution`.
+    - Save one real product page each from Altex, Flanco, PC Garage and evoMAG in your browser, to
+      replace the synthetic fixtures.
+18. **The bot programme (M21):**
+    - C2: the Cloudflare Verified Bots, Akamai, DataDome and Fastly applications, submitted by a
+      founder;
+    - C3: outreach to at least 8 shops;
+    - C4: Awin, CJ and Tradedoubler accounts (also for beauty in M29).
+19. **D5 AdSense**, with a Google-certified consent platform before any ad in the EEA (M25).
+    **D4 Merchant Center/CSS** once 50 merchant domains are live (`css:readiness` shows 7 today).
+20. **A B2B pilot customer** (M28).
+
+## 4. Feature flags (`/admin/flaguri`)
+
+Everything except the first two is **off**. Turn a flag on only after its human task.
+
+| Flag | What it switches on | Needs first |
+|---|---|---|
+| `crawl.enabled` | every request to a shop (also `CRAWL_ENABLED` in `.env`) | on |
+| `source.emag.enabled` | eMAG sources (ADR-013) | on (decision of 27 Oct) |
+| `alerts.email.enabled` | price-alert emails (M19) | B2, B4, B5 |
+| `alerts.push.enabled`, `alerts.telegram.enabled`, `telegram.deals.enabled` | browser and Telegram alerts, daily deals post (M27) | D2, B5 |
+| `merchants.portal.enabled` | merchant self-serve registrations (M20) | B5, an approver |
+| `affiliate.links.enabled` | affiliate links in click-outs (M24) | A6/A7 |
+| `assisted.enabled` | assisted channel (M05B) | A10, a shop set to `assisted` |
+| `llm.matching.enabled` | LLM gray-zone matching (M22) | A9, labels, eval ≥ 98 % |
+| `icecat.enabled` | Icecat specs and images (M11) | B1 |
+| `promoted.enabled`, `ads.slots.enabled` | promoted placements and the ad slot (M25) | D3, B5, D5 |
+| `b2b.enabled`, `b2b.digest.enabled`, `b2b.billing.enabled` | B2B workspaces, digest, subscriptions (M28) | D3, B5, pilot |
+| `extractors.canary.enabled`, `shops.probe.enabled` | weekly canary, re-probes (M21) | a founder decision |
+| `extension.lookup.enabled` | the browser extension's API (M26) | D1, release gate |
+
+## 5. Running it on this laptop
+
+All commands run in Git Bash in the repo folder. Docker Desktop must be running.
 
 ```bash
-# Code: every branch from GitHub (offline alternative: git clone data/handoff/pretoscop-all-branches.bundle pretoscop)
-git clone https://github.com/IonescuGeorge05/Pretoscop.git pretoscop && cd pretoscop
-git checkout daniel
-for b in $(git branch -r | grep -E 'origin/mod/' | sed 's#origin/##'); do git branch --track "$b" "origin/$b" 2>/dev/null; done
-
-# Settings, local data and dependencies (from the repo's handoff/ folder)
-cp handoff/dev.env .env
-mkdir -p data && cp -R handoff/data/. data/
-corepack enable && pnpm install
-pnpm --filter @pretoscop/web exec playwright install chromium
-
-# Services and the recorded data
-make services                               # PostgreSQL 18 + pgvector (runs under an init process), Meilisearch, Mailpit
-gunzip -c handoff/db/pretoscop-dev-2026-10-28.public.sql.gz | \
-  docker compose -f infra/docker-compose.dev.yml -p pretoscop exec -T postgres psql -q -v ON_ERROR_STOP=1 -U pretoscop -d pretoscop
-make migrate                                # no-op on `daniel` (the dump is already at or past its schema)
-# Restore into the fresh, empty database that `make services` creates (no --clean in a plain dump).
-# Admin users are not in the dump: log in again at /admin with an address from ADMIN_EMAILS.
-
-# Checks
-make test
-make verify M=13                            # product page end to end (throwaway fixture product, removed afterwards)
-make dev                                    # http://localhost:3000; admin at /admin (magic link arrives in Mailpit, http://localhost:8025)
-
-# The nightly recorder (only once the machine stays awake)
-make recorder && make recorder-logs
+make services            # PostgreSQL 18, Meilisearch, Mailpit (already running if Docker is)
+make recorder            # rebuild and restart the recorder after pulling new code
+make recorder-logs       # follow it; health: http://localhost:9464/health
+make dev                 # website on http://localhost:3000, admin at /admin, mail at http://localhost:8025
+make test                # lint, typecheck, all unit and integration tests
+make verify M=13         # one module's acceptance checks (any of 00–29, 05B)
+pnpm --filter @pretoscop/worker backup   # manual database backup into data/blobs/backups
 ```
 
-The dump also contains the M19 `alerts` tables (an agent applied migration `0014_alerts` to the
-dev DB). `daniel`'s code ignores them; they line up when M19 is merged (section 5).
+Windows notes:
+- Shells started before Docker was installed need
+  `export PATH="/c/Program Files/Docker/Docker/resources/bin:$PATH"`. Restarting VS Code fixes it.
+- `core.autocrlf` must stay `false`; the repo's `.gitattributes` keeps LF.
+- **Known flake:** `make test` occasionally fails with `EPERM … node_modules/.vitest-cache` (two
+  test processes cleaning the shared cache at once). Run it again.
 
-## 4. Work on branches (not yet merged into `daniel`)
+## 6. Known gaps and technical debt
 
-| Branch | Module | State when stopped | First thing to do |
-|---|---|---|---|
-| `mod/M14-search` | M14 search, category, brand, shop pages (Meilisearch) | Implemented, verify script present | `git merge daniel`, `make verify M=14` |
-| `mod/M15-deals` (on M14) | M15 deals page `/reduceri`, price badges | Implemented, verify script present | `make verify M=15` |
-| `mod/M16-seo` (on M15) | M16 robots.txt, sitemaps, structured data, OG image | **WIP** (last commit). The agent was chasing a 404 rendered as Next's error document (`<html id="__next_error__">`), i.e. a failing shell render | Finish M16, then `make verify M=16`. Include approved reports (`/rapoarte/*`) in the sitemap and the AI-crawler block M11 needs (`ICECAT_ROBOTS_DISALLOW_AGENTS`) |
-| `mod/M18-deploy` | M18 production compose (Caddy edge, pgBackRest + MinIO, two web replicas), backups, monitoring, runbooks | Implemented; the point-in-time-restore rehearsal was running when stopped | Re-run its rehearsal, `make verify M=18` |
-| `mod/M05B-assisted` | M05B assisted-access channel (mocked Zyte API, ledger, cap, kill switch) | Implemented, verify script present | `make verify M=05B`. Stays off: no shop has `access_mode: assisted` |
-| `mod/M19-alerts` | M19 accounts and price alerts (double opt-in, unsubscribe, export/delete) | Implemented. Migration `0014_alerts` | **Merge first** (section 5), `make verify M=19` |
-| `mod/M27-telegram-push` (on M19) | M27 Telegram bot and web push | **WIP**: push controls, channels section, privacy page text | Finish, `make verify M=27` |
-| `mod/M20-merchants` | M20 merchant self-serve feed portal | Implemented. Migration `0014_merchants` | Merge after M19/M27 with the migration regenerated |
-| `mod/M21-bot-legitimacy` (on M20) | M21 bot page, Web Bot Auth (off), canary job, dossiers, outreach | **WIP**: verify script and e2e not run. Migrations `0015_extractor_canaries`, `0016_outreach` | Finish, regenerate migrations |
-| `mod/M06-slug-mpn` | eMAG URL-slug codes made low-trust; `renormalize` CLI | Partly done (check `git log`): the renormalize DB test was being written | Finish, then run `renormalize --dry-run` on the dev DB |
-| `mod/M22-llm-matching` | M22 LLM verification of gray-zone matches | **Not started** (same commit as M06-slug-mpn) | Start from the brief in section 7 |
-| `mod/M24-affiliate` | M24 affiliate operations | **Complete** (lead): link builders, 2Performant sync and commission import (mocked), click-time links with click-id sub-ids, `/admin/venituri`, live partner list. Migration `0014_commissions` | Merge after M19, M27, M20, M21 with the migration regenerated |
+- **Rate limiters:** the in-memory ones (extension API, alert forms, Telegram per chat) work per
+  process. The per-IP limits trust `cf-connecting-ip`/`x-forwarded-for`, so production must sit
+  behind Cloudflare and Caddy (M18 configures both).
+- **Libris offers** are re-matched after each listing run, which adds decision rows but never
+  changes the result (M29 CE5).
+- **Synthetic stand-ins:** the assisted-vendor shapes, the Icecat responses, the beauty eval and
+  the blocked shops' extension fixtures are synthetic until the accounts exist.
+- **Formatting:** Prettier is not enforced in lint or CI, and some files are unformatted.
+- **Black Friday 2026** has no data (section 2). The report tooling (M23) is ready for the next
+  event.
 
-Not started: **M25** (promoted placements; needs M20 + M24), **M26** (browser extension; scoped in
-section 7), **M28** (B2B; needs M20), **M29** (beauty and books playbook; needs M10 + M24).
+## 7. For the next Claude Code session
 
-Agent branches whose names start with `worktree-agent-*` are the agents' scratch branches; the
-`mod/*` branches carry everything.
-
-## 5. Merge plan (the order matters for migrations)
-
-Drizzle applies a migration only if its journal timestamp (`when`) is later than the last one the
-database applied. Several branches each added a `0014_*`. Keep the timestamps increasing in journal
-order:
-
-1. Merge `mod/M19-alerts` into `daniel` first, unchanged. Its `0014_alerts` keeps its timestamp,
-   which is already applied in the dev DB.
-2. Finish `mod/M27-telegram-push` and merge it (`0015_channels`).
-3. For each of M20, M21 and M24, in that order: merge into `daniel`, then **regenerate** its
-   migrations instead of renumbering by hand:
-   - delete that branch's migration `.sql`, its `meta/00xx_snapshot.json` and its `meta/_journal.json`
-     entry;
-   - run `pnpm --filter @pretoscop/db generate --name <name>`, which writes `0016_…`, `0017_…` with a
-     correct snapshot chain and a fresh timestamp;
-   - re-apply any hand edits (check the old SQL first);
-   - run `make migrate` and the module's verify.
-4. Merge M14 → M15 → M16, M18 → M05B and M06-slug-mpn when each verify passes. These have no
-   migrations; expect conflicts in `apps/worker/src/jobs/index.ts`, `packages/db/src/index.ts`,
-   `.env.example`, `packages/config/src/env.ts`, `KNOWN_FLAGS` and `docs/03` ADR numbers
-   (union-merge them).
-5. After every merge: `pnpm install`, `pnpm turbo run lint typecheck test`, then the module's
-   `make verify`. Write the module report into `docs/progress.md`; reports for M24 and the agents'
-   modules are not written yet. The agents' own summaries were in their hand-backs; reconstruct
-   them from `git log` and each branch's `scripts/verify/MXX.checklist.md`.
-
-## 6. The recorder, live crawling and what happened on 27–28 Oct
-
-- **Schedules (Europe/Bucharest):**
-  - eMAG: 42 category listings from 01:00.
-  - IT Galaxy, forIT, Carrefour, Dedeman, Auchan, Bonami: 105 listing sources from 02:15.
-  - Flip: sitemap at 02:15.
-  - Other jobs: backups 00:30, rollup 04:30, matching every 10 minutes, ECB rates on weekdays at 17:30.
-- **eMAG** answered product pages with a CAPTCHA (HTTP 511) on 27 Oct 21:45 UTC. The fetch layer
-  paused `www.emag.ro` until **28 Oct 21:45 UTC** (stored in the DB, so the pause carries over), and
-  the Tier A product-page source is kill-switched. Listings resume by themselves after the pause.
-  Decision pending (decisions log).
-- **The old Mac slept on battery overnight.** In-flight requests broke as "connection reset" and the
-  fetch layer paused six shops for 24 h. Five pauses were lifted after matching each reset to a
-  sleep or wake in `pmset -g log` (audit action `fetch.unpause`). **Flip** stays paused until
-  29 Oct 00:23 UTC. Since commit `4d46a06`, a transport error that surfaces more than 30 s after its
-  own timeout is logged as `local_suspend` and never pauses a shop. The old recorder image predates
-  that commit; `make recorder` on the new machine builds it fresh.
-- **Keep the recording machine plugged in and awake** (System Settings → Battery/Energy: prevent
-  automatic sleep; or `caffeinate -is` while the recorder runs). The real fix is a small server:
-  M18's production compose is ready for one.
-- **Two dev-environment fixes are on `daniel`.**
-  - PostgreSQL runs with `init: true` and an exec-form healthcheck. Before that, an orphaned
-    healthcheck process made PostgreSQL restart itself twice.
-  - `ensure_services` in the verify scripts uses `--no-recreate`, so a branch with an older
-    compose file never recreates the shared database.
-- Politeness is unchanged: identified PretoscopBot, robots.txt, ≥ 5 s per domain, a pause on any
-  block. Never work around a block (CLAUDE.md).
-
-## 7. Notes for the next Claude Code session
-
-- **Working agreement** (CLAUDE.md, `docs/progress.md` "Build session mode"):
-  - One `mod/MXX-*` branch per module, merged into `daniel` with `--no-ff` after `make verify` passes.
-  - Module reports go in `docs/progress.md`; phase gates are marked "awaiting founder approval".
-  - Push only when the founders ask. Every branch was pushed on 28 Oct 2026; keep recorded
-    shop pages free of third-party keys (GitHub push protection blocks them).
-  - Commits are module-prefixed and end with the Co-Authored-By line.
-- **Gotchas found during the build:**
-  - The Write tool and shell heredocs turn `\uXXXX` escapes into literal characters. Re-escape them
-    (e.g. BOM `\uFEFF`, `\u0300-\u036f`) and scan for invisible characters.
-  - In `apps/web`, import drizzle helpers (`sql`, `eq`, …) from `@pretoscop/db`, never `drizzle-orm`
-    (a second instance comes with better-auth).
-  - Next.js 16: `params` are Promises; the docs are in `node_modules/next/dist/docs`;
-    `revalidateTag(tag, { expire: 0 })` from route handlers.
-  - The e2e tests use the dev DB with a throwaway fixture (`packages/db/src/fixtures/e2e.ts`). Mark
-    every fixture "(produs de test E2E)" so `dropE2eFixture` removes it.
-  - `createTestDatabase()` clones a migrated template per migration set.
-  - Generate migrations with drizzle-kit; never hand-number them.
-  - `apps/web/next.config.ts` uses `output: 'standalone'`; `next start` warns but works for e2e.
-  - Six agents in parallel overloaded the machine (load average ≈ 17) and made tests flaky. Run at
-    most two or three agents at once, or give Docker more memory.
-- **M26 (browser extension), as scoped before the stop:**
-  - Build: `apps/extension`, MV3, built with esbuild (already installed) rather than WXT. One manifest
-    carries both `service_worker` and `scripts` for Firefox.
-  - Content scripts on emag.ro, altex.ro, flanco.ro, pcgarage.ro and evomag.ro detect the product
-    (JSON-LD first, URL patterns as fallback); the background worker calls `/api/ext/lookup`.
-  - Lookup: by offer URL, GTIN, or brand + MPN; rate-limited; CORS `*` on public data; returns
-    `{product_id, slug, low_30d, low_all_time, median_30d, best_offers≤5, history≤180, updated_at}`.
-  - Overlay: Shadow-DOM panel with a sparkline, the 30-day low, the cheapest shop, the verdict and a
-    plain link to Pretoscop. It never rewrites links.
-  - E2E: Playwright with the extension loaded and the shop page served through `page.route`.
-  - Deferred: the opt-in "report this price" (needs a table, plausibility checks and abuse
-    handling). Release gate: ≥ 70 % of top eMAG/Altex SKUs resolve.
-- **M22 brief:**
-  - `packages/llm`: an Anthropic client with Message Batches and the 1-hour prompt cache, an
-    `llm_usage` ledger with a monthly hard cap shown in `/admin`, and a pairwise verification
-    prompt (Romanian-aware, JSON).
-  - Models: `claude-haiku-5-5` by default, `claude-sonnet-5-5` for low confidence or high value.
-  - Gray-zone pairs → LLM → accept, reject or keep for review; `decided_by 'llm'`, reversible.
-  - Extend the M07 eval harness to compare LLM decisions.
-  - Mocked until an API key exists (A9); flag `llm.matching.enabled` off. Never send Icecat data or
-    personal data.
-
-## 8. Decisions and human tasks waiting for the founders
-
-From the decisions log in `docs/progress.md` and `docs/09-external-setup-checklist.md`:
-- **eMAG product pages (Tier A)** after the CAPTCHA: keep off (listings only), retry slower after
-  asking eMAG, or stop eMAG.
-- **The recording machine:** a plugged-in, always-awake computer or a small VPS (M18).
-- **Matching:** label 100 pairs with `pnpm --filter @pretoscop/worker match:label`.
-- **Shops:**
-  - Confirm delivery fees where shops state none.
-  - Dedeman's "Verifică disponibilitatea online" counts as unknown today.
-  - Auchan's VTEX API: allowed by robots.txt, terms not read.
-  - Read the new shops' terms.
-- **Accounts and legal:**
-  - A1 domain `pretoscop.ro`; A4 crawler IPs (`BOT_EGRESS_IPS`).
-  - A6/A7 2Performant (and the ToS §9 clearance); A9 Anthropic API key; A10 Zyte + the written legal opinion.
-  - B1 Open Icecat account; B2 Resend and mailboxes; B4 SRL; B5 lawyer review of the legal pages,
-    `alertConsent.v1` and the merchant terms.
-- **Reports:**
-  - After Black Friday, approve the report (`report:approve`, checklist in `docs/press-kit/`).
-  - Confirm the data licence (e.g. CC BY 4.0) and the press contact.
-
-## 9. Old machine cleanup (once the new one works)
-
-- **Docker volumes:**
-  - `pretoscop_pgdata` and `pretoscop_meilidata` hold the dev data; keep them until the restore is
-    verified.
-  - `pretoscop-m18test*` are scratch from the M18 rehearsal; safe to remove with
-    `docker volume rm $(docker volume ls -q | grep pretoscop-m18test)`.
-- **Worktrees:** `.claude/worktrees/*` are fully committed; remove them with
-  `git worktree remove --force <path>`, or delete the folder and run `git worktree prune`.
+- Integration branch: `daniel`. Work one `mod/MXX-*` branch per module, merge it with `--no-ff`
+  after `make verify` passes, add the module report to `docs/progress.md`, then push.
+- `main` on GitHub (the old prototype, which someone updated after 28 Oct) was not touched. Open a
+  pull request `daniel` → `main` when you want `main` to become the product.
+- **Migrations:** regenerate a branch's migration on top of `daniel` before merging; never number
+  them by hand. The latest is `0022_b2b`. The next free ADR is ADR-030.
+- **Parallel agents:** each gets its own git worktree (`.claude/worktrees/<name>`), its own copy of
+  the dev database, its own E2E and metrics ports and `MEILI_INDEX_PREFIX`, and
+  `CRAWL_ENABLED=false`. `scripts/verify/lib.sh` reads `DATABASE_URL` and `E2E_PORT` from each
+  checkout's `.env`.
+  - Remove a worktree with `git -c core.longpaths=true worktree remove --force`.
+- Never stop or recreate the compose project `pretoscop`: the live recorder runs in it.
+- **The founders' Claude usage is limited.** Stop all agents if Daniel says the weekly usage is
+  near 75 %; Claude cannot read the meter itself.

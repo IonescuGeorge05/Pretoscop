@@ -74,6 +74,7 @@ ${item('TS-3', 'Incarcator rapid Testoscop 65W USB-C GaN, alb (produs de test E2
 let server: http.Server;
 let internal: http.Server;
 let internalHits = 0;
+let flagsWere: Array<{ key: string; enabled: boolean }> = [];
 
 const feedHandler: http.RequestListener = (req, res) => {
   if (req.url === '/robots.txt') return res.end('User-agent: *\nAllow: /\n');
@@ -152,6 +153,9 @@ async function skipCheckCooldown(): Promise<void> {
 
 test.describe('merchant portal', () => {
   test.skip(({ isMobile }) => isMobile, 'desktop only (one shared merchant per run)');
+  // Only make verify M=20 provides what this needs (its own database, the worker, the feed
+  // allowlist); a run of the whole suite on the dev database would open the portal there.
+  test.skip(!process.env.M20_FEED_PORT, 'run by make verify M=20');
   test.describe.configure({ mode: 'serial' });
 
   test.beforeAll(async () => {
@@ -164,6 +168,7 @@ test.describe('merchant portal', () => {
     await new Promise<void>((resolve) => internal.listen(0, '127.0.0.1', resolve));
     await cleanup();
     await seedProducts();
+    flagsWere = await query<{ key: string; enabled: boolean }>(`SELECT key, enabled FROM feature_flags WHERE key IN ('merchants.portal.enabled', 'crawl.enabled')`);
     await query(`UPDATE feature_flags SET enabled = true WHERE key IN ('merchants.portal.enabled', 'crawl.enabled')`);
   });
 
@@ -171,6 +176,7 @@ test.describe('merchant portal', () => {
     await new Promise<void>((resolve) => server.close(() => resolve()));
     await new Promise<void>((resolve) => internal.close(() => resolve()));
     await cleanup();
+    for (const f of flagsWere) await query(`UPDATE feature_flags SET enabled = $2 WHERE key = $1`, [f.key, f.enabled]);
   });
 
   test('register, verify by email domain, check the feed, submit, get approved, see the offer, get suspended', async ({ page, browser }) => {

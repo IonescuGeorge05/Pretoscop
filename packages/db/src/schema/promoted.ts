@@ -4,11 +4,13 @@ import { categories } from './catalog';
 import { merchants } from './merchants';
 
 /**
- * Promoted placements and merchant billing (M25, ADR-024). Money is `numeric(12,2)` RON here and
- * integer bani in code (`baniToNumeric`/`numericToBani` at the boundary). Accounting rows (ledger,
- * top-ups, promoted clicks) carry `merchant_id` without a foreign key: they must outlive a deleted
- * merchant profile (bookkeeping retention); the wallet itself refuses the profile's deletion while
- * it exists (ON DELETE RESTRICT), so no balance disappears silently.
+ * Promoted placements and merchant billing (M25, ADR-026). Money is `numeric(12,2)` RON here and
+ * integer bani in code (`baniToNumeric`/`numericToBani` at the boundary). Accounting rows (wallet,
+ * ledger, top-ups, promoted clicks) carry `merchant_id` without a foreign key: they are bookkeeping
+ * records that must outlive a deleted merchant profile or user account (Law 82/1991: ten years), and
+ * an account deletion (GDPR self-service, M19) must never fail on them. A wallet left with a balance
+ * by a deleted profile stays visible in the admin until the balance is refunded (an adjustment).
+ * Campaigns (`placements`) belong to the profile and go with it.
  */
 
 const ts = (name: string) => timestamp(name, { withTimezone: true, mode: 'date' });
@@ -89,9 +91,7 @@ export const placementFloors = pgTable(
 export const merchantWallets = pgTable(
   'merchant_wallets',
   {
-    merchantId: bigint('merchant_id', { mode: 'number' })
-      .primaryKey()
-      .references(() => merchants.id, { onDelete: 'restrict' }),
+    merchantId: bigint('merchant_id', { mode: 'number' }).primaryKey(),
     balance: money('balance').notNull().default('0'),
     termsVersion: text('terms_version').notNull(),
     termsAcceptedAt: ts('terms_accepted_at').notNull(),
@@ -155,6 +155,12 @@ export const walletTopups = pgTable(
     gross: money('gross').notNull(),
     vatPercent: smallint('vat_percent').notNull(),
     currency: text('currency').notNull().default('RON'),
+    /**
+     * Who is invoiced, copied from the merchant profile when the top-up starts (the accountant's
+     * invoice must show the buyer as it was at payment time, even after the profile changes or goes).
+     */
+    billingName: text('billing_name'),
+    billingCui: text('billing_cui'),
     /** The provider event that credited (or closed) the top-up. */
     eventId: text('event_id'),
     createdBy: text('created_by').notNull(),

@@ -1,7 +1,7 @@
 /**
  * Promoted placements (M25): the pure rules of the paid "Promovat" slot. No I/O; amounts are
  * integer bani (core money convention). The default (organic) ranking is not touched here or
- * anywhere else: the slot sits outside the offers table and never reorders it (ADR-024).
+ * anywhere else: the slot sits outside the offers table and never reorders it (ADR-026).
  *
  * - Price bands split offers by their total price (price + known delivery); bids, floors and caps
  *   are set per category and band.
@@ -301,7 +301,7 @@ export function parseLeiInput(input: string): Bani | null {
 export type PromotedPriceComparison = { kind: 'not_more_expensive' } | { kind: 'more_expensive'; diffBani: Bani; bestBani: Bani };
 
 /**
- * How the promoted offer compares with the cheapest organic total (ADR-024: a promoted offer may cost
+ * How the promoted offer compares with the cheapest organic total (ADR-026: a promoted offer may cost
  * more than the best organic offer, and then the slot says by how much; it is never called "best").
  */
 export function comparePromotedPrice(promotedTotalBani: Bani, bestOrganicTotalBani: Bani | null): PromotedPriceComparison {

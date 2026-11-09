@@ -21,7 +21,7 @@ import { baniToNumeric, numericToBani } from '../money';
 import type { PlacementStatus, PromotedSlot } from '../schema/promoted';
 
 /**
- * Promoted placements and merchant billing (M25, ADR-024): candidates and auctions for a slot,
+ * Promoted placements and merchant billing (M25, ADR-026): candidates and auctions for a slot,
  * click billing under a wallet row lock, idempotent top-up credits, refunds and admin adjustments,
  * campaigns, floors and the numbers of the merchant and admin pages. Every money movement writes a
  * `wallet_ledger` row and an `audit_log` row in the same transaction. Amounts are integer bani.
@@ -37,6 +37,12 @@ export class PromotedError extends Error {
   constructor(readonly code: 'not_found' | 'exists' | 'bad_status' | 'insufficient' | 'no_wallet' | 'invalid') {
     super(`promoted: ${code}`);
   }
+}
+
+/** A unique violation, raw (pg) or wrapped by drizzle (`DrizzleQueryError.cause`). */
+function isUniqueViolation(err: unknown): boolean {
+  const e = err as { code?: string; cause?: { code?: string } } | null;
+  return e?.code === '23505' || e?.cause?.code === '23505';
 }
 
 async function audit(db: Exec, actor: string, action: string, entity: string, entityId: string | number | null, before: unknown, after: unknown): Promise<void> {
@@ -60,7 +66,7 @@ function bandOfSql(total: SQL): SQL {
 }
 
 /**
- * An offer that may fill a promoted slot (ADR-024): the merchant's own, shop-sold, new, in stock,
+ * An offer that may fill a promoted slot (ADR-026): the merchant's own, shop-sold, new, in stock,
  * matched, active, not a bundle or accessory, not blacklisted, checked within its shop's freshness
  * SLO and without a pending quarantine; its shop is active and the merchant approved. Aliases:
  * `o` offers, `s` shops, `m` merchants, `p` products.
@@ -75,7 +81,7 @@ export const ELIGIBLE_PROMOTED_OFFER: SQL = sql.raw(`(
 
 export type PromotedContext = { slot: 'product'; productId: number } | { slot: 'category'; categoryId: number };
 
-interface CandidateRow {
+type CandidateRow = {
   placement_id: string;
   merchant_id: string;
   bid: string;
@@ -86,7 +92,7 @@ interface CandidateRow {
   chain: string[] | null;
   balance: string;
   spent_today: string;
-}
+};
 
 export async function listFloorRows(db: Exec): Promise<FloorRow[]> {
   const r = await db.execute<{ category_id: string | null; price_band: string; floor: string; cap: string }>(sql`
@@ -100,7 +106,8 @@ export async function listFloorRows(db: Exec): Promise<FloorRow[]> {
  * Every (campaign, offer) pair that could fill the slot, with what the auction needs: the bid, the
  * floor and cap of the offer's category and band, and what the campaign can still spend today. One
  * offer per campaign: on a product page the merchant's cheapest eligible offer of that product; on
- * a category page its offer of the most compared product (most offers), then the cheapest.
+ * a category page its offer of the most compared product (most offers), then the cheapest. The
+ * category chain of the chosen offer (for its floor) is computed once per campaign, after the pick.
  */
 export async function promotedCandidates(db: Exec, ctx: PromotedContext): Promise<AuctionCandidate[]> {
   const where =
@@ -109,27 +116,30 @@ export async function promotedCandidates(db: Exec, ctx: PromotedContext): Promis
       : sql`EXISTS (SELECT 1 FROM categories x WHERE x.id = ${ctx.categoryId} AND (pcat.id = x.id OR starts_with(pcat.path, x.path || '/')))`;
   const order = ctx.slot === 'product' ? sql`pl.id, o.total_price, o.id` : sql`pl.id, p.offer_count DESC, o.total_price, o.id`;
   const r = await db.execute<CandidateRow>(sql`
-    SELECT DISTINCT ON (pl.id)
-      pl.id::text AS placement_id, pl.merchant_id::text, pl.bid::text, pl.daily_cap::text,
-      o.id::text AS offer_id, o.product_id::text, o.total_price::text AS total,
-      ARRAY(SELECT c.id::text FROM categories c WHERE pcat.id = c.id OR starts_with(pcat.path, c.path || '/') ORDER BY c.depth DESC) AS chain,
-      w.balance::text,
+    WITH pick AS (
+      SELECT DISTINCT ON (pl.id)
+        pl.id AS placement_id, pl.merchant_id, pl.bid, pl.daily_cap, o.id AS offer_id, o.product_id, o.total_price, pcat.id AS category_id, pcat.path AS category_path, w.balance
+      FROM placements pl
+      JOIN merchants m ON m.id = pl.merchant_id
+      JOIN merchant_wallets w ON w.merchant_id = m.id
+      JOIN offers o ON o.shop_id = m.shop_id
+      JOIN shops s ON s.id = o.shop_id
+      JOIN products p ON p.id = o.product_id
+      JOIN categories pcat ON pcat.id = p.category_id
+      JOIN categories tcat ON tcat.id = pl.category_id
+      WHERE pl.status = 'active' AND NOT pl.admin_hold
+        AND ${where}
+        AND (pcat.id = tcat.id OR starts_with(pcat.path, tcat.path || '/'))
+        AND (pl.price_band IS NULL OR pl.price_band = ${bandOfSql(sql`o.total_price`)})
+        AND ${ELIGIBLE_PROMOTED_OFFER}
+      ORDER BY ${order}
+    )
+    SELECT pick.placement_id::text, pick.merchant_id::text, pick.bid::text, pick.daily_cap::text,
+      pick.offer_id::text, pick.product_id::text, pick.total_price::text AS total, pick.balance::text,
+      ARRAY(SELECT c.id::text FROM categories c WHERE c.id = pick.category_id OR starts_with(pick.category_path, c.path || '/') ORDER BY c.depth DESC) AS chain,
       (SELECT coalesce(sum(pc.price), 0) FROM promoted_clicks pc
-        WHERE pc.placement_id = pl.id AND pc.status = 'billed' AND pc.created_at >= ${BUCHAREST_DAY_START})::text AS spent_today
-    FROM placements pl
-    JOIN merchants m ON m.id = pl.merchant_id
-    JOIN merchant_wallets w ON w.merchant_id = m.id
-    JOIN offers o ON o.shop_id = m.shop_id
-    JOIN shops s ON s.id = o.shop_id
-    JOIN products p ON p.id = o.product_id
-    JOIN categories pcat ON pcat.id = p.category_id
-    JOIN categories tcat ON tcat.id = pl.category_id
-    WHERE pl.status = 'active' AND NOT pl.admin_hold
-      AND ${where}
-      AND (pcat.id = tcat.id OR starts_with(pcat.path, tcat.path || '/'))
-      AND (pl.price_band IS NULL OR pl.price_band = ${bandOfSql(sql`o.total_price`)})
-      AND ${ELIGIBLE_PROMOTED_OFFER}
-    ORDER BY ${order}`);
+        WHERE pc.placement_id = pick.placement_id AND pc.status = 'billed' AND pc.created_at >= ${BUCHAREST_DAY_START})::text AS spent_today
+    FROM pick`);
   if (r.rows.length === 0) return [];
   const floors = await listFloorRows(db);
   return r.rows.map((row) => {
@@ -378,7 +388,7 @@ export async function billPromotedClick(db: Db, i: PromotedClickInput): Promise<
     });
   } catch (err) {
     // The unique index caught a concurrent duplicate (same session, offer and day): nothing was billed.
-    if ((err as { code?: string }).code === '23505') return notBilled('duplicate');
+    if (isUniqueViolation(err)) return notBilled('duplicate');
     throw err;
   }
 }
@@ -419,14 +429,20 @@ export interface NewTopUp {
   grossBani: number;
 }
 
-/** A top-up request before the provider is called (status `created`). */
+/**
+ * A top-up request before the provider is called (status `created`), with the buyer's company name
+ * and CUI copied from the profile for the invoice. Needs an open wallet.
+ */
 export async function createTopUp(db: Db, input: { merchantId: number; provider: string; netBani: number; vatBani: number; vatPercent: number; actor: string }): Promise<NewTopUp> {
+  if (!Number.isSafeInteger(input.netBani) || input.netBani <= 0 || !Number.isSafeInteger(input.vatBani) || input.vatBani < 0) throw new PromotedError('invalid');
   const gross = input.netBani + input.vatBani;
   return db.transaction(async (tx) => {
     const r = await tx.execute<{ id: string }>(sql`
-      INSERT INTO wallet_topups (merchant_id, provider, status, net, vat, gross, vat_percent, created_by)
-      VALUES (${input.merchantId}, ${input.provider}, 'created', ${money(input.netBani)}, ${money(input.vatBani)}, ${money(gross)}, ${input.vatPercent}, ${input.actor})
+      INSERT INTO wallet_topups (merchant_id, provider, status, net, vat, gross, vat_percent, billing_name, billing_cui, created_by)
+      SELECT ${input.merchantId}, ${input.provider}, 'created', ${money(input.netBani)}, ${money(input.vatBani)}, ${money(gross)}, ${input.vatPercent}, m.company_name, m.cui, ${input.actor}
+      FROM merchant_wallets w LEFT JOIN merchants m ON m.id = w.merchant_id WHERE w.merchant_id = ${input.merchantId}
       RETURNING id::text`);
+    if (!r.rows[0]) throw new PromotedError('no_wallet');
     const id = Number(r.rows[0]!.id);
     await audit(tx, input.actor, 'promoted.topup_started', 'wallet_topups', id, null, { merchantId: input.merchantId, netBani: input.netBani, vatBani: input.vatBani, grossBani: gross, provider: input.provider });
     return { id, netBani: input.netBani, vatBani: input.vatBani, grossBani: gross };
@@ -438,8 +454,26 @@ export async function setTopUpCheckout(db: Exec, topupId: number, externalId: st
   await db.execute(sql`UPDATE wallet_topups SET external_id = ${externalId}, status = 'pending', updated_at = now() WHERE id = ${topupId} AND status = 'created'`);
 }
 
+/**
+ * A webhook for a checkout whose id was never stored (saving it failed after the provider had
+ * answered): binds it to our top-up by the reference the provider echoes back. Never rebinds.
+ */
+export async function bindTopUpCheckout(db: Exec, input: { topupId: number; provider: string; externalId: string }): Promise<boolean> {
+  const r = await db.execute(sql`
+    UPDATE wallet_topups SET external_id = ${input.externalId}, status = CASE WHEN status = 'created' THEN 'pending' ELSE status END, updated_at = now()
+    WHERE id = ${input.topupId} AND provider = ${input.provider} AND external_id IS NULL`);
+  return (r.rowCount ?? 0) > 0;
+}
+
 export async function failTopUp(db: Exec, topupId: number): Promise<void> {
   await db.execute(sql`UPDATE wallet_topups SET status = 'failed', updated_at = now() WHERE id = ${topupId} AND status IN ('created','pending')`);
+}
+
+/** Promoted-placement changes an actor made in the last 24 hours (campaign edits, terms, top-ups): a cap against abuse. */
+export async function promotedActionsLastDay(db: Exec, actor: string): Promise<number> {
+  const r = await db.execute<{ n: number }>(sql`
+    SELECT count(*)::int AS n FROM audit_log WHERE actor = ${actor} AND action LIKE 'promoted.%' AND ts > now() - interval '24 hours'`);
+  return r.rows[0]?.n ?? 0;
 }
 
 /** Top-ups a merchant started in the last 24 hours (a cap against checkout spam). */
@@ -592,7 +626,7 @@ export async function createPlacement(db: Db, input: PlacementInput): Promise<nu
       return id;
     });
   } catch (err) {
-    if ((err as { code?: string }).code === '23505') throw new PromotedError('exists');
+    if (isUniqueViolation(err)) throw new PromotedError('exists');
     throw err;
   }
 }
@@ -802,7 +836,8 @@ export async function merchantPromotedSummary(db: Exec, merchantId: number): Pro
 
 export interface AdminPromotedOverview {
   walletsTotalBani: number;
-  wallets: Array<{ merchantId: number; shopName: string | null; companyName: string | null; status: string; balanceBani: number; spend30Bani: number; billed30: number }>;
+  /** Every wallet; `status` null: the merchant profile was deleted (a balance left must be refunded). */
+  wallets: Array<{ merchantId: number; shopName: string | null; companyName: string | null; status: string | null; balanceBani: number; spend30Bani: number; billed30: number }>;
   placements: Array<{
     id: number;
     merchantId: number;
@@ -826,11 +861,11 @@ export interface AdminPromotedOverview {
 
 export async function adminPromotedOverview(db: Exec): Promise<AdminPromotedOverview> {
   const [wallets, placementsRes, clicks, reasons, topups] = await Promise.all([
-    db.execute<{ merchant_id: string; shop_name: string | null; company_name: string | null; status: string; balance: string; spend30: string; billed30: number }>(sql`
+    db.execute<{ merchant_id: string; shop_name: string | null; company_name: string | null; status: string | null; balance: string; spend30: string; billed30: number }>(sql`
       SELECT w.merchant_id::text, m.shop_name, m.company_name, m.status, w.balance::text,
         coalesce((SELECT sum(price) FROM promoted_clicks pc WHERE pc.merchant_id = w.merchant_id AND pc.status = 'billed' AND pc.created_at > now() - interval '30 days'), 0)::text AS spend30,
         (SELECT count(*)::int FROM promoted_clicks pc WHERE pc.merchant_id = w.merchant_id AND pc.status = 'billed' AND pc.created_at > now() - interval '30 days') AS billed30
-      FROM merchant_wallets w JOIN merchants m ON m.id = w.merchant_id ORDER BY w.merchant_id`),
+      FROM merchant_wallets w LEFT JOIN merchants m ON m.id = w.merchant_id ORDER BY w.merchant_id`),
     db.execute<{
       id: string;
       merchant_id: string;
@@ -958,7 +993,10 @@ export async function monthlyPromotedStatement(db: Exec, month: string): Promise
     gross: string;
   }>(sql`
     WITH ids AS (SELECT DISTINCT merchant_id FROM wallet_ledger WHERE created_at < ${end})
-    SELECT ids.merchant_id::text, m.company_name, m.cui, m.shop_name,
+    SELECT ids.merchant_id::text,
+      coalesce(m.company_name, (SELECT t.billing_name FROM wallet_topups t WHERE t.merchant_id = ids.merchant_id AND t.billing_name IS NOT NULL ORDER BY t.id DESC LIMIT 1)) AS company_name,
+      coalesce(m.cui, (SELECT t.billing_cui FROM wallet_topups t WHERE t.merchant_id = ids.merchant_id AND t.billing_cui IS NOT NULL ORDER BY t.id DESC LIMIT 1)) AS cui,
+      m.shop_name,
       coalesce((SELECT sum(amount) FROM wallet_ledger l WHERE l.merchant_id = ids.merchant_id AND l.created_at < ${start}), 0)::text AS opening,
       coalesce((SELECT sum(amount) FROM wallet_ledger l WHERE l.merchant_id = ids.merchant_id AND l.kind = 'topup' AND l.created_at >= ${start} AND l.created_at < ${end}), 0)::text AS topups_net,
       (SELECT count(*)::int FROM wallet_ledger l WHERE l.merchant_id = ids.merchant_id AND l.kind = 'topup' AND l.created_at >= ${start} AND l.created_at < ${end}) AS topups,

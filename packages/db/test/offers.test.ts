@@ -83,9 +83,6 @@ describe('schema v1', () => {
   });
 
   it('maintenance job creates missing partitions idempotently', async () => {
-    // The migrations create partitions up to a fixed month; from November 2026 the month 12 months
-    // ahead lies past them, so create the window first (M29: the test failed on every checkout).
-    await ensurePriceEventPartitions(t.db, 0, 12);
     await t.db.execute(sql`DROP TABLE price_events_${sql.raw(
       (() => {
         const d = new Date();

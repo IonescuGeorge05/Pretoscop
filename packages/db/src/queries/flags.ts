@@ -16,6 +16,9 @@ export const KNOWN_FLAGS: Record<string, string> = {
   'promoted.enabled': 'Promoted placements (M25)',
   'icecat.enabled': 'Open Icecat enrichment: specs and licensed images (M11); needs an Open Icecat account (B1)',
   'merchants.portal.enabled': 'Merchant self-serve portal: new registrations and submissions (M20)',
+  'b2b.enabled': 'B2B workspaces and API for customers (M28); admins can provision and preview while off',
+  'b2b.digest.enabled': 'Daily B2B email digest of competitor price changes (M28)',
+  'b2b.billing.enabled': 'B2B plan subscriptions through the payment provider (M28; needs STRIPE_* and D3)',
   'extractors.canary.enabled': 'Weekly extractor canary: up to 5 live URLs per active shop, field drift alerts (M21)',
   'shops.probe.enabled': 'shops:probe re-probes (M21): at most 3 polite requests per run; on only for a founder probe session',
 };

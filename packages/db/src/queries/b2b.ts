@@ -873,6 +873,7 @@ export interface B2bApiPrincipal {
   plan: B2bPlanDb;
   status: B2bWorkspaceStatus;
   apiDailyQuota: number | null;
+  skuLimit: number | null;
   termsAccepted: boolean;
 }
 
@@ -886,15 +887,25 @@ const DUMMY_HASH = sha256('pretoscop-b2b-no-such-key');
 export async function verifyB2bApiKey(db: Exec, presented: string | null): Promise<B2bApiPrincipal | null> {
   const parsed = parseApiKey(presented);
   if (!parsed) return null;
-  const r = await db.execute<{ id: string; workspace_id: string; secret_hash: string; plan: B2bPlanDb; status: B2bWorkspaceStatus; api_daily_quota: number | null; terms: boolean }>(sql`
-    SELECT k.id::text, k.workspace_id::text, k.secret_hash, w.plan, w.status, w.api_daily_quota, (w.terms_accepted_at IS NOT NULL) AS terms
+  const r = await db.execute<{
+    id: string; workspace_id: string; secret_hash: string; plan: B2bPlanDb; status: B2bWorkspaceStatus; api_daily_quota: number | null; sku_limit: number | null; terms: boolean;
+  }>(sql`
+    SELECT k.id::text, k.workspace_id::text, k.secret_hash, w.plan, w.status, w.api_daily_quota, w.sku_limit, (w.terms_accepted_at IS NOT NULL) AS terms
     FROM b2b_api_keys k JOIN b2b_workspaces w ON w.id = k.workspace_id
     WHERE k.public_id = ${parsed.publicId} AND k.revoked_at IS NULL`);
   const row = r.rows[0];
   const stored = row && /^[0-9a-f]{64}$/.test(row.secret_hash) ? Buffer.from(row.secret_hash, 'hex') : DUMMY_HASH;
   const match = timingSafeEqual(sha256(parsed.secret), stored);
   if (!row || !match) return null;
-  return { keyId: Number(row.id), workspaceId: Number(row.workspace_id), plan: row.plan, status: row.status, apiDailyQuota: row.api_daily_quota, termsAccepted: row.terms };
+  return {
+    keyId: Number(row.id),
+    workspaceId: Number(row.workspace_id),
+    plan: row.plan,
+    status: row.status,
+    apiDailyQuota: row.api_daily_quota,
+    skuLimit: row.sku_limit,
+    termsAccepted: row.terms,
+  };
 }
 
 /** Marks a key used (at most once a minute per key: no write per request). */

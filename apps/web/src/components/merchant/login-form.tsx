@@ -4,8 +4,13 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { authClient } from '@/lib/auth-client';
 
-/** Magic-link sign-in (and sign-up) for merchants; the link opens the portal. */
-export function MerchantLoginForm() {
+const MERCHANT_HINT = 'Folosește, dacă poți, o adresă de pe domeniul magazinului (de exemplu, nume@magazinul-tau.ro): așa domeniul se verifică automat.';
+
+/**
+ * Magic-link sign-in (and sign-up); the link opens `callbackURL`. Defaults: the merchant portal
+ * (M20); the B2B workspaces (M28) pass their own page and hint.
+ */
+export function MerchantLoginForm({ callbackURL = '/pentru-magazine/cont', hint = MERCHANT_HINT }: { callbackURL?: string; hint?: string } = {}) {
   const [email, setEmail] = useState('');
   const [state, setState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
   if (state === 'sent') {
@@ -25,7 +30,7 @@ export function MerchantLoginForm() {
       onSubmit={async (e) => {
         e.preventDefault();
         setState('sending');
-        const res = await authClient.signIn.magicLink({ email, callbackURL: '/pentru-magazine/cont' });
+        const res = await authClient.signIn.magicLink({ email, callbackURL });
         setState(res.error ? 'error' : 'sent');
       }}
     >
@@ -33,7 +38,7 @@ export function MerchantLoginForm() {
         Adresa de email
       </label>
       <p id="merchant-email-hint" className="text-[13px] text-muted">
-        Folosește, dacă poți, o adresă de pe domeniul magazinului (de exemplu, nume@magazinul-tau.ro): așa domeniul se verifică automat.
+        {hint}
       </p>
       <input
         id="merchant-email"

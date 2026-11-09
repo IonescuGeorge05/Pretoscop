@@ -1,0 +1,1896 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Pretoscop B2B price intelligence API",
+    "version": "1.0.0",
+    "description": "Prices observed by Pretoscop on Romanian online shops, for the SKUs your workspace tracks. Amounts in lei (RON) including VAT, as decimal strings; times in UTC. Every request counts against the daily quota of your plan (Europe/Bucharest days). Data-usage terms: https://pretoscop.ro/pentru-companii/termeni (no resale, no publication, no AI training). No consumer personal data and no Open Icecat content is ever returned."
+  },
+  "servers": [
+    {
+      "url": "/api/v1/b2b"
+    }
+  ],
+  "security": [
+    {
+      "bearer": []
+    }
+  ],
+  "paths": {
+    "/positions": {
+      "get": {
+        "summary": "Position table: your price against the market, per SKU",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "matched",
+                "unmatched",
+                "ambiguous"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Positions in your SKU order",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PositionPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, unknown or revoked key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Workspace inactive, terms not accepted, or the plan has no API access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Per-minute rate limit or daily quota reached (Retry-After says when to retry)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Seconds"
+              }
+            }
+          },
+          "503": {
+            "description": "The B2B service is switched off",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/skus": {
+      "get": {
+        "summary": "Tracked SKUs",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 500,
+              "default": 100
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "matched",
+                "unmatched",
+                "ambiguous"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SKUs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkuPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, unknown or revoked key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Workspace inactive, terms not accepted, or the plan has no API access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Per-minute rate limit or daily quota reached (Retry-After says when to retry)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Seconds"
+              }
+            }
+          },
+          "503": {
+            "description": "The B2B service is switched off",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add SKUs by GTIN or MPN (resolved against the catalogue; up to your plan’s SKU limit)",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SkuImportRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "What was added",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SkuImportResult"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, unknown or revoked key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Workspace inactive, terms not accepted, or the plan has no API access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Per-minute rate limit or daily quota reached (Retry-After says when to retry)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Seconds"
+              }
+            }
+          },
+          "503": {
+            "description": "The B2B service is switched off",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/skus/{id}": {
+      "get": {
+        "summary": "One SKU with every competitor offer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SKU",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PositionDetailBody"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, unknown or revoked key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Workspace inactive, terms not accepted, or the plan has no API access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not a SKU of this workspace",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Per-minute rate limit or daily quota reached (Retry-After says when to retry)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Seconds"
+              }
+            }
+          },
+          "503": {
+            "description": "The B2B service is switched off",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Stop tracking a SKU",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed"
+          },
+          "401": {
+            "description": "Missing, malformed, unknown or revoked key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Workspace inactive, terms not accepted, or the plan has no API access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not a SKU of this workspace",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Per-minute rate limit or daily quota reached (Retry-After says when to retry)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Seconds"
+              }
+            }
+          },
+          "503": {
+            "description": "The B2B service is switched off",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/skus/{id}/history": {
+      "get": {
+        "summary": "Observed daily price history of the SKU’s product (gaps stay gaps)",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "range",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "30d",
+                "90d",
+                "1y",
+                "all"
+              ],
+              "default": "90d"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Daily series",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/History"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, unknown or revoked key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Workspace inactive, terms not accepted, or the plan has no API access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not a matched SKU of this workspace",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Per-minute rate limit or daily quota reached (Retry-After says when to retry)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Seconds"
+              }
+            }
+          },
+          "503": {
+            "description": "The B2B service is switched off",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/changes": {
+      "get": {
+        "summary": "Observed price and stock changes on your SKUs (at most 7 days back)",
+        "parameters": [
+          {
+            "name": "since",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "description": "Default: 24 hours ago"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 500
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Changes, newest first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChangePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid since",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, unknown or revoked key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Workspace inactive, terms not accepted, or the plan has no API access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Per-minute rate limit or daily quota reached (Retry-After says when to retry)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Seconds"
+              }
+            }
+          },
+          "503": {
+            "description": "The B2B service is switched off",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/usage": {
+      "get": {
+        "summary": "Quota and usage",
+        "responses": {
+          "200": {
+            "description": "Usage",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Usage"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Missing, malformed, unknown or revoked key",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Workspace inactive, terms not accepted, or the plan has no API access",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Per-minute rate limit or daily quota reached (Retry-After says when to retry)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "Seconds"
+              }
+            }
+          },
+          "503": {
+            "description": "The B2B service is switched off",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "API key `psk_…` created in the workspace"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": {
+                "type": "string",
+                "enum": [
+                  "unauthorized",
+                  "workspace_inactive",
+                  "terms_not_accepted",
+                  "plan_without_api",
+                  "rate_limited",
+                  "quota_exceeded",
+                  "not_found",
+                  "invalid_request",
+                  "sku_limit",
+                  "unavailable"
+                ]
+              },
+              "message": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "code",
+              "message"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "error"
+        ],
+        "additionalProperties": false
+      },
+      "Product": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "title": {
+            "type": "string"
+          },
+          "brand": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "url": {
+            "type": "string",
+            "description": "Public Pretoscop product page"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "brand",
+          "category",
+          "url"
+        ],
+        "additionalProperties": false
+      },
+      "Sku": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "ref": {
+            "description": "Your own code",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "label": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "gtin": {
+            "description": "GTIN-14",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mpn": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "brand": {
+            "description": "Brand as you gave it",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "matched",
+              "unmatched",
+              "ambiguous"
+            ]
+          },
+          "reference_price": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?\\d+\\.\\d{2}$",
+                "description": "Amount in lei (RON) including VAT, as a decimal string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Your own or recommended price"
+          },
+          "product": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Product"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "ref",
+          "label",
+          "gtin",
+          "mpn",
+          "brand",
+          "status",
+          "reference_price",
+          "product"
+        ],
+        "additionalProperties": false
+      },
+      "Offer": {
+        "type": "object",
+        "properties": {
+          "shop": {
+            "type": "string"
+          },
+          "seller": {
+            "description": "Third-party seller on a marketplace",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "seller_type": {
+            "type": "string",
+            "enum": [
+              "shop",
+              "marketplace"
+            ]
+          },
+          "url": {
+            "type": "string"
+          },
+          "price": {
+            "type": "string",
+            "pattern": "^-?\\d+\\.\\d{2}$",
+            "description": "Amount in lei (RON) including VAT, as a decimal string"
+          },
+          "shipping": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^-?\\d+\\.\\d{2}$",
+                "description": "Amount in lei (RON) including VAT, as a decimal string"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "total": {
+            "type": "string",
+            "pattern": "^-?\\d+\\.\\d{2}$",
+            "description": "Amount in lei (RON) including VAT, as a decimal string"
+          },
+          "availability": {
+            "type": "string",
+            "enum": [
+              "in_stock",
+              "out_of_stock",
+              "preorder",
+              "unknown"
+            ]
+          },
+          "condition": {
+            "type": "string",
+            "enum": [
+              "new",
+              "refurbished",
+              "used"
+            ]
+          },
+          "last_checked_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC timestamp, ISO 8601"
+          },
+          "stale": {
+            "type": "boolean",
+            "description": "Older than the shop’s usual refresh interval"
+          },
+          "comparable": {
+            "type": "boolean",
+            "description": "Counts for min/median: fresh, in stock, new, no bundle, no price under review"
+          }
+        },
+        "required": [
+          "shop",
+          "seller",
+          "seller_type",
+          "url",
+          "price",
+          "shipping",
+          "total",
+          "availability",
+          "condition",
+          "last_checked_at",
+          "stale",
+          "comparable"
+        ],
+        "additionalProperties": false
+      },
+      "Position": {
+        "type": "object",
+        "properties": {
+          "sku": {
+            "$ref": "#/components/schemas/Sku"
+          },
+          "own": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "basis": {
+                    "type": "string",
+                    "enum": [
+                      "offer",
+                      "reference"
+                    ]
+                  },
+                  "total": {
+                    "type": "string",
+                    "pattern": "^-?\\d+\\.\\d{2}$",
+                    "description": "Amount in lei (RON) including VAT, as a decimal string"
+                  },
+                  "offer": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/Offer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "basis",
+                  "total",
+                  "offer"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "market": {
+            "type": "object",
+            "properties": {
+              "min": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^-?\\d+\\.\\d{2}$",
+                    "description": "Amount in lei (RON) including VAT, as a decimal string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "median": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^-?\\d+\\.\\d{2}$",
+                    "description": "Amount in lei (RON) including VAT, as a decimal string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "competitors": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "cheapest_shop": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "min",
+              "median",
+              "competitors",
+              "cheapest_shop"
+            ],
+            "additionalProperties": false
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1 = lowest total; ties share a rank"
+          },
+          "gap_to_min_pct": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "cheapest",
+              "tied",
+              "above",
+              "alone",
+              "no_price",
+              "no_data"
+            ]
+          },
+          "oldest_check_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC timestamp, ISO 8601"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "newest_check_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC timestamp, ISO 8601"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "sku",
+          "own",
+          "market",
+          "rank",
+          "gap_to_min_pct",
+          "status",
+          "oldest_check_at",
+          "newest_check_at"
+        ],
+        "additionalProperties": false
+      },
+      "PositionDetail": {
+        "type": "object",
+        "properties": {
+          "sku": {
+            "$ref": "#/components/schemas/Sku"
+          },
+          "own": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "basis": {
+                    "type": "string",
+                    "enum": [
+                      "offer",
+                      "reference"
+                    ]
+                  },
+                  "total": {
+                    "type": "string",
+                    "pattern": "^-?\\d+\\.\\d{2}$",
+                    "description": "Amount in lei (RON) including VAT, as a decimal string"
+                  },
+                  "offer": {
+                    "anyOf": [
+                      {
+                        "$ref": "#/components/schemas/Offer"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "basis",
+                  "total",
+                  "offer"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "market": {
+            "type": "object",
+            "properties": {
+              "min": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^-?\\d+\\.\\d{2}$",
+                    "description": "Amount in lei (RON) including VAT, as a decimal string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "median": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "pattern": "^-?\\d+\\.\\d{2}$",
+                    "description": "Amount in lei (RON) including VAT, as a decimal string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "competitors": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "cheapest_shop": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            },
+            "required": [
+              "min",
+              "median",
+              "competitors",
+              "cheapest_shop"
+            ],
+            "additionalProperties": false
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1 = lowest total; ties share a rank"
+          },
+          "gap_to_min_pct": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "cheapest",
+              "tied",
+              "above",
+              "alone",
+              "no_price",
+              "no_data"
+            ]
+          },
+          "oldest_check_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC timestamp, ISO 8601"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "newest_check_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC timestamp, ISO 8601"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "offers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Offer"
+            }
+          }
+        },
+        "required": [
+          "sku",
+          "own",
+          "market",
+          "rank",
+          "gap_to_min_pct",
+          "status",
+          "oldest_check_at",
+          "newest_check_at",
+          "offers"
+        ],
+        "additionalProperties": false
+      },
+      "SkuPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Sku"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "data",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "additionalProperties": false
+      },
+      "PositionPage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Position"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "limit": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "offset": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "data",
+          "total",
+          "limit",
+          "offset"
+        ],
+        "additionalProperties": false
+      },
+      "PositionDetailBody": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "$ref": "#/components/schemas/PositionDetail"
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "SkuInput": {
+        "type": "object",
+        "properties": {
+          "gtin": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 20
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "mpn": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "brand": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "ref": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "label": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 200
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reference_price": {
+            "description": "\"1234.56\" or \"1.234,56\"",
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 30
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "additionalProperties": false
+      },
+      "SkuImportRequest": {
+        "type": "object",
+        "properties": {
+          "skus": {
+            "minItems": 1,
+            "maxItems": 1000,
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SkuInput"
+            }
+          }
+        },
+        "required": [
+          "skus"
+        ],
+        "additionalProperties": false
+      },
+      "SkuImportResult": {
+        "type": "object",
+        "properties": {
+          "added": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "matched": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "unmatched": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "ambiguous": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "duplicates": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "invalid": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "over_limit": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "index": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "message": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "index",
+                "message"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "added",
+          "matched",
+          "unmatched",
+          "ambiguous",
+          "duplicates",
+          "invalid",
+          "over_limit",
+          "errors"
+        ],
+        "additionalProperties": false
+      },
+      "Change": {
+        "type": "object",
+        "properties": {
+          "sku_id": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "ref": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "label": {
+            "type": "string"
+          },
+          "shop": {
+            "type": "string"
+          },
+          "seller": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "own": {
+            "type": "boolean"
+          },
+          "observed_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC timestamp, ISO 8601"
+          },
+          "before": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "total": {
+                    "type": "string",
+                    "pattern": "^-?\\d+\\.\\d{2}$",
+                    "description": "Amount in lei (RON) including VAT, as a decimal string"
+                  },
+                  "availability": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "total",
+                  "availability"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "null: first time we saw this offer"
+          },
+          "after": {
+            "type": "object",
+            "properties": {
+              "total": {
+                "type": "string",
+                "pattern": "^-?\\d+\\.\\d{2}$",
+                "description": "Amount in lei (RON) including VAT, as a decimal string"
+              },
+              "availability": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "total",
+              "availability"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "sku_id",
+          "ref",
+          "label",
+          "shop",
+          "seller",
+          "own",
+          "observed_at",
+          "before",
+          "after"
+        ],
+        "additionalProperties": false
+      },
+      "ChangePage": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Change"
+            }
+          },
+          "total": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "since": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC timestamp, ISO 8601"
+          },
+          "until": {
+            "type": "string",
+            "format": "date-time",
+            "description": "UTC timestamp, ISO 8601"
+          }
+        },
+        "required": [
+          "data",
+          "total",
+          "since",
+          "until"
+        ],
+        "additionalProperties": false
+      },
+      "History": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "object",
+            "properties": {
+              "range": {
+                "type": "string",
+                "enum": [
+                  "30d",
+                  "90d",
+                  "1y",
+                  "all"
+                ]
+              },
+              "min": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "string",
+                      "format": "date",
+                      "description": "Europe/Bucharest calendar day"
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^-?\\d+\\.\\d{2}$",
+                      "description": "Amount in lei (RON) including VAT, as a decimal string"
+                    }
+                  ],
+                  "items": false,
+                  "minItems": 2,
+                  "maxItems": 2
+                },
+                "description": "Daily lowest total across shops (shop-sold offers)"
+              },
+              "marketplace": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "prefixItems": [
+                    {
+                      "type": "string",
+                      "format": "date",
+                      "description": "Europe/Bucharest calendar day"
+                    },
+                    {
+                      "type": "string",
+                      "pattern": "^-?\\d+\\.\\d{2}$",
+                      "description": "Amount in lei (RON) including VAT, as a decimal string"
+                    }
+                  ],
+                  "items": false,
+                  "minItems": 2,
+                  "maxItems": 2
+                }
+              },
+              "shops": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "series": {
+                      "type": "array",
+                      "items": {
+                        "type": "array",
+                        "prefixItems": [
+                          {
+                            "type": "string",
+                            "format": "date",
+                            "description": "Europe/Bucharest calendar day"
+                          },
+                          {
+                            "type": "string",
+                            "pattern": "^-?\\d+\\.\\d{2}$",
+                            "description": "Amount in lei (RON) including VAT, as a decimal string"
+                          }
+                        ],
+                        "items": false,
+                        "minItems": 2,
+                        "maxItems": 2
+                      }
+                    }
+                  },
+                  "required": [
+                    "name",
+                    "series"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "range",
+              "min",
+              "marketplace",
+              "shops"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "data"
+        ],
+        "additionalProperties": false
+      },
+      "Usage": {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "type": "string",
+            "enum": [
+              "pilot",
+              "starter",
+              "pro",
+              "enterprise"
+            ]
+          },
+          "quota": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "used": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "remaining": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "resets_at": {
+                "type": "string",
+                "format": "date-time",
+                "description": "UTC timestamp, ISO 8601"
+              }
+            },
+            "required": [
+              "limit",
+              "used",
+              "remaining",
+              "resets_at"
+            ],
+            "additionalProperties": false
+          },
+          "per_minute": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "skus": {
+            "type": "object",
+            "properties": {
+              "limit": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "used": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              }
+            },
+            "required": [
+              "limit",
+              "used"
+            ],
+            "additionalProperties": false
+          },
+          "days": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "day": {
+                  "type": "string",
+                  "format": "date",
+                  "description": "Europe/Bucharest calendar day"
+                },
+                "requests": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "refused": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "day",
+                "requests",
+                "refused"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "plan",
+          "quota",
+          "per_minute",
+          "skus",
+          "days"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}

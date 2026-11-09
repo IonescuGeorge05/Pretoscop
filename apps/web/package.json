@@ -11,6 +11,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests",
     "e2e": "playwright test",
+    "b2b:openapi": "tsx scripts/b2b-openapi.ts",
     "lhci": "pnpm dlx @lhci/cli@0.15.1 autorun"
   },
   "devDependencies": {
@@ -44,6 +45,7 @@
     "react-dom": "19.3.1",
     "server-only": "^0.0.1",
     "tailwind-merge": "^3.7.0",
-    "uplot": "^1.6.32"
+    "uplot": "^1.6.32",
+    "zod": "^4.6.7"
   }
 }

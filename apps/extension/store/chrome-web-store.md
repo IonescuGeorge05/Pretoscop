@@ -7,7 +7,7 @@ them in step with the code and with `/confidentialitate#extensie`: a mismatch is
 ## Store listing
 
 - **Name** (≤ 75): `Pretoscop – istoricul prețului`
-- **Summary** (≤ 132): `Istoricul prețului și cel mai mic preț total din alte magazine, direct pe paginile de produs eMAG, Altex, Flanco, PC Garage și evoMAG.`
+- **Summary** (≤ 132; the manifest description, 127 characters): `Istoricul prețului și cel mai mic preț total din alte magazine, pe paginile de produs eMAG, Altex, Flanco, PC Garage și evoMAG.`
 - **Category**: Shopping. **Language**: Romanian.
 - **Description**:
 

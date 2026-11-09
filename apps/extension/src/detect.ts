@@ -113,11 +113,34 @@ export function jsonLdProducts(page: PageDoc): Array<Record<string, unknown>> {
   return out;
 }
 
-/** One product, or null when the nodes describe more than one (or none). */
+/**
+ * One product, or null when the nodes describe more than one (or none). Several nodes count as one
+ * product when no field contradicts another (a theme's minimal `Product` next to the full one):
+ * their valid fields are combined. Two different GTINs, part numbers, brands or addresses are two
+ * products.
+ */
 function single(found: Found[]): Found | null {
-  const key = (f: Found) => JSON.stringify([cleanGtin(f.gtin) ?? null, cleanMpn(f.mpn) ?? null, cleanBrand(f.brand) ?? null, f.url ?? null]);
-  const distinct = new Map(found.map((f) => [key(f), f]));
-  return distinct.size === 1 ? [...distinct.values()][0]! : null;
+  if (found.length === 0) return null;
+  const out: Found = {};
+  const fields: Array<[keyof Found, (v: unknown) => string | undefined]> = [
+    ['gtin', cleanGtin],
+    ['mpn', (v) => cleanMpn(v)?.toUpperCase()],
+    ['brand', (v) => cleanBrand(v)?.toLowerCase()],
+    ['url', (v) => (typeof v === 'string' ? pathKey(v) : undefined)],
+  ];
+  for (const [field, norm] of fields) {
+    let seen: string | undefined;
+    for (const f of found) {
+      const n = norm(f[field]);
+      if (n === undefined) continue;
+      if (seen !== undefined && n !== seen) return null;
+      if (seen === undefined) {
+        seen = n;
+        (out as Record<string, unknown>)[field] = f[field];
+      }
+    }
+  }
+  return out;
 }
 
 function propValue(el: PageEl): string {
@@ -232,13 +255,19 @@ function ga4ViewItem(page: PageDoc): Found | null {
   return null;
 }
 
-function samePath(a: string, b: string): boolean {
+/** Host + path of an absolute URL, compared without `www.`, case or trailing slashes; undefined when not a URL. */
+function pathKey(u: string): string | undefined {
   try {
-    const norm = (u: string) => decodeURIComponentSafe(new URL(u).pathname).replace(/\/+$/, '').toLowerCase();
-    return norm(a) === norm(b);
+    const x = new URL(u);
+    return `${x.hostname.toLowerCase().replace(/^www\./, '')}${decodeURIComponentSafe(x.pathname).replace(/\/+$/, '').toLowerCase()}`;
   } catch {
-    return false;
+    return undefined;
   }
+}
+
+function samePath(a: string, b: string): boolean {
+  const ka = pathKey(a);
+  return ka !== undefined && ka === pathKey(b);
 }
 
 /** Is this a product page of `shop`, and which identifiers does it give? */

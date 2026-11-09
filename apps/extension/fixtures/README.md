@@ -9,7 +9,7 @@ Pages the extension's detectors are tested on (`test/detect.test.ts`) and that t
 | Altex | `altex/product_synthetic.html`, `altex/listing_synthetic.html` | **Synthetic** |
 | Flanco | `flanco/product_synthetic.html`, `flanco/category_synthetic.html` | **Synthetic** |
 | PC Garage | `pcgarage/product_synthetic.html`, `pcgarage/listing_synthetic.html` | **Synthetic** |
-| evoMAG | `evomag/product_synthetic.html` | **Synthetic** |
+| evoMAG | `evomag/product_synthetic.html`, `evomag/listing_synthetic.html` | **Synthetic** |
 
 **The `_synthetic` pages are not recordings.** Altex, Flanco, PC Garage and evoMAG block our crawler,
 and CLAUDE.md forbids working around a block, so no page of theirs was fetched. Each synthetic page

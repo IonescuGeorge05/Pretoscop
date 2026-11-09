@@ -1,6 +1,6 @@
 import { SITE_BASE } from './config';
 import { detectProduct } from './detect';
-import { LOOKUP_MESSAGE, type LookupReply, type LookupRequest } from './messages';
+import { LOOKUP_MESSAGE, parseReply, type LookupRequest, type ParsedReply } from './messages';
 import { buildPanel, HOST_ID, worthShowing } from './overlay';
 import { domPage } from './page';
 import { shopForHost } from './shops';
@@ -9,19 +9,20 @@ import { shopForHost } from './shops';
  * Content script on the supported shops. On a product page it reads the product's identifiers
  * (detect.ts), asks the background worker for Pretoscop's data and, when there is something to
  * show, adds the panel. On any other page it sends nothing. It never changes the page itself: no
- * link, price or element of the shop is touched.
+ * link, price or element of the shop is touched; the panel is one element of our own appended to
+ * the document. It listens to no page event or `postMessage`: the page cannot talk to it.
  */
 const shop = shopForHost(location.hostname);
 /** Pages whose panel the user closed (this tab, this page view; nothing is stored). */
 const closed = new Set<string>();
 let current = location.href;
 
-function sendLookup(req: LookupRequest): Promise<LookupReply | null> {
+function sendLookup(req: LookupRequest): Promise<ParsedReply | null> {
   return new Promise((resolve) => {
     try {
       chrome.runtime.sendMessage(req, (reply) => {
         // Reading lastError marks it handled (no console noise when the worker is restarting).
-        resolve(chrome.runtime.lastError ? null : (reply as LookupReply));
+        resolve(chrome.runtime.lastError ? null : parseReply(reply));
       });
     } catch {
       resolve(null);

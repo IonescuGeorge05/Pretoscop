@@ -70,8 +70,8 @@ export function createLookupService(opts: ServiceOptions) {
         signal: ctl.signal,
       });
       if (res.status === 200) {
-        const data = parseLookupData(await res.json());
-        return data ? remember(url, { ok: true, data }, CACHE_MS) : { ok: false, reason: 'unavailable' };
+        const body: unknown = await res.json();
+        return parseLookupData(body) ? remember(url, { ok: true, body }, CACHE_MS) : { ok: false, reason: 'unavailable' };
       }
       if (res.status === 404) return remember(url, { ok: false, reason: 'not_found' }, CACHE_MS);
       if (res.status === 429) {

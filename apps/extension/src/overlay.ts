@@ -184,17 +184,19 @@ export function buildPanel(doc: Document, data: LookupData, ctx: PanelContext): 
     panel.append(el(doc, 'p', 'where', 'Nicio ofertă nouă în stoc, verificată recent.'));
   }
 
+  // M15: no badge while the history is shorter than 14 days ("Istoric insuficient"), whatever arrives.
+  const extra = data.verdict.code === 'insufficient_data' || data.observationsDays < 14 ? [] : data.badges;
   const badges = el(doc, 'ul', 'badges');
   const verdict = el(doc, 'li', `badge tone-${TONE[data.verdict.code]}`, data.verdict.label);
   badges.append(verdict);
-  for (const b of data.badges) {
+  for (const b of extra) {
     const li = el(doc, 'li', 'badge tone-good', b.label);
     li.title = b.text;
     badges.append(li);
   }
   panel.append(badges);
   panel.append(el(doc, 'p', 'text', data.verdict.text));
-  for (const b of data.badges) panel.append(el(doc, 'p', 'note', b.text));
+  for (const b of extra) panel.append(el(doc, 'p', 'note', b.text));
 
   const svg = sparkSvg(doc, data);
   if (svg) {

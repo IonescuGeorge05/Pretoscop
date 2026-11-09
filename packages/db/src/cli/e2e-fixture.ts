@@ -18,6 +18,7 @@ import {
   e2eFixtureClicks,
 } from '../fixtures/e2e';
 import { channelsFixturePrice, channelsFixtureState, createChannelsFixture, dropChannelsFixture, setChannelFlags } from '../fixtures/channels-e2e';
+import { createExtFixture, dropExtFixture, extFlagState, setExtFlag, type E2eExtFixture } from '../fixtures/ext-e2e';
 import { createPromotedFixture, dropPromotedFixture, promotedFixtureState, setPromotedFlag } from '../fixtures/promoted-e2e';
 
 // Usage: tsx src/cli/e2e-fixture.ts <command> [args] — prints JSON on stdout.
@@ -39,6 +40,9 @@ import { createPromotedFixture, dropPromotedFixture, promotedFixtureState, setPr
 //   channels-state <email>                     browsers, Telegram link, alerts and consents of a test address
 //   channels-flags '<json>'                    sets channel flags, e.g. '{"alerts.push.enabled":false}'
 //   channels-drop '<json flagsWere>'           removes the channels fixture and accounts; restores the flags
+//   ext-create                                 M26: two products for the extension panel, lookup flag on (prints flagWas)
+//   ext-flag '<json {enabled, config}>'        sets the lookup flag, e.g. '{"enabled":true,"config":{"disabled_shops":["altex"]}}'
+//   ext-drop '<json flagWas>'                  removes the extension fixture; restores the flag (null = no row)
 //   promoted-create <email>                    M25: approved merchant + shop, product with 3 offers, promoted.enabled on
 //   promoted-state <merchantId>                wallet, billed/not billed clicks, ledger, top-ups, click-outs
 //   promoted-flag <key> <on|off>               promoted.enabled or ads.slots.enabled for one step
@@ -82,6 +86,13 @@ try {
         restoreFlag: args[0] === 'on',
       }),
     };
+  else if (cmd === 'ext-create') out = await createExtFixture(db);
+  else if (cmd === 'ext-flag') {
+    const f = JSON.parse(args[0] ?? '{}') as { enabled?: boolean; config?: Record<string, unknown> };
+    await setExtFlag(db, f.enabled === true, f.config ?? {});
+    out = await extFlagState(db);
+  } else if (cmd === 'ext-drop')
+    out = { dropped: await dropExtFixture(db, { restoreFlag: JSON.parse(args[0] ?? 'null') as E2eExtFixture['flagWas'] }) };
   else if (cmd === 'llm-decision') out = await createLlmFixture(db, Number(args[0]));
   else if (cmd === 'promoted-create') out = await createPromotedFixture(db, args[0] ?? '');
   else if (cmd === 'promoted-state') out = await promotedFixtureState(db, Number(args[0]));

@@ -7,7 +7,7 @@ import { db, serverEnv } from './db';
 import { boss } from './jobs';
 
 /**
- * Promoted placements in the web app (M25, ADR-026): the cached slot data of product and category
+ * Promoted placements in the web app (M25, ADR-027): the cached slot data of product and category
  * pages, the cache tags that refresh them, and the payment provider of wallet top-ups.
  *
  * Cache tags. A product page's slot is tagged `promoted`, `product:{id}` and `promoted:c{id}` for

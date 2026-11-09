@@ -293,3 +293,56 @@ E2E (local mock push service and Bot API, test VAPID keys from `playwright.confi
   The "Ieșirea din accesul asistat" table (`assistedMigrationStatus`) lists every `access_mode = 'assisted'` shop with its
   30-day success rate, this month's vendor cost (`access_costs`), a live replacement feed and the latest outreach (docs/12 §2b).
 - Runbooks and application dossiers: `infra/bot-program/`.
+
+## Browser extension API (M26)
+
+`GET /api/ext/lookup` (`src/app/api/ext/lookup/route.ts`, pure parts in `src/lib/ext-lookup.ts`,
+resolution in `@pretoscop/db` `resolveExtLookup`). The extension (`apps/extension`) is its client;
+any other client may use it: it serves only what `/p/{slug}` already shows.
+
+- **Request**: query parameters `url` (the shop page, http/https; only origin + path are used),
+  `gtin` (8–14 digits, spaces and dashes allowed), `brand` + `mpn` (together or not at all). At least
+  one identifier; any other parameter, a duplicate, a control character or an over-long value is a
+  `400 {"error": "<code>"}`. Resolution, most specific first: an offer we recorded at that page
+  (eMAG by its `/pd/<code>/`), a valid GTIN (check digit, no placeholder or in-store code) in
+  `product_gtins` then on matched offers, brand + part number (matcher's normalization). Merges are
+  followed; hidden products never answer; **two candidate products are a 404**, never a guess.
+- **200 response** (`ExtLookupResponse`): `product_id`, `slug`, `title`, `url` (our product page),
+  `matched_by` (`url`/`gtin`/`brand_mpn`), `low_30d` and `low_all_time` (product_stats, as on the
+  page), `median_30d` (median of the observed daily lows of the last 30 days), `verdict`
+  `{code, label, text}` (M08 rules; "Istoric insuficient" under 14 observed days), `observations_days`,
+  `history_started_at`, `badges` (M15 drop and all-time low from the page's own price facts: none
+  under 14 days, none for provisional products), `best_offers` (≤ 5: new, in stock, checked within the
+  shop's freshness window, ranked like the page; `shop`, `shop_name`, `seller_name` for marketplace
+  sellers, `price`, `shipping` (null = unknown), `total`, `checked_at`), `history` (≤ 180 `[day,
+  total]` pairs of the default chart series; days we did not observe are absent), `updated_at`. Money
+  is `"1234.56"` text (numeric(12,2), never a float).
+- **Never in a response**: Icecat data (specs, images), any image, GTINs or part numbers we hold, offer
+  URLs or ids, affiliate links or data, matching internals (scores, provisional state, sources),
+  anything about the requester.
+- **Other statuses**: `404 {"error":"not_found"}` (cached like a 200), `429 {"error":"rate_limited"}`
+  with `Retry-After`, `503 {"error":"disabled"}` while switched off, `503 {"error":"unavailable"}` on
+  a failure (logged without request data).
+- **Headers**: `Access-Control-Allow-Origin: *` (no credentials; `Retry-After` exposed), on this
+  route only; `OPTIONS` answers the preflight (the extension sends simple GETs, no preflight);
+  `Cache-Control: public, max-age=300` on 200/404, `no-store` otherwise; `X-Robots-Tag: noindex`;
+  the app's security headers and CSP from `next.config.ts` apply as on every route (a JSON response
+  is unaffected by them, and the extension's request comes from its background worker, which no
+  page CSP governs). No cookie is read or set.
+- **Rate limit**: 20 lookups a minute and 300 an hour per client, a fixed window keyed by a
+  daily-salted hash of the client IP (`clientIp`: `CF-Connecting-IP`, then `X-Real-IP`, then
+  `X-Forwarded-For`), in memory per web process: two replicas double the effective limit, a restart
+  resets it, nothing is stored. The extension caches answers for 10 minutes (30 for "switched off")
+  and stops all lookups for `Retry-After` after a 429. Offices behind one IP share the hourly budget.
+- **Kill switch**: flag `extension.lookup.enabled` (off by default; `/admin/flaguri`). Single shops
+  are switched off by the flag's config, in SQL for now:
+  `UPDATE feature_flags SET config = '{"disabled_shops": ["emag"]}' WHERE key = 'extension.lookup.enabled';`
+  (a request whose `url` is on that shop gets a 503 `disabled`; extensions that cached an answer stop
+  showing it within 10 minutes).
+- **Release-gate measurement**: `pnpm --filter @pretoscop/db ext:resolution [emag altex …] [--json]`
+  resolves, like this route, the identifiers each active offer of the shop gives (offer URL, GTIN,
+  stated part number with brand) and prints the share resolved, by method, wrong-product checks
+  (expected 0), products with live offers at two or more shops and with a verdict.
+
+E2E (the built extension in Chromium, shop pages from local fixtures, nothing fetched from a shop):
+`E2E_SHARED_FIXTURE=0 pnpm exec playwright test e2e/extension.spec.ts --project=desktop --workers=1`.

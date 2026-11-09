@@ -40,7 +40,7 @@ function refererType(ref: string | null, host: string): 'none' | 'internal' | 'e
  * The decision is made at click time: a program the nightly sync marks forbidden gets plain links
  * immediately. Never indexed.
  *
- * Promoted clicks (M25, ADR-026): `?p=promoted_product|promoted_category&k={placement}[&c={category}]`.
+ * Promoted clicks (M25, ADR-027): `?p=promoted_product|promoted_category&k={placement}[&c={category}]`.
  * The click is logged like any other (same hashes), then billed to the merchant's wallet when the
  * rules pass (`billPromotedClick`: once per hashed session, offer and day; bots, prefetches, clicks
  * without one of our pages as referer and click bursts are never billed; the auction runs again

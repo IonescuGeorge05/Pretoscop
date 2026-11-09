@@ -129,7 +129,7 @@ export default async function ProductPage({ params }: Props) {
   const affiliate = p.offers.some((o) => o.hasAffiliate);
   const alertsOn = await alertsEnabled();
   const consent = alertConsent();
-  // M25: the paid slot sits above the ranked list and never changes it (ADR-026).
+  // M25: the paid slot sits above the ranked list and never changes it (ADR-027).
   const promoted = p.offers.length > 0 ? await productPromotedSlot(p.id) : null;
 
   return (

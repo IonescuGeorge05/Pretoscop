@@ -11,7 +11,7 @@ export function promotedHref(data: Pick<PromotedSlotData, 'slot' | 'offerId' | '
 }
 
 /**
- * The paid "Promovat" slot (M25, ADR-026), always outside the ranked list and visibly labelled
+ * The paid "Promovat" slot (M25, ADR-027), always outside the ranked list and visibly labelled
  * (UCPD Annex I point 11a as transposed into Law 363/2007; P2B Regulation art. 5; DSA art. 26): the
  * shop paid for this place. It never calls itself the best offer; when the promoted offer costs
  * more than the cheapest live offer, it says by how much. The organic list below stays ordered by total price and does not change.

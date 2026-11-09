@@ -21,7 +21,7 @@ import { baniToNumeric, numericToBani } from '../money';
 import type { PlacementStatus, PromotedSlot } from '../schema/promoted';
 
 /**
- * Promoted placements and merchant billing (M25, ADR-026): candidates and auctions for a slot,
+ * Promoted placements and merchant billing (M25, ADR-027): candidates and auctions for a slot,
  * click billing under a wallet row lock, idempotent top-up credits, refunds and admin adjustments,
  * campaigns, floors and the numbers of the merchant and admin pages. Every money movement writes a
  * `wallet_ledger` row and an `audit_log` row in the same transaction. Amounts are integer bani.
@@ -66,7 +66,7 @@ function bandOfSql(total: SQL): SQL {
 }
 
 /**
- * An offer that may fill a promoted slot (ADR-026): the merchant's own, shop-sold, new, in stock,
+ * An offer that may fill a promoted slot (ADR-027): the merchant's own, shop-sold, new, in stock,
  * matched, active, not a bundle or accessory, not blacklisted, checked within its shop's freshness
  * SLO and without a pending quarantine; its shop is active and the merchant approved. Aliases:
  * `o` offers, `s` shops, `m` merchants, `p` products.

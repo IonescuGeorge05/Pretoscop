@@ -1,6 +1,7 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { sql } from 'drizzle-orm';
 import pg from 'pg';
 import { getEnv, loadRootEnvFile } from '@pretoscop/config/env';
 import { createDb, createPool, type Db } from './client';
@@ -79,6 +80,9 @@ export async function createTestDatabase(): Promise<TestDatabase> {
   const pool = createPool(url, 5);
   const db = createDb(pool);
   await runMigrations(db); // no-op on a clone; kept so a stale template can never miss a migration
+  // The template's price_events partitions were made when it was built (0002_partitions: twelve
+  // months ahead of that day); bring the clone to today's window, as a fresh migration would.
+  await db.execute(sql`SELECT ensure_price_event_partitions(0, 12)`);
   return {
     name,
     url,

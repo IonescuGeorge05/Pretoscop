@@ -187,6 +187,36 @@ export default function PrivacyPage() {
                 ]}
               />
               <InfoCard
+                id="extensie"
+                title="Extensia de browser Pretoscop (după publicare)"
+                items={[
+                  [
+                    'Ce date',
+                    <>
+                      <p>
+                        Doar când deschizi o pagină de produs pe eMAG, Altex, Flanco, PC Garage sau evoMAG, extensia trimite către Pretoscop identificatorii
+                        produsului citiți din acea pagină: adresa paginii (fără parametrii de după „?” și „#”), codul EAN (GTIN) și marca împreună cu codul
+                        producătorului, dacă pagina le conține. Serverul primește, ca la orice cerere, adresa IP și tipul de browser.
+                      </p>
+                      <p>
+                        Extensia nu trimite istoricul de navigare, alte pagini, prețurile sau conținutul paginii, coșul, datele contului tău de la magazin,
+                        cookie-uri sau identificatori ai dispozitivului. Pe alte pagini ale magazinelor și pe alte site-uri nu trimite nimic. Nu are
+                        telemetrie, nu schimbă linkurile magazinului și nu adaugă coduri de afiliere.
+                      </p>
+                    </>,
+                  ],
+                  ['De ce', 'Ca să îți arătăm, chiar pe pagina magazinului, istoricul prețului observat de Pretoscop și cel mai mic preț total din alte magazine.'],
+                  [
+                    'Temeiul legal',
+                    `Interes legitim (${GDPR_F}): serviciul pe care l-ai ales instalând extensia. Extensia citește din pagina deschisă doar ce este strict necesar acestui serviciu.`,
+                  ],
+                  [
+                    'Cât timp',
+                    'Cererile extensiei nu se salvează în baza noastră de date. Pentru limitarea abuzurilor numărăm cererile după o amprentă a adresei IP calculată cu o cheie care se schimbă zilnic, ținută doar în memoria serverului. Jurnalele tehnice ale serverului: cel mult 30 de zile, ca pentru orice vizită. Extensia nu salvează nimic pe dispozitivul tău; răspunsurile stau în memoria browserului cel mult 30 de minute. O dezinstalezi oricând din setările browserului.',
+                  ],
+                ]}
+              />
+              <InfoCard
                 id="magazine-partenere"
                 title="Conturile magazinelor partenere"
                 items={[

@@ -4,7 +4,7 @@ import { categories } from './catalog';
 import { merchants } from './merchants';
 
 /**
- * Promoted placements and merchant billing (M25, ADR-026). Money is `numeric(12,2)` RON here and
+ * Promoted placements and merchant billing (M25, ADR-027). Money is `numeric(12,2)` RON here and
  * integer bani in code (`baniToNumeric`/`numericToBani` at the boundary). Accounting rows (wallet,
  * ledger, top-ups, promoted clicks) carry `merchant_id` without a foreign key: they are bookkeeping
  * records that must outlive a deleted merchant profile or user account (Law 82/1991: ten years), and

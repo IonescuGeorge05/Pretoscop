@@ -187,3 +187,6 @@ export * from './sitemap';
 
 // M22: gray-zone policy with LLM verification
 export * from './llm-policy';
+
+// M25: promoted placements (price bands, floors, second-price auction, click billing, wallets)
+export * from './promoted';

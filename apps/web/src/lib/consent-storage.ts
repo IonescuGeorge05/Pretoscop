@@ -4,3 +4,5 @@
  * `components/consent/consent.tsx`.
  */
 export const CONSENT_KEY = 'pretoscop.consent';
+/** The separate choice about the optional ad slot (M25), same storage and rules. */
+export const ADS_CONSENT_KEY = 'pretoscop.consent.ads';

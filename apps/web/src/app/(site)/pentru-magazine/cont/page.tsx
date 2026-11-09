@@ -369,6 +369,12 @@ async function Dashboard({ m }: { m: Merchant }) {
           </div>
         ))}
       </div>
+      <p className="rounded-[var(--radius-card)] bg-usual-bg p-4 text-sm text-ink-soft ring-1 ring-amber-200">
+        <strong className="text-ink">Oferte promovate.</strong> Poți plăti, pe clic, un spațiu marcat „Promovat” deasupra listei de oferte; lista rămâne ordonată după prețul total.{' '}
+        <Link href="/pentru-magazine/cont/promovare" className="text-brand-700 underline" data-testid="promoted-portal-link">
+          Promovează ofertele
+        </Link>
+      </p>
       <div className="space-y-2">
         <h3 className="font-semibold text-ink">Ce poți îmbunătăți</h3>
         <HintList hints={dashboardHints({ ...d, lastRun })} />

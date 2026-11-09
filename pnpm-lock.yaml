@@ -71,6 +71,9 @@ importers:
       '@pretoscop/notify':
         specifier: workspace:*
         version: link:../../packages/notify
+      '@pretoscop/payments':
+        specifier: workspace:*
+        version: link:../../packages/payments
       '@pretoscop/report':
         specifier: workspace:*
         version: link:../../packages/report
@@ -329,6 +332,8 @@ importers:
       '@types/web-push':
         specifier: 3.6.4
         version: 3.6.4
+
+  packages/payments: {}
 
   packages/report:
     dependencies:

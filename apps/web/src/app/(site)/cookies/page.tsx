@@ -2,10 +2,11 @@ import { legalDocuments } from '@pretoscop/config/legal-texts';
 import { Cookie } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { AdsPreferences } from '@/components/ads/ads-preferences';
 import { ConsentPreferences } from '@/components/consent/consent-preferences';
 import { LegalPage } from '@/components/legal/legal-page';
 import { Callout, DataTable } from '@/components/legal/prose';
-import { CONSENT_KEY } from '@/lib/consent-storage';
+import { ADS_CONSENT_KEY, CONSENT_KEY } from '@/lib/consent-storage';
 
 export const metadata: Metadata = {
   title: 'Cookie-uri și stocare pe dispozitiv',
@@ -84,6 +85,20 @@ export default function CookiesPage() {
                     'Doar cu acordul tău: bifa de lângă „Activează notificările” și permisiunea dată browserului',
                   ],
                   [
+                    <code key="ads">{ADS_CONSENT_KEY}</code>,
+                    'Stocare locală (localStorage)',
+                    'Ține minte dacă ai acceptat sau ai refuzat reclama din spațiul „Publicitate”, ca să nu te întrebăm la fiecare pagină.',
+                    'Până o ștergi tu; dacă schimbăm textul întrebării, te întrebăm din nou',
+                    'Strict necesar; doar după ce alegi (și doar dacă spațiul de reclamă este pornit)',
+                  ],
+                  [
+                    'Google AdSense',
+                    'Script și cookie-uri ale Google (terță parte)',
+                    'Afișarea și măsurarea reclamei din spațiul „Publicitate” (reclame nepersonalizate). Google decide durata cookie-urilor sale.',
+                    'Conform politicii Google',
+                    'Opțional; doar după „Accept reclama” în spațiul reclamei, și doar dacă spațiul este pornit',
+                  ],
+                  [
                     'Plausible',
                     'Script de statistică, fără cookie',
                     'Statistici agregate de trafic: pagini vizitate, sursa vizitei, tipul de dispozitiv, țara. Nu stochează nimic pe dispozitiv.',
@@ -96,6 +111,20 @@ export default function CookiesPage() {
                 Dacă activăm protecții anti-abuz la Cloudflare, furnizorul nostru de securitate, acesta poate seta un cookie tehnic strict necesar (de exemplu,{' '}
                 <code>__cf_bm</code>) care ajută la deosebirea vizitatorilor de roboții abuzivi. Nu îl folosim pentru statistici sau publicitate.
               </p>
+            </>
+          ),
+        },
+        {
+          id: 'publicitate',
+          title: 'Publicitate',
+          content: (
+            <>
+              <p>
+                Putem afișa, în afara listei de oferte, un spațiu marcat „Publicitate” cu o reclamă Google AdSense. Spațiul te întreabă întâi; fără „Accept reclama”
+                nu se încarcă nimic de la Google și nu se stochează nimic pe dispozitiv în afara alegerii tale. Alegerea pentru reclamă este separată de cea pentru
+                statistici. Cât timp spațiul nu este pornit pe site, nu apare nicio întrebare.
+              </p>
+              <AdsPreferences />
             </>
           ),
         },
@@ -116,8 +145,8 @@ export default function CookiesPage() {
           content: (
             <p>
               Conform art. 4 alin. (5) din Legea nr. 506/2004, stocarea de informații pe dispozitivul tău sau accesul la ele se fac doar cu acordul tău, cu
-              excepția celor strict necesare pentru serviciul pe care îl ceri (art. 4 alin. (6)). De aceea, singurul element opțional, statisticile Plausible,
-              pornește doar după „Accept”, iar butoanele „Accept” și „Refuz” au aceeași greutate.
+              excepția celor strict necesare pentru serviciul pe care îl ceri (art. 4 alin. (6)). De aceea, elementele opționale, statisticile Plausible și, dacă
+              este pornită, reclama Google, pornesc doar după „Accept”, fiecare cu acordul ei, iar butoanele de acceptare și de refuz au aceeași greutate.
             </p>
           ),
         },

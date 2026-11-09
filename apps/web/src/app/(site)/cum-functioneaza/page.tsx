@@ -6,6 +6,7 @@ import { LegalPage } from '@/components/legal/legal-page';
 import { Callout, DataTable } from '@/components/legal/prose';
 import { COVERAGE_WINDOW_HOURS, countCoveredShops, coverageSentence, listNotYetIncludedShops, notYetIncludedSentence } from '@/lib/coverage';
 import { formatDateTime } from '@/lib/format';
+import { monetizationState } from '@/lib/promoted';
 
 // The coverage statement is live: regenerated at most once an hour (ISR).
 export const revalidate = 3600;
@@ -69,7 +70,7 @@ function CoverageStatement({ coverage }: { coverage: Coverage | null }) {
 }
 
 export default async function RankingPage() {
-  const coverage = await loadCoverage();
+  const [coverage, money] = await Promise.all([loadCoverage(), monetizationState()]);
   return (
     <LegalPage
       eyebrow="Transparență"
@@ -195,8 +196,8 @@ export default async function RankingPage() {
                 Linkurile afiliate sunt marcate „Link afiliat”.
               </li>
               <li>
-                <strong>Plățile pentru promovare.</strong> În prezent nu există plasări promovate. Dacă le vom introduce, vor fi marcate vizibil „Promovat”, vor
-                fi afișate separat de lista ordonată și nu vor schimba ordinea acesteia.
+                <strong>Plățile pentru promovare.</strong> Spațiul plătit „Promovat” este afișat separat, deasupra listei, și nu îi schimbă ordinea (vezi{' '}
+                <a href="#promovat">mai jos</a>). Prima ofertă din listă rămâne cea cu cel mai mic preț total, chiar dacă alt magazin a plătit pentru promovare.
               </li>
               <li>
                 <strong>Relația noastră cu magazinul.</strong> Faptul că un magazin ne trimite un feed, are un program de afiliere sau ne-a scris nu îi schimbă
@@ -206,6 +207,35 @@ export default async function RankingPage() {
                 <strong>Garanția și alte caracteristici ale ofertei.</strong> Le afișăm când le cunoaștem, dar nu intră în clasament.
               </li>
             </ul>
+          ),
+        },
+        {
+          id: 'promovat',
+          title: 'Spațiul „Promovat”',
+          content: (
+            <>
+              <p>
+                {money.promoted
+                  ? 'Magazinele listate pe Pretoscop pot plăti pentru un spațiu marcat „Promovat”: cel mult unul pe pagina unui produs, deasupra listei de oferte, și unul pe paginile de categorie, deasupra produselor.'
+                  : 'În prezent nu afișăm oferte promovate. Când le vom porni, ele vor arăta și vor funcționa așa:'}
+              </p>
+              <ul>
+                <li>spațiul este marcat vizibil „Promovat” și spune că magazinul plătește pentru el; nu face parte din lista ordonată și nu îi schimbă ordinea;</li>
+                <li>
+                  spațiul îl primește magazinul care oferă cel mai mult pe clic (o licitație în care câștigătorul plătește oferta următoare plus 0,01 lei), dintre
+                  magazinele cu listarea aprobată;
+                </li>
+                <li>se promovează doar oferte noi, în stoc, vândute de magazin și verificate recent; dacă oferta promovată costă mai mult decât cea mai ieftină, spațiul spune cu cât;</li>
+                <li>verdictele de preț, istoricul și verificarea reducerilor sunt aceleași pentru ofertele promovate și pentru celelalte;</li>
+                <li>un clic pe oferta promovată duce direct la magazin, fără link de afiliere.</li>
+              </ul>
+              {money.ads && (
+                <p>
+                  Separat, putem afișa o reclamă marcată „Publicitate”, în afara listei de oferte; ea se încarcă doar cu acordul tău (vezi{' '}
+                  <Link href="/cookies#publicitate">Cookie-uri</Link>).
+                </p>
+              )}
+            </>
           ),
         },
         {

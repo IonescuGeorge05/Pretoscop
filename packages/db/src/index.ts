@@ -25,3 +25,4 @@ export * from './queries/deals';
 export * from './queries/sitemap';
 export * from './queries/llm';
 export * from './queries/ext-lookup';
+export * from './queries/promoted';

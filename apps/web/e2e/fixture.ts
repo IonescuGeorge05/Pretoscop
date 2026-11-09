@@ -22,6 +22,10 @@ export interface E2eFixture {
     deal: { id: number; slug: string; title: string; dropSince: string };
     /** A subcategory with no active product (see packages/db/src/fixtures/e2e.ts); null when none is left. */
     emptyCategory: { path: string; name: string } | null;
+    /** M29: a book with two live offers (Libris, Elefant), indexable, in "Cărți pentru copii". */
+    book: { id: number; slug: string; title: string };
+    /** M29: a provisional single-offer book in "Beletristică" (not indexable). */
+    bookSingle: { id: number; slug: string; title: string };
   };
 }
 

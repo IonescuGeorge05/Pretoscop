@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { sql } from 'drizzle-orm';
 import type { Db } from '../client';
-import { decideManually } from '../queries/matching';
+import { decideManually, syncTaxonomy } from '../queries/matching';
 import { recordObservation, type OfferObservation } from '../queries/offers';
 import { addDaysIso, bucharestToday, computeProductStats, rollupProducts } from '../queries/rollup';
 import { E2E_CHANNEL_EMAIL_LIKE } from './channels-e2e';
@@ -71,7 +71,9 @@ const bani = (lei: number) => Math.round(lei * 100);
 
 export async function createE2eFixture(db: Db): Promise<E2eFixture> {
   await dropE2eFixture(db);
-  const shops = await db.execute<{ slug: string; id: string; domain: string }>(sql`SELECT slug, id::text, domain FROM shops WHERE slug IN ('emag','itgalaxy','forit','flip','elefant','auchan','carrefour')`);
+  // The category tree of the code under test (M29 subtrees included), as the worker syncs it on start.
+  await syncTaxonomy(db);
+  const shops = await db.execute<{ slug: string; id: string; domain: string }>(sql`SELECT slug, id::text, domain FROM shops WHERE slug IN ('emag','itgalaxy','forit','flip','elefant','auchan','carrefour','libris')`);
   const shopId = new Map(shops.rows.map((r) => [r.slug, Number(r.id)]));
   const shopDomain = new Map(shops.rows.map((r) => [r.slug, r.domain]));
   const now = Date.now();
@@ -234,7 +236,9 @@ export async function dropE2eFixture(db: Db): Promise<number> {
     await db.execute(sql`UPDATE products SET merged_into_id = NULL WHERE id = ANY(${ids}::bigint[])`);
     await db.execute(sql`DELETE FROM products WHERE id = ANY(${ids}::bigint[])`);
   }
-  await db.execute(sql`DELETE FROM brands b WHERE b.slug = ${SEARCH_BRAND.slug} AND NOT EXISTS (SELECT 1 FROM products p WHERE p.brand_id = b.id)`);
+  for (const slug of [SEARCH_BRAND.slug, BOOK_BRAND.slug]) {
+    await db.execute(sql`DELETE FROM brands b WHERE b.slug = ${slug} AND NOT EXISTS (SELECT 1 FROM products p WHERE p.brand_id = b.id)`);
+  }
   return productIds.length;
 }
 
@@ -256,10 +260,20 @@ export interface SearchFixture {
    * the "empty category" page; null once every subcategory has products.
    */
   emptyCategory: { path: string; name: string } | null;
+  /** M29: a book with two live offers (Libris, Elefant): indexable, in "Cărți pentru copii". */
+  book: { id: number; slug: string; title: string };
+  /** M29: a book from one Libris offer, provisional: listed in "Beletristică", not indexable. */
+  bookSingle: { id: number; slug: string; title: string };
 }
 
+export const BOOK_BRAND = { name: 'Editura Testoscop', slug: 'editura-testoscop' } as const;
+
 interface SearchProduct {
-  key: 'tv' | 'phone' | 'deal';
+  key: 'tv' | 'phone' | 'deal' | 'book' | 'bookSingle';
+  /** Another brand than Testoscop (M29 books: the publisher), so the Testoscop counts stay as they are. */
+  brand?: { name: string; slug: string };
+  /** Created by the matcher from one offer (noindex until a second offer, M16). */
+  provisional?: boolean;
   title: string;
   category: string;
   attributes: Record<string, unknown>;
@@ -291,6 +305,26 @@ const SEARCH_PRODUCTS: SearchProduct[] = [
     attributes: { kind: 'console', storageGb: 1024 },
     offers: [{ shop: 'emag', steps: [{ daysAgo: 45, price: 2000 }, { daysAgo: 4, price: 1700 }] }],
   },
+  {
+    key: 'book',
+    title: `Harry Potter și piatra filozofală - J.K. Rowling ${MARK}`,
+    category: 'carti-pentru-copii',
+    attributes: { kind: 'book', bookSet: false, bookAuthors: ['J.K. Rowling'] },
+    brand: BOOK_BRAND,
+    offers: [
+      { shop: 'libris', steps: [{ daysAgo: 2, price: 39.99 }] },
+      { shop: 'elefant', steps: [{ daysAgo: 2, price: 41.4 }] },
+    ],
+  },
+  {
+    key: 'bookSingle',
+    title: `Harry Potter și camera secretelor - J.K. Rowling ${MARK}`,
+    category: 'beletristica',
+    attributes: { kind: 'book', bookSet: false, bookAuthors: ['J.K. Rowling'] },
+    brand: BOOK_BRAND,
+    provisional: true,
+    offers: [{ shop: 'libris', steps: [{ daysAgo: 1, price: 42.5 }] }],
+  },
 ];
 
 const slugPart = (s: string) =>
@@ -310,10 +344,17 @@ async function createSearchFixture(db: Db, shopId: Map<string, number>, now: num
   const out: Partial<Record<SearchProduct['key'], { id: number; slug: string; title: string }>> = {};
   const productIds: number[] = [];
   for (const p of SEARCH_PRODUCTS) {
+    let productBrandId = brandId;
+    if (p.brand) {
+      const b = await db.execute<{ id: string }>(sql`
+        INSERT INTO brands (name, slug) VALUES (${p.brand.name}, ${p.brand.slug})
+        ON CONFLICT (slug) DO UPDATE SET name = brands.name RETURNING id::text`);
+      productBrandId = Number(b.rows[0]!.id);
+    }
     const ins = await db.execute<{ id: string }>(sql`
       INSERT INTO products (slug, title, title_ascii, brand_id, category_id, attributes, provisional, created_by)
-      VALUES (${`tmp-e2e-${p.key}-${now}`}, ${p.title}, ${slugPart(p.title).replace(/-/g, ' ')}, ${brandId},
-        (SELECT id FROM categories WHERE slug = ${p.category}), ${JSON.stringify(p.attributes)}::jsonb, false, 'manual')
+      VALUES (${`tmp-e2e-${p.key}-${now}`}, ${p.title}, ${slugPart(p.title).replace(/-/g, ' ')}, ${productBrandId},
+        (SELECT id FROM categories WHERE slug = ${p.category}), ${JSON.stringify(p.attributes)}::jsonb, ${p.provisional ?? false}, 'manual')
       RETURNING id::text`);
     const id = Number(ins.rows[0]!.id);
     const slug = `${slugPart(p.title)}-${id}`;
@@ -363,6 +404,8 @@ async function createSearchFixture(db: Db, shopId: Map<string, number>, now: num
     phone: out.phone!,
     deal: { ...out.deal!, dropSince: addDaysIso(today, -4) },
     emptyCategory: empty.rows[0] ?? null,
+    book: out.book!,
+    bookSingle: out.bookSingle!,
   };
 }
 

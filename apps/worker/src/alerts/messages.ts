@@ -1,4 +1,16 @@
-import { lei, reasonLine, shorten, alertDigestEmail, type AlertItem, type AlertLinks, type AlertReason, type Operator, type ReferenceKind } from '@pretoscop/notify';
+import {
+  alertDigestEmail,
+  lei,
+  pushAlertPayload,
+  reasonLine,
+  shorten,
+  telegramAlertMessage,
+  type AlertItem,
+  type AlertLinks,
+  type AlertReason,
+  type Operator,
+  type ReferenceKind,
+} from '@pretoscop/notify';
 import type { QueuedSend } from '@pretoscop/db';
 import type { NotifyMessage } from './notifier';
 
@@ -46,9 +58,14 @@ export function buildAlertMessage(sends: QueuedSend[], links: AlertLinks, operat
   });
   const first = items[0]!;
   const prefix = simulated ? '[SIMULARE] ' : '';
+  const channelForms = {
+    telegram: telegramAlertMessage(items, { manageUrl: links.manage(), simulated }),
+    push: pushAlertPayload(items, { manageUrl: links.manage(), simulated }),
+  };
   if (items.length === 1) {
     return {
       email,
+      ...channelForms,
       title: `${prefix}Preț mai mic: ${shorten(first.productTitle, 60)}`,
       body: `${lei(first.totalBani)} la ${first.shopName}. ${reasonLine(first)}`,
       url: first.productUrl,
@@ -56,6 +73,7 @@ export function buildAlertMessage(sends: QueuedSend[], links: AlertLinks, operat
   }
   return {
     email,
+    ...channelForms,
     title: `${prefix}${items.length} alerte de preț`,
     body: items.map((x) => `${shorten(x.productTitle, 40)}: ${lei(x.totalBani)}`).join('\n'),
     url: links.manage(),

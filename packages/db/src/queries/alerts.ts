@@ -361,8 +361,12 @@ export async function suppressionReason(db: Exec, emailHash: string): Promise<Su
   return r.rows[0]?.reason ?? null;
 }
 
-/** An account (alias `u`) with nothing left that could notify its owner. */
-const NOTHING_LEFT = sql.raw(`NOT EXISTS (SELECT 1 FROM alerts a WHERE a.user_id = u.id)`);
+/** An account (alias `u`) with nothing left that could notify its owner (alerts, M27 channels). */
+const NOTHING_LEFT = sql.raw(
+  `NOT EXISTS (SELECT 1 FROM alerts a WHERE a.user_id = u.id)
+   AND NOT EXISTS (SELECT 1 FROM push_subscriptions ps WHERE ps.user_id = u.id)
+   AND NOT EXISTS (SELECT 1 FROM telegram_links tl WHERE tl.user_id = u.id)`,
+);
 
 /** Deletes a 'user' account that has nothing left: no alerts and no other channel. */
 async function deleteIfEmpty(tx: Exec, userId: string): Promise<boolean> {
@@ -453,7 +457,12 @@ export async function touchUserActivity(db: Exec, userId: string): Promise<void>
   await db.execute(sql`UPDATE users SET last_active_at = now(), retention_notice_at = NULL WHERE id = ${userId}`);
 }
 
-/** Edits a user's own alert (kind, target, channel). Returns false when it is not theirs. */
+/**
+ * Edits a user's own alert (kind, target, channel). Returns false when it is not theirs. A channel
+ * change (M27) withdraws the alert's consent record for the old channel (method 'channel_changed')
+ * and needs `consent` for the new one (the email box ticked in the form, or the consent the user
+ * gave when setting up push or Telegram); without it the change is refused (an Error).
+ */
 export async function updateAlert(
   db: Db,
   alertId: number,
@@ -466,21 +475,33 @@ export async function updateAlert(
     const a = r.rows[0];
     if (!a) return false;
     const channel = patch.channel ?? a.channel;
-    if (channel !== a.channel && a.status !== 'pending') {
-      await lockLiveAlert(tx, userId, Number(a.product_id), channel);
-      await replaceOlder(tx, alertId, userId, Number(a.product_id), channel);
+    if (channel !== a.channel) {
+      if (!patch.consent) throw new Error('updateAlert: a channel change needs the consent for the new channel');
+      if (a.status !== 'pending') {
+        await lockLiveAlert(tx, userId, Number(a.product_id), channel);
+        await replaceOlder(tx, alertId, userId, Number(a.product_id), channel);
+      }
+      await withdrawConsents(tx, sql`alert_id = ${alertId} AND purpose = ${purposeOf(a.channel)}`, 'channel_changed');
     }
     const baseline = await alertStartBaseline(tx, Number(a.product_id), a.any_variant);
-    // A new condition starts from today's price: no notification about the old one is pending.
+    // A new condition starts from today's price: no notification about the old one is pending. A
+    // pause caused by the old channel (unavailable; for email also the suppression list) ends when
+    // the alert moves to another channel.
+    const leftItsPause = sql`status = 'paused' AND channel <> ${channel} AND (paused_reason = 'channel_unavailable' OR (channel = 'email' AND paused_reason = 'suppressed'))`;
+    // The alert's own consent fields follow its channel (the ledger keeps the history).
+    const consentNow =
+      channel !== a.channel && patch.consent
+        ? sql`consent_at = now(), consent_text_version = ${patch.consent.textVersion}, consent_ip_hash = ${patch.consent.ipHash},`
+        : sql``;
     await tx.execute(sql`
-      UPDATE alerts SET kind = ${patch.kind}, target_price = ${money(patch.targetBani)}, channel = ${channel},
+      UPDATE alerts SET kind = ${patch.kind}, target_price = ${money(patch.targetBani)}, channel = ${channel}, ${consentNow}
         armed = true, last_notified_at = NULL, last_notified_total = NULL, last_notified_offer_id = NULL,
         baseline_total = ${money(baseline)},
-        status = CASE WHEN status = 'paused' AND paused_reason = 'channel_unavailable' AND channel <> ${channel} THEN 'active' ELSE status END,
-        paused_reason = CASE WHEN status = 'paused' AND paused_reason = 'channel_unavailable' AND channel <> ${channel} THEN NULL ELSE paused_reason END,
+        status = CASE WHEN ${leftItsPause} THEN 'active' ELSE status END,
+        paused_reason = CASE WHEN ${leftItsPause} THEN NULL ELSE paused_reason END,
         updated_at = now()
       WHERE id = ${alertId}`);
-    if (patch.consent) {
+    if (patch.consent && channel !== a.channel) {
       await tx.execute(sql`
         INSERT INTO consent_records (user_id, email_hash, purpose, alert_id, product_id, text_version, given_at, given_ip_hash, confirmed_at, confirm_ip_hash, confirm_method)
         VALUES (${userId}, ${patch.consent.emailHash}, ${purposeOf(channel)}, ${alertId}, ${Number(a.product_id)}, ${patch.consent.textVersion}, now(),
@@ -840,6 +861,10 @@ export async function exportUserData(db: Exec, userId: string, emailHash: string
   const suppression = emailHash
     ? await db.execute<Record<string, unknown>>(sql`SELECT reason, created_at FROM email_suppressions WHERE email_hash = ${emailHash}`)
     : { rows: [] as Record<string, unknown>[] };
+  const push = await db.execute<Record<string, unknown>>(sql`
+    SELECT endpoint, device_label, consent_at, consent_text_version, created_at, last_success_at FROM push_subscriptions WHERE user_id = ${userId} ORDER BY id`);
+  const telegram = await db.execute<Record<string, unknown>>(sql`
+    SELECT chat_id::text, status, consent_at, consent_text_version, linked_at FROM telegram_links WHERE user_id = ${userId}`);
   return {
     user: u.rows[0],
     alerts: alertsRows.rows,
@@ -847,6 +872,8 @@ export async function exportUserData(db: Exec, userId: string, emailHash: string
     consentRecords: consents.rows,
     sessions: sessions.rows,
     emailSuppression: suppression.rows[0] ?? null,
+    pushSubscriptions: push.rows,
+    telegram: telegram.rows[0] ?? null,
   };
 }
 
@@ -878,13 +905,17 @@ export async function deleteEmptyAccounts(db: Exec, opts: { unverifiedDays: numb
   return r.rows.length;
 }
 
-/** Inactive for `months`, with alerts, not yet warned: they get the 30-day notice. */
+/**
+ * Inactive for `months`, with something that could still notify them (alerts, or since M27 a
+ * browser subscription or a linked Telegram chat), not yet warned: they get the 30-day notice.
+ * Accounts with nothing left are deleted without a notice (`deleteEmptyAccounts`).
+ */
 export async function usersDueRetentionNotice(db: Exec, months: number, limit = 500): Promise<RetentionUser[]> {
   const r = await db.execute<{ id: string; email: string; n: string }>(sql`
     SELECT u.id, u.email, (SELECT count(*) FROM alerts a WHERE a.user_id = u.id)::text AS n
     FROM users u
     WHERE u.role = 'user' AND u.retention_notice_at IS NULL AND u.last_active_at < now() - make_interval(months => ${months}::int)
-      AND EXISTS (SELECT 1 FROM alerts a WHERE a.user_id = u.id)
+      AND NOT (${NOTHING_LEFT})
     ORDER BY u.last_active_at LIMIT ${limit}`);
   return r.rows.map((x) => ({ id: x.id, email: x.email, alertCount: Number(x.n) }));
 }

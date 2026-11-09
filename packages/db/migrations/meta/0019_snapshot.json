@@ -1,5 +1,5 @@
 {
-  "id": "9f104d7e-18fc-4260-8f06-cd590b486933",
+  "id": "508e2e36-378e-4194-b47a-53d296be62bd",
   "prevId": "dee82f83-6a6a-4885-a7cf-0cef001120d2",
   "version": "7",
   "dialect": "postgresql",
@@ -6430,79 +6430,8 @@
       },
       "isRLSEnabled": false
     },
-    "public.merchant_wallets": {
-      "name": "merchant_wallets",
-      "schema": "",
-      "columns": {
-        "merchant_id": {
-          "name": "merchant_id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "balance": {
-          "name": "balance",
-          "type": "numeric(12, 2)",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'0'"
-        },
-        "terms_version": {
-          "name": "terms_version",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "terms_accepted_at": {
-          "name": "terms_accepted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "merchant_wallets_merchant_id_merchants_id_fk": {
-          "name": "merchant_wallets_merchant_id_merchants_id_fk",
-          "tableFrom": "merchant_wallets",
-          "tableTo": "merchants",
-          "columnsFrom": [
-            "merchant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "merchant_wallets_balance_ck": {
-          "name": "merchant_wallets_balance_ck",
-          "value": "\"merchant_wallets\".\"balance\" >= 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.placement_floors": {
-      "name": "placement_floors",
+    "public.llm_results": {
+      "name": "llm_results",
       "schema": "",
       "columns": {
         "id": {
@@ -6512,7 +6441,7 @@
           "notNull": true,
           "identity": {
             "type": "always",
-            "name": "placement_floors_id_seq",
+            "name": "llm_results_id_seq",
             "schema": "public",
             "increment": "1",
             "startWith": "1",
@@ -6522,333 +6451,33 @@
             "cycle": false
           }
         },
-        "category_id": {
-          "name": "category_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "price_band": {
-          "name": "price_band",
+        "kind": {
+          "name": "kind",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "floor": {
-          "name": "floor",
-          "type": "numeric(12, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "cap": {
-          "name": "cap",
-          "type": "numeric(12, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "updated_by": {
-          "name": "updated_by",
+        "input_hash": {
+          "name": "input_hash",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "placement_floors_uq": {
-          "name": "placement_floors_uq",
-          "columns": [
-            {
-              "expression": "coalesce(\"category_id\", 0)",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "price_band",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "placement_floors_category_id_categories_id_fk": {
-          "name": "placement_floors_category_id_categories_id_fk",
-          "tableFrom": "placement_floors",
-          "tableTo": "categories",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "placement_floors_band_ck": {
-          "name": "placement_floors_band_ck",
-          "value": "\"placement_floors\".\"price_band\" in ('0-200','200-1000','1000-3000','3000+')"
-        },
-        "placement_floors_amount_ck": {
-          "name": "placement_floors_amount_ck",
-          "value": "\"placement_floors\".\"floor\" > 0 and \"placement_floors\".\"cap\" >= \"placement_floors\".\"floor\""
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.placements": {
-      "name": "placements",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "always",
-            "name": "placements_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "merchant_id": {
-          "name": "merchant_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "category_id": {
-          "name": "category_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "price_band": {
-          "name": "price_band",
+        "prompt_id": {
+          "name": "prompt_id",
           "type": "text",
           "primaryKey": false,
-          "notNull": false
-        },
-        "bid": {
-          "name": "bid",
-          "type": "numeric(12, 2)",
-          "primaryKey": false,
           "notNull": true
         },
-        "daily_cap": {
-          "name": "daily_cap",
-          "type": "numeric(12, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
+        "prompt_version": {
+          "name": "prompt_version",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "default": "'active'"
-        },
-        "admin_hold": {
-          "name": "admin_hold",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "admin_hold_reason": {
-          "name": "admin_hold_reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "placements_category_idx": {
-          "name": "placements_category_idx",
-          "columns": [
-            {
-              "expression": "category_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "where": "\"placements\".\"status\" = 'active' AND NOT \"placements\".\"admin_hold\"",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "placements_merchant_idx": {
-          "name": "placements_merchant_idx",
-          "columns": [
-            {
-              "expression": "merchant_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "placements_live_uq": {
-          "name": "placements_live_uq",
-          "columns": [
-            {
-              "expression": "merchant_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "category_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "coalesce(\"price_band\", '*')",
-              "asc": true,
-              "isExpression": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"placements\".\"status\" <> 'archived'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "placements_merchant_id_merchants_id_fk": {
-          "name": "placements_merchant_id_merchants_id_fk",
-          "tableFrom": "placements",
-          "tableTo": "merchants",
-          "columnsFrom": [
-            "merchant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "placements_category_id_categories_id_fk": {
-          "name": "placements_category_id_categories_id_fk",
-          "tableFrom": "placements",
-          "tableTo": "categories",
-          "columnsFrom": [
-            "category_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "placements_status_ck": {
-          "name": "placements_status_ck",
-          "value": "\"placements\".\"status\" in ('active','paused','archived')"
-        },
-        "placements_band_ck": {
-          "name": "placements_band_ck",
-          "value": "\"placements\".\"price_band\" is null or \"placements\".\"price_band\" in ('0-200','200-1000','1000-3000','3000+')"
-        },
-        "placements_bid_ck": {
-          "name": "placements_bid_ck",
-          "value": "\"placements\".\"bid\" > 0 and \"placements\".\"daily_cap\" >= \"placements\".\"bid\""
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.promoted_clicks": {
-      "name": "promoted_clicks",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "always",
-            "name": "promoted_clicks_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "click_id": {
-          "name": "click_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "placement_id": {
-          "name": "placement_id",
-          "type": "bigint",
-          "primaryKey": false,
           "notNull": true
         },
-        "merchant_id": {
-          "name": "merchant_id",
-          "type": "bigint",
+        "model": {
+          "name": "model",
+          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -6856,7 +6485,7 @@
           "name": "offer_id",
           "type": "bigint",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "product_id": {
           "name": "product_id",
@@ -6864,64 +6493,40 @@
           "primaryKey": false,
           "notNull": false
         },
-        "category_id": {
-          "name": "category_id",
-          "type": "bigint",
+        "subject_key": {
+          "name": "subject_key",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "slot": {
-          "name": "slot",
-          "type": "text",
+        "ok": {
+          "name": "ok",
+          "type": "boolean",
           "primaryKey": false,
           "notNull": true
         },
-        "day": {
-          "name": "day",
-          "type": "date",
+        "output": {
+          "name": "output",
+          "type": "jsonb",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
-        "session_hash": {
-          "name": "session_hash",
+        "error": {
+          "name": "error",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "ip_hash": {
-          "name": "ip_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "reason": {
-          "name": "reason",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "price": {
-          "name": "price",
-          "type": "numeric(12, 2)",
+        "attempts": {
+          "name": "attempts",
+          "type": "smallint",
           "primaryKey": false,
           "notNull": true,
-          "default": "'0'"
+          "default": 1
         },
-        "refunded_at": {
-          "name": "refunded_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "refund_reason": {
-          "name": "refund_reason",
-          "type": "text",
+        "usage_id": {
+          "name": "usage_id",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": false
         },
@@ -6931,11 +6536,33 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         }
       },
       "indexes": {
-        "promoted_clicks_once_uq": {
-          "name": "promoted_clicks_once_uq",
+        "llm_results_input_hash_uq": {
+          "name": "llm_results_input_hash_uq",
+          "columns": [
+            {
+              "expression": "input_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "llm_results_offer_idx": {
+          "name": "llm_results_offer_idx",
           "columns": [
             {
               "expression": "offer_id",
@@ -6944,35 +6571,7 @@
               "nulls": "last"
             },
             {
-              "expression": "session_hash",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "day",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"promoted_clicks\".\"status\" <> 'not_billed'",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "promoted_clicks_placement_idx": {
-          "name": "promoted_clicks_placement_idx",
-          "columns": [
-            {
-              "expression": "placement_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
+              "expression": "product_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -6983,59 +6582,17 @@
           "method": "btree",
           "with": {}
         },
-        "promoted_clicks_merchant_idx": {
-          "name": "promoted_clicks_merchant_idx",
+        "llm_results_subject_idx": {
+          "name": "llm_results_subject_idx",
           "columns": [
             {
-              "expression": "merchant_id",
+              "expression": "kind",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             },
             {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "promoted_clicks_session_idx": {
-          "name": "promoted_clicks_session_idx",
-          "columns": [
-            {
-              "expression": "session_hash",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "promoted_clicks_ip_idx": {
-          "name": "promoted_clicks_ip_idx",
-          "columns": [
-            {
-              "expression": "ip_hash",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
+              "expression": "subject_key",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -7047,24 +6604,60 @@
           "with": {}
         }
       },
-      "foreignKeys": {},
+      "foreignKeys": {
+        "llm_results_offer_id_offers_id_fk": {
+          "name": "llm_results_offer_id_offers_id_fk",
+          "tableFrom": "llm_results",
+          "tableTo": "offers",
+          "columnsFrom": [
+            "offer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "llm_results_product_id_products_id_fk": {
+          "name": "llm_results_product_id_products_id_fk",
+          "tableFrom": "llm_results",
+          "tableTo": "products",
+          "columnsFrom": [
+            "product_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "llm_results_usage_id_llm_usage_id_fk": {
+          "name": "llm_results_usage_id_llm_usage_id_fk",
+          "tableFrom": "llm_results",
+          "tableTo": "llm_usage",
+          "columnsFrom": [
+            "usage_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "promoted_clicks_slot_ck": {
-          "name": "promoted_clicks_slot_ck",
-          "value": "\"promoted_clicks\".\"slot\" in ('product','category')"
-        },
-        "promoted_clicks_status_ck": {
-          "name": "promoted_clicks_status_ck",
-          "value": "(\"promoted_clicks\".\"status\" = 'billed' and \"promoted_clicks\".\"price\" > 0 and \"promoted_clicks\".\"reason\" is null) or (\"promoted_clicks\".\"status\" = 'refunded' and \"promoted_clicks\".\"price\" > 0) or (\"promoted_clicks\".\"status\" = 'not_billed' and \"promoted_clicks\".\"price\" = 0 and \"promoted_clicks\".\"reason\" is not null)"
+        "llm_results_kind_ck": {
+          "name": "llm_results_kind_ck",
+          "value": "\"llm_results\".\"kind\" in ('pair','attributes','category')"
         }
       },
       "isRLSEnabled": false
     },
-    "public.wallet_ledger": {
-      "name": "wallet_ledger",
+    "public.llm_usage": {
+      "name": "llm_usage",
       "schema": "",
       "columns": {
         "id": {
@@ -7074,7 +6667,7 @@
           "notNull": true,
           "identity": {
             "type": "always",
-            "name": "wallet_ledger_id_seq",
+            "name": "llm_usage_id_seq",
             "schema": "public",
             "increment": "1",
             "startWith": "1",
@@ -7083,60 +6676,6 @@
             "cache": "1",
             "cycle": false
           }
-        },
-        "merchant_id": {
-          "name": "merchant_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "amount": {
-          "name": "amount",
-          "type": "numeric(12, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "balance_after": {
-          "name": "balance_after",
-          "type": "numeric(12, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "ref": {
-          "name": "ref",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "promoted_click_id": {
-          "name": "promoted_click_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "topup_id": {
-          "name": "topup_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "actor": {
-          "name": "actor",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "note": {
-          "name": "note",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -7144,205 +6683,186 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
-        }
-      },
-      "indexes": {
-        "wallet_ledger_ref_uq": {
-          "name": "wallet_ledger_ref_uq",
-          "columns": [
-            {
-              "expression": "ref",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
         },
-        "wallet_ledger_merchant_idx": {
-          "name": "wallet_ledger_merchant_idx",
-          "columns": [
-            {
-              "expression": "merchant_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "created_at",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "wallet_ledger_kind_ck": {
-          "name": "wallet_ledger_kind_ck",
-          "value": "\"wallet_ledger\".\"kind\" in ('topup','click','click_refund','adjustment')"
-        },
-        "wallet_ledger_sign_ck": {
-          "name": "wallet_ledger_sign_ck",
-          "value": "\"wallet_ledger\".\"amount\" <> 0 and \"wallet_ledger\".\"balance_after\" >= 0 and (\"wallet_ledger\".\"kind\" = 'adjustment' or (\"wallet_ledger\".\"kind\" in ('topup','click_refund') and \"wallet_ledger\".\"amount\" > 0) or (\"wallet_ledger\".\"kind\" = 'click' and \"wallet_ledger\".\"amount\" < 0))"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.wallet_topups": {
-      "name": "wallet_topups",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "always",
-            "name": "wallet_topups_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "merchant_id": {
-          "name": "merchant_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "provider": {
-          "name": "provider",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "external_id": {
-          "name": "external_id",
-          "type": "text",
+        "settled_at": {
+          "name": "settled_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
+        },
+        "purpose": {
+          "name": "purpose",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "model": {
+          "name": "model",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prompt_id": {
+          "name": "prompt_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "prompt_version": {
+          "name": "prompt_version",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mode": {
+          "name": "mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
         },
         "status": {
           "name": "status",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": "'created'"
+          "default": "'reserved'"
         },
-        "net": {
-          "name": "net",
-          "type": "numeric(12, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "vat": {
-          "name": "vat",
-          "type": "numeric(12, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "gross": {
-          "name": "gross",
-          "type": "numeric(12, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "vat_percent": {
-          "name": "vat_percent",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'RON'"
-        },
-        "event_id": {
-          "name": "event_id",
+        "batch_id": {
+          "name": "batch_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "created_by": {
-          "name": "created_by",
+        "custom_id": {
+          "name": "custom_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "input_hash": {
+          "name": "input_hash",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
+        "subject": {
+          "name": "subject",
+          "type": "jsonb",
           "primaryKey": false,
           "notNull": true,
-          "default": "now()"
+          "default": "'{}'::jsonb"
         },
-        "paid_at": {
-          "name": "paid_at",
-          "type": "timestamp with time zone",
+        "input_tokens": {
+          "name": "input_tokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "output_tokens": {
+          "name": "output_tokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "cache_write_5m_tokens": {
+          "name": "cache_write_5m_tokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "cache_write_1h_tokens": {
+          "name": "cache_write_1h_tokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "cache_read_tokens": {
+          "name": "cache_read_tokens",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "eur_per_usd": {
+          "name": "eur_per_usd",
+          "type": "numeric(10, 6)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reserved_usd_nanos": {
+          "name": "reserved_usd_nanos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reserved_eur_nanos": {
+          "name": "reserved_eur_nanos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "cost_usd_nanos": {
+          "name": "cost_usd_nanos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "cost_eur_nanos": {
+          "name": "cost_eur_nanos",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "error": {
+          "name": "error",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
         }
       },
       "indexes": {
-        "wallet_topups_external_uq": {
-          "name": "wallet_topups_external_uq",
+        "llm_usage_created_idx": {
+          "name": "llm_usage_created_idx",
           "columns": [
             {
-              "expression": "provider",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "external_id",
+              "expression": "created_at",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
-          "isUnique": true,
+          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}
         },
-        "wallet_topups_merchant_idx": {
-          "name": "wallet_topups_merchant_idx",
+        "llm_usage_reserved_idx": {
+          "name": "llm_usage_reserved_idx",
           "columns": [
             {
-              "expression": "merchant_id",
+              "expression": "batch_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
-            },
+            }
+          ],
+          "isUnique": false,
+          "where": "\"llm_usage\".\"status\" = 'reserved'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "llm_usage_input_hash_idx": {
+          "name": "llm_usage_input_hash_idx",
+          "columns": [
             {
-              "expression": "created_at",
+              "expression": "input_hash",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -7359,13 +6879,17 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "wallet_topups_status_ck": {
-          "name": "wallet_topups_status_ck",
-          "value": "\"wallet_topups\".\"status\" in ('created','pending','paid','expired','failed')"
+        "llm_usage_status_ck": {
+          "name": "llm_usage_status_ck",
+          "value": "\"llm_usage\".\"status\" in ('reserved','billed','released','estimated')"
         },
-        "wallet_topups_amount_ck": {
-          "name": "wallet_topups_amount_ck",
-          "value": "\"wallet_topups\".\"net\" > 0 and \"wallet_topups\".\"vat\" >= 0 and \"wallet_topups\".\"gross\" = \"wallet_topups\".\"net\" + \"wallet_topups\".\"vat\""
+        "llm_usage_mode_ck": {
+          "name": "llm_usage_mode_ck",
+          "value": "\"llm_usage\".\"mode\" in ('sync','batch')"
+        },
+        "llm_usage_purpose_ck": {
+          "name": "llm_usage_purpose_ck",
+          "value": "\"llm_usage\".\"purpose\" in ('match.verify','attributes.extract','category.suggest','eval')"
         }
       },
       "isRLSEnabled": false

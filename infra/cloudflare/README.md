@@ -31,7 +31,7 @@ no `Set-Cookie` (M12/M13), otherwise Cloudflare would not cache them.
 
 | # | When | Then |
 |---|---|---|
-| 1 | URI path starts with `/admin` or `/api/` or `/out/` or `/auth` | Bypass cache |
+| 1 | URI path starts with `/admin` or `/api/` or `/out/` or `/auth`, or equals `/sw.js` (the service worker, M27: a fixed version must reach every browser) | Bypass cache |
 | 2 | Hostname equals `staging.pretoscop.ro` or `stats.pretoscop.ro` | Bypass cache |
 | 3 | URI path starts with `/p/` | Eligible for cache; Edge TTL: override, 2 hours (the Free minimum); Browser TTL: respect origin |
 | 4 | URI path starts with `/c/` or `/b/` or `/magazin/` or equals `/` or `/reduceri` | Eligible for cache; Edge TTL: use origin `s-maxage` (10–60 min) |

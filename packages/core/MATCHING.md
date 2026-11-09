@@ -94,3 +94,52 @@ First run, 27 Oct 2026 (eMAG only, before any second shop was recorded): 375 pai
 precision 100 %, zero false accepts; family negatives all rejected; title-only recall 0 % by
 design (every clear title match goes to review). The set found two rules that were missing (S26 vs
 S26+, 4G vs 5G) — both are now hard conflicts with regression tests.
+
+## LLM verification of the gray zone (M22)
+
+Code: `src/llm-policy.ts` (pure policy), `packages/llm` (client, prompts, ledger), `apps/worker/src/llm/matching.ts`
+(job `llm.match`, every 15 minutes). Off until `ANTHROPIC_API_KEY` exists (A9) and the flag
+`llm.matching.enabled` is on.
+
+1. **Work list.** Review-queue items whose latest decision is the rules' `needs_review` (not "two
+   strong candidates"), that no human has ever decided or sent back, with their candidates.
+2. **Questions.** For each viable candidate (no hard conflict, score above 0.30, recomputed on
+   current data) the pair prompt asks Claude Haiku 5.5 "is the offer exactly this product?"
+   (`{same_product, confidence, conflicting_attributes, reason}`). Unsure, contradictory or unusable
+   answers go to Claude Sonnet 5.5; pairs priced at or above 3,000 lei go to Sonnet directly. When
+   the offer lacks a size attribute its candidate has (storage, screen, kg, litres), its title also
+   goes to attribute extraction. Questions go out as one Message Batch; answers are stored by request
+   hash and never asked twice.
+3. **Policy** (`decideGrayZone`, thresholds `LLM_ACCEPT_CONFIDENCE` / `LLM_REJECT_CONFIDENCE`, 0.9):
+
+| Answers for the viable candidates | Decision | Offer |
+|---|---|---|
+| exactly one "same" ≥ 0.9 without conflicting attributes (LLM-named or from extracted attributes), no other look-alike (same ≥ 0.5) | **accept**, `decided_by = llm:<model>` | `auto`, linked |
+| every candidate "different" ≥ 0.9 (and `LLM_AUTO_REJECT`) | **reject** `llm:<model>`, then M07's no-candidate rule | new product (brand + GTIN/MPN, or trusted shop) or `unmatched` |
+| anything else (unsure, two look-alikes, unusable answer) | none | stays in the review queue, the LLM's opinion shown per candidate |
+| an answer still missing | wait | unchanged |
+
+   M07's hard conflicts are never overridden (such a candidate is not viable). Every LLM decision is
+   listed on `/admin/potriviri` ("Decizii LLM") with **Înapoi la verificare**: the offer returns to
+   the human queue and the LLM never decides it again. LLM accepts are also in the weekly random
+   sample of automatic matches.
+
+### Evaluation with the LLM
+
+```bash
+pnpm --filter @pretoscop/worker match:eval:llm                 # gray-zone pairs → Haiku 5.5 (one batch), report + answers under data/reports/
+pnpm --filter @pretoscop/worker match:eval:llm --mask          # GTIN/MPN hidden: real labels (MPN pairs, family negatives) reach the gray zone
+pnpm --filter @pretoscop/worker match:eval:llm --model escalation   # the same with Sonnet 5.5
+pnpm --filter @pretoscop/worker match:eval:llm --mock          # pipeline check against the local stand-in: NOT a measurement
+```
+
+Each run prints precision, recall, review rate and the share of the gray zone the LLM decides at
+thresholds 0.80–0.98, for all labels and for real labels only, and the cost per 1,000 pairs from
+the ledger and from the price table. It passes when precision on real labels at the chosen
+threshold is ≥ 98 % with no accept across variants of one model; it is **inconclusive** while fewer
+than 50 real-labelled pairs reach the LLM (label pairs with `match:label`). The eval set has 525 pairs
+(28 Oct 2026, rebuilt from the multi-shop data: 150 MPN positives, 225 family/other negatives, 150
+synthetic); with identifiers masked 98 real-labelled pairs (76 positives, 22 hard negatives) are in
+the gray zone. **No real run exists yet** (no API key): the precision of the LLM is unmeasured.
+Masked family negatives are stricter than production, where look-alike variants appear as several
+candidates and stay with a human.

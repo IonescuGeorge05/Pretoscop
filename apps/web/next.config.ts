@@ -90,7 +90,19 @@ const nextConfig: NextConfig = {
     return [{ source: '/c', destination: '/categorii', permanent: true }];
   },
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }];
+    return [
+      { source: '/:path*', headers: securityHeaders },
+      // M27: the service worker is never cached (browser, Cloudflare), so a fixed version reaches
+      // every browser at its next visit; it may control the whole site (scope '/').
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+        ],
+      },
+    ];
   },
 };
 

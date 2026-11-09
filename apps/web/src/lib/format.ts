@@ -36,6 +36,12 @@ export function formatLeiNumeric(value: string | null | undefined): string {
   return formatLei(toBani(value));
 }
 
+/** 12.5 → "12,50 €" (operating costs in euro: LLM, vendors). */
+export function formatEur(eur: number, digits = 2): string {
+  const f = new Intl.NumberFormat('ro-RO', { minimumFractionDigits: digits, maximumFractionDigits: digits, useGrouping: 'always' } as Intl.NumberFormatOptions);
+  return `${f.format(eur)} €`;
+}
+
 export function formatPercent(fraction: number): string {
   return `${pct.format(fraction * 100)}%`;
 }

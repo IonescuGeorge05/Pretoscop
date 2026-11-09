@@ -2,12 +2,13 @@ import type { Env } from '@pretoscop/config/env';
 import type { Logger } from '@pretoscop/config/logger';
 import { normalizeOffer } from '@pretoscop/core';
 import { contentHash } from '@pretoscop/core/hash';
-import { type Db, latestFxRate } from '@pretoscop/db';
+import { type AlertChannel, type Db, latestFxRate } from '@pretoscop/db';
 import { createFetcher, createGuardedDispatcher, type DomainStateStore, type Fetcher, type FetcherDeps, ScopedDomainStateStore, signerFromEnv } from '@pretoscop/fetch';
 import { createMailer, type Mailer } from '@pretoscop/mailer';
-import { alertLinks } from '@pretoscop/notify';
+import { alertLinks, createPushSender, createTelegramClient } from '@pretoscop/notify';
 import { createBlobStore } from '@pretoscop/storage';
-import { createEmailSender, createNotifier, operatorFromEnv } from './alerts/notifier';
+import { createPushChannelSender, createTelegramChannelSender } from './alerts/channels';
+import { createEmailSender, createNotifier, operatorFromEnv, type ChannelSender } from './alerts/notifier';
 import { createAssistedChannelFromEnv } from './fetch/assisted';
 import { createPolicyResolver } from './fetch/policy';
 import { PgDomainStateStore } from './fetch/pg-state';
@@ -97,9 +98,26 @@ function opsMailer(env: Env, log: Logger): Mailer | undefined {
 /** Price-alert channels (M19 email; M27 adds push and Telegram), links and sender identity. */
 export function createAlertServices(env: Env, db: Db, log: Logger): AlertServices {
   const mailer = createMailer(env, log);
+  // A local mock push service (http://127.0.0.1) is accepted only in dev and test (ADR-025).
+  const push =
+    env.VAPID_PUBLIC_KEY && env.VAPID_PRIVATE_KEY
+      ? createPushSender({
+          publicKey: env.VAPID_PUBLIC_KEY,
+          privateKey: env.VAPID_PRIVATE_KEY,
+          subject: env.VAPID_SUBJECT,
+          allowLocalEndpoints: env.APP_ENV === 'dev' || env.APP_ENV === 'test',
+        })
+      : undefined;
+  const telegram = env.TELEGRAM_BOT_TOKEN ? createTelegramClient({ token: env.TELEGRAM_BOT_TOKEN, apiBase: env.TELEGRAM_API_BASE }) : undefined;
+  const senders: Partial<Record<AlertChannel, ChannelSender>> = { email: createEmailSender(db, mailer, log) };
+  if (push) senders.push = createPushChannelSender(db, push, log);
+  if (telegram) senders.telegram = createTelegramChannelSender(db, telegram, log);
   return {
     mailer,
-    notifier: createNotifier({ email: createEmailSender(db, mailer, log) }),
+    notifier: createNotifier(senders),
+    channels: Object.keys(senders) as AlertChannel[],
+    ...(push ? { push } : {}),
+    ...(telegram ? { telegram } : {}),
     links: alertLinks(env.ALERTS_SECRET, env.PUBLIC_BASE_URL),
     operator: operatorFromEnv(env),
     secret: env.ALERTS_SECRET,

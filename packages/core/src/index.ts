@@ -187,3 +187,6 @@ export * from './sitemap';
 
 // M22: gray-zone policy with LLM verification
 export * from './llm-policy';
+
+// M28: B2B price intelligence (plans, SKU import, positions, API key format, safe CSV)
+export * from './b2b';

@@ -49,6 +49,8 @@ export interface PendingOffer {
   isBundle: boolean;
   isAccessory: boolean;
   trustTier: number;
+  /** Set by an automatic check (cross-shop price outlier): automatic matching never accepts it. */
+  reviewHold: string | null;
 }
 
 /**
@@ -64,10 +66,10 @@ export async function pendingOffers(
   const res = await db.execute<{
     id: string; shop_id: string; external_id: string; title: string; brand_name: string | null; mpn_norm: string | null; mpn_raw: string | null; mpn_source: string | null;
     gtin14: string | null; category_raw: string | null; attributes: Record<string, unknown>; condition: 'new' | 'refurbished' | 'used';
-    is_bundle: boolean; is_accessory: boolean; trust_tier: number;
+    is_bundle: boolean; is_accessory: boolean; trust_tier: number; review_hold: string | null;
   }>(sql`
     SELECT o.id::text, o.shop_id::text, o.external_id, coalesce(o.title_clean, o.title_raw) AS title, o.brand_name, o.mpn_norm, o.mpn_raw, o.mpn_source,
-      o.gtin14, o.category_raw, o.attributes, o.condition, o.is_bundle, o.is_accessory, s.trust_tier
+      o.gtin14, o.category_raw, o.attributes, o.condition, o.is_bundle, o.is_accessory, s.trust_tier, o.review_hold
     FROM offers o JOIN shops s ON s.id = o.shop_id
     ${opts.sourceKey ? sql`JOIN shop_sources src ON src.id = o.source_id AND src.key = ${opts.sourceKey}` : sql``}
     WHERE o.match_status = 'pending' AND o.active AND NOT o.blacklisted
@@ -93,6 +95,7 @@ export async function pendingOffers(
     isBundle: r.is_bundle,
     isAccessory: r.is_accessory,
     trustTier: r.trust_tier,
+    reviewHold: r.review_hold,
   }));
 }
 
@@ -281,11 +284,16 @@ export async function matchOffer(db: Db, o: PendingOffer, opts: { dryRun?: boole
     },
     scored,
   );
+  // An offer an automatic check held for review (a total below 30% of the cross-shop median)
+  // waits for a human: the same identity would otherwise be accepted again at the next pass.
+  const held = o.reviewHold !== null && (routed.decision === 'accept' || routed.decision === 'new_product');
+  const decision: RoutedDecision['decision'] = held ? 'needs_review' : routed.decision;
+  const reasons = held ? [`held for review: ${o.reviewHold}`, ...routed.reasons] : routed.reasons;
   let productId = routed.productId;
-  if (routed.decision === 'new_product' && !opts.dryRun) productId = await createProductFromOffer(db, o, category);
-  const outcome: MatchOutcome = { offerId: o.id, decision: routed.decision, productId, score: routed.score, reasons: routed.reasons, category };
+  if (decision === 'new_product' && !opts.dryRun) productId = await createProductFromOffer(db, o, category);
+  const outcome: MatchOutcome = { offerId: o.id, decision, productId, score: routed.score, reasons, category };
   if (!opts.dryRun) {
-    const status = routed.decision === 'accept' || routed.decision === 'new_product' ? 'auto' : routed.decision === 'needs_review' ? 'pending' : routed.decision === 'reject' ? 'rejected' : 'unmatched';
+    const status = decision === 'accept' || decision === 'new_product' ? 'auto' : decision === 'needs_review' ? 'pending' : decision === 'reject' ? 'rejected' : 'unmatched';
     await writeOutcome(db, o, outcome, scored, status, decidedBy);
   }
   return outcome;
@@ -360,7 +368,7 @@ export async function decideManually(
     VALUES (${offerId}, ${productId}, ${action.kind === 'reject' ? 'reject' : action.kind === 'new_product' ? 'new_product' : 'accept'}, ${actor}, 'human decision', 1)
   `);
   await db.execute(sql`
-    UPDATE offers SET product_id = ${productId}, match_status = ${productId ? 'manual' : 'rejected'}, matched_at = now(), updated_at = now() WHERE id = ${offerId}
+    UPDATE offers SET product_id = ${productId}, match_status = ${productId ? 'manual' : 'rejected'}, review_hold = NULL, matched_at = now(), updated_at = now() WHERE id = ${offerId}
   `);
   return productId;
 }
@@ -370,37 +378,58 @@ async function pendingOffersById(db: Db, ids: number[]): Promise<PendingOffer[]>
   return pendingOffers(db, ids.length, { offerIds: ids });
 }
 
-/** Merge (M09): moves every offer of `from` to `into`, keeps history, logs for undo; old slug redirects. */
+/**
+ * Merge (M09): moves every offer, GTIN and sticky alias of `from` to `into` and logs what moved for
+ * the undo; the old slug redirects. The target's history is rebuilt from the moved offers' first day
+ * by `rollup.history` (the offers trigger marks it, migration 0024).
+ */
 export async function mergeProducts(db: Db, fromId: number, intoId: number, actor: string): Promise<number> {
   if (fromId === intoId) return 0;
   return db.transaction(async (tx) => {
     const moved = await tx.execute<{ id: string }>(sql`UPDATE offers SET product_id = ${intoId} WHERE product_id = ${fromId} RETURNING id::text`);
-    await tx.execute(sql`UPDATE product_gtins SET product_id = ${intoId} WHERE product_id = ${fromId}`);
-    await tx.execute(sql`UPDATE offer_aliases SET product_id = ${intoId} WHERE product_id = ${fromId}`);
+    const gtins = await tx.execute<{ gtin14: string }>(sql`UPDATE product_gtins SET product_id = ${intoId} WHERE product_id = ${fromId} RETURNING gtin14`);
+    const aliases = await tx.execute<{ shop_id: string; external_id: string }>(
+      sql`UPDATE offer_aliases SET product_id = ${intoId} WHERE product_id = ${fromId} RETURNING shop_id::text, external_id`,
+    );
     await tx.execute(sql`UPDATE products SET status = 'merged', merged_into_id = ${intoId}, updated_at = now() WHERE id = ${fromId}`);
     await tx.execute(sql`
-      INSERT INTO product_merges (from_product_id, into_product_id, moved_offer_ids, actor)
-      VALUES (${fromId}, ${intoId}, ${sql.param(moved.rows.map((r) => Number(r.id)))}::bigint[], ${actor})
+      INSERT INTO product_merges (from_product_id, into_product_id, moved_offer_ids, moved_gtins, moved_aliases, actor)
+      VALUES (${fromId}, ${intoId}, ${sql.param(moved.rows.map((r) => Number(r.id)))}::bigint[],
+        ${sql.param(gtins.rows.map((r) => r.gtin14))}::text[],
+        ${JSON.stringify(aliases.rows.map((r) => ({ shopId: Number(r.shop_id), externalId: r.external_id })))}::jsonb, ${actor})
     `);
     await tx.execute(sql`DELETE FROM product_daily WHERE product_id = ${fromId}`);
     return moved.rows.length;
   });
 }
 
-/** Undo of the latest merge of `fromId`: moves the same offers back and reactivates the product. */
+/**
+ * Undo of the latest merge of `fromId`: moves the same offers, GTINs and sticky aliases back (only
+ * those still on the target: a later human decision wins) and reactivates the product. Merges logged
+ * before 10 Nov 2026 recorded only the offers; their GTINs and aliases stay on the target.
+ */
 export async function undoMerge(db: Db, fromId: number, actor: string): Promise<number> {
   return db.transaction(async (tx) => {
-    const m = await tx.execute<{ id: string; into_product_id: string; moved: string[] | null }>(sql`
-      SELECT id::text, into_product_id::text, moved_offer_ids::text[] AS moved FROM product_merges
+    const m = await tx.execute<{ id: string; into_product_id: string; moved: string[] | null; gtins: string[] | null; aliases: Array<{ shopId: number; externalId: string }> | null }>(sql`
+      SELECT id::text, into_product_id::text, moved_offer_ids::text[] AS moved, moved_gtins AS gtins, moved_aliases AS aliases
+      FROM product_merges
       WHERE from_product_id = ${fromId} AND undone_at IS NULL ORDER BY id DESC LIMIT 1
     `);
     const row = m.rows[0];
     if (!row) return 0;
+    const intoId = Number(row.into_product_id);
     const ids = (row.moved ?? []).map(Number);
     if (ids.length > 0) await tx.execute(sql`UPDATE offers SET product_id = ${fromId} WHERE id = ANY(${sql.param(ids)}::bigint[])`);
+    const gtins = row.gtins ?? [];
+    if (gtins.length > 0) {
+      await tx.execute(sql`UPDATE product_gtins SET product_id = ${fromId} WHERE product_id = ${intoId} AND gtin14 = ANY(${sql.param(gtins)}::text[])`);
+    }
+    for (const a of row.aliases ?? []) {
+      await tx.execute(sql`UPDATE offer_aliases SET product_id = ${fromId} WHERE product_id = ${intoId} AND shop_id = ${a.shopId} AND external_id = ${a.externalId}`);
+    }
     await tx.execute(sql`UPDATE products SET status = 'active', merged_into_id = NULL, updated_at = now() WHERE id = ${fromId}`);
     await tx.execute(sql`UPDATE product_merges SET undone_at = now() WHERE id = ${Number(row.id)}`);
-    await tx.execute(sql`INSERT INTO audit_log (actor, action, entity, entity_id, after) VALUES (${actor}, 'product.unmerge', 'products', ${String(fromId)}, ${JSON.stringify({ offers: ids })}::jsonb)`);
+    await tx.execute(sql`INSERT INTO audit_log (actor, action, entity, entity_id, after) VALUES (${actor}, 'product.unmerge', 'products', ${String(fromId)}, ${JSON.stringify({ offers: ids, gtins, aliases: row.aliases ?? [] })}::jsonb)`);
     return ids.length;
   });
 }

@@ -54,8 +54,13 @@ export type GuardOutcome =
  * observation agrees with it (within 2%), in which case both are recorded in time order. A later
  * observation back at the usual level rejects the held one (it was a glitch).
  */
-export async function recordWithGuard(db: Db, o: OfferObservation, baseline: OfferBaseline | undefined): Promise<GuardOutcome> {
-  if (!baseline) return { action: 'recorded', result: await recordObservation(db, o) };
+export async function recordWithGuard(
+  db: Db,
+  o: OfferObservation,
+  baseline: OfferBaseline | undefined,
+  opts: { gapThresholdHours?: number } = {},
+): Promise<GuardOutcome> {
+  if (!baseline) return { action: 'recorded', result: await recordObservation(db, o, opts) };
 
   const pending = await db.execute<{ id: string; price: string; observation: string }>(sql`
     SELECT id::text, price::text, observation FROM price_events_quarantine
@@ -65,15 +70,15 @@ export async function recordWithGuard(db: Db, o: OfferObservation, baseline: Off
     const heldBani = numericToBani(q.price)!;
     if (agrees(heldBani, o.priceBani)) {
       // Two consecutive agreeing observations: publish the held one, then this one.
-      await recordObservation(db, deserialize(q.observation));
+      await recordObservation(db, deserialize(q.observation), opts);
       await db.execute(sql`UPDATE price_events_quarantine SET status = 'confirmed', resolved_at = now(), resolved_by = 'guard' WHERE id = ${Number(q.id)}`);
-      return { action: 'recorded', result: await recordObservation(db, o), confirmedQuarantine: Number(q.id) };
+      return { action: 'recorded', result: await recordObservation(db, o, opts), confirmedQuarantine: Number(q.id) };
     }
     await db.execute(sql`UPDATE price_events_quarantine SET status = 'rejected', resolved_at = now(), resolved_by = 'guard' WHERE id = ${Number(q.id)}`);
   }
 
   const check = checkAgainstMedian(o.priceBani, baseline.median14dBani);
-  if (check.action === 'accept') return { action: 'recorded', result: await recordObservation(db, o) };
+  if (check.action === 'accept') return { action: 'recorded', result: await recordObservation(db, o, opts) };
 
   const ins = await db.execute<{ id: string }>(sql`
     INSERT INTO price_events_quarantine (offer_id, observed_at, price, median_price, ratio, reason, observation, run_id)

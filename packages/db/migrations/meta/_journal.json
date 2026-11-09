@@ -162,6 +162,20 @@
       "when": 1794210376243,
       "tag": "0022_b2b",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1794227908493,
+      "tag": "0023_history_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1794228016774,
+      "tag": "0024_history_functions",
+      "breakpoints": true
     }
   ]
 }

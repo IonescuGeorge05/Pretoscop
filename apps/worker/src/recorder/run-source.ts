@@ -9,6 +9,7 @@ import {
   emptyStats,
   finishRun,
   foreignShopForHost,
+  gapThresholdHoursFor,
   lastDiscoveryAt,
   markCrawlUrlFetched,
   markMissingOffers,
@@ -63,6 +64,8 @@ interface Ctx {
   stopped?: string;
   /** When the gates were last read (epoch ms). */
   gateCheckedAt: number;
+  /** Checks further apart than this record a coverage gap (per source: gapThresholdHoursFor). */
+  gapThresholdHours: number;
   errors: string[];
   blockReason?: string;
   log: RecorderDeps['log'];
@@ -141,7 +144,7 @@ async function ingest(ctx: Ctx, offers: RawOffer[], observedAt: Date): Promise<v
 
   for (const o of ready) {
     try {
-      const g = await recordWithGuard(ctx.deps.db, o, baselines.get(o.externalId));
+      const g = await recordWithGuard(ctx.deps.db, o, baselines.get(o.externalId), { gapThresholdHours: ctx.gapThresholdHours });
       if (g.action === 'quarantined') {
         ctx.stats.quarantined++;
         if (ctx.errors.length < SNAPSHOT_SAMPLE_REJECTS) ctx.errors.push(`quarantine ${o.externalId}: ${g.reason}`);
@@ -443,6 +446,7 @@ export async function runSource(deps: RecorderDeps, sourceId: number, opts: RunO
     touchedOffers: new Set<number>(),
     touchedProducts: new Set<number>(),
     gateCheckedAt: Date.now(),
+    gapThresholdHours: gapThresholdHoursFor(source.freshnessSloHours),
     errors: [],
     log,
   };

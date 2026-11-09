@@ -3,8 +3,22 @@ import type { Db } from '../client';
 import { baniToNumeric, nullableBaniToNumeric } from '../money';
 import type { Availability, Condition, SellerType } from '../schema/offers';
 
-/** Two consecutive checks further apart than this create an `offer_gaps` row. */
-export const DEFAULT_GAP_THRESHOLD_HOURS = 48;
+/**
+ * Two consecutive checks further apart than this create an `offer_gaps` row. 36 h, not 48 h: with
+ * nightly runs a missed night puts two checks about 48 h apart, and a 48 h threshold let a few
+ * minutes decide whether the unobserved night became a gap or a filled-in step.
+ */
+export const DEFAULT_GAP_THRESHOLD_HOURS = 36;
+
+/**
+ * The gap threshold for a source: 1.5 × its freshness SLO, never under 36 h. A nightly source (SLO
+ * 26 h) gets 39 h, so any missed night is a gap; a source that by design checks each offer every few
+ * days (Flip, SLO 192 h) keeps steps between its regular checks.
+ */
+export function gapThresholdHoursFor(freshnessSloHours: number | null | undefined): number {
+  const slo = typeof freshnessSloHours === 'number' && Number.isFinite(freshnessSloHours) && freshnessSloHours > 0 ? freshnessSloHours : 0;
+  return Math.max(DEFAULT_GAP_THRESHOLD_HOURS, Math.ceil(slo * 1.5));
+}
 
 /**
  * One observation of one offer, already normalized (M06). Money in integer bani, RON incl. VAT.
@@ -60,7 +74,10 @@ export interface RecordResult {
   inserted: boolean;
   /** The content hash differs from the stored one. */
   changed: boolean;
-  /** A price_events row was written (first sight, change or reactivation). */
+  /**
+   * A price_events row was written: first sight, a change of the content hash or of the total
+   * (a delivery rule changed), or reactivation.
+   */
   eventKind: EventKind | null;
   /** The observation is older than the stored one (replays): nothing was written. */
   stale: boolean;
@@ -83,6 +100,8 @@ type UpsertRow = {
   old_identity: string | null;
   new_identity: string | null;
   product_id: string | null;
+  old_total: string | null;
+  new_total: string;
 };
 
 /**
@@ -193,7 +212,9 @@ export async function recordObservation(
         (extract(epoch FROM old.last_checked_at) * 1000)::bigint::text AS old_checked_ms,
         old.identity_hash AS old_identity,
         new.identity_hash AS new_identity,
-        new.product_id::text AS product_id
+        new.product_id::text AS product_id,
+        old.total_price::text AS old_total,
+        new.total_price::text AS new_total
     `);
     const row = res.rows[0];
     if (!row) {
@@ -209,9 +230,12 @@ export async function recordObservation(
     }
     const offerId = Number(row.id);
     const changed = !row.inserted && row.old_hash !== row.new_hash;
+    // The total can change without the content hash (a delivery rule was filled in): history must
+    // follow it, or the unchanged price would read as a change against its own past.
+    const totalChanged = !row.inserted && row.old_total !== row.new_total;
     const eventKind: EventKind | null = row.inserted
       ? 'first'
-      : changed
+      : changed || totalChanged
         ? 'change'
         : row.old_active === false
           ? 'reactivated'
@@ -230,9 +254,9 @@ export async function recordObservation(
 
     if (eventKind) {
       await tx.execute(sql`
-        INSERT INTO price_events (offer_id, observed_at, price, old_price, shipping_cost, availability,
+        INSERT INTO price_events (offer_id, observed_at, price, old_price, shipping_cost, total_price, availability,
                                   currency, fx_rate, kind, run_id)
-        VALUES (${offerId}, ${o.observedAt}, ${price}, ${oldPrice}, ${shipping}, ${o.availability},
+        VALUES (${offerId}, ${o.observedAt}, ${price}, ${oldPrice}, ${shipping}, ${total}, ${o.availability},
                 ${o.currency ?? 'RON'}, ${o.fxRate ?? null}, ${eventKind}, ${o.runId})
         ON CONFLICT (offer_id, observed_at) DO NOTHING
       `);
@@ -274,13 +298,14 @@ export async function insertPriceEventIfChanged(
   const price = baniToNumeric(p.priceBani);
   const oldPrice = nullableBaniToNumeric(p.oldPriceBani);
   const shipping = nullableBaniToNumeric(p.shippingBani);
+  const total = baniToNumeric(p.totalBani);
   return db.transaction(async (tx) => {
-    const res = await tx.execute<{ old_hash: string; new_hash: string; old_active: boolean }>(sql`
+    const res = await tx.execute<{ old_hash: string; new_hash: string; old_active: boolean; old_total: string | null; new_total: string }>(sql`
       UPDATE offers SET
         price = ${price},
         old_price = ${oldPrice},
         shipping_cost = ${shipping},
-        total_price = ${baniToNumeric(p.totalBani)},
+        total_price = ${total},
         shop_lowest_30d = COALESCE(${nullableBaniToNumeric(p.shopLowest30dBani)}, shop_lowest_30d),
         availability = ${p.availability},
         price_changed_at = CASE WHEN content_hash IS DISTINCT FROM ${p.contentHash}
@@ -292,17 +317,18 @@ export async function insertPriceEventIfChanged(
         missing_runs = 0,
         updated_at = now()
       WHERE id = ${offerId} AND last_checked_at <= ${p.observedAt}
-      RETURNING old.content_hash AS old_hash, new.content_hash AS new_hash, old.active AS old_active
+      RETURNING old.content_hash AS old_hash, new.content_hash AS new_hash, old.active AS old_active,
+        old.total_price::text AS old_total, new.total_price::text AS new_total
     `);
     const row = res.rows[0];
     if (!row) return { changed: false, stale: true };
     const changed = row.old_hash !== row.new_hash;
-    const kind: EventKind | null = changed ? 'change' : row.old_active ? null : 'reactivated';
+    const kind: EventKind | null = changed || row.old_total !== row.new_total ? 'change' : row.old_active ? null : 'reactivated';
     if (kind) {
       await tx.execute(sql`
-        INSERT INTO price_events (offer_id, observed_at, price, old_price, shipping_cost, availability,
+        INSERT INTO price_events (offer_id, observed_at, price, old_price, shipping_cost, total_price, availability,
                                   currency, fx_rate, kind, run_id)
-        VALUES (${offerId}, ${p.observedAt}, ${price}, ${oldPrice}, ${shipping}, ${p.availability},
+        VALUES (${offerId}, ${p.observedAt}, ${price}, ${oldPrice}, ${shipping}, ${total}, ${p.availability},
                 ${p.currency ?? 'RON'}, ${p.fxRate ?? null}, ${kind}, ${p.runId ?? null})
         ON CONFLICT (offer_id, observed_at) DO NOTHING
       `);

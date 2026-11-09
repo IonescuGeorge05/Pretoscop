@@ -2,6 +2,7 @@ import {
   addDaysIso,
   bucharestToday,
   computeProductStats,
+  rebuildDirtyHistory,
   rollupProducts,
   sendPriceOutliersToMatcher,
   upsertFxRate,
@@ -39,6 +40,33 @@ export const rollupTouchJob = defineJob<{ productIds: number[] }>({
     // M19: the alerts watching these products (or their families) are evaluated right away.
     await boss.send('alerts.evaluate', { productIds: ids });
     log.debug({ products: ids.length, revalidated }, 'rollup touch done');
+  },
+});
+
+/**
+ * Rebuilds the history of products whose offers changed series (merge, split, unlink, re-match,
+ * review or LLM decisions, bundle/accessory/condition fixes) or got an event for an earlier day
+ * (migration 0024 marks them in product_history_dirty). Without it, a mapping change re-rolled only
+ * the last two days and left older charts, minimums and verdicts wrong. A singleton every two
+ * minutes, working for at most 50 s per run.
+ */
+export const rollupHistoryJob = defineJob({
+  name: 'rollup.history',
+  queue: { policy: 'singleton', retryLimit: 1, retryDelay: 60, expireInSeconds: 600 },
+  schedule: { cron: '*/2 * * * *' },
+  handler: async (_job, { db, log, services }) => {
+    const started = Date.now();
+    const products: number[] = [];
+    let rows = 0;
+    while (Date.now() - started < 50_000) {
+      const r = await rebuildDirtyHistory(db, { limit: 100 });
+      if (r.products.length === 0) break;
+      products.push(...r.products);
+      rows += r.rows;
+    }
+    if (products.length === 0) return;
+    const revalidated = await services.revalidate(products.map((id) => `product:${id}`));
+    log.info({ products: products.length, rows, revalidated, duration_ms: Date.now() - started }, 'history rebuilt');
   },
 });
 

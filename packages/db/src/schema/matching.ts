@@ -95,6 +95,9 @@ export const productMerges = pgTable(
       .notNull()
       .references(() => products.id),
     movedOfferIds: bigint('moved_offer_ids', { mode: 'number' }).array(),
+    /** GTINs and sticky aliases the merge moved, so an undo can move them back (null before 10 Nov 2026). */
+    movedGtins: text('moved_gtins').array(),
+    movedAliases: jsonb('moved_aliases').$type<Array<{ shopId: number; externalId: string }>>(),
     actor: text('actor').notNull(),
     createdAt: ts('created_at').notNull().defaultNow(),
     undoneAt: ts('undone_at'),

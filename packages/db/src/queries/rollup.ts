@@ -76,7 +76,9 @@ export async function computeProductStats(db: Db, productIds: number[] | null, t
       SELECT pd.product_id,
         min(pd.min_total_price) FILTER (WHERE pd.day >= ${today}::date - 29) AS min_30d,
         min(pd.min_total_price) AS min_all,
-        percentile_cont(0.5) WITHIN GROUP (ORDER BY pd.min_total_price) FILTER (WHERE pd.day >= ${today}::date - 89) AS median_90d,
+        -- Exact median in numeric: the mean of the lower and the upper middle day.
+        (percentile_disc(0.5) WITHIN GROUP (ORDER BY pd.min_total_price) FILTER (WHERE pd.day >= ${today}::date - 89)
+          + percentile_disc(0.5) WITHIN GROUP (ORDER BY pd.min_total_price DESC) FILTER (WHERE pd.day >= ${today}::date - 89)) / 2 AS median_90d,
         count(*) FILTER (WHERE pd.min_total_price IS NOT NULL) AS obs_days,
         min(pd.day) AS first_day,
         min(pd.min_total_price) FILTER (WHERE pd.day = ${today}::date - 7) AS total_7d_ago
@@ -184,34 +186,21 @@ export async function getHistory(db: Db, productId: number, range: HistoryRange 
     SELECT day::text, min_total_price::text AS min_total, mp_min_total_price::text AS mp
     FROM product_daily WHERE product_id = ${productId} AND day >= ${from}::date AND day <= ${today}::date ORDER BY day
   `);
+  // Same offers and the same day states as the rollup (offer_day_states, migration 0024), so each
+  // shop's line agrees with the minimum line drawn from product_daily.
   const perShop = await db.execute<{ slug: string; name: string; day: string; total: string }>(sql`
     WITH o AS (
-      SELECT o.id, s.slug, s.name,
-        greatest((o.first_seen_at AT TIME ZONE 'Europe/Bucharest')::date, ${from}::date) AS d0,
-        least((o.last_checked_at AT TIME ZONE 'Europe/Bucharest')::date, ${today}::date) AS d1
+      SELECT o.id, s.slug, s.name
       FROM offers o JOIN shops s ON s.id = o.shop_id
       WHERE o.product_id = ${productId} AND o.match_status IN ('auto','manual') AND o.condition = 'new'
-        AND NOT o.is_bundle AND o.seller_type = 'shop' AND s.trust_tier <= 2
-    ),
-    days AS (
-      SELECT o.id, o.slug, o.name, d::date AS day FROM o
-      CROSS JOIN LATERAL generate_series(o.d0, o.d1, interval '1 day') d
-      WHERE NOT EXISTS (SELECT 1 FROM offer_gaps g WHERE g.offer_id = o.id
-        AND (g.from_ts AT TIME ZONE 'Europe/Bucharest')::date < d::date AND (g.to_ts AT TIME ZONE 'Europe/Bucharest')::date > d::date)
-    ),
-    st AS (
-      SELECT days.slug, days.name, days.day, e.price + coalesce(e.shipping_cost, 0) AS total, e.availability
-      FROM days CROSS JOIN LATERAL (
-        (SELECT price, shipping_cost, availability FROM price_events WHERE offer_id = days.id
-          AND observed_at < (days.day::timestamp AT TIME ZONE 'Europe/Bucharest') ORDER BY observed_at DESC LIMIT 1)
-        UNION ALL
-        (SELECT price, shipping_cost, availability FROM price_events WHERE offer_id = days.id
-          AND observed_at >= (days.day::timestamp AT TIME ZONE 'Europe/Bucharest')
-          AND observed_at < ((days.day + 1)::timestamp AT TIME ZONE 'Europe/Bucharest'))
-      ) e
+        AND NOT o.is_bundle AND NOT o.is_accessory AND NOT o.blacklisted AND o.seller_type = 'shop'
+        AND s.trust_tier <= 2 AND o.source_tier <= 2
     )
-    SELECT slug, name, day::text, min(total)::text AS total FROM st WHERE availability = 'in_stock'
-    GROUP BY slug, name, day ORDER BY slug, day
+    SELECT o.slug, o.name, st.day::text, min(st.min_total)::text AS total
+    FROM offer_day_states((SELECT array_agg(id) FROM o), ${from}::date, ${today}::date) st
+    JOIN o ON o.id = st.offer_id
+    WHERE st.min_total IS NOT NULL
+    GROUP BY o.slug, o.name, st.day ORDER BY o.slug, st.day
   `);
   const stats = await db.execute<{
     min_30d: string | null; min_30d_at: string | null; min_all_time: string | null; min_all_time_at: string | null;
@@ -248,40 +237,29 @@ export async function getHistory(db: Db, productId: number, range: HistoryRange 
 /** One offer's observed daily minimum in-stock price (bani) between two days (gaps stay absent). */
 export async function offerHistoryDays(db: Db, offerId: number, from: string, to: string): Promise<OfferDay[]> {
   const res = await db.execute<{ day: string; price: string }>(sql`
-    WITH o AS (
-      SELECT id, greatest((first_seen_at AT TIME ZONE 'Europe/Bucharest')::date, ${from}::date) AS d0,
-             least((last_checked_at AT TIME ZONE 'Europe/Bucharest')::date, ${to}::date) AS d1
-      FROM offers WHERE id = ${offerId}
-    ),
-    days AS (
-      SELECT o.id, d::date AS day FROM o CROSS JOIN LATERAL generate_series(o.d0, o.d1, interval '1 day') d
-      WHERE NOT EXISTS (SELECT 1 FROM offer_gaps g WHERE g.offer_id = o.id
-        AND (g.from_ts AT TIME ZONE 'Europe/Bucharest')::date < d::date AND (g.to_ts AT TIME ZONE 'Europe/Bucharest')::date > d::date)
-    )
-    SELECT days.day::text, min(e.price)::text AS price
-    FROM days CROSS JOIN LATERAL (
-      (SELECT price, availability FROM price_events WHERE offer_id = days.id
-        AND observed_at < (days.day::timestamp AT TIME ZONE 'Europe/Bucharest') ORDER BY observed_at DESC LIMIT 1)
-      UNION ALL
-      (SELECT price, availability FROM price_events WHERE offer_id = days.id
-        AND observed_at >= (days.day::timestamp AT TIME ZONE 'Europe/Bucharest')
-        AND observed_at < ((days.day + 1)::timestamp AT TIME ZONE 'Europe/Bucharest'))
-    ) e
-    WHERE e.availability = 'in_stock'
-    GROUP BY days.day ORDER BY days.day
+    SELECT day::text, min_price::text AS price
+    FROM offer_day_states(ARRAY[${offerId}]::bigint[], ${from}::date, ${to}::date)
+    WHERE min_price IS NOT NULL
+    ORDER BY day
   `);
   return res.rows.map((r) => ({ day: r.day, priceBani: numericToBani(r.price)! }));
 }
 
 /**
  * Discount-verification facts for the current offers of a product (M15 badges, M23 report).
- * The reduction start is the first day of the current price level (last change event).
+ * The reduction start is the first day of the current price level: the latest event whose price
+ * differs from the event before it. Not `price_changed_at`, which also moves when only the stock,
+ * the crossed price or the delivery changes: a stock flip would otherwise move the 30 days "before
+ * the reduction" past the reduction itself and make a real discount look unsupported.
  */
 export async function productOfferFacts(db: Db, productId: number, today = bucharestToday()): Promise<Map<number, DiscountFact[]>> {
-  const offers = await db.execute<{ id: string; price: string; old_price: string | null; first_ms: string; changed_day: string }>(sql`
+  const offers = await db.execute<{ id: string; price: string; old_price: string | null; first_ms: string; changed_day: string | null }>(sql`
     SELECT o.id::text, o.price::text, o.old_price::text,
       (extract(epoch FROM o.first_seen_at) * 1000)::bigint::text AS first_ms,
-      (o.price_changed_at AT TIME ZONE 'Europe/Bucharest')::date::text AS changed_day
+      (SELECT (max(e.observed_at) AT TIME ZONE 'Europe/Bucharest')::date::text
+       FROM (SELECT pe.observed_at, pe.price, lag(pe.price) OVER (ORDER BY pe.observed_at) AS prev
+             FROM price_events pe WHERE pe.offer_id = o.id) e
+       WHERE e.prev IS DISTINCT FROM e.price) AS changed_day
     FROM offers o WHERE o.product_id = ${productId} AND o.active AND o.match_status IN ('auto','manual') AND o.condition = 'new'
   `);
   const median = await db.execute<{ m: string | null }>(sql`
@@ -307,4 +285,45 @@ export async function productOfferFacts(db: Db, productId: number, today = bucha
     if (facts.length > 0) out.set(Number(o.id), facts);
   }
   return out;
+}
+
+/**
+ * Drains `product_history_dirty` (filled by the triggers of migration 0024 whenever an offer joins
+ * or leaves a product's series, or an event is written for an earlier day): rebuilds each product's
+ * daily rows from its marked day to today, then its stats. A product marked again while it was being
+ * rebuilt keeps its newer row and is rebuilt on the next pass. Returns the products rebuilt.
+ */
+export async function rebuildDirtyHistory(db: Db, opts: { limit?: number; today?: string } = {}): Promise<{ products: number[]; rows: number }> {
+  const today = opts.today ?? bucharestToday();
+  const dirty = await db.execute<{ product_id: string; from_day: string; marked_at: string }>(sql`
+    SELECT product_id::text, least(from_day, ${today}::date)::text AS from_day, marked_at::text
+    FROM product_history_dirty ORDER BY marked_at LIMIT ${opts.limit ?? 200}
+  `);
+  let rows = 0;
+  const done: number[] = [];
+  for (const d of dirty.rows) {
+    const id = Number(d.product_id);
+    rows += await rollupProducts(db, { productIds: [id], from: d.from_day, to: today });
+    await db.execute(sql`DELETE FROM product_history_dirty WHERE product_id = ${id} AND marked_at = ${d.marked_at}::timestamptz`);
+    done.push(id);
+  }
+  if (done.length > 0) await computeProductStats(db, done, today);
+  return { products: done, rows };
+}
+
+/**
+ * Marks products (null = every product that has offers) for a rebuild of their whole history by
+ * `rollup.history`, e.g. after a change of the rollup rules. Returns how many were marked.
+ */
+export async function markHistoryDirty(db: Db, productIds: number[] | null): Promise<number> {
+  const filter = productIds && productIds.length > 0 ? sql`AND product_id = ANY(${sql.param(productIds)}::bigint[])` : sql``;
+  const res = await db.execute(sql`
+    INSERT INTO product_history_dirty (product_id, from_day)
+    SELECT product_id, min((first_seen_at AT TIME ZONE 'Europe/Bucharest')::date)
+    FROM offers WHERE product_id IS NOT NULL ${filter}
+    GROUP BY product_id
+    ON CONFLICT (product_id) DO UPDATE
+      SET from_day = least(product_history_dirty.from_day, EXCLUDED.from_day), marked_at = now()
+  `);
+  return res.rowCount ?? 0;
 }

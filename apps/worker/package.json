@@ -14,6 +14,7 @@
     "replay": "tsx src/cli/replay.ts",
     "backup": "tsx src/cli/backup.ts",
     "stats:show": "tsx src/cli/stats-show.ts",
+    "rollup:rebuild": "tsx src/cli/rollup-rebuild.ts",
     "match:run": "tsx src/cli/match-run.ts",
     "search": "tsx src/cli/search.ts",
     "search:rebuild": "tsx src/cli/search.ts rebuild",

@@ -13,7 +13,7 @@ import { matchPendingJob } from './matching';
 import { opsAlertJob, opsHeartbeatJob, opsSloCheckJob } from './ops';
 import { merchantValidateJob, merchantVerifyDomainJob } from './merchants';
 import { promotedDailyJob, promotedRefreshJob } from './promoted';
-import { fxRatesJob, rollupDailyJob, rollupTouchJob } from './rollup';
+import { fxRatesJob, rollupDailyJob, rollupHistoryJob, rollupTouchJob } from './rollup';
 import { searchRebuildJob, searchSyncJob } from './search';
 import { sitemapBuildJob } from './sitemap';
 import type { JobDefinition } from './types';
@@ -30,6 +30,7 @@ export const jobs: JobDefinition<any>[] = [
   restoreTestJob,
   rollupDailyJob,
   rollupTouchJob,
+  rollupHistoryJob,
   fxRatesJob,
   matchPendingJob,
   opsAlertJob,

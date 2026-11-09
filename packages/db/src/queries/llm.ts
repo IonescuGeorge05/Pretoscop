@@ -233,13 +233,14 @@ export interface GrayZoneOffer {
 /**
  * Review-queue items the LLM may look at: pending offers whose latest decision is the rules'
  * `needs_review` (not "two strong candidates": duplicates are for a human), that no human has ever
- * decided or sent back, with their candidates (active products only).
+ * decided or sent back and that no automatic check holds for a human (`review_hold`, e.g. a price
+ * outlier), with their candidates (active products only).
  */
 export async function llmGrayZoneOffers(db: Db, limit: number, opts: { offerIds?: number[] } = {}): Promise<GrayZoneOffer[]> {
   const ids = await db.execute<{ id: string; shop_name: string; total: string | null }>(sql`
     SELECT o.id::text, s.name AS shop_name, o.total_price::text AS total
     FROM offers o JOIN shops s ON s.id = o.shop_id
-    WHERE o.match_status = 'pending' AND o.matched_at IS NOT NULL AND o.active AND NOT o.blacklisted
+    WHERE o.match_status = 'pending' AND o.matched_at IS NOT NULL AND o.active AND NOT o.blacklisted AND o.review_hold IS NULL
       ${opts.offerIds ? sql`AND o.id = ANY(${sql.param(opts.offerIds)}::bigint[])` : sql``}
       AND coalesce(o.match_reason, '') <> 'two strong candidates'
       AND (SELECT d.decided_by FROM match_decisions d WHERE d.offer_id = o.id ORDER BY d.id DESC LIMIT 1) = 'rule'
@@ -295,7 +296,7 @@ export async function llmGrayZoneOffers(db: Db, limit: number, opts: { offerIds?
 // Decisions
 
 const still = (offerId: number) => sql`
-  o.id = ${offerId} AND o.match_status = 'pending' AND o.active
+  o.id = ${offerId} AND o.match_status = 'pending' AND o.active AND o.review_hold IS NULL
   AND NOT EXISTS (SELECT 1 FROM match_decisions d WHERE d.offer_id = o.id AND d.decided_by LIKE 'human:%')
   AND NOT EXISTS (SELECT 1 FROM offer_aliases a WHERE a.shop_id = o.shop_id AND a.external_id = o.external_id)`;
 

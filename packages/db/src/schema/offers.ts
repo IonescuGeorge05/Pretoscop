@@ -86,6 +86,12 @@ export const offers = pgTable(
     matchStatus: text('match_status').$type<MatchStatus>().notNull().default('pending'),
     matchScore: real('match_score'),
     matchReason: text('match_reason'),
+    /**
+     * Why an automatic check sent a matched offer to a human (e.g. a total below 30% of its
+     * product's cross-shop median). While set, automatic matching (rules, LLM) never accepts the
+     * offer; a human decision clears it.
+     */
+    reviewHold: text('review_hold'),
     /** sha256 over (title_norm, gtin14, mpn_norm, brand); re-matching only when it changes. */
     identityHash: text('identity_hash'),
     matchedAt: ts('matched_at'),
@@ -142,6 +148,13 @@ export const priceEvents = pgTable(
     price: money('price').notNull(),
     oldPrice: money('old_price'),
     shippingCost: money('shipping_cost'),
+    /**
+     * Price plus delivery as shown at the time: the stated cost, else the shop's delivery rule
+     * (offers.total_price). History and today's stats use the same basis, so a delivery rule never
+     * makes an unchanged price look higher or lower than its own past. Null on events written
+     * before 10 Nov 2026: readers fall back to price + stated shipping, as those events were shown.
+     */
+    totalPrice: money('total_price'),
     availability: text('availability').$type<Availability>().notNull(),
     currency: char('currency', { length: 3 }).notNull().default('RON'),
     fxRate: numeric('fx_rate', { precision: 10, scale: 4 }),
@@ -170,6 +183,20 @@ export const offerGaps = pgTable(
   },
   (t) => [primaryKey({ columns: [t.offerId, t.fromTs] })],
 );
+
+/**
+ * Products whose daily history must be rebuilt from `from_day` (M08). A trigger on `offers` (custom
+ * migration 0024) adds a row whenever an offer joins or leaves a product's series: a new link, a
+ * merge, split, unlink, re-match or review decision, or a change of condition, bundle, accessory,
+ * blacklist, seller type or source tier. `from_day` is the offer's first day, because its whole
+ * past changes series. The `rollup.history` job drains it. No foreign key: the row may outlive a
+ * deleted product, and the job skips it.
+ */
+export const productHistoryDirty = pgTable('product_history_dirty', {
+  productId: bigint('product_id', { mode: 'number' }).primaryKey(),
+  fromDay: date('from_day', { mode: 'string' }).notNull(),
+  markedAt: ts('marked_at').notNull().defaultNow(),
+});
 
 /** Daily rollup per product (M08): drives charts and "price from". */
 export const productDaily = pgTable(

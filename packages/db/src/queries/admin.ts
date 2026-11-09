@@ -360,7 +360,9 @@ export async function splitProduct(db: Db, productId: number, offerIds: number[]
       await tx.execute(sql`
         INSERT INTO match_decisions (offer_id, product_id, decision, decided_by, reason, score) VALUES (${Number(o.id)}, ${newId}, 'new_product', ${actor}, 'split', 1)`);
     }
-    await tx.execute(sql`DELETE FROM product_daily WHERE product_id IN (${productId}, ${newId})`);
+    // No blanket delete of either product's product_daily: that erased the older history of both
+    // when only two days were re-rolled. The offers trigger (migration 0024) marks both products,
+    // and rollup.history rebuilds them from the moved offers' first day.
     return newId;
   });
 }

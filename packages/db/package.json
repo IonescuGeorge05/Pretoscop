@@ -18,7 +18,8 @@
     "generate": "drizzle-kit generate",
     "studio": "drizzle-kit studio",
     "perf:rollup": "tsx src/cli/perf-rollup.ts",
-    "e2e:fixture": "tsx src/cli/e2e-fixture.ts"
+    "e2e:fixture": "tsx src/cli/e2e-fixture.ts",
+    "ext:resolution": "tsx src/cli/ext-resolution.ts"
   },
   "devDependencies": {
     "@pretoscop/notify": "workspace:*",

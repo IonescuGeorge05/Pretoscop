@@ -474,3 +474,13 @@ Source: `research/notes/gaps2_retailers.md`
 | L3 | Prices and model ids (Haiku 5.5, Sonnet 5.5, batch 50 %, cache multipliers) | From the claude-api reference cached 2026-10-06 (`packages/llm/src/models.ts`) | Check the Anthropic pricing page before enabling; a wrong price only changes the ledger, never the cap logic |
 | L4 | Cache hit rate inside Message Batches (best effort per Anthropic) | UNMEASURED | `llm:spend` shows the share of prompt tokens read from the cache after real runs |
 | L5 | Response shapes in tests are the documented ones, not recordings | PARTIAL | Record a handful of real responses into `packages/llm/test/fixtures/` after A9 |
+
+## Browser extension (M26): what is still unverified
+
+| # | Item | Status | Who / how it closes |
+|---|---|---|---|
+| X1 | Product-page markup of Altex, Flanco, PC Garage and evoMAG (where the identifiers sit) | ASSUMED: the detectors are tested on hand-written `_synthetic` pages after the documented listing markup (`apps/extension/fixtures/README.md`); no page of these shops was fetched (they block our bot) | A founder opens one product page per shop in a normal browser, saves it ("HTML only"), strips personal data and keys, adds it as `product_<date>.html` with the synthetic page's expectations |
+| X2 | Release gate "≥ 70 % of the top eMAG/Altex electronics SKUs resolve" | PARTIAL: on the 9 Nov 2026 copy of the dev database, 4,312 of 6,179 active eMAG offers (69.8 %) resolve, 0 to a wrong product; only 192 (3.1 %) have live offers at two or more shops and none has 14 observed days yet; Altex is not measurable (no Altex offers) | `pnpm --filter @pretoscop/db ext:resolution emag altex` on the production database before publishing; ship only above 70 % on both, with "cheaper elsewhere" worth showing |
+| X3 | Firefox | UNTESTED: the build and the e2e run in Chromium only; the Firefox manifest (`dist/firefox`) is checked by unit tests | A founder loads `apps/extension/dist/firefox/manifest.json` in `about:debugging` → "Load Temporary Add-on" and runs the checklist |
+| X4 | Store review and the privacy text | NOT STARTED: listing texts in `apps/extension/store/`; the `/confidentialitate#extensie` text is unreviewed | D1 (store accounts), the lawyer's review of the privacy policy (B5) |
+| X5 | Rate limit sizing (20/min, 300/h per IP, per web process) | UNMEASURED | Watch 429s on `/api/ext/lookup` after launch; offices behind one IP share the hourly budget |

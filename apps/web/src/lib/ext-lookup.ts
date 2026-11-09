@@ -1,0 +1,261 @@
+import {
+  allTimeLowExplanation,
+  baniToDecimalString,
+  decimalStringToBani,
+  dropBadgeText,
+  dropExplanation,
+  median,
+  VERDICT_MIN_DAYS,
+  verdictText,
+  type Verdict,
+} from '@pretoscop/core';
+import type { ExtMatchedBy } from '@pretoscop/db';
+import type { ProductOffer, ProductPageData } from './product';
+import { createRateLimiter, type RateLimitResult } from './rate-limit';
+
+/**
+ * Browser-extension lookup API (M26): `GET /api/ext/lookup?url=&gtin=&brand=&mpn=`. Public,
+ * read-only data that our product page already shows, so CORS is `*` (no credentials, no cookies)
+ * on this route and on no other. This module holds the pure parts (input validation, response
+ * shape, rate-limit policy, headers); the route resolves identifiers with `resolveExtLookup`
+ * (@pretoscop/db) and builds the answer from the product page's own cached data
+ * (`getProductPageData`) and the default chart series (`extDailyLows`).
+ *
+ * Never in a response: Icecat data (specs, images), any image, GTINs or part numbers we hold, offer
+ * URLs or ids, affiliate data, matching internals (scores, provisional state, sources), anything
+ * about the requester.
+ */
+
+export const LOOKUP_LIMITS = { url: 2048, gtinDigits: [8, 14] as const, brand: 80, mpn: 64 };
+export const MAX_BEST_OFFERS = 5;
+export const MAX_HISTORY_DAYS = 180;
+/** Per client (daily-salted IP hash), per web process: a short and a long fixed window. */
+export const RATE_LIMIT = { perMinute: 20, perHour: 300 };
+/** Feature flag that turns the API on (off by default; config `{ "disabled_shops": ["emag"] }` switches single shops off). */
+export const EXT_LOOKUP_FLAG = 'extension.lookup.enabled';
+
+export const CORS_HEADERS: Readonly<Record<string, string>> = {
+  'access-control-allow-origin': '*',
+  'access-control-allow-methods': 'GET, OPTIONS',
+  // The extension reads Retry-After on 429 to back off; it is not a CORS-safelisted header.
+  'access-control-expose-headers': 'retry-after',
+  'access-control-max-age': '86400',
+};
+
+export interface LookupQuery {
+  /** Origin + path of the shop page (query and fragment dropped). */
+  url: string | null;
+  gtin: string | null;
+  brand: string | null;
+  mpn: string | null;
+}
+
+export type ParseResult = { ok: true; query: LookupQuery } | { ok: false; error: string };
+
+function hasControlChars(s: string): boolean {
+  for (const ch of s) {
+    const c = ch.codePointAt(0)!;
+    if (c < 32 || (c >= 127 && c < 160)) return true;
+  }
+  return false;
+}
+
+const MPN_RE = /^[\p{L}\p{N}][\p{L}\p{N} ._/+#()-]*$/u;
+const HAS_ALNUM = /[\p{L}\p{N}]/u;
+const PARAMS = new Set(['url', 'gtin', 'brand', 'mpn']);
+
+/** Validates the query string; anything malformed is a 400, never a guess. */
+export function parseLookupQuery(params: URLSearchParams): ParseResult {
+  for (const key of params.keys()) if (!PARAMS.has(key)) return { ok: false, error: 'unknown_parameter' };
+  const query: LookupQuery = { url: null, gtin: null, brand: null, mpn: null };
+  for (const key of ['url', 'gtin', 'brand', 'mpn'] as const) {
+    const all = params.getAll(key);
+    if (all.length > 1) return { ok: false, error: `duplicate_${key}` };
+    const v = all[0]?.trim();
+    if (!v) continue;
+    if (hasControlChars(v)) return { ok: false, error: `invalid_${key}` };
+    query[key] = v.replace(/\s+/g, ' ');
+  }
+  if (query.url !== null) {
+    if (query.url.length > LOOKUP_LIMITS.url) return { ok: false, error: 'invalid_url' };
+    let u: URL;
+    try {
+      u = new URL(query.url);
+    } catch {
+      return { ok: false, error: 'invalid_url' };
+    }
+    if ((u.protocol !== 'https:' && u.protocol !== 'http:') || u.username || u.password || !u.hostname.includes('.')) return { ok: false, error: 'invalid_url' };
+    query.url = `${u.origin}${u.pathname}`;
+  }
+  if (query.gtin !== null) {
+    const digits = query.gtin.replace(/[\s-]/g, '');
+    const [min, max] = LOOKUP_LIMITS.gtinDigits;
+    if (!/^\d+$/.test(digits) || digits.length < min || digits.length > max) return { ok: false, error: 'invalid_gtin' };
+    query.gtin = digits;
+  }
+  if (query.brand !== null && (query.brand.length > LOOKUP_LIMITS.brand || !HAS_ALNUM.test(query.brand))) return { ok: false, error: 'invalid_brand' };
+  if (query.mpn !== null && (query.mpn.length > LOOKUP_LIMITS.mpn || !MPN_RE.test(query.mpn))) return { ok: false, error: 'invalid_mpn' };
+  if ((query.brand === null) !== (query.mpn === null)) return { ok: false, error: 'brand_and_mpn_go_together' };
+  if (query.url === null && query.gtin === null && query.brand === null) return { ok: false, error: 'no_identifier' };
+  return { ok: true, query };
+}
+
+/** Two fixed windows (per minute and per hour) over one key; refused when either is exhausted. */
+export function createLookupLimiter(limits = RATE_LIMIT): { hit(key: string, now?: number): RateLimitResult } {
+  const minute = createRateLimiter({ limit: limits.perMinute, windowMs: 60_000 });
+  const hour = createRateLimiter({ limit: limits.perHour, windowMs: 3_600_000 });
+  return {
+    hit(key, now = Date.now()) {
+      const a = minute.hit(key, now);
+      const b = hour.hit(key, now);
+      if (a.allowed && b.allowed) return { allowed: true, remaining: Math.min(a.remaining, b.remaining), retryAfterSec: 0 };
+      // Seconds until every exhausted window has reset (an open window does not delay the retry).
+      return { allowed: false, remaining: 0, retryAfterSec: Math.max(a.allowed ? 0 : a.retryAfterSec, b.allowed ? 0 : b.retryAfterSec) };
+    },
+  };
+}
+
+/** The product page's verdict labels (summary card, M08 rules; "Istoric insuficient" under 14 observed days). */
+export const VERDICT_LABEL: Readonly<Record<Verdict, string>> = {
+  good_price: 'Preț bun',
+  usual: 'Preț obișnuit',
+  above_usual: 'Peste obișnuit',
+  insufficient_data: 'Istoric insuficient',
+};
+
+export interface ExtOffer {
+  /** Our shop slug (e.g. `emag`), so the extension can tell "this shop" apart. */
+  shop: string;
+  shop_name: string;
+  /** Marketplace seller named on the offer (null when sold by the shop or unnamed). */
+  seller_name: string | null;
+  marketplace: boolean;
+  price: string;
+  /** Delivery cost (null = not known; the shop states it at checkout). */
+  shipping: string | null;
+  total: string;
+  /** When we last checked the offer (freshness). */
+  checked_at: string;
+}
+
+export interface ExtLookupResponse {
+  product_id: number;
+  slug: string;
+  title: string;
+  /** Absolute product page URL on Pretoscop. */
+  url: string;
+  matched_by: ExtMatchedBy;
+  /** Lowest total observed in the last 30 days (product_stats.min_30d, as on the product page). */
+  low_30d: string | null;
+  low_all_time: string | null;
+  /** Median of the observed daily lowest totals of the last 30 days (days without observations do not count). */
+  median_30d: string | null;
+  verdict: { code: Verdict; label: string; text: string };
+  observations_days: number;
+  history_started_at: string | null;
+  /** M15 badges under the product page's rules: none under 14 observed days, none for provisional products. */
+  badges: Array<{ kind: 'drop' | 'all_time_low'; label: string; text: string }>;
+  /** Cheapest new, in-stock offers checked within their shop's freshness window, ranked like the product page (≤ 5). */
+  best_offers: ExtOffer[];
+  /** [day, lowest total] of the default chart series for observed days of the last 180 days; days without observations are absent. */
+  history: Array<[string, string]>;
+  /** The newest check of any of the product's offers. */
+  updated_at: string | null;
+}
+
+/** numeric(12,2) text → integer bani; null for null or anything malformed. */
+export function bani(v: string | null | undefined): number | null {
+  if (v === null || v === undefined) return null;
+  try {
+    return decimalStringToBani(v);
+  } catch {
+    return null;
+  }
+}
+
+/** numeric text → canonical "1234.56" (no floats), or null. */
+function money(v: string | null | undefined): string | null {
+  const b = bani(v);
+  return b === null || b < 0 ? null : baniToDecimalString(b);
+}
+
+const addDays = (day: string, n: number) => new Date(Date.parse(`${day}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+
+function extOffer(o: ProductOffer): ExtOffer | null {
+  const price = money(o.price);
+  const total = money(o.total);
+  const checked = Date.parse(o.lastCheckedAt);
+  if (price === null || total === null || !Number.isFinite(checked)) return null;
+  return {
+    shop: o.shopSlug,
+    shop_name: o.shopName,
+    seller_name: o.sellerType === 'marketplace' ? o.sellerName : null,
+    marketplace: o.sellerType === 'marketplace',
+    price,
+    shipping: money(o.shippingCost),
+    total,
+    checked_at: new Date(checked).toISOString(),
+  };
+}
+
+/** The first day of the history window (180 days, today included). */
+export function historyFrom(today: string): string {
+  return addDays(today, -(MAX_HISTORY_DAYS - 1));
+}
+
+/**
+ * The response body, from the product page's own data (same offers, stats, verdict and badges as
+ * /p/{slug}) and the daily lows of the default chart series (`[day, total]`, ascending).
+ */
+export function buildLookupResponse(
+  p: ProductPageData,
+  dailyLows: ReadonlyArray<readonly [string, string]>,
+  matchedBy: ExtMatchedBy,
+  siteBase: string,
+  today: string,
+): ExtLookupResponse {
+  const from = historyFrom(today);
+  const history: Array<[string, string]> = [];
+  for (const [day, v] of dailyLows) {
+    const total = money(v);
+    if (total !== null && day >= from && day <= today && (history.length === 0 || day > history[history.length - 1]![0])) history.push([day, total]);
+  }
+  const from30 = addDays(today, -29);
+  const med = median(history.filter(([day]) => day >= from30).map(([, v]) => bani(v)!));
+  const best = p.offers
+    .filter((o) => o.availability === 'in_stock' && !o.stale && o.condition === 'new')
+    .map(extOffer)
+    .filter((o): o is ExtOffer => o !== null)
+    .slice(0, MAX_BEST_OFFERS);
+  const verdict: Verdict = p.stats?.verdict ?? 'insufficient_data';
+  const days = p.stats?.observationsDays ?? 0;
+  const badges: ExtLookupResponse['badges'] = [];
+  // M15: priceFacts is null for provisional products (the loader decides, as for the page); no badge
+  // ever under 14 observed days.
+  if (p.priceFacts && !p.provisional && days >= VERDICT_MIN_DAYS && verdict !== 'insufficient_data') {
+    if (p.priceFacts.drop) {
+      // Like the product page: the drop is measured on shop-sold offers, the best price may be a marketplace seller's.
+      const prefix = best[0]?.marketplace ? 'La ofertele vândute direct de magazine: ' : '';
+      badges.push({ kind: 'drop', label: dropBadgeText(p.priceFacts.drop), text: `${prefix}${dropExplanation(p.priceFacts.drop)}` });
+    }
+    if (p.priceFacts.allTimeLow) badges.push({ kind: 'all_time_low', label: 'Minim istoric', text: allTimeLowExplanation(p.priceFacts.allTimeLow) });
+  }
+  const checks = p.offers.map((o) => Date.parse(o.lastCheckedAt)).filter((t) => Number.isFinite(t));
+  return {
+    product_id: p.id,
+    slug: p.slug,
+    title: p.title,
+    url: `${siteBase.replace(/\/+$/, '')}/p/${p.slug}`,
+    matched_by: matchedBy,
+    low_30d: money(p.stats?.min30d),
+    low_all_time: money(p.stats?.minAllTime),
+    median_30d: med === null ? null : baniToDecimalString(med),
+    verdict: { code: verdict, label: VERDICT_LABEL[verdict], text: verdictText(verdict, days) },
+    observations_days: days,
+    history_started_at: p.stats?.historyStartedAt?.slice(0, 10) ?? null,
+    badges,
+    best_offers: best,
+    history,
+    updated_at: checks.length ? new Date(Math.max(...checks)).toISOString() : null,
+  };
+}

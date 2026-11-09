@@ -18,6 +18,7 @@ export const KNOWN_FLAGS: Record<string, string> = {
   'merchants.portal.enabled': 'Merchant self-serve portal: new registrations and submissions (M20)',
   'extractors.canary.enabled': 'Weekly extractor canary: up to 5 live URLs per active shop, field drift alerts (M21)',
   'shops.probe.enabled': 'shops:probe re-probes (M21): at most 3 polite requests per run; on only for a founder probe session',
+  'extension.lookup.enabled': 'Browser extension lookups, GET /api/ext/lookup (M26); config {"disabled_shops": ["emag"]} switches single shops off',
 };
 
 export async function isFlagEnabled(db: Db, key: string): Promise<boolean> {

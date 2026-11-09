@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<!--
+  SYNTHETIC FIXTURE (M26). Written by hand; NOT a recording of flanco.ro (Flanco blocks our crawler and
+  nothing was fetched). Follows docs/research/notes/gaps2_retailers.md §3 (Magento 2; a GA4 dataLayer
+  `items` array with `item_brand` and the manufacturer part number in `item_variant`) and
+  gaps2_technical.md F2 (Web Data Commons: Flanco's Product markup has brand, mpn and sku on every
+  product and no GTIN). Assumptions (not documented): the markup is Magento 2 microdata on the product
+  page, and the product page pushes a GA4 `view_item` event with one item. Product URLs end in `.html`
+  like category URLs, so only the structured data tells a product page apart.
+-->
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<title>Telefon mobil Samsung Galaxy A56 5G, 128GB, 8GB RAM, Dual SIM, Awesome Graphite | Flanco</title>
+<link rel="canonical" href="https://www.flanco.ro/telefon-mobil-samsung-galaxy-a56-5g-128gb-8gb-ram-dual-sim-awesome-graphite.html">
+<script type="text/x-magento-init">{"*":{"Magento_Customer/js/section-config":{"sections":{}}}}</script>
+<script>
+window.dataLayer = window.dataLayer || [];
+window.dataLayer.push({ecommerce: null});
+window.dataLayer.push({"event":"view_item","ecommerce":{"currency":"RON","value":1799.99,"items":[{"item_name":"Telefon mobil Samsung Galaxy A56 5G, 128GB, 8GB RAM, Dual SIM, Awesome Graphite","item_id":"267293","ref_id":"678640","item_variant":"SM-A566BZKAEUE","item_brand":"Samsung","item_category":"Telefoane & Tablete","price":1799.99,"days_to_shipping":"1 day","warranty":"24 luni"}]}});
+</script>
+</head>
+<body>
+<header><a href="https://www.flanco.ro/">Flanco</a> <a href="https://www.flanco.ro/checkout/cart/">Coșul meu</a></header>
+<main class="page-main">
+  <div class="product-info-main" itemscope itemtype="http://schema.org/Product">
+    <h1 class="page-title"><span itemprop="name">Telefon mobil Samsung Galaxy A56 5G, 128GB, 8GB RAM, Dual SIM, Awesome Graphite</span></h1>
+    <div class="product attribute sku">Cod produs: <span itemprop="sku">267293</span></div>
+    <meta itemprop="mpn" content="SM-A566BZKAEUE">
+    <div itemprop="brand" itemscope itemtype="http://schema.org/Brand"><meta itemprop="name" content="Samsung"></div>
+    <div itemprop="offers" itemscope itemtype="http://schema.org/Offer">
+      <meta itemprop="priceCurrency" content="RON">
+      <span class="price" itemprop="price" content="1799.99">1.799,99 lei</span>
+      <link itemprop="availability" href="http://schema.org/InStock">
+    </div>
+  </div>
+  <div class="block related">
+    <h2>Produse similare</h2>
+    <div class="product-item">
+      <a class="product-item-link" href="https://www.flanco.ro/telefon-mobil-samsung-galaxy-a36-5g-128gb.html">Telefon mobil Samsung Galaxy A36 5G, 128GB</a>
+      <span class="price">1.449,99 lei</span>
+    </div>
+  </div>
+</main>
+</body>
+</html>

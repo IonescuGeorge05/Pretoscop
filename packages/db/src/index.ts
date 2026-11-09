@@ -24,3 +24,4 @@ export * from './queries/outreach';
 export * from './queries/deals';
 export * from './queries/sitemap';
 export * from './queries/llm';
+export * from './queries/ext-lookup';

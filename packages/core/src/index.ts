@@ -199,3 +199,5 @@ export { BEAUTY_BRAND_SEEDS, type BeautyBrandSeed } from './beauty-brands-data';
 
 // M25: promoted placements (price bands, floors, second-price auction, click billing, wallets)
 export * from './promoted';
+// M28: B2B price intelligence (plans, SKU import, positions, API key format, safe CSV)
+export * from './b2b';

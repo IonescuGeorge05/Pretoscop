@@ -3,7 +3,7 @@
 How Pretoscop adds a product category beyond the launch taxonomy (electronics, IT, appliances), so
 that the next one takes days, not a module. It is written as a procedure, then executed twice:
 **books** (built, sources registered but off) and **beauty** (prepared, no live source: every
-beauty shop blocks unknown bots). Architecture: ADR-028 in `docs/03-architecture.md` §14 (the lead
+beauty shop blocks unknown bots). Architecture: ADR-029 in `docs/03-architecture.md` §14 (the lead
 may renumber it at merge). Rules that never change: `CLAUDE.md` (identified crawler, kill switches,
 licensed images only, never fabricated history) and `docs/12-blocked-shops-strategy.md`.
 

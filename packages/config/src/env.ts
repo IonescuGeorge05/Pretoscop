@@ -233,6 +233,14 @@ export const EnvSchema = z
     // Minimum interval between two requests to an Icecat host (Icecat allows up to 100 per second).
     ICECAT_MIN_INTERVAL_MS: int(1000),
 
+    // B2B plans (M28) on the Stripe account of M25 (STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET below;
+    // one webhook endpoint for both). Stripe price ids (`price_…`, monthly, EUR, tax-exclusive) of
+    // the self-serve plans; unset = that plan cannot be bought online.
+    B2B_STRIPE_PRICE_STARTER: optionalString,
+    B2B_STRIPE_PRICE_PRO: optionalString,
+    // Stripe Tax computes the VAT on the subscription invoices (needs Stripe Tax activated, D3).
+    B2B_STRIPE_AUTOMATIC_TAX: bool.default(true),
+
     // Affiliate networks (M24)
     TWOPERFORMANT_EMAIL: optionalString,
     TWOPERFORMANT_PASSWORD: optionalString,
@@ -267,6 +275,10 @@ export const EnvSchema = z
     METRICS_PORT: int(9464),
   })
   .superRefine((env, ctx) => {
+    // M28: the B2B plans' Stripe prices.
+    for (const key of ['B2B_STRIPE_PRICE_STARTER', 'B2B_STRIPE_PRICE_PRO'] as const) {
+      if (env[key] && !/^price_[A-Za-z0-9]+$/.test(env[key])) ctx.addIssue({ code: 'custom', path: [key], message: `${key} must be a Stripe price id (price_…)` });
+    }
     if ((env.VAPID_PUBLIC_KEY === undefined) !== (env.VAPID_PRIVATE_KEY === undefined)) {
       ctx.addIssue({ code: 'custom', path: ['VAPID_PRIVATE_KEY'], message: 'set both VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY, or neither' });
     }

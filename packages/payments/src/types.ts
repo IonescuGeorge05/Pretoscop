@@ -40,6 +40,31 @@ export interface CheckoutSession {
   expiresAt: Date | null;
 }
 
+/**
+ * A recurring plan (M28 B2B subscriptions): the price (and its currency, EUR for B2B) lives at the
+ * provider; the plan changes only from the signed webhooks that follow.
+ */
+export interface SubscriptionCheckoutRequest {
+  /** Our id of the subscriber (`b2b:42`): the checkout's client reference, echoed in its webhook. */
+  reference: string;
+  /** The provider's price id (Stripe `price_…`, monthly). */
+  priceId: string;
+  /** The subscriber's existing provider customer (a new subscription keeps it). */
+  customerId?: string | null;
+  customerEmail?: string | null;
+  successUrl: string;
+  cancelUrl: string;
+  /** Let the provider compute VAT (Stripe Tax). */
+  automaticTax?: boolean;
+  /** Stored on the checkout and copied onto the subscription and its invoices (no personal data). */
+  metadata?: Record<string, string>;
+}
+
+export interface PortalSession {
+  /** The provider's hosted page where the customer manages the card, invoices and cancellation. */
+  url: string;
+}
+
 /** A verified webhook delivery, normalized. */
 export type PaymentEvent =
   | {
@@ -53,6 +78,48 @@ export type PaymentEvent =
       currency: string;
     }
   | { type: 'checkout.failed' | 'checkout.expired'; provider: string; eventId: string; checkoutId: string; reference: string | null }
+  /** M28: a subscription checkout finished (`paid`: the first invoice is paid or free). */
+  | {
+      type: 'subscription.checkout_completed';
+      provider: string;
+      eventId: string;
+      checkoutId: string;
+      reference: string | null;
+      customerId: string | null;
+      subscriptionId: string | null;
+      paid: boolean;
+      metadata: Record<string, string>;
+    }
+  /** M28: a subscription was created, changed or ended (`status` is the provider's; ended = `canceled`). */
+  | {
+      type: 'subscription.updated';
+      provider: string;
+      eventId: string;
+      subscriptionId: string;
+      customerId: string | null;
+      status: string;
+      periodEnd: Date | null;
+      priceId: string | null;
+      metadata: Record<string, string>;
+    }
+  /** M28: a subscription invoice was paid. Amounts in the currency's minor units (cents for EUR). */
+  | {
+      type: 'invoice.paid';
+      provider: string;
+      eventId: string;
+      invoiceId: string;
+      subscriptionId: string;
+      customerId: string | null;
+      currency: string;
+      subtotal: number;
+      tax: number;
+      total: number;
+      periodStart: Date | null;
+      periodEnd: Date | null;
+      paidAt: Date | null;
+      /** The subscription's metadata, as the invoice carries it. */
+      metadata: Record<string, string>;
+    }
   /** A verified event we do not act on (another event type, or a checkout still awaiting payment). */
   | { type: 'ignored'; provider: string; eventId: string; eventType: string };
 
@@ -72,6 +139,10 @@ export interface PaymentProvider {
    * one) and normalizes it. Throws `WebhookSignatureError` when it is not authentic or too old.
    */
   parseWebhook(rawBody: string, headers: HeaderSource, now?: Date): PaymentEvent;
+  /** M28: opens a hosted checkout for a recurring plan. Throws `PaymentProviderError` on refusal. */
+  createSubscriptionCheckout?(req: SubscriptionCheckoutRequest): Promise<CheckoutSession>;
+  /** M28: a hosted page where the customer manages its subscription. */
+  createPortalSession?(customerId: string, returnUrl: string): Promise<PortalSession>;
 }
 
 export class PaymentProviderError extends Error {

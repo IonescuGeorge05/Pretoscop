@@ -148,7 +148,7 @@ candidates and stay with a human.
 
 Code: `src/verticals.ts` (which vertical an offer belongs to), `src/books.ts`, `src/beauty.ts`,
 `src/taxonomy.ts` (subtrees `carti`, `frumusete`), `scorePair` (a scorer per vertical). Playbook:
-`docs/playbooks/category-expansion.md`; ADR-028.
+`docs/playbooks/category-expansion.md`; ADR-029.
 
 - A pair of two books, or two beauty products, is scored by its vertical's rules; a book or a
   beauty product never matches a product of another vertical or of the launch taxonomy

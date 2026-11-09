@@ -29,6 +29,7 @@ describe('consent texts', () => {
       adsConsent: 'adsConsent.v1',
       alertConsent: 'alertConsent.v1',
       analyticsConsent: 'analyticsConsent.v1',
+      b2bTerms: 'b2bTerms.v1',
       merchantTerms: 'merchantTerms.v1',
       promotedTerms: 'promotedTerms.v1',
       pushConsent: 'pushConsent.v1',
@@ -73,6 +74,15 @@ describe('consent texts', () => {
     expect(t.link.href).toBe('/pentru-magazine/termeni');
   });
 
+  it('the B2B terms checkbox (M28) forbids resale, publication, competing services and AI training', () => {
+    const t = legalTexts.b2bTerms.v1;
+    expect(t.text).toMatch(/nu le revindem/);
+    expect(t.text).toMatch(/nu le publicăm/);
+    expect(t.text).toMatch(/serviciu concurent/);
+    expect(t.text).toMatch(/inteligență artificială/);
+    expect(t.link.href).toBe(legalDocuments.b2bTerms.path);
+  });
+
   it('the push and Telegram consents (M27) say what goes where and how to stop', () => {
     const push = legalTexts.pushConsent.v1;
     expect(push.text).toMatch(/acest dispozitiv/);
@@ -113,7 +123,7 @@ describe('legal documents', () => {
     const legal = Object.values(legalDocuments)
       .filter((d) => d.kind === 'legal')
       .map((d) => d.path);
-    expect(legal).toEqual(['/termeni', '/confidentialitate', '/cookies', '/accesibilitate', '/pentru-magazine/termeni']);
+    expect(legal).toEqual(['/termeni', '/confidentialitate', '/cookies', '/accesibilitate', '/pentru-magazine/termeni', '/pentru-companii/termeni']);
   });
 
   it('is exported from the package root as well', () => {

@@ -8,6 +8,8 @@ import {
   type HeaderSource,
   type PaymentEvent,
   type PaymentProvider,
+  type PortalSession,
+  type SubscriptionCheckoutRequest,
 } from './types';
 
 /**
@@ -72,11 +74,79 @@ export function verifyStripeSignature(secret: string, payload: string, header: s
 interface StripeCheckoutObject {
   id?: unknown;
   object?: unknown;
+  mode?: unknown;
   client_reference_id?: unknown;
   payment_status?: unknown;
   amount_total?: unknown;
   currency?: unknown;
+  customer?: unknown;
+  subscription?: unknown;
   metadata?: Record<string, unknown> | null;
+}
+
+type Obj = Record<string, unknown>;
+const obj = (v: unknown): Obj => (v && typeof v === 'object' ? (v as Obj) : {});
+const str = (v: unknown): string | null => (typeof v === 'string' && v !== '' ? v : null);
+/** An id that Stripe sends either as a string or as an expanded object. */
+const idOf = (v: unknown): string | null => str(v) ?? str(obj(v).id);
+const int = (v: unknown): number | null => (typeof v === 'number' && Number.isSafeInteger(v) ? v : null);
+const unix = (v: unknown): Date | null => {
+  const n = int(v);
+  return n === null ? null : new Date(n * 1000);
+};
+const strings = (v: unknown): Record<string, string> => Object.fromEntries(Object.entries(obj(v)).filter((e): e is [string, string] => typeof e[1] === 'string'));
+
+/**
+ * Subscription and invoice events (M28). Reads both API shapes: before 2025-03-31 (period on the
+ * subscription, `invoice.subscription`) and after ("basil": period on the items, `invoice.parent`).
+ */
+function parseSubscriptionEvent(provider: string, eventId: string, type: string, created: unknown, o: Obj): PaymentEvent | null {
+  if (type === 'customer.subscription.created' || type === 'customer.subscription.updated' || type === 'customer.subscription.deleted') {
+    const id = str(o.id);
+    if (!id || (o.object !== undefined && o.object !== 'subscription')) return null;
+    const item = obj((obj(o.items).data as unknown[] | undefined)?.[0]);
+    return {
+      type: 'subscription.updated',
+      provider,
+      eventId,
+      subscriptionId: id,
+      customerId: idOf(o.customer),
+      status: type === 'customer.subscription.deleted' ? 'canceled' : (str(o.status) ?? 'incomplete'),
+      periodEnd: unix(o.current_period_end) ?? unix(item.current_period_end),
+      priceId: idOf(item.price),
+      metadata: strings(o.metadata),
+    };
+  }
+  if (type === 'invoice.paid') {
+    const id = str(o.id);
+    if (!id || (o.object !== undefined && o.object !== 'invoice')) return null;
+    const parent = obj(obj(o.parent).subscription_details);
+    const subscriptionId = idOf(o.subscription) ?? idOf(parent.subscription);
+    // A one-off invoice (no subscription) is not a plan payment.
+    if (!subscriptionId) return null;
+    const metadata = Object.keys(obj(parent.metadata)).length > 0 ? strings(parent.metadata) : strings(obj(o.subscription_details).metadata);
+    const line = obj((obj(o.lines).data as unknown[] | undefined)?.[0]);
+    const taxes = Array.isArray(o.total_taxes) ? (o.total_taxes as unknown[]).reduce<number>((a, t) => a + (int(obj(t).amount) ?? 0), 0) : null;
+    const total = int(o.total) ?? 0;
+    const tax = int(o.tax) ?? taxes ?? 0;
+    return {
+      type: 'invoice.paid',
+      provider,
+      eventId,
+      invoiceId: id,
+      subscriptionId,
+      customerId: idOf(o.customer),
+      currency: (str(o.currency) ?? 'eur').toUpperCase(),
+      subtotal: int(o.subtotal_excluding_tax) ?? int(o.subtotal) ?? total - tax,
+      tax,
+      total,
+      periodStart: unix(obj(line.period).start) ?? unix(o.period_start),
+      periodEnd: unix(obj(line.period).end) ?? unix(o.period_end),
+      paidAt: unix(obj(o.status_transitions).paid_at) ?? unix(created),
+      metadata,
+    };
+  }
+  return null;
 }
 
 export class StripeProvider implements PaymentProvider {
@@ -104,14 +174,20 @@ export class StripeProvider implements PaymentProvider {
       metadata: { ...req.metadata, reference: req.reference },
       payment_intent_data: { metadata: { reference: req.reference } },
     });
+    const json = await this.post('/v1/checkout/sessions', body, req.reference, 'checkout');
+    return this.session(json, 'checkout');
+  }
+
+  /** One form-encoded POST to the Stripe API; a refusal or a network error becomes a PaymentProviderError. */
+  private async post(path: string, body: URLSearchParams, idempotencyKey: string | null, what: string): Promise<{ id?: unknown; url?: unknown; expires_at?: unknown }> {
     let res: Response;
     try {
-      res = await this.doFetch(`${this.apiBase}/v1/checkout/sessions`, {
+      res = await this.doFetch(`${this.apiBase}${path}`, {
         method: 'POST',
         headers: {
           authorization: `Bearer ${this.opts.secretKey}`,
           'content-type': 'application/x-www-form-urlencoded',
-          'idempotency-key': req.reference,
+          ...(idempotencyKey ? { 'idempotency-key': idempotencyKey } : {}),
         },
         body,
         signal: AbortSignal.timeout(this.opts.timeoutMs ?? 15_000),
@@ -120,16 +196,52 @@ export class StripeProvider implements PaymentProvider {
       throw new PaymentProviderError(`Stripe unreachable: ${(err as Error).message}`, null, 'network');
     }
     const json = (await res.json().catch(() => null)) as { id?: unknown; url?: unknown; expires_at?: unknown; error?: { message?: string; code?: string } } | null;
-    if (!res.ok || !json || typeof json.id !== 'string' || typeof json.url !== 'string') {
-      throw new PaymentProviderError(`Stripe refused the checkout: ${json?.error?.message ?? `HTTP ${res.status}`}`, res.status, json?.error?.code ?? null);
-    }
+    if (!res.ok || !json) throw new PaymentProviderError(`Stripe refused the ${what}: ${json?.error?.message ?? `HTTP ${res.status}`}`, res.status, json?.error?.code ?? null);
+    return json;
+  }
+
+  private session(json: { id?: unknown; url?: unknown; expires_at?: unknown }, what: string): CheckoutSession {
+    if (typeof json.id !== 'string' || typeof json.url !== 'string') throw new PaymentProviderError(`Stripe refused the ${what}: no session in the answer`, 200, null);
     return { provider: this.name, id: json.id, url: json.url, expiresAt: typeof json.expires_at === 'number' ? new Date(json.expires_at * 1000) : null };
+  }
+
+  /**
+   * M28: Stripe Checkout in subscription mode for a monthly price. The reference and the metadata
+   * go on the checkout and on the subscription (so its invoices name the subscriber even before
+   * the checkout event arrives); tax ids and the billing address are collected for the invoice.
+   * Idempotent per reference, price and minute (a double click opens one checkout).
+   */
+  async createSubscriptionCheckout(req: SubscriptionCheckoutRequest): Promise<CheckoutSession> {
+    const metadata = { ...req.metadata, reference: req.reference };
+    const body = stripeForm({
+      mode: 'subscription',
+      client_reference_id: req.reference,
+      line_items: [{ price: req.priceId, quantity: 1 }],
+      success_url: req.successUrl,
+      cancel_url: req.cancelUrl,
+      locale: 'ro',
+      billing_address_collection: 'required',
+      tax_id_collection: { enabled: true },
+      automatic_tax: req.automaticTax ? { enabled: true } : undefined,
+      metadata,
+      subscription_data: { metadata },
+      ...(req.customerId ? { customer: req.customerId, customer_update: { address: 'auto', name: 'auto' } } : { customer_email: req.customerEmail ?? undefined }),
+    });
+    const json = await this.post('/v1/checkout/sessions', body, `${req.reference}:${req.priceId}:${Math.floor(Date.now() / 60_000)}`, 'subscription checkout');
+    return this.session(json, 'subscription checkout');
+  }
+
+  /** M28: the Stripe customer portal (card, invoices, cancellation), returning to `returnUrl`. */
+  async createPortalSession(customerId: string, returnUrl: string): Promise<PortalSession> {
+    const json = await this.post('/v1/billing_portal/sessions', stripeForm({ customer: customerId, return_url: returnUrl }), null, 'portal session');
+    if (typeof json.url !== 'string') throw new PaymentProviderError('Stripe refused the portal session: no url in the answer', 200, null);
+    return { url: json.url };
   }
 
   parseWebhook(rawBody: string, headers: HeaderSource, now: Date = new Date()): PaymentEvent {
     if (!this.opts.webhookSecret) throw new WebhookSignatureError('unconfigured');
     verifyStripeSignature(this.opts.webhookSecret, rawBody, headerValue(headers, 'stripe-signature'), now, this.opts.toleranceSeconds ?? 300);
-    let event: { id?: unknown; type?: unknown; data?: { object?: StripeCheckoutObject } };
+    let event: { id?: unknown; type?: unknown; created?: unknown; data?: { object?: StripeCheckoutObject } };
     try {
       event = JSON.parse(rawBody) as typeof event;
     } catch {
@@ -138,9 +250,25 @@ export class StripeProvider implements PaymentProvider {
     const eventId = typeof event.id === 'string' ? event.id : '';
     const type = typeof event.type === 'string' ? event.type : '';
     const o = event.data?.object;
+    if (eventId && type && o) {
+      const sub = parseSubscriptionEvent(this.name, eventId, type, event.created, o as Obj);
+      if (sub) return sub;
+    }
     if (!eventId || !type || !o || o.object !== 'checkout.session' || typeof o.id !== 'string') return { type: 'ignored', provider: this.name, eventId, eventType: type };
     const reference = typeof o.client_reference_id === 'string' ? o.client_reference_id : typeof o.metadata?.reference === 'string' ? o.metadata.reference : null;
     const base = { provider: this.name, eventId, checkoutId: o.id, reference };
+    // M28: a subscription checkout is not a one-off payment (its money arrives as invoice.paid).
+    if (o.mode === 'subscription') {
+      if (type !== 'checkout.session.completed') return { type: 'ignored', provider: this.name, eventId, eventType: type };
+      return {
+        type: 'subscription.checkout_completed',
+        ...base,
+        customerId: idOf(o.customer),
+        subscriptionId: idOf(o.subscription),
+        paid: o.payment_status === 'paid' || o.payment_status === 'no_payment_required',
+        metadata: strings(o.metadata),
+      };
+    }
     // A card payment is "paid" at completion; a delayed method (bank debit) completes "unpaid" and
     // later sends async_payment_succeeded or async_payment_failed.
     if ((type === 'checkout.session.completed' && o.payment_status === 'paid') || type === 'checkout.session.async_payment_succeeded') {

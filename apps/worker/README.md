@@ -195,3 +195,14 @@ pnpm --filter @pretoscop/worker llm:categories --mock        # category suggesti
 ```
 
 Real (non-mock) CLI calls need the key and the flag, like the job. Every call is in `llm_usage`.
+
+## B2B (M28)
+
+- `b2b.digest` (07:45 Europe/Bucharest, flag `b2b.digest.enabled`): one email per member who
+  wants it, with the observed price/stock changes of the last 24 hours on the workspace's SKUs;
+  nothing when nothing changed; claimed per workspace, day and member, mailer idempotency key
+  `b2b-digest:<ws>:<day>:<user>`; bounced, complained or deleted addresses are skipped. CLI:
+  `pnpm --filter @pretoscop/worker b2b:digest` (exits 2 while the flag is off).
+- `b2b.resolve` (05:40): unmatched SKUs tried again, merged products followed.
+- `b2b.prune` (Sundays 03:50): API usage counters after 400 days, digest receipts after 90 days,
+  invitations once accepted or after 90 days.

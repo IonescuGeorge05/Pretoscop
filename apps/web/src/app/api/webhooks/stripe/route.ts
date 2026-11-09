@@ -1,5 +1,7 @@
 import { bindTopUpCheckout, closeTopUp, creditTopUp } from '@pretoscop/db';
 import { WebhookSignatureError, type PaymentEvent } from '@pretoscop/payments';
+import { isB2bPaymentEvent } from '@/lib/b2b-billing';
+import { handleB2bBillingEvent } from '@/lib/b2b-billing-server';
 import { readTextCapped } from '@/lib/body';
 import { db } from '@/lib/db';
 import { logPromoted, paymentProvider, refreshPromotedForMerchant } from '@/lib/promoted';
@@ -25,7 +27,8 @@ async function credit(ev: Extract<PaymentEvent, { type: 'checkout.paid' }>) {
 }
 
 /**
- * POST /api/webhooks/stripe (M25): the only place a wallet is credited from a card payment. Signed
+ * POST /api/webhooks/stripe (M25): the only place a wallet is credited from a card payment, and (M28)
+ * the only place a B2B subscription changes a workspace's plan or billing state. Signed
  * by Stripe (`Stripe-Signature`, checked against the raw body, 5-minute tolerance); off (404) until
  * STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET are set. Idempotent: a redelivered or duplicated event
  * changes nothing (the ledger row of a top-up is unique). Answers 2xx for everything it has handled
@@ -60,6 +63,12 @@ export async function POST(req: Request): Promise<Response> {
       const closed = await closeTopUp(db(), { provider: ev.provider, externalId: ev.checkoutId, eventId: ev.eventId, status: ev.type === 'checkout.failed' ? 'failed' : 'expired' });
       logPromoted('webhook.closed', { eventId: ev.eventId, checkoutId: ev.checkoutId, type: ev.type, closed });
       return Response.json({ ok: true, closed });
+    }
+    // M28: B2B plan subscriptions share this endpoint (one Stripe webhook, one secret).
+    if (isB2bPaymentEvent(ev)) {
+      const result = await handleB2bBillingEvent(ev);
+      if (result === 'unknown_workspace') return new Response('no workspace for this event yet', { status: 409 });
+      return Response.json({ ok: true, b2b: result });
     }
     return Response.json({ ok: true, ignored: ev.type === 'ignored' ? ev.eventType : ev.type });
   } catch (err) {

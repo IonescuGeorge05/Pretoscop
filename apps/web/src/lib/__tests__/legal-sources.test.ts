@@ -15,6 +15,7 @@ const PAGES = [
     join('app', '(site)', p),
   ),
   join('app', '(forms)', 'contact'),
+  join('app', '(site)', 'pentru-companii', 'termeni'),
 ];
 const PATHS = [
   ...PAGES,
@@ -30,6 +31,12 @@ const PATHS = [
   'lib/bot-policy.ts',
   'lib/consent-storage.ts',
   'messages',
+  // M28: the B2B workspace, its components and libraries.
+  'app/b2b',
+  'app/admin/(panel)/b2b',
+  'components/b2b',
+  'lib/b2b.ts',
+  'lib/b2b-table.ts',
 ];
 const CEDILLA = /[şţŞŢ]/;
 

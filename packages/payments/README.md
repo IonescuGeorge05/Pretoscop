@@ -44,8 +44,23 @@ account's default; the fields read are stable across versions.
 serves a fake hosted page; `stripeEvent()` and `signedStripeHeaders()` build and sign webhook
 deliveries exactly as Stripe sends them. Used by the unit tests and the M25 e2e, never by the apps.
 
-## For M28 (subscriptions)
+## Subscriptions (M28 B2B plans)
 
-Add optional methods (e.g. `createSubscriptionCheckout`) and new `PaymentEvent` variants rather
-than changing the existing ones, so M25 callers keep compiling; keep the rule that only verified
-webhooks change billing state.
+Optional methods, so M25 callers are unchanged:
+
+- `createSubscriptionCheckout({ reference, priceId, customerId?, customerEmail?, successUrl, cancelUrl, automaticTax?, metadata? })`:
+  Stripe Checkout in `mode=subscription` for a monthly price (the currency is the price's, EUR for
+  B2B). `reference` (`b2b:<workspace id>`) is the client reference; reference and metadata go on the
+  checkout and, through `subscription_data[metadata]`, on the subscription and so on every invoice.
+  Billing address and tax ids are collected; `automatic_tax` (Stripe Tax) when asked. Idempotency
+  key: reference + price + minute.
+- `createPortalSession(customerId, returnUrl)`: the Stripe customer portal (card, invoices, cancellation).
+
+New `PaymentEvent` variants from `parseWebhook` (same signature check, same endpoint):
+`subscription.checkout_completed` (a `checkout.session.completed` in subscription mode; it is never
+`checkout.paid`), `subscription.updated` (`customer.subscription.created|updated|deleted`; deleted =
+status `canceled`), `invoice.paid` (subscription invoices only; amounts in minor units with
+subtotal, tax and total). Both Stripe API shapes are read (period on the subscription or, since
+2025-03-31, on its items; `invoice.subscription` or `invoice.parent.subscription_details`).
+Subscription-mode checkouts that expire are `ignored`. The mock answers
+`POST /v1/billing_portal/sessions` too (`mock.portals`).

@@ -97,6 +97,23 @@ export function fixtureCli(cmd: FixtureCommand, ...args: string[]): unknown {
   return JSON.parse(line);
 }
 
+/**
+ * The database the web server under test uses: the environment, else this checkout's .env (as
+ * `getEnv` reads it), else the dev default. A worktree with its own database must never fall
+ * back to the shared dev database.
+ */
+export function e2eDatabaseUrl(): string {
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+  try {
+    const env = readFileSync(new URL('../../../.env', import.meta.url), 'utf8');
+    const fromFile = /^DATABASE_URL=(.+)$/m.exec(env)?.[1]?.trim();
+    if (fromFile) return fromFile;
+  } catch {
+    // no .env: the dev default below
+  }
+  return 'postgres://pretoscop:pretoscop@localhost:5432/pretoscop';
+}
+
 export function fixture(): E2eFixture {
   const raw = process.env.E2E_FIXTURE;
   if (!raw) throw new Error('E2E_FIXTURE missing: global setup did not run');

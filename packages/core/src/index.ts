@@ -184,3 +184,6 @@ export {
 export * from './affiliate';
 export * from './deals';
 export * from './sitemap';
+
+// M25: promoted placements (price bands, floors, second-price auction, click billing, wallets)
+export * from './promoted';

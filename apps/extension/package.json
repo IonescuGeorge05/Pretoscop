@@ -1,0 +1,16 @@
+{
+  "name": "@pretoscop/extension",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsx build.ts",
+    "lint": "eslint src test build.ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "cheerio": "1.2.0",
+    "esbuild": "0.28.2"
+  }
+}

@@ -18,6 +18,7 @@ import {
   e2eFixtureClicks,
 } from '../fixtures/e2e';
 import { channelsFixturePrice, channelsFixtureState, createChannelsFixture, dropChannelsFixture, setChannelFlags } from '../fixtures/channels-e2e';
+import { createExtFixture, dropExtFixture, extFlagState, setExtFlag, type E2eExtFixture } from '../fixtures/ext-e2e';
 
 // Usage: tsx src/cli/e2e-fixture.ts <command> [args] — prints JSON on stdout.
 //   create | drop | clicks                     product-page fixture (M13)
@@ -38,6 +39,9 @@ import { channelsFixturePrice, channelsFixtureState, createChannelsFixture, drop
 //   channels-state <email>                     browsers, Telegram link, alerts and consents of a test address
 //   channels-flags '<json>'                    sets channel flags, e.g. '{"alerts.push.enabled":false}'
 //   channels-drop '<json flagsWere>'           removes the channels fixture and accounts; restores the flags
+//   ext-create                                 M26: two products for the extension panel, lookup flag on (prints flagWas)
+//   ext-flag '<json {enabled, config}>'        sets the lookup flag, e.g. '{"enabled":true,"config":{"disabled_shops":["altex"]}}'
+//   ext-drop '<json flagWas>'                  removes the extension fixture; restores the flag (null = no row)
 loadRootEnvFile();
 const env = getEnv();
 const pool = createPool(env.DATABASE_URL, 2);
@@ -77,6 +81,13 @@ try {
         restoreFlag: args[0] === 'on',
       }),
     };
+  else if (cmd === 'ext-create') out = await createExtFixture(db);
+  else if (cmd === 'ext-flag') {
+    const f = JSON.parse(args[0] ?? '{}') as { enabled?: boolean; config?: Record<string, unknown> };
+    await setExtFlag(db, f.enabled === true, f.config ?? {});
+    out = await extFlagState(db);
+  } else if (cmd === 'ext-drop')
+    out = { dropped: await dropExtFixture(db, { restoreFlag: JSON.parse(args[0] ?? 'null') as E2eExtFixture['flagWas'] }) };
   else if (cmd === 'llm-decision') out = await createLlmFixture(db, Number(args[0]));
   else out = await createE2eFixture(db);
   console.log(JSON.stringify(out));

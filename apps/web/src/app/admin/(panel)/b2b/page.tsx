@@ -34,7 +34,11 @@ export default async function B2bAdminPage({ searchParams }: { searchParams: Pro
       <h1 className="mb-1 text-xl font-bold">B2B</h1>
       <p className="mb-4 text-sm text-ink-soft">
         Flaguri: <code>b2b.enabled</code> {open ? 'pornit' : 'oprit'} (clienții intră în spații și în API), <code>b2b.digest.enabled</code> {digest ? 'pornit' : 'oprit'},{' '}
-        <code>b2b.billing.enabled</code> {billing ? 'pornit' : 'oprit'}. Cu flagul oprit, doar administratorii deschid spațiile (previzualizare).
+        <code>b2b.billing.enabled</code> {billing ? 'pornit' : 'oprit'}. Cu flagul oprit, doar administratorii deschid spațiile (previzualizare).{' '}
+        <Link href="/admin/b2b/facturi" className="text-brand-700 underline">
+          Facturi B2B
+        </Link>
+        .
       </p>
       {eroare && (
         <p role="alert" className="mb-4 rounded bg-high-bg px-3 py-2 text-sm text-high">

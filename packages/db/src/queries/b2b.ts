@@ -1006,3 +1006,181 @@ export async function b2bWorkspaceSummaries(db: Exec): Promise<B2bWorkspaceSumma
     createdAt: x.created_at,
   }));
 }
+
+// ---------------------------------------------------------------------------------------------
+// Billing (subscriptions through the payment provider; invoices e-Factura-ready)
+
+/** Shown to the customer when a paid subscription ended; a new subscription lifts it. */
+export const B2B_BILLING_LAPSED_REASON = 'Abonamentul s-a încheiat. Datele rămân păstrate; te poți abona din nou din Setări.';
+
+export type B2bBillingInput =
+  | { kind: 'checkout_completed'; workspaceId: number; customerId: string | null; subscriptionId: string | null; plan: B2bPlanDb | null; paid: boolean }
+  | { kind: 'subscription'; subscriptionId: string; customerId: string | null; workspaceId: number | null; status: string; periodEnd: Date | null; plan: B2bPlanDb | null }
+  | {
+      kind: 'invoice_paid';
+      invoiceId: string;
+      subscriptionId: string | null;
+      customerId: string | null;
+      workspaceId: number | null;
+      plan: B2bPlanDb | null;
+      currency: string;
+      /** Minor units (cents). */
+      subtotal: number;
+      tax: number;
+      total: number;
+      periodStart: Date | null;
+      periodEnd: Date | null;
+      paidAt: Date | null;
+    };
+
+const BILLING_STATUS: Record<string, string> = {
+  active: 'active',
+  trialing: 'active',
+  past_due: 'past_due',
+  unpaid: 'unpaid',
+  paused: 'unpaid',
+  canceled: 'canceled',
+  incomplete_expired: 'canceled',
+  incomplete: 'incomplete',
+};
+
+const dayOf = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : null);
+
+class UnknownBillingWorkspace extends Error {}
+
+/**
+ * Applies one verified provider event, exactly once (the event id is recorded in the same
+ * transaction). `unknown_workspace` rolls back, so the provider's retry can succeed once the
+ * checkout event (which links the subscription) has arrived.
+ */
+export async function applyB2bBillingEvent(db: Db, provider: string, eventId: string, type: string, input: B2bBillingInput): Promise<'applied' | 'duplicate' | 'unknown_workspace'> {
+  try {
+    return await db.transaction(async (tx) => {
+      const ins = await tx.execute(sql`
+        INSERT INTO b2b_billing_events (provider, event_id, type) VALUES (${provider}, ${eventId}, ${type}) ON CONFLICT DO NOTHING`);
+      if ((ins.rowCount ?? 0) === 0) return 'duplicate';
+      const find = async (subscriptionId: string | null, workspaceId: number | null): Promise<number> => {
+        const r = await tx.execute<{ id: string }>(sql`
+          SELECT id::text FROM b2b_workspaces
+          WHERE (${subscriptionId}::text IS NOT NULL AND billing_provider = ${provider} AND billing_subscription_id = ${subscriptionId})
+             OR (${workspaceId}::bigint IS NOT NULL AND id = ${workspaceId})
+          ORDER BY (billing_subscription_id IS NOT DISTINCT FROM ${subscriptionId}::text) DESC LIMIT 1 FOR UPDATE`);
+        if (!r.rows[0]) throw new UnknownBillingWorkspace();
+        return Number(r.rows[0].id);
+      };
+      if (input.kind === 'checkout_completed') {
+        const id = await find(null, input.workspaceId);
+        await tx.execute(sql`
+          UPDATE b2b_workspaces SET billing_provider = ${provider}, billing_customer_id = coalesce(${input.customerId}::text, billing_customer_id),
+            billing_subscription_id = coalesce(${input.subscriptionId}::text, billing_subscription_id),
+            billing_status = ${input.paid ? 'active' : 'incomplete'}, plan = coalesce(${input.plan}::text, plan),
+            status = CASE WHEN status = 'suspended' AND status_reason = ${B2B_BILLING_LAPSED_REASON} THEN 'active' ELSE status END,
+            status_reason = CASE WHEN status = 'suspended' AND status_reason = ${B2B_BILLING_LAPSED_REASON} THEN NULL ELSE status_reason END,
+            updated_at = now()
+          WHERE id = ${id}`);
+      } else if (input.kind === 'subscription') {
+        const id = await find(input.subscriptionId, input.workspaceId);
+        const status = BILLING_STATUS[input.status] ?? 'incomplete';
+        // Only the workspace's current subscription moves its state (an old one ending changes nothing).
+        await tx.execute(sql`
+          UPDATE b2b_workspaces SET billing_provider = ${provider}, billing_subscription_id = ${input.subscriptionId},
+            billing_customer_id = coalesce(${input.customerId}::text, billing_customer_id), billing_status = ${status},
+            billing_period_end = coalesce(${input.periodEnd?.toISOString() ?? null}::timestamptz, billing_period_end),
+            plan = coalesce(${input.plan}::text, plan),
+            status = CASE WHEN ${status} = 'canceled' AND status = 'active' THEN 'suspended'
+                          WHEN ${status} = 'active' AND status = 'suspended' AND status_reason = ${B2B_BILLING_LAPSED_REASON} THEN 'active' ELSE status END,
+            status_reason = CASE WHEN ${status} = 'canceled' AND status = 'active' THEN ${B2B_BILLING_LAPSED_REASON}
+                                 WHEN ${status} = 'active' AND status = 'suspended' AND status_reason = ${B2B_BILLING_LAPSED_REASON} THEN NULL ELSE status_reason END,
+            updated_at = now()
+          WHERE id = ${id} AND (billing_subscription_id IS NULL OR billing_subscription_id = ${input.subscriptionId})`);
+      } else {
+        const id = await find(input.subscriptionId, input.workspaceId);
+        const vat = input.subtotal > 0 ? (Math.round((input.tax * 10_000) / input.subtotal) / 100).toFixed(2) : '0.00';
+        await tx.execute(sql`
+          INSERT INTO b2b_invoices (workspace_id, provider, provider_invoice_id, plan, period_start, period_end, currency, net_amount, vat_rate, vat_amount,
+            total_amount, buyer_name, buyer_cui, buyer_reg_com, buyer_address, buyer_email, status, paid_at)
+          SELECT w.id, ${provider}, ${input.invoiceId}, coalesce(${input.plan}::text, w.plan), ${dayOf(input.periodStart)}::date, ${dayOf(input.periodEnd)}::date,
+            ${input.currency}, ${baniToNumeric(input.subtotal)}::numeric, ${vat}::numeric, ${baniToNumeric(input.tax)}::numeric, ${baniToNumeric(input.total)}::numeric,
+            w.company_name, w.cui, w.reg_com, w.billing_address, w.billing_email, 'paid', ${input.paidAt?.toISOString() ?? null}::timestamptz
+          FROM b2b_workspaces w WHERE w.id = ${id}
+          ON CONFLICT (provider, provider_invoice_id) DO NOTHING`);
+      }
+      return 'applied' as const;
+    });
+  } catch (e) {
+    if (e instanceof UnknownBillingWorkspace) return 'unknown_workspace';
+    throw e;
+  }
+}
+
+export interface B2bInvoiceRow {
+  id: number;
+  workspaceId: number;
+  workspaceName: string;
+  providerInvoiceId: string;
+  plan: B2bPlanDb;
+  periodStart: string | null;
+  periodEnd: string | null;
+  currency: string;
+  netAmount: string;
+  vatRate: string;
+  vatAmount: string;
+  totalAmount: string;
+  buyerName: string | null;
+  buyerCui: string | null;
+  buyerRegCom: string | null;
+  buyerAddress: string | null;
+  buyerEmail: string | null;
+  status: string;
+  paidAt: string | null;
+  fiscalNumber: string | null;
+  efacturaStatus: string;
+}
+
+/** Invoices of one workspace (null = all), optionally of one month of payment (YYYY-MM, Bucharest). */
+export async function listB2bInvoices(db: Exec, workspaceId: number | null, month: string | null = null): Promise<B2bInvoiceRow[]> {
+  const r = await db.execute<{
+    id: string; workspace_id: string; name: string; provider_invoice_id: string; plan: B2bPlanDb; period_start: string | null; period_end: string | null;
+    currency: string; net_amount: string; vat_rate: string; vat_amount: string; total_amount: string; buyer_name: string | null; buyer_cui: string | null;
+    buyer_reg_com: string | null; buyer_address: string | null; buyer_email: string | null; status: string; paid_at: string | null; fiscal_number: string | null;
+    efactura_status: string;
+  }>(sql`
+    SELECT i.id::text, i.workspace_id::text, w.name, i.provider_invoice_id, i.plan, i.period_start::text, i.period_end::text, i.currency,
+      i.net_amount::text, i.vat_rate::text, i.vat_amount::text, i.total_amount::text, i.buyer_name, i.buyer_cui, i.buyer_reg_com, i.buyer_address,
+      i.buyer_email, i.status, i.paid_at::text, i.fiscal_number, i.efactura_status
+    FROM b2b_invoices i JOIN b2b_workspaces w ON w.id = i.workspace_id
+    WHERE (${workspaceId}::bigint IS NULL OR i.workspace_id = ${workspaceId}::bigint)
+      AND (${month}::text IS NULL OR to_char(i.paid_at AT TIME ZONE 'Europe/Bucharest', 'YYYY-MM') = ${month}::text)
+    ORDER BY i.paid_at DESC NULLS LAST, i.id DESC`);
+  return r.rows.map((x) => ({
+    id: Number(x.id),
+    workspaceId: Number(x.workspace_id),
+    workspaceName: x.name,
+    providerInvoiceId: x.provider_invoice_id,
+    plan: x.plan,
+    periodStart: x.period_start,
+    periodEnd: x.period_end,
+    currency: x.currency,
+    netAmount: x.net_amount,
+    vatRate: x.vat_rate,
+    vatAmount: x.vat_amount,
+    totalAmount: x.total_amount,
+    buyerName: x.buyer_name,
+    buyerCui: x.buyer_cui,
+    buyerRegCom: x.buyer_reg_com,
+    buyerAddress: x.buyer_address,
+    buyerEmail: x.buyer_email,
+    status: x.status,
+    paidAt: x.paid_at,
+    fiscalNumber: x.fiscal_number,
+    efacturaStatus: x.efactura_status,
+  }));
+}
+
+export type B2bEfacturaStatus = 'to_issue' | 'issued' | 'sent' | 'accepted' | 'rejected';
+
+/** The accountant issued the fiscal invoice (e-Factura): its number and state. */
+export async function setB2bInvoiceFiscal(db: Exec, invoiceId: number, fiscalNumber: string | null, efacturaStatus: B2bEfacturaStatus): Promise<boolean> {
+  const r = await db.execute(sql`UPDATE b2b_invoices SET fiscal_number = ${fiscalNumber}, efactura_status = ${efacturaStatus} WHERE id = ${invoiceId}`);
+  return (r.rowCount ?? 0) > 0;
+}

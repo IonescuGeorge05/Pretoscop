@@ -1,7 +1,7 @@
 'use server';
 
 import { currentVersion, legalDocuments } from '@pretoscop/config/legal-texts';
-import { B2B_IMPORT_MAX_LINES, parseB2bImport, parsePriceRon, validateCui } from '@pretoscop/core';
+import { B2B_IMPORT_MAX_LINES, B2B_PLANS, isB2bPlan, parseB2bImport, parsePriceRon, validateCui } from '@pretoscop/core';
 import {
   acceptB2bTerms,
   addB2bCatalogueSku,
@@ -20,7 +20,9 @@ import {
 } from '@pretoscop/db';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { db } from '@/lib/db';
+import { BillingProviderError } from '@/lib/b2b-billing';
+import { billingProvider, selfServePrices } from '@/lib/b2b-billing-server';
+import { db, serverEnv } from '@/lib/db';
 import { actorOf, B2B_PATH, requireB2bData, requireB2bWorkspace, type B2bContext } from '@/lib/b2b';
 
 /**
@@ -221,4 +223,59 @@ export async function saveBillingAction(form: FormData): Promise<void> {
   });
   await audit(ctx, 'b2b.billing_data', { cui: cui?.cui ?? null });
   back(ctx.workspace.id, '/setari', { ok: 'salvat' });
+}
+
+const LIVE_SUBSCRIPTION = new Set(['active', 'past_due', 'unpaid', 'checkout']);
+
+/**
+ * Self-serve subscription (Starter, Pro): the owner goes to the provider's hosted checkout. The
+ * plan changes only when the provider's signed webhook confirms the payment (never on the way back).
+ */
+export async function startSubscriptionAction(form: FormData): Promise<void> {
+  const ctx = await requireB2bWorkspace(field(form, 'ws', 12));
+  owner(ctx, '/setari');
+  const w = ctx.workspace;
+  const plan = field(form, 'plan', 20);
+  const prices = selfServePrices();
+  const provider = await billingProvider();
+  if (!provider || !isB2bPlan(plan) || !B2B_PLANS[plan].selfServe || !prices[plan]) back(w.id, '/setari', { eroare: 'facturare' });
+  if (!w.companyName || !w.cui || !w.billingAddress) back(w.id, '/setari', { eroare: 'date_facturare' });
+  if (w.billingSubscriptionId && LIVE_SUBSCRIPTION.has(w.billingStatus)) back(w.id, '/setari', { eroare: 'facturare' });
+  const base = serverEnv().PUBLIC_BASE_URL;
+  let url: string;
+  try {
+    const s = await provider.createSubscriptionCheckout({
+      workspaceId: w.id,
+      plan,
+      priceId: prices[plan]!,
+      customerId: w.billingCustomerId,
+      customerEmail: w.billingEmail ?? ctx.user.email,
+      successUrl: `${base}/b2b/${w.id}/setari?plata=ok`,
+      cancelUrl: `${base}/b2b/${w.id}/setari?plata=anulat`,
+      automaticTax: serverEnv().B2B_STRIPE_AUTOMATIC_TAX,
+    });
+    url = s.url;
+    await audit(ctx, 'b2b.checkout', { plan, session: s.id });
+  } catch (e) {
+    if (e instanceof BillingProviderError) back(w.id, '/setari', { eroare: 'facturare' });
+    throw e;
+  }
+  redirect(url);
+}
+
+/** The provider's customer portal: card, invoices, cancellation. */
+export async function openBillingPortalAction(form: FormData): Promise<void> {
+  const ctx = await requireB2bWorkspace(field(form, 'ws', 12));
+  owner(ctx, '/setari');
+  const w = ctx.workspace;
+  const provider = await billingProvider();
+  if (!provider || !w.billingCustomerId) back(w.id, '/setari', { eroare: 'facturare' });
+  let url: string;
+  try {
+    url = (await provider.createPortalSession(w.billingCustomerId, `${serverEnv().PUBLIC_BASE_URL}/b2b/${w.id}/setari`)).url;
+  } catch (e) {
+    if (e instanceof BillingProviderError) back(w.id, '/setari', { eroare: 'facturare' });
+    throw e;
+  }
+  redirect(url);
 }

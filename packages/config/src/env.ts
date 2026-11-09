@@ -233,6 +233,18 @@ export const EnvSchema = z
     // Minimum interval between two requests to an Icecat host (Icecat allows up to 100 per second).
     ICECAT_MIN_INTERVAL_MS: int(1000),
 
+    // Payments (M28 B2B plans; M25 promoted placements use the same account). Unset = no online
+    // payment: subscriptions stay off whatever the flag `b2b.billing.enabled` says.
+    STRIPE_SECRET_KEY: optionalString,
+    STRIPE_API_BASE: z.string().min(1).default('https://api.stripe.com'),
+    // Signing secret of the B2B webhook endpoint (/api/webhooks/stripe-b2b), `whsec_…`.
+    B2B_STRIPE_WEBHOOK_SECRET: optionalString,
+    // Stripe price ids (`price_…`, monthly, EUR, tax-exclusive) of the self-serve plans.
+    B2B_STRIPE_PRICE_STARTER: optionalString,
+    B2B_STRIPE_PRICE_PRO: optionalString,
+    // Stripe Tax computes the VAT on the invoices (needs Stripe Tax activated, setup D3).
+    B2B_STRIPE_AUTOMATIC_TAX: bool.default(true),
+
     // Affiliate networks (M24)
     TWOPERFORMANT_EMAIL: optionalString,
     TWOPERFORMANT_PASSWORD: optionalString,
@@ -253,6 +265,18 @@ export const EnvSchema = z
     METRICS_PORT: int(9464),
   })
   .superRefine((env, ctx) => {
+    if (!isVendorEndpoint(env.STRIPE_API_BASE)) {
+      ctx.addIssue({ code: 'custom', path: ['STRIPE_API_BASE'], message: 'STRIPE_API_BASE must be an https URL (or http on localhost for a local mock)' });
+    }
+    if (env.STRIPE_SECRET_KEY && !/^(sk|rk)_(test|live)_[A-Za-z0-9]+$/.test(env.STRIPE_SECRET_KEY)) {
+      ctx.addIssue({ code: 'custom', path: ['STRIPE_SECRET_KEY'], message: 'STRIPE_SECRET_KEY must be a Stripe secret or restricted key (sk_… or rk_…)' });
+    }
+    if (env.B2B_STRIPE_WEBHOOK_SECRET && !/^whsec_[A-Za-z0-9]+$/.test(env.B2B_STRIPE_WEBHOOK_SECRET)) {
+      ctx.addIssue({ code: 'custom', path: ['B2B_STRIPE_WEBHOOK_SECRET'], message: 'B2B_STRIPE_WEBHOOK_SECRET must be the endpoint signing secret (whsec_…)' });
+    }
+    for (const key of ['B2B_STRIPE_PRICE_STARTER', 'B2B_STRIPE_PRICE_PRO'] as const) {
+      if (env[key] && !/^price_[A-Za-z0-9]+$/.test(env[key])) ctx.addIssue({ code: 'custom', path: [key], message: `${key} must be a Stripe price id (price_…)` });
+    }
     if ((env.VAPID_PUBLIC_KEY === undefined) !== (env.VAPID_PRIVATE_KEY === undefined)) {
       ctx.addIssue({ code: 'custom', path: ['VAPID_PRIVATE_KEY'], message: 'set both VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY, or neither' });
     }

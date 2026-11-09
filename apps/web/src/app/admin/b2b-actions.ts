@@ -10,8 +10,10 @@ import {
   inviteB2bMember,
   reresolveB2bSkus,
   revokeB2bApiKey,
+  setB2bInvoiceFiscal,
   sql,
   updateB2bWorkspace,
+  type B2bEfacturaStatus,
   type B2bWorkspaceStatus,
 } from '@pretoscop/db';
 import { revalidatePath } from 'next/cache';
@@ -152,4 +154,21 @@ export async function adminResolveAction(form: FormData): Promise<void> {
   const r = await reresolveB2bSkus(db(), id);
   await audit(admin.actor, 'b2b.resolve', id, null, r);
   back(`/admin/b2b/${id}`, { ok: 'rezolvat' });
+}
+
+const EFACTURA = new Set<B2bEfacturaStatus>(['to_issue', 'issued', 'sent', 'accepted', 'rejected']);
+
+/** The accountant issued the fiscal invoice for a paid period: its number and e-Factura state. */
+export async function setInvoiceFiscalAction(form: FormData): Promise<void> {
+  const admin = await requireAdmin();
+  const invoiceId = Number(form.get('invoice'));
+  const status = field(form, 'efactura', 20) as B2bEfacturaStatus;
+  const fiscal = field(form, 'fiscalNumber', 40) || null;
+  const month = field(form, 'luna', 7);
+  const path = `/admin/b2b/facturi${/^\d{4}-\d{2}$/.test(month) ? `?luna=${month}` : ''}`;
+  if (!Number.isInteger(invoiceId) || !EFACTURA.has(status) || (status !== 'to_issue' && !fiscal)) redirect(`${path}${path.includes('?') ? '&' : '?'}eroare=fiscal`);
+  if (await setB2bInvoiceFiscal(db(), invoiceId, fiscal, status)) {
+    await db().insert(auditLog).values({ actor: admin.actor, action: 'b2b.invoice_fiscal', entity: 'b2b_invoices', entityId: String(invoiceId), before: null, after: { fiscal, status } });
+  }
+  redirect(path);
 }

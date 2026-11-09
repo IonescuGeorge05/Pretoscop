@@ -1,5 +1,5 @@
 import { B2B_PLANS, B2B_PLANS_ORDER, effectiveLimits } from '@pretoscop/core';
-import { b2bSkuCounts, bucharestToday, getB2bWorkspace, listB2bApiKeys, listB2bApiUsage, listB2bInvites, listB2bMembers } from '@pretoscop/db';
+import { b2bSkuCounts, bucharestToday, getB2bWorkspace, listB2bApiKeys, listB2bApiUsage, listB2bInvites, listB2bInvoices, listB2bMembers } from '@pretoscop/db';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { adminCancelInviteAction, adminInviteAction, adminResolveAction, adminRevokeKeyAction, updateWorkspaceAction } from '@/app/admin/b2b-actions';
@@ -30,12 +30,13 @@ export default async function B2bWorkspaceAdminPage({ params, searchParams }: { 
   const wsId = /^\d{1,12}$/.test(id) ? Number(id) : null;
   const w = wsId === null ? null : await getB2bWorkspace(db(), wsId);
   if (!w) notFound();
-  const [members, invites, keys, usage, counts] = await Promise.all([
+  const [members, invites, keys, usage, counts, invoices] = await Promise.all([
     listB2bMembers(db(), w.id),
     listB2bInvites(db(), w.id),
     listB2bApiKeys(db(), w.id),
     listB2bApiUsage(db(), w.id, 30),
     b2bSkuCounts(db(), w.id),
+    listB2bInvoices(db(), w.id),
   ]);
   const limits = effectiveLimits(w.plan, { skuLimit: w.skuLimit, apiDailyQuota: w.apiDailyQuota });
   const msg = MESSAGES[(eroare ?? ok) ?? ''];
@@ -181,6 +182,21 @@ export default async function B2bWorkspaceAdminPage({ params, searchParams }: { 
               <Td>{u.day}</Td>
               <Td className="tabular">{u.requests}</Td>
               <Td className="tabular">{u.refused}</Td>
+            </tr>
+          ))}
+        </Table>
+      </Section>
+      <Section title="Facturi (plăți confirmate)">
+        <Table head={['Plătită', 'Plan', 'Total', 'Factura fiscală', 'Stripe']}>
+          {invoices.map((i) => (
+            <tr key={i.id}>
+              <Td className="text-xs">{i.paidAt ? formatDateTime(i.paidAt) : '—'}</Td>
+              <Td>{B2B_PLANS[i.plan].label}</Td>
+              <Td className="tabular">
+                {i.totalAmount} {i.currency}
+              </Td>
+              <Td className="text-xs">{i.fiscalNumber ?? i.efacturaStatus}</Td>
+              <Td className="font-mono text-xs">{i.providerInvoiceId}</Td>
             </tr>
           ))}
         </Table>

@@ -5,6 +5,12 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   acceptB2bInvites,
   addB2bCatalogueSku,
+  applyB2bBillingEvent,
+  B2B_BILLING_LAPSED_REASON,
+  getB2bWorkspace,
+  listB2bInvoices,
+  setB2bInvoiceFiscal,
+  updateB2bWorkspace,
   b2bChanges,
   b2bDigestRecipients,
   b2bMembership,
@@ -379,5 +385,66 @@ describe('API keys and quotas', () => {
     // A higher limit (plan change) lets requests through again on the same day; another day starts at zero.
     expect((await consumeB2bApiQuota(t.db, ws, 26, day)).allowed).toBe(true);
     expect(await consumeB2bApiQuota(t.db, ws, 25, '2026-11-10')).toMatchObject({ allowed: true, used: 1 });
+  });
+});
+
+describe('billing events', () => {
+  it('links the subscription, follows its state, records invoices with the buyer data, once per event', async () => {
+    const ws = await workspace();
+    await updateB2bWorkspace(t.db, ws, { companyName: 'SC Client SRL', cui: '14399840', billingAddress: 'Str. Exemplu 1, București', billingEmail: 'facturi@client.ro' });
+    // The invoice may arrive before the checkout event: the subscription metadata names the workspace.
+    const inv = {
+      kind: 'invoice_paid' as const,
+      invoiceId: `in_${n}`,
+      subscriptionId: `sub_${n}`,
+      customerId: 'cus_1',
+      workspaceId: ws,
+      plan: 'pro' as const,
+      currency: 'EUR',
+      subtotal: 14_900,
+      tax: 3_129,
+      total: 18_029,
+      periodStart: new Date('2026-11-09T10:00:00Z'),
+      periodEnd: new Date('2026-12-09T10:00:00Z'),
+      paidAt: new Date('2026-11-09T10:00:05Z'),
+    };
+    expect(await applyB2bBillingEvent(t.db, 'stripe', `evt_inv_${n}`, 'invoice.paid', inv)).toBe('applied');
+    expect(await applyB2bBillingEvent(t.db, 'stripe', `evt_inv_${n}`, 'invoice.paid', inv)).toBe('duplicate');
+    expect(
+      await applyB2bBillingEvent(t.db, 'stripe', `evt_co_${n}`, 'checkout.session.completed', {
+        kind: 'checkout_completed',
+        workspaceId: ws,
+        customerId: 'cus_1',
+        subscriptionId: `sub_${n}`,
+        plan: 'pro',
+        paid: true,
+      }),
+    ).toBe('applied');
+    let w = (await getB2bWorkspace(t.db, ws))!;
+    expect(w).toMatchObject({ plan: 'pro', billingStatus: 'active', billingProvider: 'stripe', billingCustomerId: 'cus_1', billingSubscriptionId: `sub_${n}` });
+    const [invoice] = await listB2bInvoices(t.db, ws);
+    expect(invoice).toMatchObject({ currency: 'EUR', netAmount: '149.00', vatRate: '21.00', vatAmount: '31.29', totalAmount: '180.29', buyerCui: '14399840', buyerName: 'SC Client SRL', efacturaStatus: 'to_issue', periodStart: '2026-11-09' });
+    expect(await listB2bInvoices(t.db, ws, '2026-11')).toHaveLength(1);
+    expect(await listB2bInvoices(t.db, ws, '2026-10')).toHaveLength(0);
+    expect(await setB2bInvoiceFiscal(t.db, invoice!.id, 'PSC-0001', 'issued')).toBe(true);
+    // Renewal fails, then the subscription ends: the workspace is suspended with the billing reason.
+    const sub = (status: string, id = `sub_${n}`) => ({ kind: 'subscription' as const, subscriptionId: id, customerId: 'cus_1', workspaceId: ws, status, periodEnd: new Date('2026-12-09T10:00:00Z'), plan: null });
+    await applyB2bBillingEvent(t.db, 'stripe', `evt_s1_${n}`, 'customer.subscription.updated', sub('past_due'));
+    expect((await getB2bWorkspace(t.db, ws))!).toMatchObject({ billingStatus: 'past_due', status: 'active' });
+    // Another (old) subscription of the customer ending changes nothing.
+    await applyB2bBillingEvent(t.db, 'stripe', `evt_old_${n}`, 'customer.subscription.deleted', sub('canceled', 'sub_old'));
+    expect((await getB2bWorkspace(t.db, ws))!.status).toBe('active');
+    await applyB2bBillingEvent(t.db, 'stripe', `evt_s2_${n}`, 'customer.subscription.deleted', sub('canceled'));
+    w = (await getB2bWorkspace(t.db, ws))!;
+    expect(w).toMatchObject({ billingStatus: 'canceled', status: 'suspended', statusReason: B2B_BILLING_LAPSED_REASON });
+    // Subscribing again lifts the billing suspension (and only that one).
+    await applyB2bBillingEvent(t.db, 'stripe', `evt_co2_${n}`, 'checkout.session.completed', { kind: 'checkout_completed', workspaceId: ws, customerId: 'cus_1', subscriptionId: `sub_new_${n}`, plan: 'starter', paid: true });
+    expect((await getB2bWorkspace(t.db, ws))!).toMatchObject({ status: 'active', statusReason: null, plan: 'starter', billingSubscriptionId: `sub_new_${n}` });
+  });
+
+  it('an event for no known workspace is not recorded, so the retry can apply it', async () => {
+    const orphan = { kind: 'subscription' as const, subscriptionId: 'sub_nobody', customerId: null, workspaceId: null, status: 'active', periodEnd: null, plan: null };
+    expect(await applyB2bBillingEvent(t.db, 'stripe', 'evt_orphan', 'customer.subscription.updated', orphan)).toBe('unknown_workspace');
+    expect((await t.db.execute(sql`SELECT 1 FROM b2b_billing_events WHERE event_id = 'evt_orphan'`)).rows).toHaveLength(0);
   });
 });

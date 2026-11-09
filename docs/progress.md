@@ -1,4 +1,4 @@
-| M29 | Category expansion playbook and CSS enrolment readiness | in progress | `mod/M29-categories` (paused) | | Stopped just after starting on 28 Oct (usage cap) || M28 | B2B price intelligence MVP | in progress | `mod/M28-b2b` (paused) | | Stopped just after starting on 28 Oct (usage cap) || M27 | Telegram bot and web push | review | `mod/M27-telegram-push` (merged into `daniel`) | | Flags off; needs D2 (bot token, VAPID keys); migration 0020_channels; ADR-025 || M26 | Browser extension (MV3) | in progress | `mod/M26-extension` (paused) | | Stopped mid-work on 28 Oct (usage cap); unreviewed work uncommitted in `.claude/worktrees/M26` || M25 | Promoted placements and merchant billing; optional ad slots | in progress | `mod/M25-promoted` (paused) | | Stopped mid-work on 28 Oct (usage cap); unreviewed work uncommitted in `.claude/worktrees/M25` on the laptop || M22 | LLM-assisted matching and attribute extraction | review | `mod/M22-llm-matching` (merged into `daniel`) | | Flag off; needs A9 (API key) and 100 labels; precision unmeasured until then; migration 0019_llm_usage; ADR-024 || M16 | SEO: structured data, sitemaps, performance | review | `mod/M16-seo` (merged into `daniel`) | | Server-rendered 404s, robots (Icecat AI block), sitemaps, JSON-LD; JS budget needs a founder decision || M15 | Deals page and discount verdict UI | review | `mod/M15-deals` (merged into `daniel`) | | No real drops before ~10 Nov (14 days of history needed); stricter badge rule after review || M14 | Search, category, brand and shop pages | review | `mod/M14-search` (merged into `daniel`) | | Meilisearch on the real catalogue (2,679 products); reviewed independently || M05B | Assisted-access channel for blocked shops (prototype) | review | `mod/M05B-assisted` (merged into `daniel`) | | Shipped off (no shop assisted, no vendor); cap booked before every call; shop extractors wait for A10 (vendor account, written legal opinion) |# Pretoscop — Progress tracker
+# Pretoscop — Progress tracker
 
 Single page the founders read to supervise the build. The implementing agent updates it at the start and end of every module. Statuses: `todo` → `in_progress` → `review` (founder verifies with the module's checklist) → `done`, or `blocked` (say on what). Phase gates (G0–G4) require explicit founder approval before the next phase starts.
 
@@ -31,7 +31,7 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 | M03 | Extractors: structured data and feed mappers | review | `mod/M03-extractors` (merged locally into `daniel`) | | eMAG listing/product, JSON-LD/microdata/OG, 5 feed mappers, sitemaps |
 | M04 | Shop registry and configuration | review | `mod/M04-registry` (merged locally into `daniel`) | | 28 shops, 49 sources (eMAG 43 listings + Tier A), idempotent sync |
 | M05 | Phase-0 price recorder (eMAG listings + first feeds) | review | chain `mod/M13-product-page` (from `mod/M05-recorder`) | | Live since 27 Oct: 960 eMAG offers; eMAG product pages answered with a CAPTCHA → Tier A off (decision needed) |
-| M05B | Assisted-access channel for blocked shops (prototype) | in progress | `mod/M05B-assisted` (unmerged) | | Implemented by an agent, verify script present, not yet reviewed; decided 2026-10-27 after legal advice; file the written opinion and open the vendor account (A10) |
+| M05B | Assisted-access channel for blocked shops (prototype) | review | `mod/M05B-assisted` (merged into `daniel`) | | Shipped off (no shop assisted, no vendor); cap booked before every call; shop extractors wait for A10 (vendor account, written legal opinion) |
 
 **Gate G0** — recorder runs daily on ≥5,000 products from ≥2 shops; raw snapshots in R2; backups on. Target: assisted channel live for ≥3 of the 5 designated shops at ≥90% success within the cap. Approved: ☐ date: ____
 
@@ -54,9 +54,9 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 |---|---|---|---|---|---|
 | M12 | Web foundation (Next.js app, design system, layout) | review | `mod/M12-web-foundation` (merged locally into `daniel`) | | Lighthouse mobile 98/95, desktop 100/100 |
 | M13 | Product page, history API, click-out | review | chain `mod/M13-product-page` | | Cached TTFB p95 13 ms; worker → web revalidation |
-| M14 | Search, category, brand and shop pages | in progress | `mod/M14-search` (unmerged) | | Implemented by an agent, verify script present, not yet reviewed |
-| M15 | Deals page and discount verdict UI | in progress | `mod/M15-deals` (unmerged) | | Implemented by an agent, not yet reviewed |
-| M16 | SEO: structured data, sitemaps, performance | in progress | `mod/M16-seo` (WIP) | | Stopped mid-work for the machine move |
+| M14 | Search, category, brand and shop pages | review | `mod/M14-search` (merged into `daniel`) | | Meilisearch on the real catalogue (2,679 products); reviewed independently |
+| M15 | Deals page and discount verdict UI | review | `mod/M15-deals` (merged into `daniel`) | | No real drops before ~10 Nov (14 days of history needed); stricter badge rule after review |
+| M16 | SEO: structured data, sitemaps, performance | review | `mod/M16-seo` (merged into `daniel`) | | Server-rendered 404s, robots (Icecat AI block), sitemaps, JSON-LD; JS budget needs a founder decision |
 | M17 | Legal and trust pages, consent, analytics, bot page | review | `mod/M17-legal` (merged into the chain) | | Lawyer review pending (B5) |
 | M18 | Production deployment, backups, monitoring, staging | review | `mod/M18-deploy` (merged into `daniel`) | | Full rehearsal passes on the laptop (PITR, disaster recovery, rolling deploy, rollback, k6); needs the server and accounts (A1, A3, A4, B2–B4, B8–B12) |
 
@@ -69,7 +69,7 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 | M19 | Accounts and price alerts | review | `mod/M19-alerts` (merged into `daniel`) | | Independently reviewed; all high/medium findings fixed; flag `alerts.email.enabled` off until B2/B4/B5 |
 | M20 | Merchant self-serve feed portal (free listing) | review | `mod/M20-merchants` (merged into `daniel`) | | Independently reviewed; all high/medium findings fixed; migration 0015_merchants; `merchants.portal.enabled` off until B5 and the founders open it |
 | M21 | Bot legitimacy program and source adapters batch 2 | review | `mod/M21-bot-legitimacy` (merged into `daniel`) | | Signing, canary and probes all off by default; reviewed independently; migrations 0017/0018; needs A4, C2, C3 |
-| M22 | LLM-assisted matching and attribute extraction | todo | `mod/M22-llm-matching` (empty) | | Brief in docs/HANDOFF.md §7 |
+| M22 | LLM-assisted matching and attribute extraction | review | `mod/M22-llm-matching` (merged into `daniel`) | | Flag off; needs A9 (API key) and 100 labels; precision unmeasured until then; migration 0019_llm_usage; ADR-024 |
 | M23 | Black Friday / fake-discount report tooling | review | `mod/M23-reports` (merged locally into `daniel`) | | Generator deterministic, reconciled with SQL; BF 2026 page waits for approved data |
 
 **Gate G3** — alerts live with double opt-in; ≥10 merchants onboarded; Verified Bots application submitted. Approved: ☐ date: ____
@@ -79,11 +79,11 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 | Module | Name | Status | Branch / PR | Verified by founder | Notes |
 |---|---|---|---|---|---|
 | M24 | Affiliate operations (program sync, links, commissions, revenue dashboard) | review | `mod/M24-affiliate` (merged into `daniel`) | | Mocked 2Performant until A6/A7; migration regenerated as 0016_commissions |
-| M25 | Promoted placements and merchant billing; optional ad slots | todo | | | |
-| M26 | Browser extension (MV3) | todo | | | |
-| M27 | Telegram bot and web push | in progress | `mod/M27-telegram-push` (WIP) | | Stopped mid-work for the machine move |
-| M28 | B2B price intelligence MVP | todo | | | |
-| M29 | Category expansion playbook and CSS enrolment readiness | todo | | | |
+| M25 | Promoted placements and merchant billing; optional ad slots | in progress | `mod/M25-promoted` (paused) | | Stopped mid-work on 28 Oct (usage cap); unreviewed work uncommitted in `.claude/worktrees/M25` on the laptop |
+| M26 | Browser extension (MV3) | review | `mod/M26-extension` (merged into `daniel`) | | Flag off; release gate not met yet (69.8 % of eMAG offers resolve; 70 % needed); store accounts D1 |
+| M27 | Telegram bot and web push | review | `mod/M27-telegram-push` (merged into `daniel`) | | Flags off; needs D2 (bot token, VAPID keys); migration 0020_channels; ADR-025 |
+| M28 | B2B price intelligence MVP | in progress | `mod/M28-b2b` (paused) | | Stopped just after starting on 28 Oct (usage cap) |
+| M29 | Category expansion playbook and CSS enrolment readiness | in progress | `mod/M29-categories` (paused) | | Stopped just after starting on 28 Oct (usage cap) |
 
 **Gate G4** — first revenue month recorded; extension published; B2B pilot customer. Approved: ☐ date: ____
 

@@ -452,12 +452,18 @@ sources:
       max_pages: 5
       label: "Trotinete electrice"
       tier: B
+  # Killed since eMAG answered product pages with a CAPTCHA on 27 Oct 2026 (decisions log in
+  # docs/progress.md, pending a founder decision). Kept here, not only in one database, so a fresh
+  # database (server, restore, new machine) never sends these requests and pauses www.emag.ro, listings
+  # included. shops:sync applies a YAML kill switch and never clears one: to resume Tier A, set this to
+  # false in a reviewed commit and then clear the switch in /admin/surse.
   - key: emag:product:tier-a
     kind: product_page
     url: https://www.emag.ro/
     parser_key: emag-product
     schedule: "30 3 * * *"
     enabled: true
+    kill_switch: true
     freshness_slo_hours: 26
     config:
       tier: A

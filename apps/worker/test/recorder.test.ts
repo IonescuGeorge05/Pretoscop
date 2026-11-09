@@ -144,8 +144,20 @@ describe('eMAG listing → offers, events, snapshot, frontier', () => {
     expect(r.touchedProducts).toEqual([pid]);
   });
 
+  it('Tier A ships killed in the registry, so a fresh database never runs it', async () => {
+    const id = await sourceId('emag:product:tier-a');
+    const row = await t.db.execute<{ kill_switch: boolean }>(sql`SELECT kill_switch FROM shop_sources WHERE id = ${id}`);
+    expect(row.rows[0]?.kill_switch).toBe(true);
+    const r = await runSource(deps(), id, { trigger: 'manual', budget: 1 });
+    expect(r.status).toBe('gated');
+    expect(r.reason).toMatch(/kill/i);
+    expect(r.stats.fetched).toBe(0);
+  });
+
   it('Tier A product pages add every seller of the most popular products', async () => {
     await t.db.execute(sql`UPDATE crawl_urls SET priority = 1e6 WHERE url LIKE '%DF1MLR2BM%'`);
+    // A founder resuming Tier A clears the switch (after the YAML change).
+    await t.db.execute(sql`UPDATE shop_sources SET kill_switch = false WHERE key = 'emag:product:tier-a'`);
     const r = await runSource(deps(), await sourceId('emag:product:tier-a'), { trigger: 'manual', budget: 1 });
     expect(r.status).toBe('success');
     expect(r.stats.parsed).toBe(9);

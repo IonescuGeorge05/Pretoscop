@@ -101,6 +101,8 @@ jobs:
             NEXT_PUBLIC_PLAUSIBLE_DOMAIN=${{ matrix.tag_suffix == '-prod' && vars.PLAUSIBLE_DOMAIN || '' }}
             NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL=${{ matrix.tag_suffix == '-prod' && vars.PLAUSIBLE_SCRIPT_URL || '' }}
             NEXT_PUBLIC_MEDIA_BASE_URL=${{ vars.MEDIA_BASE_URL || '' }}
+            NEXT_PUBLIC_ADSENSE_CLIENT=${{ matrix.tag_suffix == '-prod' && vars.ADSENSE_CLIENT || '' }}
+            NEXT_PUBLIC_ADSENSE_SLOT=${{ matrix.tag_suffix == '-prod' && vars.ADSENSE_SLOT || '' }}
           cache-from: type=gha,scope=${{ matrix.image }}${{ matrix.tag_suffix }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}${{ matrix.tag_suffix }}
 

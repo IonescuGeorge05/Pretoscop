@@ -245,6 +245,20 @@ export const EnvSchema = z
     CJ_PUBLISHER_ID: optionalString,
     TRADEDOUBLER_AFFILIATE_ID: optionalString,
 
+    // Merchant billing (M25; @pretoscop/payments). No key = no card top-ups (admins can still
+    // record a bank transfer). The webhook secret is the endpoint's `whsec_…` (/api/webhooks/stripe).
+    STRIPE_SECRET_KEY: optionalString,
+    STRIPE_WEBHOOK_SECRET: optionalString,
+    STRIPE_API_BASE: z.string().min(1).default('https://api.stripe.com'),
+    // VAT added on top of a wallet top-up, in percent (0 until the company is a VAT payer; then 21).
+    TOPUP_VAT_PERCENT: z.coerce.number().int().min(0).max(30).default(0),
+
+    // Optional ad slot (M25, D5): the AdSense publisher id (`ca-pub-…`). Inlined at build time and
+    // read by next.config.ts: only a build with it set lets the ad origins into the CSP; the slot
+    // also needs the flag `ads.slots.enabled` and the visitor's consent.
+    NEXT_PUBLIC_ADSENSE_CLIENT: optionalString,
+    NEXT_PUBLIC_ADSENSE_SLOT: optionalString,
+
     // Analytics and monitoring
     NEXT_PUBLIC_PLAUSIBLE_DOMAIN: optionalString,
     NEXT_PUBLIC_PLAUSIBLE_SCRIPT_URL: optionalString,
@@ -282,6 +296,30 @@ export const EnvSchema = z
     // The Signature-Agent (origin of BOT_INFO_URL) must be https; plain http only on a loopback host (local tests).
     if (env.WEB_BOT_AUTH && !SIGNATURE_AGENT_URL.test(env.BOT_INFO_URL.trim())) {
       ctx.addIssue({ code: 'custom', path: ['BOT_INFO_URL'], message: 'WEB_BOT_AUTH needs an https BOT_INFO_URL (its origin is the Signature-Agent that serves the key directory)' });
+    }
+    // M25: payments and the ad slot.
+    if (!isVendorEndpoint(env.STRIPE_API_BASE)) {
+      ctx.addIssue({ code: 'custom', path: ['STRIPE_API_BASE'], message: 'STRIPE_API_BASE must be an https URL (or http on localhost for a local mock)' });
+    }
+    if (env.STRIPE_SECRET_KEY && !/^(sk|rk)_(test|live)_[A-Za-z0-9]+$/.test(env.STRIPE_SECRET_KEY)) {
+      ctx.addIssue({ code: 'custom', path: ['STRIPE_SECRET_KEY'], message: 'STRIPE_SECRET_KEY must be a Stripe secret or restricted key (sk_… or rk_…)' });
+    }
+    if (env.STRIPE_WEBHOOK_SECRET && !/^whsec_[A-Za-z0-9]+$/.test(env.STRIPE_WEBHOOK_SECRET)) {
+      ctx.addIssue({ code: 'custom', path: ['STRIPE_WEBHOOK_SECRET'], message: 'STRIPE_WEBHOOK_SECRET must be the endpoint signing secret (whsec_…)' });
+    }
+    if (env.NEXT_PUBLIC_ADSENSE_CLIENT && !/^ca-pub-\d{10,20}$/.test(env.NEXT_PUBLIC_ADSENSE_CLIENT)) {
+      ctx.addIssue({ code: 'custom', path: ['NEXT_PUBLIC_ADSENSE_CLIENT'], message: 'NEXT_PUBLIC_ADSENSE_CLIENT must look like ca-pub-1234567890123456' });
+    }
+    if (env.NEXT_PUBLIC_ADSENSE_SLOT && !/^\d{6,20}$/.test(env.NEXT_PUBLIC_ADSENSE_SLOT)) {
+      ctx.addIssue({ code: 'custom', path: ['NEXT_PUBLIC_ADSENSE_SLOT'], message: 'NEXT_PUBLIC_ADSENSE_SLOT is the numeric ad unit id' });
+    }
+    if (env.APP_ENV === 'prod' && env.STRIPE_SECRET_KEY) {
+      // Payments in production: real keys only, over TLS, and a webhook to credit the wallets.
+      if (/^(sk|rk)_test_/.test(env.STRIPE_SECRET_KEY)) ctx.addIssue({ code: 'custom', path: ['STRIPE_SECRET_KEY'], message: 'STRIPE_SECRET_KEY is a test-mode key; production takes live keys' });
+      if (!env.STRIPE_WEBHOOK_SECRET) ctx.addIssue({ code: 'custom', path: ['STRIPE_WEBHOOK_SECRET'], message: 'STRIPE_WEBHOOK_SECRET is needed with STRIPE_SECRET_KEY: wallets are credited only by the signed webhook' });
+    }
+    if ((env.APP_ENV === 'staging' || env.APP_ENV === 'prod') && !env.STRIPE_API_BASE.startsWith('https://')) {
+      ctx.addIssue({ code: 'custom', path: ['STRIPE_API_BASE'], message: 'STRIPE_API_BASE must be https outside dev' });
     }
     if (env.APP_ENV === 'staging' || env.APP_ENV === 'prod') {
       if (key && isPublishedTestKey(key)) {

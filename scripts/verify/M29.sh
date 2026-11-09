@@ -69,10 +69,15 @@ cleanup() {
   stop_port "$PORT"
   pnpm --silent --filter @pretoscop/db e2e:fixture drop >/dev/null 2>&1 || true
   (cd apps/worker && MEILI_INDEX_PREFIX="$E2E_PREFIX" node --import tsx src/cli/search.ts drop >/dev/null 2>&1) || true
+  # Pages cached by the open-site server must not be served to a later closed-site run of this build.
+  find apps/web/.next/server/route-cache -type d -name c -path '*/$/c' -prune -exec rm -rf {} + 2>/dev/null || true
   restore_sitemaps
 }
 trap cleanup EXIT
 (cd apps/worker && MEILI_INDEX_PREFIX="$E2E_PREFIX" node --import tsx src/cli/search.ts rebuild >/dev/null)
+# The e2e run rendered these category pages with SITE_INDEXABLE=false and Next keeps them (ISR, 1 h):
+# drop the cached category pages so this server renders them with the open site's settings.
+find apps/web/.next/server/route-cache -type d -name c -path '*/$/c' -prune -exec rm -rf {} + 2>/dev/null || true
 (cd apps/web && SITE_INDEXABLE=true MEILI_INDEX_PREFIX="$E2E_PREFIX" PUBLIC_BASE_URL="http://localhost:$PORT" pnpm exec next start --port "$PORT" >"$LOG" 2>&1 &)
 for _ in $(seq 1 60); do
   curl -sf -o /dev/null "http://localhost:$PORT/robots.txt" && break
@@ -89,7 +94,7 @@ check(kids === "index, follow", `/c/carti/carti-pentru-copii (a book with 2 live
 const fiction = await robots("/c/carti/beletristica");
 check(fiction === "noindex, follow", `/c/carti/beletristica (only a provisional single-offer book): ${fiction}`);
 for (const p of ["/c/frumusete", "/c/frumusete/parfumuri"]) { const r = await robots(p); check(r === "noindex, follow", `${p} (no product): ${r}`); }
-if (problems.length) { console.error(`FAIL: ${problems.length} check(s)`); process.exit(1); }
+if (problems.length) { console.error(`FAIL: ${problems.length} check(s)`); process.exitCode = 1; }
 '
 ok "index only with an indexable product; empty and provisional-only categories noindex"
 

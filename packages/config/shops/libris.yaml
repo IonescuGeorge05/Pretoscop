@@ -6,7 +6,7 @@ kind: retail
 status: active
 access_mode: direct
 trust_tier: 2
-categories: [carti, electronice]
+categories: [carti]
 legal:
   basis_ref: "robots.txt allows product pages; recon 2026-10-27 served the honest bot"
 shipping:
@@ -19,6 +19,7 @@ crawl_policy:
 affiliate:
   network: "2performant"
   comparator_policy: "allowed"
+  css_policy: "approval"
   status: "to_apply"
   notes: "Allowed in comparators (CSS only with approval; no multi-network)."
 probes:
@@ -26,5 +27,110 @@ probes:
     vantage: "founder home connection (Mac), PretoscopBot via @pretoscop/fetch (M10)"
     result: served
     note: "robots and home 200; the menu has books, games, LEGO, stationery and gifts, no electronics or appliances"
-notes: "JSON-LD with gtin13 (ISBN). M10 (2026-10-27): no electronics or appliance assortment, so no source in the launch phase; books, games and LEGO come with the category expansion (Phase 4, M29)."
-sources: []
+  - date: "2026-11-09"
+    vantage: "founder laptop (Windows), PretoscopBot via @pretoscop/fetch record (M29)"
+    result: served
+    note: "3 fixture pages, 5 s apart, robots group *: sitemap-categorii.xml (5,272 category URLs), /carti/carti-pentru-copii/literatura-fantasy (40 cards of 290, ?iv.pg=N pagination), one product page (JSON-LD Product+Book: sku = card id, gtin13/isbn, publisher, author, bookFormat, inLanguage)"
+notes: "Books (M29): listing cards carry id, title (no diacritics, \"Title - Author\"), visible price, the publisher (data-gtm-brand) and the category path, but no ISBN; the product page's JSON-LD Product+Book adds the ISBN, author, cover and language. The crossed card price is the PRP (publisher's recommended price), kept as raw.rrp, never as an old price. The JSON-LD mpn is the ISBN prefixed by a publisher code (ART978-…): not an MPN. Some cards name a city as the publisher (BUCURESTI): read as no publisher. Libris's 2Performant program allows comparators and CSS only with prior approval (css_policy). M10 (2026-10-27): no electronics or appliance assortment."
+# M29 (2026-11-09): book listings for prices and discovery, product pages for the ISBN. All
+# disabled: the lead enables them after watching one run (docs/playbooks/category-expansion.md).
+# Worst case per day: 113 listing pages + 300 product pages = 413 requests (< 1000).
+sources:
+  - key: libris:listing:carti-copii-fantasy
+    kind: listing
+    url: https://www.libris.ro/carti/carti-pentru-copii/literatura-fantasy
+    parser_key: libris-listing
+    schedule: "0 4 * * *"
+    enabled: false
+    freshness_slo_hours: 26
+    config:
+      max_pages: 8
+      label: "Literatură fantasy pentru copii"
+      tier: B
+  - key: libris:listing:carti-copii-universala
+    kind: listing
+    url: https://www.libris.ro/carti/carti-pentru-copii/literatura-universala
+    parser_key: libris-listing
+    schedule: "5 4 * * *"
+    enabled: false
+    freshness_slo_hours: 26
+    config:
+      max_pages: 15
+      label: "Literatură universală pentru copii"
+      tier: B
+  - key: libris:listing:carti-copii-romana
+    kind: listing
+    url: https://www.libris.ro/carti/carti-pentru-copii/literatura-romana
+    parser_key: libris-listing
+    schedule: "10 4 * * *"
+    enabled: false
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Literatură română pentru copii"
+      tier: B
+  - key: libris:listing:romane-fantasy
+    kind: listing
+    url: https://www.libris.ro/sf-fantasy/romane-fantasy
+    parser_key: libris-listing
+    schedule: "15 4 * * *"
+    enabled: false
+    freshness_slo_hours: 26
+    config:
+      max_pages: 15
+      label: "Romane fantasy"
+      tier: B
+  - key: libris:listing:literatura-universala
+    kind: listing
+    url: https://www.libris.ro/carti/beletristica/literatura-universala
+    parser_key: libris-listing
+    schedule: "20 4 * * *"
+    enabled: false
+    freshness_slo_hours: 26
+    config:
+      max_pages: 25
+      label: "Literatură universală"
+      tier: B
+  - key: libris:listing:literatura-romana
+    kind: listing
+    url: https://www.libris.ro/carti/beletristica/literatura-romana
+    parser_key: libris-listing
+    schedule: "30 4 * * *"
+    enabled: false
+    freshness_slo_hours: 26
+    config:
+      max_pages: 15
+      label: "Literatură română"
+      tier: B
+  - key: libris:listing:young-adult
+    kind: listing
+    url: https://www.libris.ro/carti-pentru-adolescenti-young-adult
+    parser_key: libris-listing
+    schedule: "37 4 * * *"
+    enabled: false
+    freshness_slo_hours: 26
+    config:
+      max_pages: 10
+      label: "Cărți pentru adolescenți"
+      tier: B
+  - key: libris:listing:dezvoltare-personala
+    kind: listing
+    url: https://www.libris.ro/carti/dezvoltare-personala
+    parser_key: libris-listing
+    schedule: "43 4 * * *"
+    enabled: false
+    freshness_slo_hours: 26
+    config:
+      max_pages: 15
+      label: "Dezvoltare personală"
+      tier: B
+  - key: libris:product:isbn
+    kind: product_page
+    url: https://www.libris.ro/
+    parser_key: jsonld-product
+    schedule: "0 5 * * *"
+    enabled: false
+    freshness_slo_hours: 72
+    config:
+      limit: 300
+      note: "Product pages of the books the listings found, oldest first: they add the ISBN (kept by the offer once seen) and the author, cover and language."

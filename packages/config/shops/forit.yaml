@@ -26,6 +26,7 @@ affiliate:
   network: "profitshare"
   commission_text: "2% (Oct 2026)"
   comparator_policy: "unknown"
+  css_policy: "forbidden"
   status: "to_apply"
 probes:
   - date: "2026-10-27"

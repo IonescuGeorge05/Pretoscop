@@ -43,7 +43,9 @@
     "llm:spend": "tsx src/cli/llm-spend.ts",
     "llm:attributes": "tsx src/cli/llm-attributes.ts",
     "llm:categories": "tsx src/cli/llm-categories.ts",
-    "match:eval:llm": "tsx src/cli/match-eval-llm.ts"
+    "match:eval:llm": "tsx src/cli/match-eval-llm.ts",
+    "match:eval:categories": "tsx src/cli/match-eval-categories.ts",
+    "css:readiness": "tsx src/cli/css-readiness.ts"
   },
   "devDependencies": {
     "pino-pretty": "^13.2.0",

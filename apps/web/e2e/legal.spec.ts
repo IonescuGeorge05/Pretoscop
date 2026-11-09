@@ -1,5 +1,6 @@
 import { createRequire } from 'node:module';
 import { expect, test, type Page } from '@playwright/test';
+import { e2eDatabaseUrl } from './fixture';
 
 /**
  * M17: legal and trust pages, contact channel, consent preferences, bot identity.
@@ -7,7 +8,7 @@ import { expect, test, type Page } from '@playwright/test';
  */
 
 const MAILPIT = 'http://localhost:8025/api/v1';
-const DATABASE_URL = process.env.DATABASE_URL ?? 'postgres://pretoscop:pretoscop@localhost:5432/pretoscop';
+const DATABASE_URL = e2eDatabaseUrl();
 
 // pg is a dependency of @pretoscop/db, not of the web app: resolve it from there.
 const requireFromDb = createRequire(new URL('../../../packages/db/package.json', import.meta.url));

@@ -172,7 +172,7 @@ export const legalDocuments = {
   merchants: { path: '/pentru-magazine', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
   contact: { path: '/contact', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
   terms: { path: '/termeni', kind: 'legal', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
-  privacy: { path: '/confidentialitate', kind: 'legal', version: '0.3', updatedAt: '2026-10-28', reviewed: false },
+  privacy: { path: '/confidentialitate', kind: 'legal', version: '0.4', updatedAt: '2026-11-09', reviewed: false },
   cookies: { path: '/cookies', kind: 'legal', version: '0.3', updatedAt: '2026-10-28', reviewed: false },
   accessibility: { path: '/accesibilitate', kind: 'legal', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
   merchantTerms: { path: '/pentru-magazine/termeni', kind: 'legal', version: '0.2', updatedAt: '2026-10-28', reviewed: false },

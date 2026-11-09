@@ -18,6 +18,7 @@ import {
   e2eFixtureClicks,
 } from '../fixtures/e2e';
 import { channelsFixturePrice, channelsFixtureState, createChannelsFixture, dropChannelsFixture, setChannelFlags } from '../fixtures/channels-e2e';
+import { createPromotedFixture, dropPromotedFixture, promotedFixtureState, setPromotedFlag } from '../fixtures/promoted-e2e';
 
 // Usage: tsx src/cli/e2e-fixture.ts <command> [args] — prints JSON on stdout.
 //   create | drop | clicks                     product-page fixture (M13)
@@ -38,6 +39,10 @@ import { channelsFixturePrice, channelsFixtureState, createChannelsFixture, drop
 //   channels-state <email>                     browsers, Telegram link, alerts and consents of a test address
 //   channels-flags '<json>'                    sets channel flags, e.g. '{"alerts.push.enabled":false}'
 //   channels-drop '<json flagsWere>'           removes the channels fixture and accounts; restores the flags
+//   promoted-create <email>                    M25: approved merchant + shop, product with 3 offers, promoted.enabled on
+//   promoted-state <merchantId>                wallet, billed/not billed clicks, ledger, top-ups, click-outs
+//   promoted-flag <key> <on|off>               promoted.enabled or ads.slots.enabled for one step
+//   promoted-drop '<json flagsWere>'           removes the promoted fixture (merchant, money rows, product); restores the flags
 loadRootEnvFile();
 const env = getEnv();
 const pool = createPool(env.DATABASE_URL, 2);
@@ -78,6 +83,12 @@ try {
       }),
     };
   else if (cmd === 'llm-decision') out = await createLlmFixture(db, Number(args[0]));
+  else if (cmd === 'promoted-create') out = await createPromotedFixture(db, args[0] ?? '');
+  else if (cmd === 'promoted-state') out = await promotedFixtureState(db, Number(args[0]));
+  else if (cmd === 'promoted-flag') {
+    await setPromotedFlag(db, args[0] ?? '', args[1] === 'on');
+    out = { ok: true };
+  } else if (cmd === 'promoted-drop') out = { dropped: await dropPromotedFixture(db, { restoreFlags: JSON.parse(args[0] ?? '{}') as Record<string, boolean> }) };
   else out = await createE2eFixture(db);
   console.log(JSON.stringify(out));
 } finally {

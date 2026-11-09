@@ -2,6 +2,7 @@ import { generateKeyPairSync } from 'node:crypto';
 import { defineConfig, devices } from '@playwright/test';
 import { E2E_TELEGRAM } from './e2e/channels-env';
 import { E2E_SEARCH_PREFIX } from './e2e/fixture';
+import { E2E_STRIPE } from './e2e/promoted-env';
 
 const PORT = Number(process.env.E2E_PORT ?? 3200);
 
@@ -54,6 +55,12 @@ export default defineConfig({
       VAPID_PUBLIC_KEY: vapid.publicKey,
       VAPID_PRIVATE_KEY: vapid.privateKey,
       TELEGRAM_BOT_USERNAME: E2E_TELEGRAM.username,
+      // M25: test-mode Stripe keys against the local Stripe mock that promoted.spec.ts starts (no
+      // request reaches Stripe), and VAT on top-ups, so the gross amount is checked.
+      STRIPE_SECRET_KEY: E2E_STRIPE.secretKey,
+      STRIPE_WEBHOOK_SECRET: E2E_STRIPE.webhookSecret,
+      STRIPE_API_BASE: `http://127.0.0.1:${E2E_STRIPE.port(PORT)}`,
+      TOPUP_VAT_PERCENT: '21',
     },
   },
 });

@@ -78,6 +78,10 @@ export async function createTestDatabase(): Promise<TestDatabase> {
   }
   const url = withDatabase(env.TEST_DATABASE_ADMIN_URL, name);
   const pool = createPool(url, 5);
+  // pg-pool resolves `end()` before its sockets have closed, so the `DROP DATABASE … WITH (FORCE)` in
+  // `drop()` can terminate a connection that is still closing (57P01). The pool re-emits that as an
+  // 'error' event; without a listener it becomes an unhandled error that fails the whole test run.
+  pool.on('error', () => undefined);
   const db = createDb(pool);
   await runMigrations(db); // no-op on a clone; kept so a stale template can never miss a migration
   // The template's price_events partitions were made when it was built (0002_partitions: twelve
@@ -93,6 +97,12 @@ export async function createTestDatabase(): Promise<TestDatabase> {
       const a = new pg.Client({ connectionString: env.TEST_DATABASE_ADMIN_URL });
       await a.connect();
       try {
+        // Give the pool's closing sockets a moment to go away before forcing the drop.
+        for (let i = 0; i < 20; i++) {
+          const open = await a.query<{ n: string }>('SELECT count(*)::text AS n FROM pg_stat_activity WHERE datname = $1', [name]);
+          if (open.rows[0]?.n === '0') break;
+          await new Promise((r) => setTimeout(r, 50));
+        }
         await a.query(`DROP DATABASE IF EXISTS ${name} WITH (FORCE)`);
       } finally {
         await a.end();

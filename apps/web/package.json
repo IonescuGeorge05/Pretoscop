@@ -31,6 +31,7 @@
     "@pretoscop/icecat": "workspace:*",
     "@pretoscop/mailer": "workspace:*",
     "@pretoscop/notify": "workspace:*",
+    "@pretoscop/payments": "workspace:*",
     "@pretoscop/report": "workspace:*",
     "@pretoscop/search": "workspace:*",
     "@pretoscop/storage": "workspace:*",

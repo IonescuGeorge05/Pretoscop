@@ -1,5 +1,8 @@
 # Local development services. Started by `make services` / `make dev`.
 # Data lives in named volumes; `make down` keeps it, `make nuke` deletes it.
+# Every published port is bound to 127.0.0.1: this machine may hold the only copy of the price
+# history, the PostgreSQL password below is in git, and Mailpit holds the admin magic links, so none
+# of them may be reachable from the local network. Containers still reach each other by service name.
 name: pretoscop
 
 services:
@@ -24,7 +27,7 @@ services:
       -c shared_preload_libraries=pg_stat_statements
       -c log_min_duration_statement=2000
     ports:
-      - '${PG_PORT:-5432}:5432'
+      - '127.0.0.1:${PG_PORT:-5432}:5432'
     volumes:
       # PostgreSQL 18 images keep data under /var/lib/postgresql/18/docker; mount the parent.
       - pgdata:/var/lib/postgresql
@@ -44,7 +47,7 @@ services:
       MEILI_ENV: development
       MEILI_NO_ANALYTICS: 'true'
     ports:
-      - '7700:7700'
+      - '127.0.0.1:7700:7700'
     volumes:
       - meilidata:/meili_data
     healthcheck:
@@ -61,8 +64,8 @@ services:
       MP_SMTP_AUTH_ALLOW_INSECURE: '1'
       MP_MAX_MESSAGES: '5000'
     ports:
-      - '8025:8025'
-      - '1025:1025'
+      - '127.0.0.1:8025:8025'
+      - '127.0.0.1:1025:1025'
     healthcheck:
       test: ['CMD', '/mailpit', 'readyz']
       interval: 2s
@@ -86,7 +89,7 @@ services:
     volumes:
       - ../data:/app/data
     ports:
-      - '9464:9464'
+      - '127.0.0.1:9464:9464'
     depends_on:
       postgres:
         condition: service_healthy
@@ -167,7 +170,7 @@ services:
         soft: 65535
         hard: 65535
     ports:
-      - '${PLAUSIBLE_PORT:-8100}:8000'
+      - '127.0.0.1:${PLAUSIBLE_PORT:-8100}:8000'
 
 volumes:
   pgdata:

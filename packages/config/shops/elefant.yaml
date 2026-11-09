@@ -6,7 +6,7 @@ kind: retail
 status: active
 access_mode: direct
 trust_tier: 2
-categories: [carti, electronice]
+categories: [carti]
 legal:
   basis_ref: "robots.txt allows product pages; recon 2026-10-27 served the honest bot"
 shipping:
@@ -19,6 +19,7 @@ crawl_policy:
 affiliate:
   network: "2performant"
   comparator_policy: "unknown"
+  css_policy: "forbidden"
   status: "to_apply"
   notes: "Bans Google Ads/CSS."
 probes:
@@ -26,5 +27,77 @@ probes:
     vantage: "founder home connection (Mac), PretoscopBot via @pretoscop/fetch (M10)"
     result: served
     note: "robots and home 200; the menu has books, toys, stationery and perfume, no electronics or appliances"
-notes: "EAN in the spec table; the only shop with a real per-URL lastmod; the 2026-10-27 recon found no JSON-LD Product on a product page (price in a page script). robots blocks `spider`/`crawler` user-agents by name (not ours). M10: no electronics or appliance assortment, so no source in the launch phase (books and toys: Phase 4, M29)."
-sources: []
+  - date: "2026-11-09"
+    vantage: "founder laptop (Windows), PretoscopBot via @pretoscop/fetch record (M29)"
+    result: served
+    note: "3 pages, 5 s apart, robots group *: home (302 to a Black Friday CMS page, kept as a probe only), /list/carti/carte/carti-pentru-copii (59 product links, tiles without prices: loaded from /INTERSHOP/web/WFS/…, which robots.txt disallows; ?pag=N pagination, 114 pages), one product page (no JSON-LD; price, spec list with ISBN and barcode, publisher, author, cover, language)"
+notes: "Books (M29): listing pages name products but load their tiles (title, price) from /INTERSHOP/web/WFS/…ViewProductTileAsync, which robots.txt disallows, so listings are discovery only (elefant-listing, config.discovery) and prices come from product pages (elefant-product, one book per request): with a budget of 1,000 requests a day, at most about 3,000 books stay within the 72-hour freshness SLO. A feed or the shop's permission would lift that. Product page: no JSON-LD Product; price and crossed price as displayed (\"41,4 lei\"), spec list with ISBN and EAN (Cod de bare), publisher (Editura), author, cover type, year written \"2.019\"; seller \"Vândut și livrat de\" (marketplace sellers possible). Delivery cost: \"va fi calculat în pagina de comandă\" (unknown). The only shop with a real per-URL lastmod; robots blocks `spider`/`crawler` user-agents by name (not ours). Elefant bans Google Ads/CSS promotion in its affiliate terms (css_policy)."
+# M29 (2026-11-09): book discovery listings and the product pages that carry the prices. All
+# disabled until the lead watches one run. Worst case per day: 26 listing pages + 300 product
+# pages = 326 requests (< 1000).
+sources:
+  - key: elefant:listing:carti-pentru-copii
+    kind: listing
+    url: https://www.elefant.ro/list/carti/carte/carti-pentru-copii
+    parser_key: elefant-listing
+    schedule: "30 5 * * *"
+    enabled: false
+    freshness_slo_hours: 26
+    config:
+      discovery: true
+      max_pages: 10
+      label: "Cărți pentru copii (descoperire)"
+  - key: elefant:listing:young-adult
+    kind: listing
+    url: https://www.elefant.ro/list/carti/carte/fictiune/young-adult
+    parser_key: elefant-listing
+    schedule: "34 5 * * *"
+    enabled: false
+    freshness_slo_hours: 26
+    config:
+      discovery: true
+      max_pages: 5
+      label: "Young adult (descoperire)"
+  - key: elefant:listing:self-help
+    kind: listing
+    url: https://www.elefant.ro/list/carti/carte/self-help
+    parser_key: elefant-listing
+    schedule: "37 5 * * *"
+    enabled: false
+    freshness_slo_hours: 26
+    config:
+      discovery: true
+      max_pages: 5
+      label: "Self-help (descoperire)"
+  - key: elefant:listing:biografii-memorii
+    kind: listing
+    url: https://www.elefant.ro/list/carti/carte/biografii-si-memorii
+    parser_key: elefant-listing
+    schedule: "40 5 * * *"
+    enabled: false
+    freshness_slo_hours: 26
+    config:
+      discovery: true
+      max_pages: 3
+      label: "Biografii și memorii (descoperire)"
+  - key: elefant:listing:istorie
+    kind: listing
+    url: https://www.elefant.ro/list/carti/carte/istorie
+    parser_key: elefant-listing
+    schedule: "42 5 * * *"
+    enabled: false
+    freshness_slo_hours: 26
+    config:
+      discovery: true
+      max_pages: 3
+      label: "Istorie (descoperire)"
+  - key: elefant:product:carti
+    kind: product_page
+    url: https://www.elefant.ro/
+    parser_key: elefant-product
+    schedule: "0 6 * * *"
+    enabled: false
+    freshness_slo_hours: 72
+    config:
+      limit: 300
+      note: "Product pages of the books the discovery listings found, oldest first (price, ISBN, publisher, author)."

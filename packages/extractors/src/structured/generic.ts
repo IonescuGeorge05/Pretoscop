@@ -65,6 +65,7 @@ export function sdToRawOffer(
     category: p.category ?? extra.breadcrumb,
     sellerName: o.sellerName,
     shippingCost: o.shippingCost,
+    ...(p.book ? { specs: p.book } : {}),
     observedAt: ctx.observedAt,
     raw: { source: p.source, sku: p.sku ?? null, productId: p.productId ?? null },
   };

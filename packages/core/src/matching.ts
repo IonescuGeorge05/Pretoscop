@@ -10,6 +10,11 @@
  *   any hard conflict                                   → that candidate is rejected
  */
 
+import { compareBeauty } from './beauty';
+import { compareBooks } from './books';
+import { categoriesCompatible, categoryVertical } from './taxonomy';
+import { isBooklandGtin, type Vertical } from './verticals';
+
 export interface MatchSide {
   /** Raw or cleaned title; tokenized here. */
   title: string;
@@ -140,10 +145,79 @@ export function mpnVariant(a: string, b: string): boolean {
   return s.length >= 9 && l.startsWith(s) && l.length - s.length <= 4;
 }
 
-export function scorePair(offer: MatchSide, product: MatchSide): PairScore {
+/** The vertical of a match side: from its category, its attributes' kind, or an ISBN (M29). */
+export function sideVertical(s: Pick<MatchSide, 'category' | 'attributes' | 'gtin14'>): Vertical | null {
+  const byCategory = categoryVertical(s.category);
+  if (byCategory) return byCategory;
+  const kind = s.attributes.kind;
+  if (kind === 'book') return 'books';
+  if (kind === 'fragrance' || kind === 'cosmetics') return 'beauty';
+  return isBooklandGtin(s.gtin14) ? 'books' : null;
+}
+
+/**
+ * Two books (M29, books.ts): equal ISBNs accept unless a stated fact conflicts; different ISBNs
+ * never match; without an ISBN on one side the title, author and publisher rules decide and the
+ * score stays below the accept threshold (a human or the LLM decides, as for every title match).
+ */
+function scoreBooks(offer: MatchSide, product: MatchSide): PairScore {
+  const cmp = compareBooks(
+    { title: offer.title, publisher: offer.brand, gtin14: offer.gtin14, attributes: offer.attributes },
+    { title: product.title, publisher: product.brand, gtin14: product.gtin14, attributes: product.attributes },
+  );
+  const conflicts = [...cmp.conflicts];
+  if (!categoriesCompatible(offer.category, product.category)) conflicts.push('category');
+  const features: PairScore['features'] = {
+    vertical: 'books',
+    titleSim: Math.round(cmp.titleSim * 1000) / 1000,
+    authorsAgree: cmp.authorsAgree,
+    publishersAgree: cmp.publishersAgree,
+    brandEqual: cmp.publishersAgree === true,
+  };
+  if (cmp.gtinEqual) return { score: conflicts.length ? 0 : 1, conflicts, via: 'gtin', features };
+  if (conflicts.length) return { score: 0, conflicts, via: 'title', features };
+  const score = Math.min(0.96, 0.6 * cmp.titleSim + 0.2 * (cmp.authorsAgree ? 1 : 0) + 0.15 * (cmp.publishersAgree ? 1 : 0));
+  return { score: Math.round(score * 1000) / 1000, conflicts, via: 'title', features };
+}
+
+/**
+ * Two beauty products (M29, beauty.ts): GTIN or a stated MPN of the same brand accepts unless a
+ * stated fact conflicts (size, concentration, shade, tester, gift set, refill); title matches also
+ * check gender and flankers and stay below the accept threshold.
+ */
+function scoreBeauty(offer: MatchSide, product: MatchSide): PairScore {
   const conflicts: string[] = [];
+  const brandEqual = !!offer.brand && !!product.brand && offer.brand.toLowerCase() === product.brand.toLowerCase();
+  if (offer.brand && product.brand && !brandEqual) conflicts.push('brand');
+  if (!categoriesCompatible(offer.category, product.category)) conflicts.push('category');
+  const gtinEqual = !!offer.gtin14 && offer.gtin14 === product.gtin14;
+  const mpnEqual = brandEqual && !!offer.mpnNorm && offer.mpnNorm === product.mpnNorm && !offer.mpnFromTitle && !product.mpnFromTitle;
+  const cmp = compareBeauty(
+    { title: offer.title, brand: offer.brand, attributes: offer.attributes },
+    { title: product.title, brand: product.brand, attributes: product.attributes },
+    { identifierEqual: gtinEqual || mpnEqual },
+  );
+  conflicts.push(...cmp.conflicts);
+  const features: PairScore['features'] = { vertical: 'beauty', titleSim: Math.round(cmp.titleSim * 1000) / 1000, brandEqual };
+  if (gtinEqual) return { score: conflicts.length ? 0 : 1, conflicts, via: 'gtin', features };
+  if (mpnEqual) return { score: conflicts.length ? 0 : 0.98, conflicts, via: 'mpn', features };
+  if (conflicts.length) return { score: 0, conflicts, via: 'title', features };
+  const va = offer.attributes.volumeMl;
+  const sizeAgrees = typeof va === 'number' && va === product.attributes.volumeMl;
+  const score = Math.min(0.96, 0.55 * cmp.titleSim + 0.3 * (sizeAgrees ? 1 : 0) + (brandEqual ? 0.15 : 0));
+  return { score: Math.round(score * 1000) / 1000, conflicts, via: 'title', features };
+}
+
+export function scorePair(offer: MatchSide, product: MatchSide): PairScore {
+  const vo = sideVertical(offer);
+  const vp = sideVertical(product);
+  if (vo === 'books' && vp === 'books') return scoreBooks(offer, product);
+  if (vo === 'beauty' && vp === 'beauty') return scoreBeauty(offer, product);
+  const conflicts: string[] = [];
+  // A book or a beauty product never matches a product of another vertical (or of the launch taxonomy).
+  if (vo !== vp) conflicts.push('vertical');
   if (offer.brand && product.brand && offer.brand.toLowerCase() !== product.brand.toLowerCase()) conflicts.push('brand');
-  if (offer.category && product.category && offer.category !== product.category) conflicts.push('category');
+  if (!categoriesCompatible(offer.category, product.category)) conflicts.push('category');
   conflicts.push(...attributeConflicts(offer.attributes, product.attributes));
 
   const to = tokenSets(offer.title);
@@ -240,7 +314,11 @@ export function route(identity: OfferIdentity, ranked: Array<{ productId: number
   if (best && best.score.score > REJECT_AT) {
     return { decision: 'needs_review', productId: best.productId, score: best.score.score, reasons: [`${best.score.via} ${best.score.score} in gray zone`] };
   }
-  // No acceptable candidate: create a canonical product when the offer identifies one.
+  // No acceptable candidate: create a canonical product when the offer identifies one. An ISBN
+  // identifies one edition of one book by itself (M29: publishers are often missing or unknown).
+  if (isBooklandGtin(identity.gtin14)) {
+    return { decision: 'new_product', productId: null, score: 1, reasons: [identity.brand ? 'valid ISBN + publisher' : 'valid ISBN'] };
+  }
   if (identity.brand && (identity.gtin14 || identity.mpnNorm)) {
     return { decision: 'new_product', productId: null, score: 1, reasons: [identity.gtin14 ? 'valid GTIN + brand' : 'brand + MPN'] };
   }

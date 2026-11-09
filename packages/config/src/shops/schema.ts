@@ -70,6 +70,12 @@ export const AffiliateSchema = z
     commission_text: z.string().nullable().default(null),
     cookie_days: z.number().int().positive().nullable().default(null),
     comparator_policy: z.enum(['allowed', 'forbidden', 'unknown', 'written_ok']).default('unknown'),
+    /**
+     * Whether the program lets affiliates promote the shop through Google Shopping / a CSS (M29,
+     * docs/playbooks/css-readiness.md): `approval` = only with the shop's prior written approval.
+     * Registry only (read by `css:readiness`); not synced to the database.
+     */
+    css_policy: z.enum(['allowed', 'approval', 'forbidden', 'unknown']).default('unknown'),
     link_template: z.string().nullable().default(null),
     feed_available: z.boolean().default(false),
     status: z.enum(['none', 'to_apply', 'pending', 'approved', 'rejected', 'closed']).default('none'),

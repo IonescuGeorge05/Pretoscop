@@ -170,6 +170,7 @@ function fetchOutcome(ctx: Ctx, res: Awaited<ReturnType<RecorderDeps['fetcher'][
 
 async function runListing(ctx: Ctx, source: { url: string; parserKey: string; config: Record<string, unknown> }, opts: RunOptions): Promise<{ complete: boolean }> {
   const maxPages = opts.maxPages ?? cfgNum(source.config, 'max_pages', 1);
+  const discoveryOnly = source.config.discovery === true;
   let url: string | null = source.url;
   let complete = false;
   while (url && ctx.stats.pages < maxPages && !ctx.held) {
@@ -183,6 +184,23 @@ async function runListing(ctx: Ctx, source: { url: string; parserKey: string; co
       shopSlug: ctx.shop.slug,
       observedAt: observedAt.toISOString(),
     });
+    if (discoveryOnly) {
+      // M29: a listing whose pages name products without prices (Elefant loads its tiles from a
+      // robots-disallowed endpoint): its product links feed `crawl_urls` for the shop's
+      // product_page source; nothing is recorded as an offer here.
+      const urls = [...new Set(parsed.productUrls ?? [])].map((u) => ({ url: u }));
+      if (urls.length === 0) {
+        if (ctx.stats.pages === 1) {
+          ctx.stats.errors++;
+          ctx.errors.push(`no product links on the first page ${res.finalUrl} (layout change?)`);
+        }
+        break;
+      }
+      ctx.stats.discovered += await upsertCrawlUrls(ctx.deps.db, ctx.shop.id, ctx.sourceId, urls);
+      // Never `complete`: a discovery source owns no offers, so nothing may be deactivated after it.
+      url = parsed.nextPageUrl ?? null;
+      continue;
+    }
     if (parsed.offers.length === 0) {
       // A page whose products are all unavailable (VTEX shows them without a price) still lists
       // them (`meta.items`): that is the end of the priced listing, not a layout change.

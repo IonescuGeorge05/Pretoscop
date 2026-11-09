@@ -44,6 +44,9 @@
     "llm:attributes": "tsx src/cli/llm-attributes.ts",
     "llm:categories": "tsx src/cli/llm-categories.ts",
     "match:eval:llm": "tsx src/cli/match-eval-llm.ts",
+    "match:eval:categories": "tsx src/cli/match-eval-categories.ts",
+    "css:readiness": "tsx src/cli/css-readiness.ts",
+    "verticals:check": "tsx src/cli/verticals-check.ts",
     "b2b:digest": "tsx src/cli/b2b-digest.ts"
   },
   "devDependencies": {

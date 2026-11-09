@@ -9,10 +9,14 @@ import { ACCEPT_AT, REJECT_AT, scorePair, type MatchSide } from './matching';
  * Label sources: `human` (founders, through `pnpm match:label`), `gtin` / `mpn` (two shops agree
  * on a valid GTIN or a brand + field MPN), `family` (two variants of one model with different
  * field MPNs: hard negatives) and `synthetic` (a real title rewritten the way other shops write it;
- * useful for recall, not proof of precision).
+ * useful for recall, not proof of precision). M29 adds `fixture`: two real recorded pages of the
+ * same shop that show one product (a listing card and its product page, or the card's two
+ * spellings), certain positives taken from the extractor fixtures.
  */
 
-export type LabelSource = 'human' | 'gtin' | 'mpn' | 'family' | 'synthetic';
+export type LabelSource = 'human' | 'gtin' | 'mpn' | 'family' | 'synthetic' | 'fixture';
+
+export const LABEL_SOURCES: readonly LabelSource[] = ['human', 'gtin', 'mpn', 'family', 'synthetic', 'fixture'];
 
 export interface EvalPair {
   id: string;
@@ -97,7 +101,7 @@ export function evaluatePairs(pairs: EvalPair[], opts: { mask?: boolean } = {}):
     return { id: p.id, ...r, same: p.same, source: p.source };
   });
   const bySource: Partial<Record<LabelSource, EvalStats>> = {};
-  for (const src of ['human', 'gtin', 'mpn', 'family', 'synthetic'] as const) {
+  for (const src of LABEL_SOURCES) {
     const sub = outcomes.filter((o) => o.source === src);
     if (sub.length) bySource[src] = stats(sub);
   }
@@ -211,7 +215,7 @@ export function evaluateWithLlm(
       outcomes.push({ id: p.id, route, score: r.score, via: ask && route !== 'review' ? `llm:${r.via}` : r.via, conflicts: r.conflicts, same: p.same, source: p.source });
     }
     const bySource: Partial<Record<LabelSource, EvalStats>> = {};
-    for (const src of ['human', 'gtin', 'mpn', 'family', 'synthetic'] as const) {
+    for (const src of LABEL_SOURCES) {
       const sub = outcomes.filter((o) => o.source === src);
       if (sub.length) bySource[src] = stats(sub);
     }

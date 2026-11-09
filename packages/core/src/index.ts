@@ -1,7 +1,7 @@
 // Pure domain logic (no I/O). Filled by M06 (normalization), M07 (matching), M08 (verdicts).
 // Everything here is safe for browser bundles. The SHA-256 content hash uses Node crypto and is
 // exported only from the sub-path `@pretoscop/core/hash`.
-export type { RawOffer } from './raw-offer';
+export type { OfferSpecs, RawOffer } from './raw-offer';
 
 // Money and prices (integer bani everywhere)
 export {
@@ -154,6 +154,7 @@ export {
   type AcceptedOffer,
   type RejectedOffer,
   type NormalizedOffer,
+  type OfferAttributes,
   isAcceptedOffer,
   normalizeOffer,
 } from './normalize';
@@ -166,6 +167,7 @@ export * from './taxonomy';
 export * from './matching';
 export * from './seo';
 export * from './matching-eval';
+export * from './matching-eval-categories';
 
 // M19: price-alert rules (decisions in bani, target parsing, quiet hours, email checks)
 export * from './alerts';
@@ -187,6 +189,13 @@ export * from './sitemap';
 
 // M22: gray-zone policy with LLM verification
 export * from './llm-policy';
+
+// M29: category expansion (books and beauty verticals)
+export * from './verticals';
+export * from './books';
+export * from './beauty';
+export { PUBLISHER_SEEDS, NOT_PUBLISHERS, type PublisherSeed } from './publishers-data';
+export { BEAUTY_BRAND_SEEDS, type BeautyBrandSeed } from './beauty-brands-data';
 
 // M25: promoted placements (price bands, floors, second-price auction, click billing, wallets)
 export * from './promoted';

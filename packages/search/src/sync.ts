@@ -242,10 +242,9 @@ async function rebuildSmallIndexes(deps: SyncDeps): Promise<{ categories: number
   const counts = await meili.request<{ facetDistribution?: Record<string, Record<string, number>> }>('POST', `/indexes/${names.products}/search`, {
     q: '',
     limit: 0,
-    facets: ['category_slugs', 'brand_slug'],
+    facets: ['category_slugs'],
   });
   const perCategory = counts.facetDistribution?.category_slugs ?? {};
-  const perBrand = counts.facetDistribution?.brand_slug ?? {};
 
   const cats = await db.execute<{ slug: string; path: string; name_ro: string; depth: number; parent_name: string | null; sort_order: number }>(sql`
     SELECT c.slug, c.path, c.name_ro, c.depth, pc.name_ro AS parent_name, c.sort_order FROM categories c LEFT JOIN categories pc ON pc.id = c.parent_id`);
@@ -259,8 +258,15 @@ async function rebuildSmallIndexes(deps: SyncDeps): Promise<{ categories: number
     terms: [] as string[],
     product_count: perCategory[c.slug] ?? 0,
   }));
-  const brands = await db.execute<{ slug: string; name: string; aliases: string[] | null }>(sql`SELECT slug, name, aliases FROM brands`);
-  const brandDocs = brands.rows.map((b) => ({ id: b.slug, slug: b.slug, name: b.name, aliases: b.aliases ?? [], product_count: perBrand[b.slug] ?? 0 }));
+  // Brand counts come from the database: a facet distribution stops at `maxValuesPerFacet` (200)
+  // values, and with more brands than that a brand with few products got 0 and left the
+  // autocomplete (seen on the 9 Nov 2026 dev data, 319 brands). Every active product is indexed, so
+  // the count is what the facet would give. Categories stay on the facet (fewer than 200 nodes).
+  const brands = await db.execute<{ slug: string; name: string; aliases: string[] | null; products: string }>(sql`
+    SELECT b.slug, b.name, b.aliases, count(p.id)::text AS products
+    FROM brands b LEFT JOIN products p ON p.brand_id = b.id AND p.status = 'active'
+    GROUP BY b.id`);
+  const brandDocs = brands.rows.map((b) => ({ id: b.slug, slug: b.slug, name: b.name, aliases: b.aliases ?? [], product_count: Number(b.products) }));
 
   for (const [live, settings, docs] of [
     [names.categories, CATEGORY_SETTINGS, categoryDocs],

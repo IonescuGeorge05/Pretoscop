@@ -7,7 +7,9 @@
 import { detectAccessory } from './accessory';
 import { type Attributes, extractAttributes } from './attributes';
 import { type Availability, mapAvailability } from './availability';
-import { type BrandVia, brandTokens, detectBrand } from './brands';
+import { detectBeautyBrand, extractBeautyAttributes, type BeautyAttributes } from './beauty';
+import { extractBookAttributes, findPublisher, isbnsInText, stripIsbnMentions, validateIsbn, type BookAttributes } from './books';
+import { type BrandMatch, type BrandVia, brandTokens, detectBrand } from './brands';
 import { type BundleKind, detectBundle } from './bundle';
 import { type Condition, type ConditionDetail, detectCondition } from './condition';
 import type { ContentHasher } from './content-hash';
@@ -38,12 +40,29 @@ import {
   cleanTitleDetailed,
   isHexJunkTitle,
   normalizeText,
+  slugify,
   titleForMatch,
 } from './text';
+import { categorize } from './taxonomy';
 import type { UnknownBrandRule } from './unknown-brand';
+import { crumbSegments, detectVertical, isBooklandGtin } from './verticals';
 
 /** Where an offer's MPN came from: the shop's MPN field, a code in the title, or the URL hint. */
 export type MpnOrigin = 'field' | 'title' | 'url';
+
+/**
+ * Attributes stored with an offer: the launch attributes (M06), or a book's or a beauty product's
+ * (M29), whose `kind` is then `book`, `fragrance` or `cosmetics`.
+ */
+export type OfferAttributes = Attributes &
+  Partial<Omit<BookAttributes, 'kind'>> &
+  Partial<Omit<BeautyAttributes, 'kind'>>;
+
+/** Accessories of the verticals (bookmarks, book covers, make-up brushes): from the shop's category only. */
+function verticalAccessory(categoryRaw: string | null): { isAccessory: boolean; reason: string | null } {
+  const seg = crumbSegments(categoryRaw).find((c) => /\b(?:accesorii|semne de carte|huse|coperti|genti|pensule|bureti|oglinzi)\b/.test(c));
+  return seg ? { isAccessory: true, reason: `category:${seg}` } : { isAccessory: false, reason: null };
+}
 
 /** Why an offer must not be ingested. */
 export type RejectReason =
@@ -147,7 +166,7 @@ interface NormalizedOfferBase {
   /** All normalized code candidates from the title, best first. */
   mpnCandidates: string[];
 
-  attributes: Attributes;
+  attributes: OfferAttributes;
   productKind: ProductKind;
   condition: Condition;
   conditionDetail: ConditionDetail | null;
@@ -239,7 +258,7 @@ export function normalizeOffer(raw: RawOffer, ctx: NormalizeContext): Normalized
   if (externalId === '') reject('external_id_missing');
   const titleRaw = raw.title ?? '';
   const cleaned = cleanTitleDetailed(titleRaw);
-  const titleClean = cleaned.title;
+  let titleClean = cleaned.title;
   if (titleClean === '') reject('title_missing');
   else if (isHexJunkTitle(titleRaw)) reject('title_junk_hex');
   const categoryRaw = textOrNull(raw.category);
@@ -324,24 +343,74 @@ export function normalizeOffer(raw: RawOffer, ctx: NormalizeContext): Normalized
     extraFakes: ctx.shop.fakeGtins ?? null,
   });
   const gtinSummary = summarizeGtins(gtinResults);
-  const gtinQuality: GtinQuality =
+  let gtinQuality: GtinQuality =
     gtinResults.length === 0 ? 'missing' : gtinSummary.primary.quality;
-  const gtin14 = gtinQuality === 'valid' ? gtinSummary.primary.gtin14 : null;
+  let gtin14 = gtinQuality === 'valid' ? gtinSummary.primary.gtin14 : null;
+  let gtinReason: GtinReason | null = gtinQuality === 'valid' ? null : (gtinSummary.primary.reason ?? null);
+
+  // M29: books and beauty products follow their vertical's rules (verticals.ts). A book's
+  // identifier is its ISBN (the ISBN field is read as an ISBN-10 first, and an ISBN written in the
+  // title counts too), its brand is the publisher and it has no MPN; a beauty product's brand comes
+  // from the fragrance/cosmetics dictionary. Launch offers are untouched.
+  const vertical = detectVertical({ title: titleClean, categoryRaw: raw.category ?? null, gtin14 });
+  if (vertical === 'books') {
+    const fromField = [raw.gtin, raw.specs?.isbn].map((g) => validateIsbn(g)).find((r) => r.quality === 'valid' && isBooklandGtin(r.gtin14));
+    const fromTitle = isbnsInText(titleRaw)[0];
+    const isbn = fromField?.gtin14 ?? fromTitle?.gtin14 ?? null;
+    if (isbn && isbn !== gtin14) {
+      if (gtin14) warnings.push('gtin_replaced_by_isbn');
+      else if (!fromField) warnings.push('isbn_from_title');
+      gtin14 = isbn;
+      gtinQuality = 'valid';
+      gtinReason = null;
+    }
+    const stripped = stripIsbnMentions(titleClean);
+    if (stripped !== '') titleClean = stripped;
+  }
   if (gtinQuality !== 'valid' && gtinQuality !== 'missing') warnings.push(`gtin_${gtinQuality}`);
 
-  const brand = detectBrand(titleClean, raw.brand ?? null, raw.category ?? null);
-  if (brand && !brand.known) warnings.push('brand_unknown');
-  if (brand?.conflict) warnings.push('brand_conflict');
+  let brand: BrandMatch | null;
+  let productKind: ProductKind;
+  let attributes: OfferAttributes;
+  if (vertical === 'books') {
+    const book = extractBookAttributes(titleClean, raw.specs ?? {}, raw.category ?? null);
+    const publisher = findPublisher(raw.specs?.publisher ?? raw.brand ?? null);
+    // A publisher field is a statement, not a guess: an unknown publisher still identifies the
+    // book's maker (confidence 0.7, so it is stored), never a word read from the title.
+    brand = publisher
+      ? { name: publisher.name, slug: publisher.slug, confidence: publisher.known ? 1 : 0.7, via: 'field', known: publisher.known, matched: raw.specs?.publisher ?? raw.brand ?? '' }
+      : null;
+    if (publisher && !publisher.known) warnings.push('publisher_unknown');
+    productKind = 'book';
+    attributes = book;
+  } else if (vertical === 'beauty') {
+    const fragrance = categorize(titleClean, raw.category ?? null) === 'parfumuri';
+    const beauty = extractBeautyAttributes(titleClean, { fragrance });
+    const found = detectBeautyBrand(titleClean, raw.brand ?? null);
+    const generic = found ? null : detectBrand(titleClean, raw.brand ?? null, raw.category ?? null);
+    brand = found
+      ? { name: found.name, slug: slugify(found.name), confidence: found.via === 'field' ? 1 : found.via === 'title' ? 0.9 : 0.8, via: found.via === 'line' ? 'product_line' : found.via, known: true }
+      : generic;
+    if (brand && !brand.known) warnings.push('brand_unknown');
+    productKind = beauty.kind;
+    attributes = beauty;
+  } else {
+    brand = detectBrand(titleClean, raw.brand ?? null, raw.category ?? null);
+    if (brand && !brand.known) warnings.push('brand_unknown');
+    if (brand?.conflict) warnings.push('brand_conflict');
 
-  const productKind = detectProductKind(titleClean, raw.category ?? null);
-  const attributes = extractAttributes(titleClean, {
-    categoryHint: raw.category ?? null,
-    brand: brand?.name ?? null,
-    kind: productKind,
-  });
+    productKind = detectProductKind(titleClean, raw.category ?? null);
+    attributes = extractAttributes(titleClean, {
+      categoryHint: raw.category ?? null,
+      brand: brand?.name ?? null,
+      kind: productKind,
+    });
+  }
 
   const mpnRaw = textOrNull(raw.mpn);
-  let fieldMpn = normalizeMpn(mpnRaw);
+  // Books have no MPN (a shop's "mpn" is a publisher code or the ISBN again: Libris writes
+  // "ART978-630-321-865-6"); beauty titles carry no part numbers, only a stated MPN counts.
+  let fieldMpn = vertical === 'books' ? null : normalizeMpn(mpnRaw);
   if (fieldMpn && /^\d{8,14}$/.test(fieldMpn) && isValidGtinCheckDigit(fieldMpn)) {
     warnings.push('mpn_looks_like_gtin');
     fieldMpn = null;
@@ -351,10 +420,12 @@ export function normalizeOffer(raw: RawOffer, ctx: NormalizeContext): Normalized
     warnings.push('mpn_looks_like_spec');
     fieldMpn = null;
   }
-  const candidates = extractMpnCandidates(titleClean, {
-    brand: brand?.name ?? null,
-    productCode: cleaned.productCode,
-  }).map((c) => c.norm);
+  const candidates = vertical
+    ? []
+    : extractMpnCandidates(titleClean, {
+        brand: brand?.name ?? null,
+        productCode: cleaned.productCode,
+      }).map((c) => c.norm);
   let mpnNorm = fieldMpn ?? candidates[0] ?? null;
   let mpnSource: 'field' | 'title' | null = fieldMpn ? 'field' : candidates[0] ? 'title' : null;
   let mpnOrigin: MpnOrigin | null = fieldMpn ? 'field' : candidates[0] ? 'title' : null;
@@ -364,7 +435,7 @@ export function normalizeOffer(raw: RawOffer, ctx: NormalizeContext): Normalized
   // "43U8072H" in the title, "UE43U8072HUXXH" in the slug).
   const hint =
     fieldMpn === null && textOrNull(raw.mpnHint) !== null ? mpnHintOf(raw.mpnHint) : null;
-  if (fieldMpn === null && textOrNull(raw.mpnHint) !== null) {
+  if (!vertical && fieldMpn === null && textOrNull(raw.mpnHint) !== null) {
     const brandWords = new Set(brandTokens(brand?.name ?? ''));
     const usable = hint !== null && !brandWords.has(hint.toLowerCase());
     const titleCode = candidates[0];
@@ -385,8 +456,15 @@ export function normalizeOffer(raw: RawOffer, ctx: NormalizeContext): Normalized
 
   // ---- flags
   const condition = detectCondition(titleClean, raw.condition ?? null);
-  const bundle = detectBundle(titleClean, raw.category ?? null);
-  const accessory = detectAccessory(titleClean, raw.category ?? null);
+  // A box set or a perfume gift set has its own identifier: a product of its own (attribute
+  // `bookSet`/`giftSet`), not a "product + extras" bundle. Words such as "pentru telefon" or
+  // "rezervă" in a book title or a refill do not make an accessory; only the shop's category does.
+  const bundle = vertical
+    ? { isBundle: false, kind: null, reason: null }
+    : detectBundle(titleClean, raw.category ?? null);
+  const accessory = vertical
+    ? verticalAccessory(raw.category ?? null)
+    : detectAccessory(titleClean, raw.category ?? null);
   const availability = mapAvailability(raw.availability);
 
   const base: NormalizedOfferBase = {
@@ -407,7 +485,7 @@ export function normalizeOffer(raw: RawOffer, ctx: NormalizeContext): Normalized
     priceIsFrom,
     gtin14,
     gtinQuality,
-    gtinReason: gtinQuality === 'valid' ? null : (gtinSummary.primary.reason ?? null),
+    gtinReason,
     gtinAlternates: gtinSummary.alternates,
     gtinRaw: textOrNull(raw.gtin),
     brandName: brand?.name ?? null,

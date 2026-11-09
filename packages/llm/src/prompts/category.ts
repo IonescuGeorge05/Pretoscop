@@ -1,4 +1,6 @@
-import { TAXONOMY } from '@pretoscop/core';
+import { LAUNCH_TAXONOMY as TAXONOMY } from '@pretoscop/core';
+// v1 lists the launch taxonomy only: its fingerprint is pinned, so the M29 books and beauty subtrees
+// wait for a v2 of this prompt (their categories come from breadcrumbs and ISBNs instead).
 import { redactPersonalData } from '../guard';
 import { asObject, clamp01, InvalidOutputError, type PromptDef } from './types';
 

@@ -279,7 +279,7 @@ export async function llmGrayZoneOffers(db: Db, limit: number, opts: { offerIds?
   for (const r of ids.rows) {
     const o = offers.get(Number(r.id));
     if (!o) continue;
-    const category = categorize(o.title, o.categoryRaw, { isAccessory: o.isAccessory });
+    const category = categorize(o.title, o.categoryRaw, { isAccessory: o.isAccessory, gtin14: o.gtin14 });
     out.push({
       offer: o,
       shopName: r.shop_name,
@@ -326,7 +326,7 @@ export async function applyLlmReject(
 ): Promise<{ applied: boolean; newProductId: number | null }> {
   const by = `llm:${a.model}`;
   const reason = `LLM ${a.confidence.toFixed(2)} different: ${a.reason}`.slice(0, 500);
-  const category = categorize(o.title, o.categoryRaw, { isAccessory: o.isAccessory });
+  const category = categorize(o.title, o.categoryRaw, { isAccessory: o.isAccessory, gtin14: o.gtin14 });
   const routed = route(
     {
       gtin14: o.gtin14,

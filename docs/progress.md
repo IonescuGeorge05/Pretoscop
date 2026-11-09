@@ -83,7 +83,7 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 | M26 | Browser extension (MV3) | review | `mod/M26-extension` (merged into `daniel`) | | Flag off; release gate not met yet (69.8 % of eMAG offers resolve; 70 % needed); store accounts D1 |
 | M27 | Telegram bot and web push | review | `mod/M27-telegram-push` (merged into `daniel`) | | Flags off; needs D2 (bot token, VAPID keys); migration 0020_channels; ADR-025 |
 | M28 | B2B price intelligence MVP | review | `mod/M28-b2b` (merged into `daniel`) | | Flags `b2b.enabled`, `b2b.digest.enabled`, `b2b.billing.enabled` off; migration 0022_b2b; ADR-028; billing on M25's `@pretoscop/payments`; needs D3, a pilot customer, B5 |
-| M29 | Category expansion playbook and CSS enrolment readiness | in progress | `mod/M29-categories` (paused) | | Stopped just after starting on 28 Oct (usage cap) |
+| M29 | Category expansion playbook and CSS enrolment readiness | review | `mod/M29-categories` (merged into `daniel`) | | Books executed, beauty prepared; Libris/Elefant sources ship disabled; acceptance (≥ 5,000 products with ≥ 2 offers per category) waits for feeds and enabled sources |
 
 **Gate G4** — first revenue month recorded; extension published; B2B pilot customer. Approved: ☐ date: ____
 
@@ -779,3 +779,44 @@ Human tasks needed: D3 (Stripe account: the M25 endpoint gets the subscription a
 Risks / open questions: docs/13 B1–B7 (plan prices and quotas assumed; no faster refresh per plan; terms unreviewed; EUR invoicing and e-Factura flow; Stripe shapes from documentation, not recordings; position-table speed at 10,000 SKUs unmeasured; marketplace sellers counted as competitors).
 
 Next module: none (M29 is with another agent).
+
+### M29 — Category expansion playbook and CSS readiness — 2026-11-09
+(Built by a delegated Opus agent on the Windows laptop; merged and re-verified by the lead.)
+Scope delivered:
+- `docs/playbooks/category-expansion.md`: the repeatable procedure, executed for books and prepared for beauty.
+- Taxonomy and vertical detection: new subtrees `carti` (15 genres) and `frumusete` (5 types). A book or beauty offer is recognised first (ISBN, breadcrumb, beauty noun or brand) and categorised inside its own subtree. `verticals:check` shows 0 of 40,935 recorded offers changing category.
+- Books (`books.ts`):
+  - ISBN-10/13 (979 and ISMN included), ISBNs taken from titles, and a dictionary of 67 publishers;
+  - author, format, volume, edition, language, box set, pages and year;
+  - matching: equal ISBNs accept, different ISBNs never match, and other volumes of a series conflict.
+- Beauty (`beauty.ts`): a dictionary of 100 brands; ml/g, concentration, shade, gender, gift set, refill and tester. Different sizes, concentrations and flankers are different products; testers are excluded.
+- Parsers:
+  - `libris-listing` (40 per page; the publisher's recommended price is kept in `raw.rrp`, never shown as an old price);
+  - Libris product pages through `jsonld-product` (JSON-LD `Book`);
+  - `elefant-listing` (product links only: its tiles load from a robots-disallowed path);
+  - `elefant-product` (price and specs).
+  - Fixtures: robots.txt plus 3 pages per shop, recorded as PretoscopBot 5 s apart; a reCAPTCHA site key was replaced by a placeholder.
+- Sources (all `enabled: false`): Libris 8 listings plus an ISBN product-page source (worst case 413 requests a day); Elefant 5 discovery listings plus a product-page source (326 a day); schedules from 04:00 Bucharest. The new opt-in recorder mode `config.discovery` records no offers.
+- Eval: `match:eval:categories`, with the gate (precision ≥ 98 %, no hard negative accepted, also with identifiers masked) also in the core tests.
+- Category pages render through M14 and stay noindex until they have a product with ≥ 2 offers.
+- CSS readiness: `docs/playbooks/css-readiness.md` and `css:readiness` (7 of the 50 merchant domains, no on-site checkout, `ItemList` present), plus a registry field `affiliate.css_policy`.
+- ADR-029; open items CE1–CE8.
+Out of scope / deferred: Awin/CJ/Tradedoubler feed mappers (no sample feeds, C4); a v2 of M22's category prompt covering the new taxonomy; real cross-shop precision for books (needs founder labels after the sources run).
+Deviations from plan: the acceptance target (≥ 5,000 products with ≥ 2 offers in each new category) is **not met**: there are no feeds and the sources start disabled. The module ships the tooling and says so.
+- Outside its own files:
+  - a real M14 bug fixed: autocomplete now takes brand counts from the database (the 200-value facet limit dropped small brands);
+  - the opt-in `discovery` mode in the recorder;
+  - `categorize` receives the GTIN;
+  - the e2e fixture adds two books.
+- Two Libris fixtures had their CRLF line endings normalised by the key redaction (whitespace only, stated in their meta files).
+Verification: `make verify M=29`:
+- lint, typecheck and tests green (core 1,005, extractors 74, worker 9 book tests);
+- fixture key scan clean; all 15 sources disabled;
+- books eval: 116 pairs, 2 ISBN accepts, precision 100 %, 74 of 76 series negatives rejected outright;
+- beauty (synthetic): 52 of 52 positives accepted, 0 of 43 hard negatives;
+- Playwright 51 passed (categories, search, SEO, deals);
+- open-site checks: `/c/carti/...` indexable only with ≥ 2 offers, the provisional-only and beauty pages noindex.
+Founder checklist: `scripts/verify/M29.checklist.md`.
+Human tasks needed: A6 (Libris and Cărturești programmes on 2Performant, ToS §9), C4 (Awin/CJ for beauty), C3 (Elefant: a feed or permission), D4 (Merchant Center/CSS once ≥ 50 merchant domains), B4, ≥ 50 founder labels per category; then enable the Libris/Elefant sources (a one-line YAML change each, then `shops:sync`).
+Risks / open questions: Libris offers are re-matched after every listing run (the listing has no ISBN, the stored offer does): decisions stay the same but rows accumulate, and a recorder fix is proposed in the playbook (CE5). Elefant can keep at most ~3,000 books fresh at 1,000 requests a day. Only two listing URLs are verified by recordings. `/categorii` shows the two new roots as "în curând".
+Next module: none; the plan's modules are all built.

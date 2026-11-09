@@ -1,4 +1,5 @@
 import type { CheerioAPI } from 'cheerio';
+import type { OfferSpecs } from '@pretoscop/core';
 import { asArray, decodeEntities, isRecord, lenientJsonParse, nonEmpty, str } from '../util';
 
 /** One offer of a schema.org Product, values as found (strings). */
@@ -33,6 +34,39 @@ export interface SdProduct {
   url?: string;
   itemCondition?: string;
   offers: SdOffer[];
+  /** Facts of a schema.org `Book` (M29): author, publisher, format, language, edition, pages, year, ISBN. */
+  book?: OfferSpecs;
+}
+
+/** Person or Organization names of a JSON-LD value (string, object or list). */
+function namesOf(v: unknown): string[] {
+  return asArray(v as unknown)
+    .map((x) => nameOf(x))
+    .filter((x): x is string => !!x)
+    .slice(0, 5);
+}
+
+/** The `Book` facts of a node typed Book (Libris: `["Product","Book"]`), undefined otherwise. */
+function bookFrom(node: Record<string, unknown>): OfferSpecs | undefined {
+  if (!typesOf(node).includes('book')) return undefined;
+  const out: OfferSpecs = {};
+  const authors = namesOf(node.author);
+  if (authors.length) out.author = authors.length === 1 ? authors[0]! : authors;
+  const publisher = nameOf(node.publisher);
+  if (publisher) out.publisher = publisher;
+  const format = str(node.bookFormat);
+  if (format) out.format = format;
+  const lang = str(node.inLanguage) ?? nameOf(node.inLanguage);
+  if (lang) out.language = lang;
+  const edition = sdText(node.bookEdition);
+  if (edition) out.edition = edition;
+  const pages = str(node.numberOfPages);
+  if (pages) out.pages = pages;
+  const year = /\b(1[4-9]\d\d|20\d\d)\b/.exec(str(node.datePublished) ?? '')?.[1];
+  if (year) out.year = year;
+  const isbn = str(node.isbn);
+  if (isbn) out.isbn = isbn;
+  return Object.keys(out).length ? out : undefined;
 }
 
 const PRODUCT_TYPES = new Set(['product', 'productgroup', 'individualproduct', 'productmodel', 'vehicle']);
@@ -145,6 +179,8 @@ function productFrom(node: Record<string, unknown>): SdProduct[] {
     itemCondition: str(node.itemCondition),
     offers: asArray(node.offers as unknown).filter(isRecord).flatMap(offerFrom),
   };
+  const book = bookFrom(node);
+  if (book) base.book = book;
   // ProductGroup: each variant is a product of its own.
   const variants = asArray(node.hasVariant as unknown).filter(isRecord);
   if (variants.length > 0) {

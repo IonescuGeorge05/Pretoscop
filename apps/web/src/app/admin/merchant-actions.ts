@@ -20,6 +20,7 @@ import { requireAdmin } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { boss } from '@/lib/jobs';
 import { enqueueCheck, runSourceNow } from '@/lib/merchant';
+import { refreshPromotedForMerchant } from '@/lib/promoted';
 import { REASON_CATEGORIES } from '@/lib/merchant-hints';
 import { mailApproved, mailReinstated, mailRejected, mailSuspended } from '@/lib/merchant-mail';
 
@@ -107,6 +108,8 @@ export async function suspendMerchantAction(form: FormData): Promise<void> {
   if (!reason) back(merchantId, { eroare: 'motiv' });
   const out = await step(merchantId, () => suspendMerchant(db(), merchantId, reason, admin.actor));
   await refreshProducts(out);
+  // M25: a suspended merchant never holds a "Promovat" slot (billing re-checks it at every click).
+  await refreshPromotedForMerchant(merchantId);
   await mailSuspended(await load(merchantId), reason);
   revalidatePath('/admin/comercianti');
   back(merchantId, { ok: 'suspendat' });
@@ -118,6 +121,7 @@ export async function reinstateMerchantAction(form: FormData): Promise<void> {
   await step(merchantId, () => reinstateMerchant(db(), merchantId, admin.actor));
   // The offers come back with this read (and its matching and rollup), not before.
   await runMerchantSource(merchantId);
+  await refreshPromotedForMerchant(merchantId);
   await mailReinstated(await load(merchantId));
   revalidatePath('/admin/comercianti');
   back(merchantId, { ok: 'reluat' });

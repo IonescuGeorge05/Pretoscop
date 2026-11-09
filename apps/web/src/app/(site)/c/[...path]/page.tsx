@@ -4,16 +4,19 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { cache } from 'react';
+import { AdSlotGate } from '@/components/ads/ad-slot-gate';
 import { NotFoundResponse } from '@/components/http/not-found-status';
 import { NotFoundContent } from '@/components/layout/not-found-content';
 import { Breadcrumbs, type Crumb } from '@/components/listing/breadcrumbs';
 import { ProductGrid } from '@/components/listing/product-card';
 import { Pagination } from '@/components/listing/pagination';
+import { PromotedSlot } from '@/components/promoted/promoted-slot';
 import { JsonLd } from '@/components/seo/json-ld';
 import { Container } from '@/components/ui/container';
 import { categoryHref, getBrands, getCategoryTree, type CategoryNode } from '@/lib/catalog';
 import { serverEnv } from '@/lib/db';
 import { inSentence, plural } from '@/lib/format';
+import { categoryPromotedSlot } from '@/lib/promoted';
 import { meili, names, q } from '@/lib/search';
 import { forMetadata, pageOpenGraph, pageOrNotFound, robotsFor, unresolvedMetadata } from '@/lib/seo';
 import { breadcrumbList, itemList } from '@/lib/structured-data';
@@ -116,6 +119,8 @@ export default async function CategoryPage({ params }: Props) {
     .filter(([slug]) => brands.has(slug))
     .sort((a, b) => b[1] - a[1]);
   const indexableHrefs = list.hits.filter((h) => h.indexable).map((h) => `/p/${h.slug}`);
+  // M25: one paid slot on the first page, above the list (which keeps its own order).
+  const promoted = page === 1 && list.total > 0 ? await categoryPromotedSlot(node.id) : null;
 
   return (
     <Container className="py-6">
@@ -183,10 +188,18 @@ export default async function CategoryPage({ params }: Props) {
               </div>
             </details>
           )}
+          {promoted && (
+            <div className="mt-4">
+              <PromotedSlot data={promoted} categoryId={node.id} />
+            </div>
+          )}
           <div className="mt-4">
             <ProductGrid products={list.hits} placement="category" />
           </div>
           <Pagination page={page} totalPages={list.totalPages} href={(n) => categoryHref(node, n)} />
+          <div className="mt-6">
+            <AdSlotGate placement="category" />
+          </div>
         </>
       )}
     </Container>

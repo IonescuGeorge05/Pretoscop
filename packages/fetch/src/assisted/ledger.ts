@@ -79,9 +79,12 @@ export class MemoryAssistedLedger implements AssistedLedger {
     row.costCents = ledgerRowCostCents(row, e.pricing);
   }
 
+  /** Spend from `monthStartDay` to the end of that calendar month (later months never count). */
   async monthToDateCents(monthStartDay: string): Promise<number> {
+    const [y = 0, m = 1] = monthStartDay.split('-').map(Number);
+    const end = m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
     let sum = 0;
-    for (const r of this.rows.values()) if (r.day >= monthStartDay) sum += r.costCents;
+    for (const r of this.rows.values()) if (r.day >= monthStartDay && r.day < end) sum += r.costCents;
     return sum;
   }
 }

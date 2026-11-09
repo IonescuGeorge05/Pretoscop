@@ -18,9 +18,9 @@ import {
   updateB2bWorkspace,
   type B2bImportResult,
 } from '@pretoscop/db';
+import { PaymentProviderError } from '@pretoscop/payments';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
-import { BillingProviderError } from '@/lib/b2b-billing';
 import { billingProvider, selfServePrices } from '@/lib/b2b-billing-server';
 import { db, serverEnv } from '@/lib/db';
 import { actorOf, B2B_PATH, requireB2bData, requireB2bWorkspace, type B2bContext } from '@/lib/b2b';
@@ -245,8 +245,8 @@ export async function startSubscriptionAction(form: FormData): Promise<void> {
   let url: string;
   try {
     const s = await provider.createSubscriptionCheckout({
-      workspaceId: w.id,
-      plan,
+      reference: `b2b:${w.id}`,
+      metadata: { workspace_id: String(w.id), plan },
       priceId: prices[plan]!,
       customerId: w.billingCustomerId,
       customerEmail: w.billingEmail ?? ctx.user.email,
@@ -257,7 +257,7 @@ export async function startSubscriptionAction(form: FormData): Promise<void> {
     url = s.url;
     await audit(ctx, 'b2b.checkout', { plan, session: s.id });
   } catch (e) {
-    if (e instanceof BillingProviderError) back(w.id, '/setari', { eroare: 'facturare' });
+    if (e instanceof PaymentProviderError) back(w.id, '/setari', { eroare: 'facturare' });
     throw e;
   }
   redirect(url);
@@ -274,7 +274,7 @@ export async function openBillingPortalAction(form: FormData): Promise<void> {
   try {
     url = (await provider.createPortalSession(w.billingCustomerId, `${serverEnv().PUBLIC_BASE_URL}/b2b/${w.id}/setari`)).url;
   } catch (e) {
-    if (e instanceof BillingProviderError) back(w.id, '/setari', { eroare: 'facturare' });
+    if (e instanceof PaymentProviderError) back(w.id, '/setari', { eroare: 'facturare' });
     throw e;
   }
   redirect(url);

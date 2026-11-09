@@ -235,6 +235,45 @@ E2E (local mock push service and Bot API, test VAPID keys from `playwright.confi
   both refused in staging and production) a feed URL may point to a
   local IP and port, which the e2e flow uses.
 
+## Promoted placements and the optional ad slot (M25)
+
+- **Flags**: `promoted.enabled` (slots and billing; off = no slot, every promoted click recorded as
+  `disabled`, nothing charged) and `ads.slots.enabled` (the ad slot, which also needs a build with
+  `NEXT_PUBLIC_ADSENSE_CLIENT`). Toggling either in `/admin/flaguri` refreshes the cached pages (tag
+  `promoted`).
+- **Slots** (`components/promoted/promoted-slot.tsx`): one above the offers table on product pages,
+  one above the products on the first page of a category. Labelled "Promovat", they say that the
+  shop pays and by how much the offer costs more than the cheapest live offer. Data from
+  `lib/promoted.ts` (`unstable_cache`, tags `promoted`, `product:{id}`, `promoted:c{category}` on the
+  product's chain, `promoted:categorii`; recomputed at least every 15 minutes). The offers table
+  and its ranking are untouched (e2e snapshot).
+- **Billing in the click-out**: `/out/{offer}?p=promoted_product&k={placement}` (or
+  `promoted_category&…&c={category}`) logs the click, then `billPromotedClick` (bots via `isBot`,
+  prefetch headers, internal referer, daily-salted session and IP hashes). A promoted click always
+  goes to the shop's plain URL: no affiliate link, so CPC and commissions never count the same
+  click. A click that uses up a campaign refreshes its slots (`refreshPromoted`: this replica at
+  once, the others through the worker job `promoted.refresh`).
+- **Merchant page** `/pentru-magazine/cont/promovare` (approved merchants): `promotedTerms.v1`
+  (unticked box) opens the wallet; top-ups by Stripe Checkout (net amount typed, VAT on top at
+  `TOPUP_VAT_PERCENT`, 150–10.000 lei, 10 per day); campaigns (category subtree, optional price
+  band, bid, daily cap; pause, resume, archive); spend today and in 30 days, billed clicks, CPC,
+  not-billed reasons, ledger, top-ups. At most 60 changes per account per day.
+- **Stripe webhook** `/api/webhooks/stripe`: the only place a card payment credits a wallet
+  (signature on the raw body, 5-minute tolerance, 64 KiB cap, idempotent). Off (404) without
+  `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`.
+- **Admin** `/admin/promovare`: wallets (credit or debit adjustments, e.g. a bank transfer),
+  campaigns (hold with a reason the merchant sees), the latest 50 promoted clicks (refund), floors
+  and caps per category and band, the monthly CSV statement for the accountant
+  (`/admin/promovare/extras?luna=AAAA-LL`). `/admin/venituri` shows the CPC revenue next to the
+  commissions.
+- **Ad slot** (`components/ads/*`): rendered by `AdSlotGate` only in a build with
+  `NEXT_PUBLIC_ADSENSE_CLIENT` (the CSP in `lib/csp.ts` lets Google's ad origins in only then) and
+  while `ads.slots.enabled` is on; outside the offers table, labelled "Publicitate"; nothing loads
+  from Google before the visitor accepts in the slot (`adsConsent.v1`, localStorage key
+  `pretoscop.consent.ads`, changeable on `/cookies`). Non-personalized ads.
+- **E2E** `e2e/promoted.spec.ts` (desktop): against a local Stripe mock on `E2E_PORT + 1`
+  (`@pretoscop/payments/testing`) with the test keys of `e2e/promoted-env.ts`.
+
 ## Bot legitimacy (M21)
 
 - **`/bot`** (final): how to verify us — the published IPs (`BOT_EGRESS_IPS`), forward-confirmed reverse DNS

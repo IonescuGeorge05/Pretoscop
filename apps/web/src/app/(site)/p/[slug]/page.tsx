@@ -2,10 +2,12 @@ import { isProductIndexable } from '@pretoscop/core';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { permanentRedirect } from 'next/navigation';
+import { AdSlotGate } from '@/components/ads/ad-slot-gate';
 import { AlertFormLazy as AlertForm } from '@/components/alerts/alert-form-lazy';
 import { NotFoundResponse } from '@/components/http/not-found-status';
 import { OffersTable } from '@/components/product/offers-table';
 import { PriceChart } from '@/components/product/price-chart';
+import { PromotedSlot } from '@/components/promoted/promoted-slot';
 import { ProductImage } from '@/components/product/product-image';
 import { IcecatCredit } from '@/components/product/icecat-credit';
 import { keySpecs } from '@/components/product/specs';
@@ -17,6 +19,7 @@ import { alertConsent, alertsEnabled } from '@/lib/alerts';
 import { serverEnv } from '@/lib/db';
 import { formatDate, formatLeiNumeric, plural, toBani } from '@/lib/format';
 import { bestOffer, getProductPageData, idFromSlug, type ProductPageData } from '@/lib/product';
+import { productPromotedSlot } from '@/lib/promoted';
 import { pageOpenGraph, robotsFor, unresolvedMetadata } from '@/lib/seo';
 import { breadcrumbList, productJsonLd, type BreadcrumbItem } from '@/lib/structured-data';
 import ProductNotFound from './not-found';
@@ -126,6 +129,8 @@ export default async function ProductPage({ params }: Props) {
   const affiliate = p.offers.some((o) => o.hasAffiliate);
   const alertsOn = await alertsEnabled();
   const consent = alertConsent();
+  // M25: the paid slot sits above the ranked list and never changes it (ADR-027).
+  const promoted = p.offers.length > 0 ? await productPromotedSlot(p.id) : null;
 
   return (
     <Container className="py-6">
@@ -201,6 +206,8 @@ export default async function ProductPage({ params }: Props) {
             </section>
           )}
 
+          {promoted && <PromotedSlot data={promoted} />}
+
           <section aria-labelledby="oferte">
             <h2 id="oferte" className="mb-3 text-lg font-semibold">
               {p.offers.length ? `${plural(p.offers.length, 'ofertă', 'oferte')} la ${plural(shops, 'magazin', 'magazine')}` : 'Nicio ofertă activă acum'}
@@ -255,6 +262,9 @@ export default async function ProductPage({ params }: Props) {
               </ul>
             </section>
           )}
+
+          {/* M25: the optional ad slot, never inside the offers table (off unless built for it and flagged). */}
+          <AdSlotGate placement="product" />
         </div>
 
         <aside className="space-y-4 lg:sticky lg:top-20 lg:self-start">
@@ -284,6 +294,7 @@ export default async function ProductPage({ params }: Props) {
           <div className="space-y-2 text-xs leading-relaxed text-muted">
             <p>Prețurile și disponibilitatea sunt preluate automat de pe site-urile magazinelor și pot fi modificate de acestea; prețul final este cel afișat de magazin la plasarea comenzii.</p>
             {affiliate && <p>Unele linkuri sunt linkuri afiliate: Pretoscop poate primi un comision, fără cost pentru tine. Comisionul nu influențează ordinea ofertelor.</p>}
+            {promoted && <p>Oferta marcată „Promovat” este plătită de magazin. Plata nu influențează ordinea listei de oferte, ordonată după prețul total.</p>}
             <p>
               <Link href={`/contact?subiect=price_error&url=${encodeURIComponent(`/p/${p.slug}`)}`} className="text-brand-700 underline">
                 Raportează o eroare de preț

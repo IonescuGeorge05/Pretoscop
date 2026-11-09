@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # M28 — B2B price intelligence MVP. Runs against this checkout's database; no request goes to
-# Stripe (the billing e2e signs webhook deliveries with a throwaway test secret, the Stripe client
-# is tested against a local mock) and no email leaves Mailpit.
+# Stripe (subscriptions run against the local Stripe mock of @pretoscop/payments with M25's made-up
+# e2e credentials, webhooks are signed by the test) and no email leaves Mailpit.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 . scripts/verify/lib.sh
@@ -49,7 +49,7 @@ ok "new flags are created off"
 
 step "no payment secrets in git; API keys only as hashes"
 if git grep -nE '(sk|rk)_live_[A-Za-z0-9]{10,}|whsec_[A-Za-z0-9]{20,}' -- . ':!pnpm-lock.yaml' >/dev/null; then fail "something that looks like a live Stripe key or webhook secret is committed"; fi
-if git grep -nE '^(STRIPE_SECRET_KEY|B2B_STRIPE_WEBHOOK_SECRET)=[^[:space:]]+$' -- .env.example >/dev/null; then fail ".env.example carries a Stripe secret"; fi
+if git grep -nE '^(STRIPE_SECRET_KEY|STRIPE_WEBHOOK_SECRET)=[^[:space:]]+$' -- .env.example >/dev/null; then fail ".env.example carries a Stripe secret"; fi
 [ "$(psql_dev -c "SELECT count(*) FROM b2b_api_keys WHERE secret_hash !~ '^[0-9a-f]{64}$'")" = 0 ] || fail "an API key is stored other than as a SHA-256 hex digest"
 ok "placeholders only"
 
@@ -73,8 +73,8 @@ for (const [, name, body] of fns) if (!/requireB2b(Workspace|Data)\(/.test(body.
 " || fail "workspace actions"
 ok "B2B code reads the catalogue through b2b_products only; admin pages and actions call requireAdmin(); workspace actions run the tenant gate"
 
-step "lint, typecheck, unit + integration tests (core rules and CSV, config, db: tenancy, quotas under concurrency, Icecat exclusion, billing events; worker digest; web: table/CSV, API contract, OpenAPI file, Stripe client and signatures)"
-pnpm turbo run lint typecheck test --filter=@pretoscop/core --filter=@pretoscop/config --filter=@pretoscop/db --filter=@pretoscop/worker --filter=@pretoscop/web --concurrency=1 --output-logs=errors-only
+step "lint, typecheck, unit + integration tests (core rules and CSV, config, db: tenancy, quotas under concurrency, Icecat exclusion, billing events; payments: subscription checkout, portal and events against the Stripe mock; worker digest; web: table/CSV, API contract, OpenAPI file, billing mapping)"
+pnpm turbo run lint typecheck test --filter=@pretoscop/core --filter=@pretoscop/config --filter=@pretoscop/db --filter=@pretoscop/payments --filter=@pretoscop/worker --filter=@pretoscop/web --concurrency=1 --output-logs=errors-only
 ok "green"
 
 step "the digest CLI refuses to send while its flag is off"
@@ -96,12 +96,13 @@ for ((i = 0; i < 180; i++)); do next_build_running || break; sleep 5; done
 (cd apps/web && pnpm exec next build >/dev/null)
 ok "next build"
 
-step "Playwright e2e: provisioning, magic-link login, terms, import, positions, CSV = table, SKU page, tenant isolation, API contract and quota, revocation, service switch, signed billing webhooks"
+step "Playwright e2e: provisioning, magic-link login, terms, import, positions, CSV = table, SKU page, tenant isolation, API contract and quota, revocation, service switch; subscription checkout (Stripe mock) and signed webhooks on the shared /api/webhooks/stripe"
 flags_on() { psql_dev -c "SELECT coalesce(string_agg(key, ',' ORDER BY key), '') FROM feature_flags WHERE key IN ($B2B_FLAGS) AND enabled"; }
 flags_before=$(flags_on)
 stop_port "$PORT"
-# A throwaway signing secret for the e2e server only (no Stripe account is involved).
-export B2B_STRIPE_WEBHOOK_SECRET="whsec_e2e$(date +%s)local"
+# Made-up B2B prices for the e2e server (the Stripe key, webhook secret and mock URL come from
+# playwright.config.ts, shared with M25's e2e; no Stripe account is involved).
+export B2B_STRIPE_PRICE_STARTER=price_e2estarter B2B_STRIPE_PRICE_PRO=price_e2epro
 (cd apps/web && E2E_SHARED_FIXTURE=0 E2E_PORT="$PORT" pnpm exec playwright test e2e/b2b.spec.ts --project=desktop --workers=1 --reporter=line)
 ok "e2e green"
 

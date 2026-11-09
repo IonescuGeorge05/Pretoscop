@@ -152,8 +152,15 @@
     {
       "idx": 21,
       "version": "7",
-      "when": 1794209035107,
-      "tag": "0021_b2b",
+      "when": 1794207299711,
+      "tag": "0021_promoted",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1794210376243,
+      "tag": "0022_b2b",
       "breakpoints": true
     }
   ]

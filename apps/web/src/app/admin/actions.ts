@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { requireAdmin } from '@/lib/auth';
 import { db } from '@/lib/db';
 import { boss } from '@/lib/jobs';
+import { refreshPromoted } from '@/lib/promoted';
 
 async function audit(actor: string, action: string, entity: string, entityId: string | number | null, before: unknown, after: unknown) {
   await db().insert(auditLog).values({ actor, action, entity, entityId: entityId === null ? null : String(entityId), before: before ?? null, after: after ?? null });
@@ -65,6 +66,8 @@ export async function setFlagAction(form: FormData): Promise<void> {
     .values({ key, enabled })
     .onConflictDoUpdate({ target: featureFlags.key, set: { enabled, updatedAt: new Date() } });
   await audit(admin.actor, 'flag.set', 'feature_flags', key, before ?? null, { enabled });
+  // M25: the "Promovat" and ad slots are part of cached product and category pages (tag `promoted`).
+  if (key === 'promoted.enabled' || key === 'ads.slots.enabled') await refreshPromoted(['promoted']);
   // Every admin page that shows a flag (Flaguri, Acces asistat) is re-rendered.
   revalidatePath('/admin', 'layout');
 }

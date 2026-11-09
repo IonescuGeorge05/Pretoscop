@@ -1,8 +1,9 @@
-import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { expect, request as pwRequest, test, type Browser, type BrowserContext, type Page } from '@playwright/test';
+import { signedStripeHeaders, startStripeMock } from '@pretoscop/payments/testing';
 import { PositionDetailBody, PositionPage, SkuImportResult, Usage } from '../src/lib/b2b-api-schema';
+import { E2E_STRIPE } from './promoted-env';
 
 /**
  * M28 B2B price intelligence, end to end on this checkout's database: an admin provisions a pilot
@@ -356,61 +357,89 @@ test.describe('B2B price intelligence', () => {
     await ownerCtx.close();
   });
 
-  // Needs the web server started with B2B_STRIPE_WEBHOOK_SECRET (scripts/verify/M28.sh sets a test one).
-  test('billing: only signed provider events change the plan, once; paid periods become invoices', async ({ browser }) => {
-    const secret = process.env.B2B_STRIPE_WEBHOOK_SECRET;
-    test.skip(!secret || !clientWs, 'no webhook secret for the e2e server');
+  // The e2e server runs with M25's made-up Stripe credentials (playwright.config.ts) and, from
+  // scripts/verify/M28.sh, B2B_STRIPE_PRICE_PRO; Stripe itself is the local mock on E2E_PORT + 1.
+  test('billing: subscribe through Stripe Checkout; only signed webhooks change the plan, once; paid periods become invoices', async ({ browser }) => {
+    test.skip(!process.env.B2B_STRIPE_PRICE_PRO || !clientWs, 'needs B2B_STRIPE_PRICE_PRO for the e2e server');
     const anon = await pwRequest.newContext({ baseURL: `http://localhost:${PORT}` });
-    const deliver = async (id: string, type: string, object: Record<string, unknown>, sig?: string) => {
-      const body = JSON.stringify({ id, type, created: Math.floor(Date.now() / 1000), data: { object } });
-      const t = Math.floor(Date.now() / 1000);
-      const header = sig ?? `t=${t},v1=${createHmac('sha256', secret!).update(`${t}.${body}`).digest('hex')}`;
-      return anon.post('/api/webhooks/stripe-b2b', { data: body, headers: { 'content-type': 'application/json', 'stripe-signature': header } });
+    const deliver = async (id: string, type: string, object: Record<string, unknown>, headers?: Record<string, string>) => {
+      const body = JSON.stringify({ id, object: 'event', type, created: Math.floor(Date.now() / 1000), data: { object } });
+      return anon.post('/api/webhooks/stripe', { data: body, headers: headers ?? signedStripeHeaders(E2E_STRIPE.webhookSecret, body) });
     };
-    await query(`UPDATE b2b_workspaces SET company_name = 'SC Client E2E SRL', cui = '14399840', billing_address = 'Str. Test 1, București' WHERE id = $1`, [clientWs]);
-    const checkout = { mode: 'subscription', client_reference_id: `b2b:${clientWs}`, customer: 'cus_e2e', subscription: 'sub_e2e', payment_status: 'paid', metadata: { plan: 'pro' } };
-    // Unsigned or tampered deliveries change nothing.
-    expect((await deliver('evt_e2e_b2b_forged', 'checkout.session.completed', checkout, 't=1,v1=' + 'a'.repeat(64))).status()).toBe(400);
-    expect((await query<{ plan: string }>(`SELECT plan FROM b2b_workspaces WHERE id = $1`, [clientWs]))[0]!.plan).toBe('pilot');
-    const first = await deliver('evt_e2e_b2b_co', 'checkout.session.completed', checkout);
-    expect(first.status()).toBe(200);
-    expect((await first.json()).result).toBe('applied');
-    expect((await (await deliver('evt_e2e_b2b_co', 'checkout.session.completed', checkout)).json()).result).toBe('duplicate');
-    const invoice = {
-      id: 'in_e2e',
-      customer: 'cus_e2e',
-      currency: 'eur',
-      subtotal: 14_900,
-      total: 18_029,
-      total_taxes: [{ amount: 3_129 }],
-      parent: { subscription_details: { subscription: 'sub_e2e', metadata: { workspace_id: String(clientWs), plan: 'pro' } } },
-      lines: { data: [{ period: { start: Math.floor(Date.now() / 1000), end: Math.floor(Date.now() / 1000) + 30 * 86_400 } }] },
-      status_transitions: { paid_at: Math.floor(Date.now() / 1000) },
-    };
-    expect((await deliver('evt_e2e_b2b_inv', 'invoice.paid', invoice)).status()).toBe(200);
-    const [w] = await query<{ plan: string; billing_status: string; billing_subscription_id: string }>(`SELECT plan, billing_status, billing_subscription_id FROM b2b_workspaces WHERE id = $1`, [clientWs]);
-    expect(w).toEqual({ plan: 'pro', billing_status: 'active', billing_subscription_id: 'sub_e2e' });
-    const [inv] = await query<{ total_amount: string; vat_rate: string; buyer_cui: string; efactura_status: string }>(
-      `SELECT total_amount::text, vat_rate::text, buyer_cui, efactura_status FROM b2b_invoices WHERE workspace_id = $1`,
-      [clientWs],
-    );
-    expect(inv).toEqual({ total_amount: '180.29', vat_rate: '21.00', buyer_cui: '14399840', efactura_status: 'to_issue' });
-    // The owner sees the paid period; the admin sees it in the accountant's list and CSV.
-    const owner = await (await browser.newContext({ storageState: ownerState ?? undefined })).newPage();
-    await owner.goto(`/b2b/${clientWs}/setari`);
-    await ui(owner.getByTestId('b2b-invoices')).toContainText('180,29');
-    await expect(owner.getByTestId('b2b-plan')).toContainText('Pro');
-    const admin = await adminPage(browser);
-    await admin.goto('/admin/b2b/facturi');
-    await ui(admin.getByText('SC Client E2E SRL')).toBeVisible();
-    const csv = await admin.request.get(`/admin/b2b/facturi/csv?luna=${new Date().toISOString().slice(0, 7)}`);
-    expect(csv.status()).toBe(200);
-    expect(await csv.text()).toContain('"SC Client E2E SRL","14399840"');
-    // The subscription ends: the workspace is suspended with the billing reason.
-    expect((await deliver('evt_e2e_b2b_del', 'customer.subscription.deleted', { id: 'sub_e2e', customer: 'cus_e2e', status: 'canceled', metadata: { workspace_id: String(clientWs) }, items: { data: [] } })).status()).toBe(200);
-    expect((await query<{ status: string }>(`SELECT status FROM b2b_workspaces WHERE id = $1`, [clientWs]))[0]!.status).toBe('suspended');
-    await owner.goto(`/b2b/${clientWs}`);
-    await ui(owner).toHaveURL(/\/b2b\?eroare=inactiv/);
+    const stripe = await startStripeMock({ port: E2E_STRIPE.port(PORT) });
+    const billingWas = (await query<{ enabled: boolean }>(`SELECT enabled FROM feature_flags WHERE key = 'b2b.billing.enabled'`))[0]?.enabled ?? false;
+    try {
+      await query(`INSERT INTO feature_flags (key, enabled) VALUES ('b2b.billing.enabled', true) ON CONFLICT (key) DO UPDATE SET enabled = true`);
+      const owner = await (await browser.newContext({ storageState: ownerState ?? undefined })).newPage();
+      // No subscribe button without the billing data an invoice needs.
+      await owner.goto(`/b2b/${clientWs}/setari`);
+      await ui(owner.getByRole('button', { name: /Abonează-te la Pro/ })).toBeDisabled();
+      await owner.locator('input[name=companyName]').fill('SC Client E2E SRL');
+      await owner.locator('input[name=cui]').fill('RO14399840');
+      await owner.locator('input[name=billingAddress]').fill('Str. Test 1, București');
+      await owner.getByRole('button', { name: 'Salvează datele de facturare' }).click();
+      await ui(owner.getByTestId('b2b-flash')).toContainText('Salvat');
+      await owner.getByRole('button', { name: /Abonează-te la Pro/ }).click();
+      await ui(owner).toHaveURL(/\/pay\/cs_test_mock_/);
+      expect(new URL(owner.url()).port).toBe(String(E2E_STRIPE.port(PORT)));
+      expect(stripe.sessions.at(-1)!.params).toMatchObject({
+        mode: 'subscription',
+        client_reference_id: `b2b:${clientWs}`,
+        'line_items[0][price]': process.env.B2B_STRIPE_PRICE_PRO,
+        'subscription_data[metadata][workspace_id]': String(clientWs),
+        'metadata[plan]': 'pro',
+      });
+      expect(stripe.sessions.at(-1)!.authorization).toBe(`Bearer ${E2E_STRIPE.secretKey}`);
+      await owner.getByTestId('mock-success').click();
+      await ui(owner.getByText(/Plata se confirmă în câteva secunde/)).toBeVisible();
+      // Coming back from the provider changes nothing: only the webhook does.
+      expect((await query<{ plan: string }>(`SELECT plan FROM b2b_workspaces WHERE id = $1`, [clientWs]))[0]!.plan).toBe('pilot');
+      const checkout = { id: 'cs_e2e_b2b', object: 'checkout.session', mode: 'subscription', client_reference_id: `b2b:${clientWs}`, customer: 'cus_e2e', subscription: 'sub_e2e', payment_status: 'paid', metadata: { plan: 'pro', workspace_id: String(clientWs) } };
+      // Unsigned or tampered deliveries change nothing.
+      expect((await deliver('evt_e2e_b2b_forged', 'checkout.session.completed', checkout, { 'content-type': 'application/json', 'stripe-signature': `t=${Math.floor(Date.now() / 1000)},v1=${'a'.repeat(64)}` })).status()).toBe(401);
+      expect((await query<{ plan: string }>(`SELECT plan FROM b2b_workspaces WHERE id = $1`, [clientWs]))[0]!.plan).toBe('pilot');
+      const first = await deliver('evt_e2e_b2b_co', 'checkout.session.completed', checkout);
+      expect(first.status()).toBe(200);
+      expect((await first.json()).b2b).toBe('applied');
+      expect((await (await deliver('evt_e2e_b2b_co', 'checkout.session.completed', checkout)).json()).b2b).toBe('duplicate');
+      const invoice = {
+        id: 'in_e2e',
+        customer: 'cus_e2e',
+        currency: 'eur',
+        subtotal: 14_900,
+        total: 18_029,
+        total_taxes: [{ amount: 3_129 }],
+        parent: { subscription_details: { subscription: 'sub_e2e', metadata: { workspace_id: String(clientWs), plan: 'pro' } } },
+        lines: { data: [{ period: { start: Math.floor(Date.now() / 1000), end: Math.floor(Date.now() / 1000) + 30 * 86_400 } }] },
+        status_transitions: { paid_at: Math.floor(Date.now() / 1000) },
+      };
+      expect((await deliver('evt_e2e_b2b_inv', 'invoice.paid', { object: 'invoice', ...invoice })).status()).toBe(200);
+      const [w] = await query<{ plan: string; billing_status: string; billing_subscription_id: string }>(`SELECT plan, billing_status, billing_subscription_id FROM b2b_workspaces WHERE id = $1`, [clientWs]);
+      expect(w).toEqual({ plan: 'pro', billing_status: 'active', billing_subscription_id: 'sub_e2e' });
+      const [inv] = await query<{ total_amount: string; vat_rate: string; buyer_cui: string; efactura_status: string }>(
+        `SELECT total_amount::text, vat_rate::text, buyer_cui, efactura_status FROM b2b_invoices WHERE workspace_id = $1`,
+        [clientWs],
+      );
+      expect(inv).toEqual({ total_amount: '180.29', vat_rate: '21.00', buyer_cui: '14399840', efactura_status: 'to_issue' });
+      // The owner sees the paid period; the admin sees it in the accountant's list and CSV.
+      await owner.goto(`/b2b/${clientWs}/setari`);
+      await ui(owner.getByTestId('b2b-invoices')).toContainText('180,29');
+      await expect(owner.getByTestId('b2b-plan')).toContainText('Pro');
+      const admin = await adminPage(browser);
+      await admin.goto('/admin/b2b/facturi');
+      await ui(admin.getByText('SC Client E2E SRL')).toBeVisible();
+      const csv = await admin.request.get(`/admin/b2b/facturi/csv?luna=${new Date().toISOString().slice(0, 7)}`);
+      expect(csv.status()).toBe(200);
+      expect(await csv.text()).toContain('"SC Client E2E SRL","14399840"');
+      // The subscription ends: the workspace is suspended with the billing reason.
+      expect((await deliver('evt_e2e_b2b_del', 'customer.subscription.deleted', { id: 'sub_e2e', object: 'subscription', customer: 'cus_e2e', status: 'canceled', metadata: { workspace_id: String(clientWs) }, items: { data: [] } })).status()).toBe(200);
+      expect((await query<{ status: string }>(`SELECT status FROM b2b_workspaces WHERE id = $1`, [clientWs]))[0]!.status).toBe('suspended');
+      await owner.goto(`/b2b/${clientWs}`);
+      await ui(owner).toHaveURL(/\/b2b\?eroare=inactiv/);
+    } finally {
+      await stripe.close();
+      await query(`UPDATE feature_flags SET enabled = $1 WHERE key = 'b2b.billing.enabled'`, [billingWas]);
+    }
     await anon.dispose();
   });
 });

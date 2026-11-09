@@ -11,6 +11,7 @@ const nav = [
   ['/admin/produse', 'Produse'],
   ['/admin/oferte', 'Oferte'],
   ['/admin/venituri', 'Venituri'],
+  ['/admin/promovare', 'Promovare'],
   ['/admin/carantina', 'Carantină'],
   ['/admin/alerte', 'Alerte'],
   ['/admin/comercianti', 'Magazine partenere'],

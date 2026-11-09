@@ -43,6 +43,8 @@ product_merges                                         merge log, undo, 301s
 feature_flags · audit_log · request_log (30 days) · crawl_domain_state (per-host politeness state)
 shops ─< merchants (portal account, M20) · shops ─< outreach (retailer contacts, M21)
 shops ─< extractor_canaries (weekly canary results per URL, M21)
+merchants ─< placements (CPC campaigns, M25) >─ categories · placement_floors (category × band)
+merchant_wallets · wallet_ledger · wallet_topups · promoted_clicks   accounting rows, no FK to merchants (M25)
 ```
 
 Column-level details follow `docs/03-architecture.md` §5; the Drizzle files in `src/schema/` are
@@ -141,3 +143,30 @@ Contract (`src/queries/alerts.ts`):
   `rollup.touch` for products whose offers changed price.
 - E2E fixture for alerts: `createAlertsFixture`, `alertsFixturePrice`, `alertsFixtureState`,
   `alertsFixtureEvidence`, `dropAlertsFixture` (`pnpm --filter @pretoscop/db e2e:fixture alerts-…`).
+
+## Promoted placements (M25, `src/queries/promoted.ts`, migration `0021_promoted`)
+
+- Slot: `promotedCandidates(db, ctx)` (one eligible offer per active campaign of an approved
+  merchant: `ELIGIBLE_PROMOTED_OFFER`), `promotedAuction` (core `runAuction`: second price with
+  per-offer floors and caps, `listFloorRows` + `floorFor`), `promotedSlot` (what the page shows,
+  with the cheapest live total so the slot can say how much more the promoted offer costs),
+  `productCategoryChain`, `merchantPlacementCategories` (cache tags).
+- Billing: `billPromotedClick(db, input)` records every click from a slot and bills it when core
+  `decideClickBilling` allows, in one transaction under the merchant's wallet row lock (duplicate
+  check, rate holds, auction re-run, ledger row, audit row); the unique index on
+  `(offer_id, session_hash, day)` is the last guard. Returns `exhausted` when a campaign can no
+  longer pay its bid (the caller refreshes the slots).
+- Money: `acceptPromotedTerms` (opens the wallet), `createTopUp` (snapshots the buyer's company
+  and CUI), `setTopUpCheckout`, `bindTopUpCheckout`, `creditTopUp` (once; amount and currency must
+  match; ledger `ref = <provider>:<checkout id>`), `closeTopUp`, `failTopUp`,
+  `refundPromotedClick`, `adjustWallet` (form token = idempotency), `topUpsLastDay`,
+  `promotedActionsLastDay`.
+- Campaigns and floors: `createPlacement`, `updatePlacement`, `setPlacementStatus` (own merchant
+  only), `setPlacementHold` (admin), `listFloors`, `upsertFloor`, `deleteFloor`.
+- Numbers: `merchantPromotedSummary`, `adminPromotedOverview`, `monthlyPromotedStatement`
+  (opening + movements = closing, Europe/Bucharest month), `promotedMaintenance` (hashes cleared
+  after 30 days, abandoned checkouts expired after 24 h; job `promoted.daily`).
+- Every money movement writes a `wallet_ledger` row and an `audit_log` row in the same transaction;
+  the sum of a merchant's ledger equals its balance (integration test).
+- E2E fixture: `createPromotedFixture`, `promotedFixtureState`, `setPromotedFlag`,
+  `dropPromotedFixture` (`pnpm --filter @pretoscop/db e2e:fixture promoted-…`).

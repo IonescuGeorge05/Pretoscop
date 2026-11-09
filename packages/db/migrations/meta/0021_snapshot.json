@@ -1,5 +1,5 @@
 {
-  "id": "cfa912e8-df5c-443b-af17-af437032b0d6",
+  "id": "cec1f6b1-aa6b-4358-acab-c66525b5ae1c",
   "prevId": "ce4fcbef-a328-40cd-bbfa-ddd3316c9195",
   "version": "7",
   "dialect": "postgresql",
@@ -7317,54 +7317,32 @@
       },
       "isRLSEnabled": false
     },
-    "public.b2b_api_keys": {
-      "name": "b2b_api_keys",
+    "public.merchant_wallets": {
+      "name": "merchant_wallets",
       "schema": "",
       "columns": {
-        "id": {
-          "name": "id",
+        "merchant_id": {
+          "name": "merchant_id",
           "type": "bigint",
           "primaryKey": true,
+          "notNull": true
+        },
+        "balance": {
+          "name": "balance",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
           "notNull": true,
-          "identity": {
-            "type": "always",
-            "name": "b2b_api_keys_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "cache": "1",
-            "cycle": false
-          }
+          "default": "'0'"
         },
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "public_id": {
-          "name": "public_id",
+        "terms_version": {
+          "name": "terms_version",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "secret_hash": {
-          "name": "secret_hash",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by": {
-          "name": "created_by",
-          "type": "text",
+        "terms_accepted_at": {
+          "name": "terms_accepted_at",
+          "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true
         },
@@ -7375,163 +7353,8 @@
           "notNull": true,
           "default": "now()"
         },
-        "last_used_at": {
-          "name": "last_used_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "revoked_at": {
-          "name": "revoked_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "revoked_by": {
-          "name": "revoked_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {
-        "b2b_api_keys_public_uq": {
-          "name": "b2b_api_keys_public_uq",
-          "columns": [
-            {
-              "expression": "public_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "b2b_api_keys_workspace_idx": {
-          "name": "b2b_api_keys_workspace_idx",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "b2b_api_keys_workspace_id_b2b_workspaces_id_fk": {
-          "name": "b2b_api_keys_workspace_id_b2b_workspaces_id_fk",
-          "tableFrom": "b2b_api_keys",
-          "tableTo": "b2b_workspaces",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.b2b_api_usage": {
-      "name": "b2b_api_usage",
-      "schema": "",
-      "columns": {
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "day": {
-          "name": "day",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "requests": {
-          "name": "requests",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "refused": {
-          "name": "refused",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "b2b_api_usage_workspace_id_b2b_workspaces_id_fk": {
-          "name": "b2b_api_usage_workspace_id_b2b_workspaces_id_fk",
-          "tableFrom": "b2b_api_usage",
-          "tableTo": "b2b_workspaces",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "b2b_api_usage_workspace_id_day_pk": {
-          "name": "b2b_api_usage_workspace_id_day_pk",
-          "columns": [
-            "workspace_id",
-            "day"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.b2b_billing_events": {
-      "name": "b2b_billing_events",
-      "schema": "",
-      "columns": {
-        "provider": {
-          "name": "provider",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "event_id": {
-          "name": "event_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "type": {
-          "name": "type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "received_at": {
-          "name": "received_at",
+        "updated_at": {
+          "name": "updated_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
@@ -7540,127 +7363,19 @@
       },
       "indexes": {},
       "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "b2b_billing_events_provider_event_id_pk": {
-          "name": "b2b_billing_events_provider_event_id_pk",
-          "columns": [
-            "provider",
-            "event_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.b2b_digests": {
-      "name": "b2b_digests",
-      "schema": "",
-      "columns": {
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "day": {
-          "name": "day",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'sending'"
-        },
-        "changes": {
-          "name": "changes",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "claimed_at": {
-          "name": "claimed_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "sent_at": {
-          "name": "sent_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "error": {
-          "name": "error",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "b2b_digests_workspace_id_b2b_workspaces_id_fk": {
-          "name": "b2b_digests_workspace_id_b2b_workspaces_id_fk",
-          "tableFrom": "b2b_digests",
-          "tableTo": "b2b_workspaces",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "b2b_digests_user_id_users_id_fk": {
-          "name": "b2b_digests_user_id_users_id_fk",
-          "tableFrom": "b2b_digests",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "b2b_digests_workspace_id_day_user_id_pk": {
-          "name": "b2b_digests_workspace_id_day_user_id_pk",
-          "columns": [
-            "workspace_id",
-            "day",
-            "user_id"
-          ]
-        }
-      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "b2b_digests_status_ck": {
-          "name": "b2b_digests_status_ck",
-          "value": "\"b2b_digests\".\"status\" in ('sending','sent','empty','failed')"
+        "merchant_wallets_balance_ck": {
+          "name": "merchant_wallets_balance_ck",
+          "value": "\"merchant_wallets\".\"balance\" >= 0"
         }
       },
       "isRLSEnabled": false
     },
-    "public.b2b_invites": {
-      "name": "b2b_invites",
+    "public.placement_floors": {
+      "name": "placement_floors",
       "schema": "",
       "columns": {
         "id": {
@@ -7670,7 +7385,7 @@
           "notNull": true,
           "identity": {
             "type": "always",
-            "name": "b2b_invites_id_seq",
+            "name": "placement_floors_id_seq",
             "schema": "public",
             "increment": "1",
             "startWith": "1",
@@ -7680,91 +7395,74 @@
             "cycle": false
           }
         },
-        "workspace_id": {
-          "name": "workspace_id",
+        "category_id": {
+          "name": "category_id",
           "type": "bigint",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
-        "email": {
-          "name": "email",
+        "price_band": {
+          "name": "price_band",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "role": {
-          "name": "role",
-          "type": "text",
+        "floor": {
+          "name": "floor",
+          "type": "numeric(12, 2)",
           "primaryKey": false,
-          "notNull": true,
-          "default": "'member'"
+          "notNull": true
         },
-        "invited_by": {
-          "name": "invited_by",
+        "cap": {
+          "name": "cap",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_by": {
+          "name": "updated_by",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "created_at": {
-          "name": "created_at",
+        "updated_at": {
+          "name": "updated_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
-        },
-        "accepted_at": {
-          "name": "accepted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {
-        "b2b_invites_open_uq": {
-          "name": "b2b_invites_open_uq",
+        "placement_floors_uq": {
+          "name": "placement_floors_uq",
           "columns": [
             {
-              "expression": "workspace_id",
-              "isExpression": false,
+              "expression": "coalesce(\"category_id\", 0)",
               "asc": true,
+              "isExpression": true,
               "nulls": "last"
             },
             {
-              "expression": "email",
+              "expression": "price_band",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
           "isUnique": true,
-          "where": "\"b2b_invites\".\"accepted_at\" is null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "b2b_invites_email_idx": {
-          "name": "b2b_invites_email_idx",
-          "columns": [
-            {
-              "expression": "email",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}
         }
       },
       "foreignKeys": {
-        "b2b_invites_workspace_id_b2b_workspaces_id_fk": {
-          "name": "b2b_invites_workspace_id_b2b_workspaces_id_fk",
-          "tableFrom": "b2b_invites",
-          "tableTo": "b2b_workspaces",
+        "placement_floors_category_id_categories_id_fk": {
+          "name": "placement_floors_category_id_categories_id_fk",
+          "tableFrom": "placement_floors",
+          "tableTo": "categories",
           "columnsFrom": [
-            "workspace_id"
+            "category_id"
           ],
           "columnsTo": [
             "id"
@@ -7777,15 +7475,19 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "b2b_invites_role_ck": {
-          "name": "b2b_invites_role_ck",
-          "value": "\"b2b_invites\".\"role\" in ('owner','member')"
+        "placement_floors_band_ck": {
+          "name": "placement_floors_band_ck",
+          "value": "\"placement_floors\".\"price_band\" in ('0-200','200-1000','1000-3000','3000+')"
+        },
+        "placement_floors_amount_ck": {
+          "name": "placement_floors_amount_ck",
+          "value": "\"placement_floors\".\"floor\" > 0 and \"placement_floors\".\"cap\" >= \"placement_floors\".\"floor\""
         }
       },
       "isRLSEnabled": false
     },
-    "public.b2b_invoices": {
-      "name": "b2b_invoices",
+    "public.placements": {
+      "name": "placements",
       "schema": "",
       "columns": {
         "id": {
@@ -7795,7 +7497,7 @@
           "notNull": true,
           "identity": {
             "type": "always",
-            "name": "b2b_invoices_id_seq",
+            "name": "placements_id_seq",
             "schema": "public",
             "increment": "1",
             "startWith": "1",
@@ -7805,98 +7507,262 @@
             "cycle": false
           }
         },
-        "workspace_id": {
-          "name": "workspace_id",
+        "merchant_id": {
+          "name": "merchant_id",
           "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
-        "provider": {
-          "name": "provider",
+        "category_id": {
+          "name": "category_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "price_band": {
+          "name": "price_band",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "bid": {
+          "name": "bid",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "daily_cap": {
+          "name": "daily_cap",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'active'"
+        },
+        "admin_hold": {
+          "name": "admin_hold",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "admin_hold_reason": {
+          "name": "admin_hold_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "placements_category_idx": {
+          "name": "placements_category_idx",
+          "columns": [
+            {
+              "expression": "category_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"placements\".\"status\" = 'active' AND NOT \"placements\".\"admin_hold\"",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "placements_merchant_idx": {
+          "name": "placements_merchant_idx",
+          "columns": [
+            {
+              "expression": "merchant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "placements_live_uq": {
+          "name": "placements_live_uq",
+          "columns": [
+            {
+              "expression": "merchant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "category_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "coalesce(\"price_band\", '*')",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"placements\".\"status\" <> 'archived'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "placements_merchant_id_merchants_id_fk": {
+          "name": "placements_merchant_id_merchants_id_fk",
+          "tableFrom": "placements",
+          "tableTo": "merchants",
+          "columnsFrom": [
+            "merchant_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "placements_category_id_categories_id_fk": {
+          "name": "placements_category_id_categories_id_fk",
+          "tableFrom": "placements",
+          "tableTo": "categories",
+          "columnsFrom": [
+            "category_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "placements_status_ck": {
+          "name": "placements_status_ck",
+          "value": "\"placements\".\"status\" in ('active','paused','archived')"
+        },
+        "placements_band_ck": {
+          "name": "placements_band_ck",
+          "value": "\"placements\".\"price_band\" is null or \"placements\".\"price_band\" in ('0-200','200-1000','1000-3000','3000+')"
+        },
+        "placements_bid_ck": {
+          "name": "placements_bid_ck",
+          "value": "\"placements\".\"bid\" > 0 and \"placements\".\"daily_cap\" >= \"placements\".\"bid\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.promoted_clicks": {
+      "name": "promoted_clicks",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "promoted_clicks_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "cache": "1",
+            "cycle": false
+          }
+        },
+        "click_id": {
+          "name": "click_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "placement_id": {
+          "name": "placement_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "merchant_id": {
+          "name": "merchant_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "offer_id": {
+          "name": "offer_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "product_id": {
+          "name": "product_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category_id": {
+          "name": "category_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "slot": {
+          "name": "slot",
           "type": "text",
           "primaryKey": false,
           "notNull": true
         },
-        "provider_invoice_id": {
-          "name": "provider_invoice_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "plan": {
-          "name": "plan",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "period_start": {
-          "name": "period_start",
+        "day": {
+          "name": "day",
           "type": "date",
           "primaryKey": false,
-          "notNull": false
-        },
-        "period_end": {
-          "name": "period_end",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "currency": {
-          "name": "currency",
-          "type": "text",
-          "primaryKey": false,
           "notNull": true
         },
-        "net_amount": {
-          "name": "net_amount",
-          "type": "numeric(12, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "vat_rate": {
-          "name": "vat_rate",
-          "type": "numeric(5, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "vat_amount": {
-          "name": "vat_amount",
-          "type": "numeric(12, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "total_amount": {
-          "name": "total_amount",
-          "type": "numeric(12, 2)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "buyer_name": {
-          "name": "buyer_name",
+        "session_hash": {
+          "name": "session_hash",
           "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "buyer_cui": {
-          "name": "buyer_cui",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "buyer_reg_com": {
-          "name": "buyer_reg_com",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "buyer_address": {
-          "name": "buyer_address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "buyer_email": {
-          "name": "buyer_email",
+        "ip_hash": {
+          "name": "ip_hash",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -7905,27 +7771,32 @@
           "name": "status",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "default": "'paid'"
+          "notNull": true
         },
-        "paid_at": {
-          "name": "paid_at",
+        "reason": {
+          "name": "reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "price": {
+          "name": "price",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'0'"
+        },
+        "refunded_at": {
+          "name": "refunded_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false
         },
-        "fiscal_number": {
-          "name": "fiscal_number",
+        "refund_reason": {
+          "name": "refund_reason",
           "type": "text",
           "primaryKey": false,
           "notNull": false
-        },
-        "efactura_status": {
-          "name": "efactura_status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'to_issue'"
         },
         "created_at": {
           "name": "created_at",
@@ -7936,32 +7807,102 @@
         }
       },
       "indexes": {
-        "b2b_invoices_provider_uq": {
-          "name": "b2b_invoices_provider_uq",
+        "promoted_clicks_once_uq": {
+          "name": "promoted_clicks_once_uq",
           "columns": [
             {
-              "expression": "provider",
+              "expression": "offer_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             },
             {
-              "expression": "provider_invoice_id",
+              "expression": "session_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "day",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             }
           ],
           "isUnique": true,
+          "where": "\"promoted_clicks\".\"status\" <> 'not_billed'",
           "concurrently": false,
           "method": "btree",
           "with": {}
         },
-        "b2b_invoices_workspace_idx": {
-          "name": "b2b_invoices_workspace_idx",
+        "promoted_clicks_placement_idx": {
+          "name": "promoted_clicks_placement_idx",
           "columns": [
             {
-              "expression": "workspace_id",
+              "expression": "placement_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "promoted_clicks_merchant_idx": {
+          "name": "promoted_clicks_merchant_idx",
+          "columns": [
+            {
+              "expression": "merchant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "promoted_clicks_session_idx": {
+          "name": "promoted_clicks_session_idx",
+          "columns": [
+            {
+              "expression": "session_hash",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "promoted_clicks_ip_idx": {
+          "name": "promoted_clicks_ip_idx",
+          "columns": [
+            {
+              "expression": "ip_hash",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -7979,140 +7920,24 @@
           "with": {}
         }
       },
-      "foreignKeys": {
-        "b2b_invoices_workspace_id_b2b_workspaces_id_fk": {
-          "name": "b2b_invoices_workspace_id_b2b_workspaces_id_fk",
-          "tableFrom": "b2b_invoices",
-          "tableTo": "b2b_workspaces",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "b2b_invoices_status_ck": {
-          "name": "b2b_invoices_status_ck",
-          "value": "\"b2b_invoices\".\"status\" in ('paid','refunded','void')"
+        "promoted_clicks_slot_ck": {
+          "name": "promoted_clicks_slot_ck",
+          "value": "\"promoted_clicks\".\"slot\" in ('product','category')"
         },
-        "b2b_invoices_efactura_ck": {
-          "name": "b2b_invoices_efactura_ck",
-          "value": "\"b2b_invoices\".\"efactura_status\" in ('to_issue','issued','sent','accepted','rejected')"
+        "promoted_clicks_status_ck": {
+          "name": "promoted_clicks_status_ck",
+          "value": "(\"promoted_clicks\".\"status\" = 'billed' and \"promoted_clicks\".\"price\" > 0 and \"promoted_clicks\".\"reason\" is null) or (\"promoted_clicks\".\"status\" = 'refunded' and \"promoted_clicks\".\"price\" > 0) or (\"promoted_clicks\".\"status\" = 'not_billed' and \"promoted_clicks\".\"price\" = 0 and \"promoted_clicks\".\"reason\" is not null)"
         }
       },
       "isRLSEnabled": false
     },
-    "public.b2b_members": {
-      "name": "b2b_members",
-      "schema": "",
-      "columns": {
-        "workspace_id": {
-          "name": "workspace_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "role": {
-          "name": "role",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'member'"
-        },
-        "digest": {
-          "name": "digest",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "b2b_members_user_idx": {
-          "name": "b2b_members_user_idx",
-          "columns": [
-            {
-              "expression": "user_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "b2b_members_workspace_id_b2b_workspaces_id_fk": {
-          "name": "b2b_members_workspace_id_b2b_workspaces_id_fk",
-          "tableFrom": "b2b_members",
-          "tableTo": "b2b_workspaces",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "b2b_members_user_id_users_id_fk": {
-          "name": "b2b_members_user_id_users_id_fk",
-          "tableFrom": "b2b_members",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "b2b_members_workspace_id_user_id_pk": {
-          "name": "b2b_members_workspace_id_user_id_pk",
-          "columns": [
-            "workspace_id",
-            "user_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "b2b_members_role_ck": {
-          "name": "b2b_members_role_ck",
-          "value": "\"b2b_members\".\"role\" in ('owner','member')"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.b2b_skus": {
-      "name": "b2b_skus",
+    "public.wallet_ledger": {
+      "name": "wallet_ledger",
       "schema": "",
       "columns": {
         "id": {
@@ -8122,7 +7947,7 @@
           "notNull": true,
           "identity": {
             "type": "always",
-            "name": "b2b_skus_id_seq",
+            "name": "wallet_ledger_id_seq",
             "schema": "public",
             "increment": "1",
             "startWith": "1",
@@ -8132,252 +7957,9 @@
             "cycle": false
           }
         },
-        "workspace_id": {
-          "name": "workspace_id",
+        "merchant_id": {
+          "name": "merchant_id",
           "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "identity": {
-          "name": "identity",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "product_id": {
-          "name": "product_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'unmatched'"
-        },
-        "match_method": {
-          "name": "match_method",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "ref": {
-          "name": "ref",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "label": {
-          "name": "label",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "gtin14": {
-          "name": "gtin14",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "mpn_raw": {
-          "name": "mpn_raw",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "mpn_norm": {
-          "name": "mpn_norm",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "brand_raw": {
-          "name": "brand_raw",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "reference_price": {
-          "name": "reference_price",
-          "type": "numeric(12, 2)",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "resolved_at": {
-          "name": "resolved_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "b2b_skus_identity_uq": {
-          "name": "b2b_skus_identity_uq",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "identity",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "b2b_skus_product_uq": {
-          "name": "b2b_skus_product_uq",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "product_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "where": "\"b2b_skus\".\"product_id\" is not null",
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "b2b_skus_status_idx": {
-          "name": "b2b_skus_status_idx",
-          "columns": [
-            {
-              "expression": "workspace_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "status",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "b2b_skus_product_idx": {
-          "name": "b2b_skus_product_idx",
-          "columns": [
-            {
-              "expression": "product_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "b2b_skus_workspace_id_b2b_workspaces_id_fk": {
-          "name": "b2b_skus_workspace_id_b2b_workspaces_id_fk",
-          "tableFrom": "b2b_skus",
-          "tableTo": "b2b_workspaces",
-          "columnsFrom": [
-            "workspace_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "b2b_skus_product_id_products_id_fk": {
-          "name": "b2b_skus_product_id_products_id_fk",
-          "tableFrom": "b2b_skus",
-          "tableTo": "products",
-          "columnsFrom": [
-            "product_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "b2b_skus_status_ck": {
-          "name": "b2b_skus_status_ck",
-          "value": "\"b2b_skus\".\"status\" in ('matched','unmatched','ambiguous')"
-        },
-        "b2b_skus_matched_ck": {
-          "name": "b2b_skus_matched_ck",
-          "value": "(\"b2b_skus\".\"status\" = 'matched') = (\"b2b_skus\".\"product_id\" is not null)"
-        },
-        "b2b_skus_method_ck": {
-          "name": "b2b_skus_method_ck",
-          "value": "\"b2b_skus\".\"match_method\" is null or \"b2b_skus\".\"match_method\" in ('gtin','brand_mpn','mpn','catalogue')"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.b2b_workspaces": {
-      "name": "b2b_workspaces",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": true,
-          "notNull": true,
-          "identity": {
-            "type": "always",
-            "name": "b2b_workspaces_id_seq",
-            "schema": "public",
-            "increment": "1",
-            "startWith": "1",
-            "minValue": "1",
-            "maxValue": "9223372036854775807",
-            "cache": "1",
-            "cycle": false
-          }
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
           "primaryKey": false,
           "notNull": true
         },
@@ -8387,131 +7969,201 @@
           "primaryKey": false,
           "notNull": true
         },
-        "shop_id": {
-          "name": "shop_id",
+        "amount": {
+          "name": "amount",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "balance_after": {
+          "name": "balance_after",
+          "type": "numeric(12, 2)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ref": {
+          "name": "ref",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "promoted_click_id": {
+          "name": "promoted_click_id",
           "type": "bigint",
           "primaryKey": false,
           "notNull": false
         },
-        "brand_id": {
-          "name": "brand_id",
+        "topup_id": {
+          "name": "topup_id",
           "type": "bigint",
           "primaryKey": false,
           "notNull": false
+        },
+        "actor": {
+          "name": "actor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "note": {
+          "name": "note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "wallet_ledger_ref_uq": {
+          "name": "wallet_ledger_ref_uq",
+          "columns": [
+            {
+              "expression": "ref",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "wallet_ledger_merchant_idx": {
+          "name": "wallet_ledger_merchant_idx",
+          "columns": [
+            {
+              "expression": "merchant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "wallet_ledger_kind_ck": {
+          "name": "wallet_ledger_kind_ck",
+          "value": "\"wallet_ledger\".\"kind\" in ('topup','click','click_refund','adjustment')"
+        },
+        "wallet_ledger_sign_ck": {
+          "name": "wallet_ledger_sign_ck",
+          "value": "\"wallet_ledger\".\"amount\" <> 0 and \"wallet_ledger\".\"balance_after\" >= 0 and (\"wallet_ledger\".\"kind\" = 'adjustment' or (\"wallet_ledger\".\"kind\" in ('topup','click_refund') and \"wallet_ledger\".\"amount\" > 0) or (\"wallet_ledger\".\"kind\" = 'click' and \"wallet_ledger\".\"amount\" < 0))"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.wallet_topups": {
+      "name": "wallet_topups",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigint",
+          "primaryKey": true,
+          "notNull": true,
+          "identity": {
+            "type": "always",
+            "name": "wallet_topups_id_seq",
+            "schema": "public",
+            "increment": "1",
+            "startWith": "1",
+            "minValue": "1",
+            "maxValue": "9223372036854775807",
+            "cache": "1",
+            "cycle": false
+          }
         },
         "merchant_id": {
           "name": "merchant_id",
           "type": "bigint",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
-        "plan": {
-          "name": "plan",
+        "provider": {
+          "name": "provider",
           "type": "text",
           "primaryKey": false,
-          "notNull": true,
-          "default": "'pilot'"
+          "notNull": true
+        },
+        "external_id": {
+          "name": "external_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "status": {
           "name": "status",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": "'active'"
+          "default": "'created'"
         },
-        "sku_limit": {
-          "name": "sku_limit",
-          "type": "integer",
+        "net": {
+          "name": "net",
+          "type": "numeric(12, 2)",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
-        "api_daily_quota": {
-          "name": "api_daily_quota",
-          "type": "integer",
+        "vat": {
+          "name": "vat",
+          "type": "numeric(12, 2)",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
-        "company_name": {
-          "name": "company_name",
-          "type": "text",
+        "gross": {
+          "name": "gross",
+          "type": "numeric(12, 2)",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
-        "cui": {
-          "name": "cui",
-          "type": "text",
+        "vat_percent": {
+          "name": "vat_percent",
+          "type": "smallint",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
-        "reg_com": {
-          "name": "reg_com",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "billing_address": {
-          "name": "billing_address",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "billing_email": {
-          "name": "billing_email",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "terms_version": {
-          "name": "terms_version",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "terms_accepted_at": {
-          "name": "terms_accepted_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "terms_accepted_by": {
-          "name": "terms_accepted_by",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "billing_provider": {
-          "name": "billing_provider",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "billing_customer_id": {
-          "name": "billing_customer_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "billing_subscription_id": {
-          "name": "billing_subscription_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "billing_status": {
-          "name": "billing_status",
+        "currency": {
+          "name": "currency",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
-          "default": "'none'"
+          "default": "'RON'"
         },
-        "billing_period_end": {
-          "name": "billing_period_end",
-          "type": "timestamp with time zone",
+        "billing_name": {
+          "name": "billing_name",
+          "type": "text",
           "primaryKey": false,
           "notNull": false
         },
-        "status_reason": {
-          "name": "status_reason",
+        "billing_cui": {
+          "name": "billing_cui",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "event_id": {
+          "name": "event_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -8529,6 +8181,12 @@
           "notNull": true,
           "default": "now()"
         },
+        "paid_at": {
+          "name": "paid_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "updated_at": {
           "name": "updated_at",
           "type": "timestamp with time zone",
@@ -8538,32 +8196,17 @@
         }
       },
       "indexes": {
-        "b2b_workspaces_shop_idx": {
-          "name": "b2b_workspaces_shop_idx",
+        "wallet_topups_external_uq": {
+          "name": "wallet_topups_external_uq",
           "columns": [
             {
-              "expression": "shop_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        },
-        "b2b_workspaces_subscription_uq": {
-          "name": "b2b_workspaces_subscription_uq",
-          "columns": [
-            {
-              "expression": "billing_provider",
+              "expression": "provider",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
             },
             {
-              "expression": "billing_subscription_id",
+              "expression": "external_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -8573,72 +8216,41 @@
           "concurrently": false,
           "method": "btree",
           "with": {}
+        },
+        "wallet_topups_merchant_idx": {
+          "name": "wallet_topups_merchant_idx",
+          "columns": [
+            {
+              "expression": "merchant_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
-      "foreignKeys": {
-        "b2b_workspaces_shop_id_shops_id_fk": {
-          "name": "b2b_workspaces_shop_id_shops_id_fk",
-          "tableFrom": "b2b_workspaces",
-          "tableTo": "shops",
-          "columnsFrom": [
-            "shop_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "b2b_workspaces_brand_id_brands_id_fk": {
-          "name": "b2b_workspaces_brand_id_brands_id_fk",
-          "tableFrom": "b2b_workspaces",
-          "tableTo": "brands",
-          "columnsFrom": [
-            "brand_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "b2b_workspaces_merchant_id_merchants_id_fk": {
-          "name": "b2b_workspaces_merchant_id_merchants_id_fk",
-          "tableFrom": "b2b_workspaces",
-          "tableTo": "merchants",
-          "columnsFrom": [
-            "merchant_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "set null",
-          "onUpdate": "no action"
-        }
-      },
+      "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "b2b_workspaces_kind_ck": {
-          "name": "b2b_workspaces_kind_ck",
-          "value": "\"b2b_workspaces\".\"kind\" in ('merchant','brand')"
+        "wallet_topups_status_ck": {
+          "name": "wallet_topups_status_ck",
+          "value": "\"wallet_topups\".\"status\" in ('created','pending','paid','expired','failed')"
         },
-        "b2b_workspaces_plan_ck": {
-          "name": "b2b_workspaces_plan_ck",
-          "value": "\"b2b_workspaces\".\"plan\" in ('pilot','starter','pro','enterprise')"
-        },
-        "b2b_workspaces_status_ck": {
-          "name": "b2b_workspaces_status_ck",
-          "value": "\"b2b_workspaces\".\"status\" in ('active','suspended','cancelled')"
-        },
-        "b2b_workspaces_limits_ck": {
-          "name": "b2b_workspaces_limits_ck",
-          "value": "(\"b2b_workspaces\".\"sku_limit\" is null or \"b2b_workspaces\".\"sku_limit\" >= 0) and (\"b2b_workspaces\".\"api_daily_quota\" is null or \"b2b_workspaces\".\"api_daily_quota\" >= 0)"
-        },
-        "b2b_workspaces_billing_status_ck": {
-          "name": "b2b_workspaces_billing_status_ck",
-          "value": "\"b2b_workspaces\".\"billing_status\" in ('none','checkout','active','past_due','canceled','unpaid','incomplete')"
+        "wallet_topups_amount_ck": {
+          "name": "wallet_topups_amount_ck",
+          "value": "\"wallet_topups\".\"net\" > 0 and \"wallet_topups\".\"vat\" >= 0 and \"wallet_topups\".\"gross\" = \"wallet_topups\".\"net\" + \"wallet_topups\".\"vat\""
         }
       },
       "isRLSEnabled": false
@@ -8649,83 +8261,7 @@
   "sequences": {},
   "roles": {},
   "policies": {},
-  "views": {
-    "public.b2b_products": {
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "slug": {
-          "name": "slug",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "title": {
-          "name": "title",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "title_ascii": {
-          "name": "title_ascii",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "status": {
-          "name": "status",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "merged_into_id": {
-          "name": "merged_into_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "mpn": {
-          "name": "mpn",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "mpn_norm": {
-          "name": "mpn_norm",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "brand_id": {
-          "name": "brand_id",
-          "type": "bigint",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "brand": {
-          "name": "brand",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "category": {
-          "name": "category",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        }
-      },
-      "definition": "\n  SELECT p.id, p.slug, p.title, p.title_ascii, p.status, p.merged_into_id, p.mpn, p.mpn_norm, p.brand_id, b.name AS brand, c.name_ro AS category\n  FROM products p\n  LEFT JOIN brands b ON b.id = p.brand_id\n  LEFT JOIN categories c ON c.id = p.category_id",
-      "name": "b2b_products",
-      "schema": "public",
-      "isExisting": false,
-      "materialized": false
-    }
-  },
+  "views": {},
   "_meta": {
     "columns": {},
     "schemas": {},

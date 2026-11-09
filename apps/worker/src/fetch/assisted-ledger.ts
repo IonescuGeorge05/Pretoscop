@@ -45,8 +45,11 @@ export class PgAssistedLedger implements AssistedLedger {
         )
         SELECT (
           (SELECT coalesce(sum(cost_cents), 0) FROM access_costs
-            WHERE day >= ${monthStartDay}::date AND NOT (day = ${e.day}::date AND shop_id = ${Number(shopId)} AND vendor = ${e.vendor}))
-          + CASE WHEN ${e.day}::date >= ${monthStartDay}::date THEN (SELECT cost FROM next) ELSE 0 END
+            WHERE day >= ${monthStartDay}::date AND day < (date_trunc('month', ${monthStartDay}::date) + interval '1 month')::date
+              AND NOT (day = ${e.day}::date AND shop_id = ${Number(shopId)} AND vendor = ${e.vendor}))
+          + CASE WHEN ${e.day}::date >= ${monthStartDay}::date
+              AND ${e.day}::date < (date_trunc('month', ${monthStartDay}::date) + interval '1 month')::date
+            THEN (SELECT cost FROM next) ELSE 0 END
         )::text AS total`);
       if (Number(fit.rows[0]?.total ?? Number.POSITIVE_INFINITY) > cap) return false;
       await tx.execute(sql`
@@ -77,9 +80,11 @@ export class PgAssistedLedger implements AssistedLedger {
       WHERE s.slug = ${e.shopSlug} AND a.shop_id = s.id AND a.day = ${e.day}::date AND a.vendor = ${e.vendor} AND a.successes > 0`);
   }
 
+  /** Spend from `monthStartDay` to the end of that calendar month (later months never count). */
   async monthToDateCents(monthStartDay: string): Promise<number> {
     const res = await this.db.execute<{ cents: string }>(
-      sql`SELECT coalesce(sum(cost_cents), 0)::text AS cents FROM access_costs WHERE day >= ${monthStartDay}::date`,
+      sql`SELECT coalesce(sum(cost_cents), 0)::text AS cents FROM access_costs
+        WHERE day >= ${monthStartDay}::date AND day < (date_trunc('month', ${monthStartDay}::date) + interval '1 month')::date`,
     );
     return Number(res.rows[0]?.cents ?? 0);
   }

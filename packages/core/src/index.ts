@@ -188,5 +188,7 @@ export * from './sitemap';
 // M22: gray-zone policy with LLM verification
 export * from './llm-policy';
 
+// M25: promoted placements (price bands, floors, second-price auction, click billing, wallets)
+export * from './promoted';
 // M28: B2B price intelligence (plans, SKU import, positions, API key format, safe CSV)
 export * from './b2b';

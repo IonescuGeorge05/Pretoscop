@@ -182,3 +182,32 @@ describe('isIpOrCidr', () => {
     expect(isIpOrCidr(value)).toBe(expected);
   });
 });
+
+describe('payments and the ad slot (M25)', () => {
+  const prod = { APP_ENV: 'prod', BETTER_AUTH_SECRET: 'a'.repeat(32), REVALIDATE_TOKEN: 'b'.repeat(32), HASH_SALT_SECRET: 'c'.repeat(32), ALERTS_SECRET: 'd'.repeat(32), ...identity };
+
+  it('is off by default: no Stripe key, no VAT, the real Stripe API, no ad publisher', () => {
+    const env = getEnv({});
+    expect(env.STRIPE_SECRET_KEY).toBeUndefined();
+    expect(env.STRIPE_API_BASE).toBe('https://api.stripe.com');
+    expect(env.TOPUP_VAT_PERCENT).toBe(0);
+    expect(env.NEXT_PUBLIC_ADSENSE_CLIENT).toBeUndefined();
+  });
+
+  it('checks the shape of keys and ids, and the API base', () => {
+    expect(() => getEnv({ STRIPE_SECRET_KEY: 'pk_test_123' })).toThrow(/STRIPE_SECRET_KEY must be a Stripe secret/);
+    expect(() => getEnv({ STRIPE_WEBHOOK_SECRET: 'secret' })).toThrow(/STRIPE_WEBHOOK_SECRET must be the endpoint signing secret/);
+    expect(() => getEnv({ STRIPE_API_BASE: 'http://stripe.example.com' })).toThrow(/STRIPE_API_BASE must be an https URL/);
+    expect(getEnv({ STRIPE_API_BASE: 'http://127.0.0.1:3501' }).STRIPE_API_BASE).toBe('http://127.0.0.1:3501');
+    expect(() => getEnv({ TOPUP_VAT_PERCENT: '31' })).toThrow(/TOPUP_VAT_PERCENT/);
+    expect(() => getEnv({ NEXT_PUBLIC_ADSENSE_CLIENT: 'pub-123' })).toThrow(/ca-pub-/);
+    expect(getEnv({ NEXT_PUBLIC_ADSENSE_CLIENT: 'ca-pub-1234567890123456', NEXT_PUBLIC_ADSENSE_SLOT: '1234567890' }).NEXT_PUBLIC_ADSENSE_SLOT).toBe('1234567890');
+  });
+
+  it('production takes live keys only, with the webhook secret, over https', () => {
+    expect(() => getEnv({ ...prod, STRIPE_SECRET_KEY: 'sk_test_abc', STRIPE_WEBHOOK_SECRET: 'whsec_abc' })).toThrow(/test-mode key/);
+    expect(() => getEnv({ ...prod, STRIPE_SECRET_KEY: 'sk_live_abc' })).toThrow(/STRIPE_WEBHOOK_SECRET is needed/);
+    expect(() => getEnv({ ...prod, STRIPE_API_BASE: 'http://localhost:1' })).toThrow(/https outside dev/);
+    expect(getEnv({ ...prod, STRIPE_SECRET_KEY: 'sk_live_abc', STRIPE_WEBHOOK_SECRET: 'whsec_abc' }).STRIPE_SECRET_KEY).toBe('sk_live_abc');
+  });
+});

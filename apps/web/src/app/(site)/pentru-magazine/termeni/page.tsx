@@ -9,7 +9,7 @@ import { operatorFrom } from '@/lib/legal';
 export const metadata: Metadata = {
   title: 'Termeni pentru magazine',
   description:
-    'Condițiile listării gratuite pe Pretoscop: feed-ul și exactitatea datelor, cum ordonăm ofertele, ce date folosim, suspendarea cu motivare și reclamațiile.',
+    'Condițiile listării gratuite pe Pretoscop și ale ofertelor promovate: feed-ul și exactitatea datelor, cum ordonăm ofertele, spațiul „Promovat” plătit pe clic, ce date folosim, suspendarea cu motivare și reclamațiile.',
   alternates: { canonical: '/pentru-magazine/termeni' },
 };
 
@@ -25,7 +25,8 @@ export default function MerchantTermsPage() {
         <Callout tone="neutral">
           <p>
             Pe scurt: listarea este gratuită; garantezi că feed-ul spune adevărul despre prețuri, stoc și livrare; ordonăm ofertele după prețul total, fără ca
-            cineva să poată plăti pentru o poziție mai bună; dacă suspendăm sau încetăm listarea, îți spunem de ce.
+            cineva să poată plăti pentru o poziție mai bună în listă; opțional, poți plăti pe clic un spațiu separat, marcat „Promovat”; dacă suspendăm sau încetăm
+            listarea, îți spunem de ce.
           </p>
         </Callout>
       }
@@ -93,8 +94,8 @@ export default function MerchantTermsPage() {
                 livrare), apoi momentul ultimei verificări. Regulile complete sunt pe pagina <Link href="/cum-functioneaza">Cum funcționează clasamentul</Link>.
               </p>
               <p>
-                Faptul că magazinul ne trimite un feed, are sau nu un program de afiliere ori ne plătește nu îi schimbă poziția în lista implicită. Dacă vom introduce
-                plasări plătite, ele vor fi marcate „Promovat”, vor fi afișate separat de lista ordonată, iar condițiile lor vor fi publicate înainte (vezi{' '}
+                Faptul că magazinul ne trimite un feed, are sau nu un program de afiliere ori ne plătește nu îi schimbă poziția în lista implicită. Ofertele promovate
+                (secțiunea 5) sunt afișate separat de lista ordonată, marcate „Promovat”, și nu îi schimbă ordinea (vezi și{' '}
                 <Link href="/cum-castigam-bani">Cum câștigăm bani</Link>).
               </p>
               <p>
@@ -105,8 +106,57 @@ export default function MerchantTermsPage() {
           ),
         },
         {
+          id: 'promovare',
+          title: '5. Oferte promovate (opțional, cu plată)',
+          content: (
+            <>
+              <p>
+                Un magazin cu listarea aprobată poate plăti pentru spațiul marcat „Promovat”: câte un singur spațiu deasupra listei de oferte a unui produs și deasupra
+                listei de produse a unei categorii. Spațiul este separat de lista ordonată, spune că magazinul plătește pentru el și, dacă oferta promovată nu este
+                cea mai ieftină, cu cât costă mai mult. Promovarea nu schimbă ordinea listei.
+              </p>
+              <ul>
+                <li>
+                  <strong>Sold preplătit.</strong> Promovarea se activează din contul magazinului, după acceptarea acestor condiții, și folosește un sold alimentat în
+                  avans prin plată cu cardul (Stripe) sau, la cerere, prin transfer bancar. Alimentarea minimă este de 150 lei. Pentru fiecare alimentare emitem
+                  factura pe datele firmei din cont; TVA se adaugă atunci când suntem plătitori de TVA.
+                </li>
+                <li>
+                  <strong>Campanii și licitație.</strong> O campanie are o categorie (cu subcategoriile ei), opțional un interval de preț total, o ofertă maximă pe clic
+                  și un plafon zilnic. Spațiul îl primește campania cu oferta cea mai mare (cel mult plafonul pe clic al intervalului); ea plătește oferta următoarei
+                  campanii plus 0,01 lei, cel puțin pragul minim și niciodată mai mult decât propria ofertă. Pragurile minime și maxime pe clic sunt afișate în cont.
+                  La oferte egale câștigă oferta mai ieftină pentru cumpărător.
+                </li>
+                <li>
+                  <strong>Ce oferte pot fi promovate.</strong> Doar ofertele magazinului, noi, în stoc, vândute de magazin, potrivite cu produsul și confirmate recent
+                  (în limita de prospețime a magazinului), fără o verificare de preț în curs. Un magazin suspendat nu este afișat și nu este taxat.
+                </li>
+                <li>
+                  <strong>Ce clic se plătește.</strong> Doar clicul unui vizitator din spațiul „Promovat”, cel mult unul pe zi pentru aceeași ofertă și același
+                  vizitator (identificat doar printr-o amprentă anonimizată, schimbată zilnic). Nu se plătesc clicurile roboților și instrumentelor automate,
+                  preîncărcările browserului, clicurile care nu vin de pe paginile noastre și rafalele de clicuri. Un clic din spațiul „Promovat” duce direct la
+                  pagina magazinului, fără link de afiliere, astfel încât aceeași vizită nu se plătește de două ori.
+                </li>
+                <li>
+                  <strong>Plafon și sold.</strong> Când soldul sau plafonul zilnic nu mai acoperă oferta pe clic, campania nu mai este afișată până la alimentare sau
+                  până a doua zi (ora României). Soldul nu poate deveni negativ.
+                </li>
+                <li>
+                  <strong>Clicuri contestate și restituiri.</strong> Dacă descoperim ulterior clicuri nevalide, le returnăm în sold. Magazinul poate contesta un clic
+                  în 30 de zile, prin canalul de reclamații. La închiderea contului, soldul nefolosit se restituie la cerere, în 30 de zile, în contul din care a
+                  fost plătit.
+                </li>
+                <li>
+                  <strong>Oprire.</strong> Magazinul poate opri sau arhiva oricând o campanie. Putem opri o campanie care încalcă acești termeni sau legea, cu motivul
+                  afișat în cont (art. 4 din Regulamentul (UE) 2019/1150).
+                </li>
+              </ul>
+            </>
+          ),
+        },
+        {
           id: 'date',
-          title: '5. Ce date folosim',
+          title: '6. Ce date folosim',
           content: (
             <>
               <p>
@@ -122,7 +172,7 @@ export default function MerchantTermsPage() {
         },
         {
           id: 'suspendare',
-          title: '6. Suspendare și încetare',
+          title: '7. Suspendare și încetare',
           content: (
             <>
               <p>
@@ -140,7 +190,7 @@ export default function MerchantTermsPage() {
         },
         {
           id: 'reclamatii',
-          title: '7. Reclamații',
+          title: '8. Reclamații',
           content: (
             <p>
               Reclamațiile (inclusiv împotriva unei decizii de respingere sau suspendare) se trimit prin{' '}
@@ -151,7 +201,7 @@ export default function MerchantTermsPage() {
         },
         {
           id: 'modificari',
-          title: '8. Modificarea termenilor',
+          title: '9. Modificarea termenilor',
           content: (
             <p>
               Anunțăm orice modificare a acestor termeni prin email, cu cel puțin 15 zile înainte să intre în vigoare (conform art. 3 din Regulamentul (UE)
@@ -161,7 +211,7 @@ export default function MerchantTermsPage() {
         },
         {
           id: 'lege',
-          title: '9. Răspundere și legea aplicabilă',
+          title: '10. Răspundere și legea aplicabilă',
           content: (
             <p>
               Fiecare parte răspunde pentru datele și obligațiile proprii, în limitele legii. Acești termeni sunt guvernați de legea română; litigiile se

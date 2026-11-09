@@ -6,11 +6,12 @@ import { partnerShops } from '@pretoscop/db';
 import { LegalPage } from '@/components/legal/legal-page';
 import { Callout } from '@/components/legal/prose';
 import { db } from '@/lib/db';
+import { monetizationState } from '@/lib/promoted';
 
 export const metadata: Metadata = {
   title: 'Cum câștigăm bani',
   description:
-    'Modelul de afaceri Pretoscop, spus direct: azi nu avem venituri; pe viitor, comisioane de afiliere marcate, plasări promovate etichetate și analize de preț pentru firme. Nu vindem date personale.',
+    'Modelul de afaceri Pretoscop, spus direct: comisioane de afiliere marcate, oferte promovate etichetate „Promovat” și plătite pe clic, analize de preț pentru firme și, poate, reclame marcate. Nu vindem date personale.',
   alternates: { canonical: '/cum-castigam-bani', languages: { 'ro-RO': '/cum-castigam-bani' } },
 };
 
@@ -20,7 +21,12 @@ export const revalidate = 3600;
 const NETWORK: Record<string, string> = { '2performant': '2Performant', profitshare: 'Profitshare', awin: 'Awin', cj: 'CJ', tradedoubler: 'Tradedoubler' };
 
 export default async function MoneyPage() {
-  const partners = await partnerShops(db()).catch(() => []);
+  const [partners, money] = await Promise.all([partnerShops(db()).catch(() => []), monetizationState()]);
+  const sources = [
+    partners.length > 0 ? `comisioanele de afiliere de la ${partners.length === 1 ? 'un magazin partener' : `${partners.length} magazine partenere`}` : null,
+    money.promoted ? 'ofertele promovate, plătite pe clic de magazinele listate' : null,
+    money.ads ? 'o reclamă marcată „Publicitate”, afișată doar cu acordul tău' : null,
+  ].filter((x): x is string => x !== null);
   return (
     <LegalPage
       eyebrow="Transparență"
@@ -33,15 +39,22 @@ export default async function MoneyPage() {
           title: 'Situația de azi',
           content: (
             <Callout icon={<PiggyBank />}>
-              {partners.length === 0 ? (
+              {sources.length === 0 ? (
                 <p>
-                  Pretoscop este în faza de prototip și nu are venituri: nu avem linkuri afiliate active, nu vindem plasări promovate și nu afișăm reclame.
+                  Pretoscop este în faza de prototip și nu are venituri: nu avem linkuri afiliate active, nu vindem oferte promovate și nu afișăm reclame.
                   Proiectul este finanțat din resursele proprii ale celor doi fondatori.
                 </p>
               ) : (
                 <p>
-                  Singura sursă de venit de azi sunt comisioanele de afiliere de la {partners.length === 1 ? 'un magazin partener' : `${partners.length} magazine partenere`}{' '}
-                  (<a href="#parteneri">lista</a>). Nu vindem plasări promovate și nu afișăm reclame.
+                  Sursele de venit de azi: {sources.join('; ')}
+                  {partners.length > 0 && (
+                    <>
+                      {' '}
+                      (<a href="#parteneri">lista partenerilor</a>)
+                    </>
+                  )}
+                  .{!money.promoted && ' Nu vindem oferte promovate.'}
+                  {!money.ads && ' Nu afișăm reclame.'}
                 </p>
               )}
             </Callout>
@@ -81,17 +94,28 @@ export default async function MoneyPage() {
         },
         {
           id: 'promovare',
-          title: 'Plasări promovate (posibil, în viitor)',
+          title: 'Oferte promovate',
           content: (
             <>
-              <p>Este posibil ca, în viitor, magazinele să poată plăti pentru o poziție promovată. Regulile sunt stabilite de acum:</p>
+              <p>
+                Magazinele listate pot plăti pentru spațiul marcat „Promovat”: cel mult unul pe pagina unui produs, deasupra listei de oferte, și unul pe paginile de
+                categorie. Plătesc pe clic, dintr-un sold alimentat în avans, cât rezultă dintr-o licitație între ele (câștigătorul plătește oferta următoare plus
+                0,01 lei). Regulile:
+              </p>
               <ul>
-                <li>pozițiile plătite sunt marcate vizibil „Promovat”;</li>
-                <li>sunt afișate separat de lista ordonată după prețul total și nu îi schimbă ordinea;</li>
+                <li>spațiul plătit este marcat vizibil „Promovat” și spune că magazinul plătește pentru el;</li>
+                <li>
+                  este afișat separat de lista ordonată după prețul total și nu îi schimbă ordinea; dacă oferta promovată costă mai mult decât cea mai ieftină,
+                  spațiul spune cu cât (<Link href="/cum-functioneaza#promovat">detalii</Link>);
+                </li>
+                <li>
+                  un clic pe oferta promovată duce direct la magazin, fără link de afiliere: magazinul plătește vizita o singură dată, iar noi nu încasăm și un comision
+                  pentru același clic;
+                </li>
                 <li>un comision mai mare plătit pentru fiecare vânzare este tot o plată și ar fi marcat la fel;</li>
                 <li>verdictele de preț și verificările reducerilor nu se vând.</li>
               </ul>
-              <p>În prezent nu există plasări promovate pe Pretoscop.</p>
+              <p>{money.promoted ? 'Ofertele promovate sunt pornite pe Pretoscop.' : 'În prezent nu afișăm oferte promovate pe Pretoscop.'}</p>
             </>
           ),
         },
@@ -116,11 +140,13 @@ export default async function MoneyPage() {
         },
         {
           id: 'publicitate',
-          title: 'Publicitate (poate, mai târziu)',
+          title: money.ads ? 'Publicitate' : 'Publicitate (poate, mai târziu)',
           content: (
             <p>
-              Dacă vom afișa vreodată reclame, ele vor fi marcate „Publicitate”, nu vor apărea în lista de oferte și se vor încărca doar cu acordul tău, acolo
-              unde legea îl cere.
+              {money.ads
+                ? 'Pe unele pagini putem afișa o reclamă Google AdSense, marcată „Publicitate”, în afara listei de oferte. Ea se încarcă doar după ce accepți, în spațiul reclamei; fără acord nu se încarcă nimic de la Google. '
+                : 'Dacă vom afișa reclame, ele vor fi marcate „Publicitate”, nu vor apărea în lista de oferte și se vor încărca doar cu acordul tău. '}
+              Reclamele nu influențează ordinea ofertelor (<Link href="/cookies#publicitate">detalii despre acord</Link>).
             </p>
           ),
         },

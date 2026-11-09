@@ -17,4 +17,5 @@ export * from './outreach';
 export * from './revenue';
 export * from './llm';
 export * from './channels';
+export * from './promoted';
 export * from './b2b';

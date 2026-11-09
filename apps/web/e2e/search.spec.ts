@@ -95,7 +95,9 @@ test('facets filter by category, brand, stock and price; typos and diacritics do
 });
 
 test('no result, empty query and noindex', async ({ page }) => {
-  await page.goto('/cauta?q=tigaie');
+  // A word no product can contain: the e2e index includes the dev catalogue, which grows with the
+  // recorder (the frying pan once used here arrived on 9 Nov 2026).
+  await page.goto('/cauta?q=qxzvbk');
   await expect(page.getByTestId('no-results')).toBeVisible();
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/);
   await page.goto('/cauta');

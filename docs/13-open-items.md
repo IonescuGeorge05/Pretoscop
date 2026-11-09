@@ -474,3 +474,19 @@ Source: `research/notes/gaps2_retailers.md`
 | L3 | Prices and model ids (Haiku 5.5, Sonnet 5.5, batch 50 %, cache multipliers) | From the claude-api reference cached 2026-10-06 (`packages/llm/src/models.ts`) | Check the Anthropic pricing page before enabling; a wrong price only changes the ledger, never the cap logic |
 | L4 | Cache hit rate inside Message Batches (best effort per Anthropic) | UNMEASURED | `llm:spend` shows the share of prompt tokens read from the cache after real runs |
 | L5 | Response shapes in tests are the documented ones, not recordings | PARTIAL | Record a handful of real responses into `packages/llm/test/fixtures/` after A9 |
+
+---
+
+## Promoted placements and ad slot (M25): what is still unverified
+
+| # | Item | Status | Who / how it closes |
+|---|---|---|---|
+| P1 | Price list: floors and caps per click | PLACEHOLDER: defaults in `packages/core/src/promoted.ts` (`DEFAULT_FLOORS`, 0,25–0,75 lei floors and 1,50–3,00 lei caps by price band) inside the playbook's range (docs/08 §5: floors €0.05–0.15, caps €0.60), not validated with merchants | Founders: set them in `/admin/promovare` (Praguri) after talking to the first merchants; the bands themselves are in code |
+| P2 | Stripe behaviour with a real account (RON checkout, `expires_at`, async payment methods, the shape of real webhook events) | UNVERIFIED: built from Stripe's API reference and tested against a local mock (`@pretoscop/payments/testing`) only; no Stripe account (D3) | After D3: one test-mode top-up end to end on staging (`stripe listen` or the dashboard's webhook test), then compare one recorded event with `stripeEvent()` in the mock |
+| P3 | VAT on prepaid top-ups and the e-Factura flow for prepayment invoices | OPEN: `TOPUP_VAT_PERCENT` is 0 until the SRL is a VAT payer; the monthly CSV gives net, VAT and gross per merchant | Accountant (B4, D3): the invoice type for an advance payment and when VAT is due; whether Stripe Tax is used |
+| P4 | Lawyer review of `promotedTerms.v1`, section 5 of the merchant terms and the slot's wording ("Promovat", "plătește pentru acest spațiu") under Law 363/2007 (UCPD Annex I point 11a), P2B art. 5 and DSA art. 26 | OPEN (all legal texts are `reviewed: false`) | B5 |
+| P5 | The 15-day notice of the changed merchant terms (P2B art. 3) before promotion starts | OPEN: nothing sends it yet | Founders: email listed merchants the terms version 0.3, wait 15 days, then switch `promoted.enabled` on |
+| P6 | AdSense in the EEA needs a Google-certified consent platform (TCF v2.2); our own consent box in the slot is not one | OPEN: ads are built off; the slot asks its own consent and requests non-personalized ads | Founders (D5): choose Google's "Privacy & messaging" CMP or another certified CMP before switching ads on; the lawyer checks `adsConsent.v1` |
+| P7 | AdSense CSP origins | UNVERIFIED against a live ad: `ADSENSE_CSP` in `apps/web/src/lib/csp.ts` lists Google's documented hosts; a missing host only blanks the ad | With D5: a production-like build with the publisher id, watch the console for CSP reports, add what is missing |
+| P8 | Referer-based click validation behind the production proxy | UNVERIFIED in production: the click-out compares the Referer's host with the request host; Caddy passes the Host header through, so they should match | M18 staging: one promoted click through Cloudflare and Caddy must be billed (otherwise every click is "no_referer", which never overbills but bills nothing) |
+| P9 | Fraud filters are heuristics (daily-salted session dedupe, bot User-Agents, prefetch headers, referer, rate holds) | BY DESIGN: no fingerprinting (CLAUDE.md); admins refund clicks found invalid later | Review the not-billed reasons and refunds monthly in `/admin/promovare` once live |

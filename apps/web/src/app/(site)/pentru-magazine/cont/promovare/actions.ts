@@ -81,8 +81,8 @@ export async function startTopUpAction(form: FormData): Promise<void> {
       currency: 'RON',
       description: 'Credit pentru oferte promovate pe Pretoscop',
       customerEmail: m.contactEmail,
-      successUrl: `${base}${PROMOTED_PATH}?plata=ok#sold`,
-      cancelUrl: `${base}${PROMOTED_PATH}?plata=anulata#sold`,
+      successUrl: `${base}${PROMOTED_PATH}?plata=ok`,
+      cancelUrl: `${base}${PROMOTED_PATH}?plata=anulata`,
       expiresInMinutes: 60,
       metadata: { merchant_id: String(m.id) },
     });

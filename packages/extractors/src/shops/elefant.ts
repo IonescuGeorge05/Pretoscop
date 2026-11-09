@@ -13,10 +13,14 @@ import { absoluteUrl, canonicalUrl, collapse, nonEmpty } from '../util';
 export function parseElefantListing(html: string, ctx: PageContext): PageParseResult {
   const $ = load(html);
   const urls: string[] = [];
+  const host = new URL(ctx.url).host;
   $('.product-list-item a.product-list-item__sold-out-wrapper[href]').each((_, a) => {
     const u = absoluteUrl($(a).attr('href'), ctx.url);
-    // Product URLs end with the product's UUID ("…-cartea-intai_d5566ae4-f147-…").
-    if (u && /_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(new URL(u).pathname)) urls.push(canonicalUrl(u));
+    if (!u) return;
+    const parsed = new URL(u);
+    // Product URLs end with the product's UUID ("…-cartea-intai_d5566ae4-f147-…"); only links on
+    // the page's own host are queued (the recorder fetches them as this shop's pages).
+    if (parsed.host === host && /_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(parsed.pathname)) urls.push(canonicalUrl(u));
   });
   const productUrls = [...new Set(urls)];
   const next = absoluteUrl($('link[rel="next"]').first().attr('href'), ctx.url) ?? null;
@@ -59,7 +63,9 @@ function gtmCategory(html: string): string | undefined {
  */
 export function parseElefantProduct(html: string, ctx: PageContext): PageParseResult {
   const $ = load(html);
-  const id = nonEmpty(collapse($('.js-sku').first().text())) ?? nonEmpty($('input[name="SKU"]').first().attr('value'));
+  const rawId = nonEmpty(collapse($('.js-sku').first().text())) ?? nonEmpty($('input[name="SKU"]').first().attr('value'));
+  // The id goes into a selector below: only the UUID form Elefant uses is accepted.
+  const id = rawId && /^[0-9a-f-]{8,64}$/i.test(rawId) ? rawId : undefined;
   const title = nonEmpty(collapse($('h1.product-title').first().text()));
   const priceBox = $('.product-price.js-vendor-price').first();
   const price = nonEmpty(collapse(priceBox.find('.current-price').first().text()));

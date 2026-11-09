@@ -125,6 +125,14 @@ describe('Elefant listing (elefant-listing, discovery only)', () => {
     expect(res.nextPageUrl).toBe('https://www.elefant.ro/list/carti/carte/carti-pentru-copii?pag=2');
     expect(res.meta).toMatchObject({ items: 59, discoveryOnly: true });
   });
+
+  it('queues only product links on the page host', () => {
+    const uuid = 'd5566ae4-f147-4c46-948c-1c817d6ae3a1';
+    const html = `<div class="product-list-item"><a class="product-list-item__sold-out-wrapper" href="https://www.elefant.md/carte_${uuid}"></a></div>
+      <div class="product-list-item"><a class="product-list-item__sold-out-wrapper" href="/carte-buna_${uuid}"></a></div>`;
+    const r = parsePageDetailed('elefant-listing', html, { url: 'https://www.elefant.ro/list/carti', shopSlug: 'elefant', observedAt: '2026-11-09T00:00:00Z' });
+    expect(r.productUrls).toEqual([`https://www.elefant.ro/carte-buna_${uuid}`]);
+  });
 });
 
 describe('Elefant product page (elefant-product)', () => {

@@ -266,7 +266,8 @@ export interface SearchFixture {
   bookSingle: { id: number; slug: string; title: string };
 }
 
-export const BOOK_BRAND = { name: 'Editura Testoscop', slug: 'editura-testoscop' } as const;
+// A name no Testoscop query matches (search.spec counts Testoscop's suggestions).
+export const BOOK_BRAND = { name: 'Editura Lecturo', slug: 'editura-lecturo' } as const;
 
 interface SearchProduct {
   key: 'tv' | 'phone' | 'deal' | 'book' | 'bookSingle';

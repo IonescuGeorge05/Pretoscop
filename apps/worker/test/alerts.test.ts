@@ -227,7 +227,7 @@ describe('alerts.evaluate → alerts.deliver', () => {
     await observe(p, `g-${p}`, 800); // within 24 h of the first email
     const quiet = await evaluateAlerts(t.db, { productIds: [p], channels: ['email'], now: new Date() });
     expect(quiet).toMatchObject({ queued: 0, quiet: { cooldown: 1 } });
-    await t.db.execute(sql`UPDATE alerts SET last_notified_at = now() - interval '25 hours' WHERE user_id = ${u.id}`);
+    await t.db.execute(sql`UPDATE alerts SET last_notified_at = ${NOON.toISOString()}::timestamptz - interval '25 hours' WHERE user_id = ${u.id}`);
     const r = await run(p);
     expect(r.evaluated.queued).toBe(1);
     expect(outbox.filter((m) => m.to === u.email).at(-1)?.text).toContain('Cu 11% sub 900,00 lei, prețul din alerta anterioară.');
@@ -268,7 +268,7 @@ describe('a shrinking offer list is not a price change (M19 review, finding 3)',
     await deliverNow();
     expect(outbox.filter((m) => m.to === u.email)).toHaveLength(1);
     // Out of the 24-hour window, so only the rule (not the cooldown) can keep the next one quiet.
-    await t.db.execute(sql`UPDATE alerts SET last_notified_at = now() - interval '25 hours' WHERE user_id = ${u.id}`);
+    await t.db.execute(sql`UPDATE alerts SET last_notified_at = ${NOON.toISOString()}::timestamptz - interval '25 hours' WHERE user_id = ${u.id}`);
     // The cheap shop is not checked for 30 hours: the best eligible total is 1.100 lei, over the target.
     await t.db.execute(sql`UPDATE offers SET last_checked_at = now() - interval '30 hours' WHERE id = ${cheap}`);
     expect(await evaluateNow(p)).toMatchObject({ rearmed: 0, quiet: { held: 1 } });
@@ -287,7 +287,7 @@ describe('a shrinking offer list is not a price change (M19 review, finding 3)',
     await activeAlert(u.id, p, 'below', 95_000);
     await evaluateNow(p);
     await deliverNow();
-    await t.db.execute(sql`UPDATE alerts SET last_notified_at = now() - interval '25 hours' WHERE user_id = ${u.id}`);
+    await t.db.execute(sql`UPDATE alerts SET last_notified_at = ${NOON.toISOString()}::timestamptz - interval '25 hours' WHERE user_id = ${u.id}`);
     await t.db.execute(sql`UPDATE offers SET availability = 'out_of_stock', price_changed_at = now() WHERE id = ${cheap}`);
     expect(await evaluateNow(p)).toMatchObject({ rearmed: 0, quiet: { held: 1 } });
     await t.db.execute(sql`UPDATE offers SET availability = 'in_stock', price_changed_at = now() WHERE id = ${cheap}`);
@@ -317,7 +317,7 @@ describe('a shrinking offer list is not a price change (M19 review, finding 3)',
     await activeAlert(u.id, p, 'below', 95_000);
     await evaluateNow(p);
     await deliverNow();
-    await t.db.execute(sql`UPDATE alerts SET last_notified_at = now() - interval '25 hours' WHERE user_id = ${u.id}`);
+    await t.db.execute(sql`UPDATE alerts SET last_notified_at = ${NOON.toISOString()}::timestamptz - interval '25 hours' WHERE user_id = ${u.id}`);
     await observe(p, `r1-${p}`, 1000); // the same offer, really dearer
     expect(await evaluateNow(p)).toMatchObject({ rearmed: 1 });
     await observe(p, `r1-${p}`, 920);

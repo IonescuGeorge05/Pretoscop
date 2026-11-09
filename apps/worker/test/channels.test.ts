@@ -218,7 +218,7 @@ describe('Telegram bot', () => {
 
     tgMock.blocked.add(chat);
     await observe(p.id, `tg-c-${p.id}`, 700);
-    await t.db.execute(sql`UPDATE alerts SET last_notified_at = now() - interval '25 hours' WHERE user_id = ${u.id}`);
+    await t.db.execute(sql`UPDATE alerts SET last_notified_at = ${NOON.toISOString()}::timestamptz - interval '25 hours' WHERE user_id = ${u.id}`);
     await evaluateAlerts(t.db, { productIds: [p.id], channels: ['telegram'], now: NOON });
     const r2 = await deliverAlerts(deliverDeps(), { channels: ['telegram'], now: NOON });
     expect(r2.failed).toBe(1);
@@ -359,7 +359,7 @@ describe('Web Push delivery', () => {
 
     browsers.delete(`/push/${u.id}/1`); // the last browser is gone too (404)
     await observe(p.id, `push-a-${p.id}`, 700);
-    await t.db.execute(sql`UPDATE alerts SET last_notified_at = now() - interval '25 hours' WHERE user_id = ${u.id}`);
+    await t.db.execute(sql`UPDATE alerts SET last_notified_at = ${NOON.toISOString()}::timestamptz - interval '25 hours' WHERE user_id = ${u.id}`);
     await evaluateAlerts(t.db, { productIds: [p.id], channels: ['push'], now: NOON });
     expect((await deliverAlerts(deliverDeps(), { channels: ['push'], now: NOON })).failed).toBe(1);
     const a = await t.db.execute<{ status: string }>(sql`SELECT status FROM alerts WHERE user_id = ${u.id}`);

@@ -678,8 +678,47 @@ Risks / open questions:
 - `legal.spec.ts` and `merchant.spec.ts` fall back to the main database when `DATABASE_URL` is not exported.
 Next module: M22, M27.
 
-### M22 — LLM-assisted matching — 2026-10-28 (short report)
-Merged and re-verified by the lead: `make verify M=22` on `daniel` OK: tests green, M07 eval 525 pairs PASS, mock LLM eval and dry run on the real queue (230 items, nothing written), Playwright 5/5. `packages/llm` (Anthropic SDK, batches, 1-hour cache), the `llm_usage` ledger with the cap reserved before every call, the gray-zone policy, the `llm.match` job (flag off), the admin spend card and LLM decisions with undo. Human tasks: A9 (API key with a spend limit), 100 labels, then `match:eval:llm`. Full report to follow.
+### M22 — LLM-assisted matching and attribute extraction — 2026-10-28
+(Built by a delegated Opus agent; merged and re-verified by the lead.)
+Scope delivered:
+- `packages/llm` on the official `@anthropic-ai/sdk` (the SDK's own retries off: every retry would reserve budget again):
+  - model routing: Claude Haiku 5.5 by default; Claude Sonnet 5.5 for unsure, contradictory or unusable answers, and directly for offers or candidates at or above `LLM_HIGH_VALUE_RON` (3,000 lei);
+  - Message Batches ordered by prompt prefix, with a 1-hour cache on the system prompt; structured JSON output;
+  - a price table in integer nano-dollars;
+  - versioned prompts `pair_verify@1`, `attributes@1`, `category@1` (Romanian-aware; shop text is treated as data, never as instructions; fingerprints pinned by a test).
+- Cost safety: the ledger `llm_usage` reserves every request at its worst case before it is sent, under an advisory lock, so billed + estimated + reserved spend never passes `LLM_MONTHLY_CAP_EUR` (Bucharest month). Rows are settled after the call, released when the API did not process them, or kept as estimates when the outcome is unknown. Alerts fire at 80 % and 100 % and on batches stuck over 26 h. `llm_results` stores one answer per request hash, so nothing is asked twice.
+- Gray-zone policy (`packages/core/src/llm-policy.ts`): accept exactly one candidate confirmed at ≥ 0.9 with no conflicting attribute and no look-alike; reject only when every viable candidate is denied at ≥ 0.9 (`LLM_AUTO_REJECT`); everything else stays with a human; M07's hard conflicts are never overridden; decisions are `decided_by = 'llm:<model>'`, reversible from the admin.
+- Job `llm.match` (every 15 minutes; needs the API key and the flag `llm.matching.enabled`, off). Admin: the spend card, a "Decizii LLM" list with undo (`llm.revert`, audited), and the LLM's opinion next to each review candidate.
+- Eval: `match:eval:llm` reports precision, recall and review rate at thresholds 0.80–0.98, and the cost per 1,000 pairs (`--mask`, `--model escalation`, `--resume`, `--mock` labelled "not a measurement"). The eval set was rebuilt from multi-shop data: 525 pairs.
+- Data guard enforced in code: prompt inputs are whitelisted; Icecat data and seller/email/phone/user/URL fields are refused; emails and phone numbers in titles are redacted. Tests plant a seller name and Icecat specs and prove neither reaches a request body. The key comes from env only and is never logged.
+Out of scope / deferred: the real eval (no API key, A9, and no founder labels), so **precision ≥ 98 % is unmeasured**; category suggestions are a CLI only; real recorded responses after A9.
+Deviations from plan: automatic LLM rejects (configurable); attribute extraction used only as an extra conflict check; ADR-024.
+Verification: `make verify M=22` on `daniel` → tests green (llm 41, core 818, db 100+, worker 146+); M07 eval 525 pairs PASS; mock eval and a dry run on the real queue (230 items; nothing written; a real pass refused without a key); build; Playwright 5/5. Price-table estimate ≈ €0.055 per 1,000 Haiku pairs in batches (not a ledger figure).
+Founder checklist: `scripts/verify/M22.checklist.md`.
+Human tasks needed: A9 (API key with a spend limit; `LLM_MONTHLY_CAP_EUR` at or below it); 100 labels (`match:label`); run `match:eval:llm --mask` and `match:eval:llm`, and switch the flag on only on PASS at 0.90; confirm the price table against Anthropic's pricing page.
+Risks / open questions: precision unmeasured; worst-case reservations are large (≈ €0.02 per Sonnet request); the 3,000-lei high-value threshold sends many phones to Sonnet (≈ 20× Haiku cost).
+Next module: none (Phase 3 complete apart from human tasks).
 
-### M27 — Telegram bot and web push — 2026-10-28 (short report)
-Merged and re-verified by the lead: `make verify M=27` on `daniel` OK, Playwright 14/14 (5 channel tests + the 9 M19 alert tests). Long-polling bot with one-time link tokens, alerts on Telegram and Web Push with per-channel consent and idempotency, the daily deals post on M15 rules, channel preferences on `/alerte`; all flags off. Human tasks: D2 (bot token, VAPID keys), B5 (consent texts). Full report to follow.
+### M27 — Telegram bot and web push — 2026-10-28
+(Built by a delegated Opus agent on top of M19 before the machine move; finished and verified by a second Opus agent; merged by the lead with its migration regenerated as 0020_channels and its ADR renumbered to ADR-025; re-verified.)
+Scope delivered:
+- Telegram bot in the worker:
+  - `/start <token>` links the chat. The token is 192 bits, lasts 15 minutes, works once, only its SHA-256 is stored, and it reaches `/alerte` in an httpOnly cookie, never in a URL.
+  - `/urmareste <link or words> [price]`, `/alertele` with stop buttons, `/oprire` (unlinks, pauses and withdraws consent), `/ajutor`.
+  - Private chats only; stale updates dropped; per-chat limits; nothing the person writes is stored or logged.
+- Transport: long polling under an advisory lock in the single worker process (ADR-025: no inbound route, no webhook secret), one client and rate limiter for everything (25 msgs/s overall, 1/s per chat, a 429 holds every send); the token is redacted from errors and blanked for the web replicas.
+- Alerts on Telegram and Web Push use M19's evaluation, outbox and rules unchanged (known price floor, 24 h dedupe, one message per user and channel, quiet hours 22:00–08:00), with an idempotency receipt per send (`channel_deliveries`) plus the Web Push `Topic`; lost channels (404/410, blocked bot) pause their alerts.
+- Daily deals post (`telegram.deals`, 09:15) on M15's `/reduceri` rules: at most 10 drops, once a day, links to Pretoscop only.
+- Web Push:
+  - subscribe/unsubscribe/test routes with same-origin checks and capped bodies;
+  - endpoints only on the browsers' push services (FCM, Mozilla, Apple, WNS), re-checked before every send, with no redirects (no SSRF);
+  - a service worker with no fetch handler and no caching; manifest and the iOS Home Screen note.
+- `/alerte` channel preferences with a separate unticked consent per channel (`pushConsent.v1`, `telegramConsent.v1`, recorded with a daily-salted IP hash); export and delete include browsers and the Telegram link; privacy and cookies pages v0.3; RoPA P5b.
+- Migration `0020_channels` (push_subscriptions, telegram_links, telegram_link_tokens, channel_deliveries, channel_posts); flags `alerts.push.enabled`, `alerts.telegram.enabled`, `telegram.deals.enabled`, all off.
+Out of scope / deferred: a `pushsubscriptionchange` handler (a rotated subscription is removed on its 410); "any variant" in the bot; a per-account alert cap in the web form (the bot enforces 100); webhook mode; WhatsApp.
+Deviations from plan: ADR-025 (long polling; push endpoint allowlist; the web keeps the VAPID pair for the test notification); push services and Telegram classified as separate controllers (for the lawyer, B5).
+Verification: `make verify M=27` on `daniel` → 21/21 turbo tasks, CLI refusals, build under the CSP, Playwright 14/14 (5 channel tests + the 9 M19 alert tests); M19 verify re-run 9/9; nothing contacted Telegram or a real push service (mocks, test VAPID keys).
+Founder checklist: `scripts/verify/M27.checklist.md`.
+Human tasks needed: D2 (the bot from BotFather, an optional deals channel, VAPID keys from `pnpm --filter @pretoscop/notify vapid:keys`, kept in both password managers; a separate staging bot or none); B5 (consent texts, recipient classification).
+Risks / open questions: no real Telegram or push service exercised yet (iOS untested); web replicas hold the VAPID private key; the push-host allowlist needs updating if a vendor adds hosts; staging must not reuse the production bot token.
+Next module: M25 (Phase 4).

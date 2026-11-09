@@ -1,4 +1,4 @@
-import { invoiceTotals, revenueSummary, sql, type RevenueRow } from '@pretoscop/db';
+import { adminPromotedOverview, invoiceTotals, revenueSummary, sql, type RevenueRow } from '@pretoscop/db';
 import Link from 'next/link';
 import { Section, Stat, Table, Td } from '@/components/admin/ui';
 import { requireAdmin } from '@/lib/auth';
@@ -34,12 +34,13 @@ export default async function RevenuePage({ searchParams }: { searchParams: Prom
   await requireAdmin();
   const { luna } = await searchParams;
   const month = luna && /^\d{4}-\d{2}$/.test(luna) ? luna : new Date().toISOString().slice(0, 7);
-  const [summary, invoice, programs] = await Promise.all([
+  const [summary, invoice, programs, promoted] = await Promise.all([
     revenueSummary(db(), 30),
     invoiceTotals(db(), month),
     db().execute<{ shop: string; network: string; status: string; policy: string; notes: string | null }>(sql`
       SELECT s.name AS shop, ap.network, ap.status, ap.comparator_policy AS policy, ap.notes FROM affiliate_programs ap JOIN shops s ON s.id = ap.shop_id
       ORDER BY (ap.status = 'approved') DESC, s.name`),
+    adminPromotedOverview(db()),
   ]);
   const t = summary.byShop.reduce(
     (a, r) => ({ clicks: a.clicks + r.clicks, aff: a.aff + r.affiliateClicks, n: a.n + r.commissions, pending: a.pending + r.pendingBani, accepted: a.accepted + r.acceptedBani }),
@@ -60,6 +61,13 @@ export default async function RevenuePage({ searchParams }: { searchParams: Prom
         <Stat label="În așteptare" value={lei(t.pending)} />
         <Stat label="EPC" value={t.aff ? lei(Math.round(t.accepted / t.aff)) : '—'} />
       </div>
+      <p className="-mt-3 mb-6 text-sm text-ink-soft">
+        Oferte promovate (M25), 30 de zile: <strong className="tabular">{lei(promoted.spend30Bani)}</strong> facturate pe {promoted.billed30} clicuri (fără retururi;{' '}
+        <Link href="/admin/promovare" className="text-brand-700 underline">
+          detalii
+        </Link>
+        ). Un clic promovat nu poartă link afiliat, deci nu apare la clickuri afiliate și nu primește comision: cele două venituri nu se suprapun.
+      </p>
       <Section title="Pe magazine">
         <Table head={['Magazin', ...head.slice(1)]}>
           <Rows rows={summary.byShop} />

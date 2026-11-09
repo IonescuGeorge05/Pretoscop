@@ -187,6 +187,36 @@ export default function PrivacyPage() {
                 ]}
               />
               <InfoCard
+                id="extensie"
+                title="Extensia de browser Pretoscop (după publicare)"
+                items={[
+                  [
+                    'Ce date',
+                    <>
+                      <p>
+                        Doar când deschizi o pagină de produs pe eMAG, Altex, Flanco, PC Garage sau evoMAG, extensia trimite către Pretoscop identificatorii
+                        produsului citiți din acea pagină: adresa paginii (fără parametrii de după „?” și „#”), codul EAN (GTIN) și marca împreună cu codul
+                        producătorului, dacă pagina le conține. Serverul primește, ca la orice cerere, adresa IP și tipul de browser.
+                      </p>
+                      <p>
+                        Extensia nu trimite istoricul de navigare, alte pagini, prețurile sau conținutul paginii, coșul, datele contului tău de la magazin,
+                        cookie-uri sau identificatori ai dispozitivului. Pe alte pagini ale magazinelor și pe alte site-uri nu trimite nimic. Nu are
+                        telemetrie, nu schimbă linkurile magazinului și nu adaugă coduri de afiliere.
+                      </p>
+                    </>,
+                  ],
+                  ['De ce', 'Ca să îți arătăm, chiar pe pagina magazinului, istoricul prețului observat de Pretoscop și cel mai mic preț total din alte magazine.'],
+                  [
+                    'Temeiul legal',
+                    `Interes legitim (${GDPR_F}): serviciul pe care l-ai ales instalând extensia. Extensia citește din pagina deschisă doar ce este strict necesar acestui serviciu.`,
+                  ],
+                  [
+                    'Cât timp',
+                    'Cererile extensiei nu se salvează în baza noastră de date. Pentru limitarea abuzurilor numărăm cererile după o amprentă a adresei IP calculată cu o cheie care se schimbă zilnic, ținută doar în memoria serverului. Jurnalele tehnice ale serverului: cel mult 30 de zile, ca pentru orice vizită. Extensia nu salvează nimic pe dispozitivul tău; răspunsurile stau în memoria browserului cel mult 30 de minute. O dezinstalezi oricând din setările browserului.',
+                  ],
+                ]}
+              />
+              <InfoCard
                 id="magazine-partenere"
                 title="Conturile magazinelor partenere"
                 items={[
@@ -200,6 +230,25 @@ export default function PrivacyPage() {
                     'Executarea contractului de listare (art. 6 alin. (1) lit. b) GDPR) și obligația de a motiva deciziile față de magazine, din Regulamentul (UE) 2019/1150 (art. 6 alin. (1) lit. c) GDPR).',
                   ],
                   ['Cât timp', 'Cât timp contul este activ și încă 3 ani după închiderea lui.'],
+                ]}
+              />
+              <InfoCard
+                id="promovare"
+                title="Ofertele promovate: clicuri și plăți"
+                items={[
+                  [
+                    'Ce date',
+                    'Pentru un clic pe o ofertă marcată „Promovat”: oferta, momentul, identificatorul zilnic de sesiune și o amprentă zilnică a adresei IP (calculate cu o cheie care se schimbă în fiecare zi, fără adresa IP și fără browser în clar) și motivul pentru care clicul a fost sau nu facturat. Pentru magazinele care plătesc promovarea: alimentările soldului, mișcările lui și datele firmei de pe factură; plata cu cardul o procesează Stripe, iar noi nu vedem datele cardului.',
+                  ],
+                  ['De ce', 'Ca să facturăm corect magazinului doar clicurile valide (un clic pe zi de la același vizitator, fără roboți și rafale) și să ținem contabilitatea.'],
+                  [
+                    'Temeiul legal',
+                    `Pentru clicuri: interes legitim (${GDPR_F}), facturarea corectă și prevenirea fraudei. Pentru plăți: executarea contractului cu magazinul (art. 6 alin. (1) lit. b) GDPR) și obligațiile contabile (art. 6 alin. (1) lit. c) GDPR).`,
+                  ],
+                  [
+                    'Cât timp',
+                    'Identificatorii clicurilor promovate se șterg după 30 de zile; rămâne doar înregistrarea clicului facturat. Evidențele de plată și facturare se păstrează 10 ani (Legea contabilității nr. 82/1991).',
+                  ],
                 ]}
               />
               <InfoCard
@@ -258,6 +307,7 @@ export default function PrivacyPage() {
                   ['Resend', 'Trimite emailurile: autentificare, alerte, notificări din formularul de contact', 'Adresa destinatarului și conținutul emailului', 'SUA'],
                   ['Sentry', 'Raportează erorile tehnice ale site-ului', 'Detalii tehnice despre erori, fără adresa IP', 'SUA sau UE'],
                   ['Anthropic', 'Ajută la recunoașterea automată a produselor din titlurile ofertelor', 'Doar titluri și caracteristici de produse, fără date personale', 'SUA'],
+                  ['Stripe', 'Procesează plățile cu cardul ale magazinelor care își alimentează soldul pentru ofertele promovate', 'Emailul persoanei de contact a magazinului, suma, datele cardului introduse direct la Stripe', 'Irlanda (UE); companie din SUA'],
                   ['Furnizorul căsuțelor de email (în curs de alegere)', 'Primește mesajele trimise la adresele noastre', 'Adresa ta și mesajul', 'Va fi precizat aici'],
                 ]}
               />
@@ -277,6 +327,11 @@ export default function PrivacyPage() {
                 <li>
                   <strong>Telegram</strong>, dacă alegi alertele pe Telegram: primește mesajele pe care ți le trimite robotul nostru, conform politicii sale de
                   confidențialitate (telegram.org/privacy).
+                </li>
+                <li>
+                  <strong>Google AdSense</strong>, doar dacă spațiul „Publicitate” este pornit și accepți reclama în el: Google primește datele tehnice ale browserului
+                  și poate folosi cookie-uri pentru a afișa și a măsura o reclamă nepersonalizată, ca operator independent, conform politicii sale
+                  (policies.google.com/technologies/ads). Fără acordul tău nu se încarcă nimic de la Google (<Link href="/cookies#publicitate">Cookie-uri</Link>).
                 </li>
               </ul>
             </>

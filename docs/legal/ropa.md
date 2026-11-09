@@ -210,6 +210,36 @@ The consent choice itself is stored only in the visitor's browser (`localStorage
 | Security | Admin only (magic link + email allowlist); every change in `audit_log`, which records which fields were set but never the contact or the answer; the form refuses names and free-mailbox addresses (business channels only: role address, form URL, switchboard); guidance to never store guessed personal addresses (`infra/bot-program/outreach-templates.md`) |
 | Implementation | `outreach` (migration 0018), `/admin/contactari` |
 
+### P13. Promoted placements: click billing and merchant wallets (M25)
+
+| Field | Record |
+|---|---|
+| Status | built, off (flag `promoted.enabled`; card top-ups need a Stripe account, setup D3) |
+| Purpose | Bill a merchant only for valid clicks from its "Promovat" slot (one per visitor, offer and day; no bots, prefetches, clicks without one of our pages as referrer, or bursts), keep the prepaid wallet ledger, issue invoices (accountant) |
+| Legal basis | Clicks: Art. 6(1)(f), correct billing and fraud prevention (the visitor's click-out is logged anyway, P8). Wallets and invoices: Art. 6(1)(b) (the promoted-placement terms, `promotedTerms.v1`) and 6(1)(c) (accounting law 82/1991) |
+| Data subjects | Visitors who click a promoted slot; merchant contact persons |
+| Personal data | Visitors: offer, campaign, time, session hash and IP hash (the same daily-salted hashes as P8), billing outcome and reason. Merchants: top-ups (amount, VAT, status, Stripe checkout id, the company name and CUI copied for the invoice), ledger movements, the admin or system actor of each movement. No card data reaches us (Stripe Checkout) |
+| Recipients | Hetzner (database); Stripe (contact email for the receipt, amount, card data entered on Stripe's own page) |
+| Transfers | Stripe: the EEA contracting entity is in Ireland; transfers to the US under the DPF or SCCs (verify in the Stripe DPA, `dpa-list.md`) |
+| Retention | Session and IP hashes of promoted clicks: 30 days (job `promoted.daily`), then cleared; billed-click rows, ledger and top-ups: 10 years (accounting records); they carry no foreign key to the merchant profile, so an account deletion (GDPR) never fails on them and they keep only company data |
+| Security | Wallet movements only in one transaction under a row lock, each with a unique ledger reference (no double credit or debit) and an audit row; the wallet is credited only by Stripe's signed webhook (HMAC-SHA256, 5-minute tolerance), never by a redirect; admin adjustments need a reason and apply once per form |
+| Implementation | `placements`, `placement_floors`, `merchant_wallets`, `wallet_ledger`, `wallet_topups`, `promoted_clicks` (migration 0021), `/pentru-magazine/cont/promovare`, `/admin/promovare`, `/api/webhooks/stripe` |
+
+### P14. Optional ad slot (M25)
+
+| Field | Record |
+|---|---|
+| Status | built, off (needs a build with `NEXT_PUBLIC_ADSENSE_CLIENT`, the flag `ads.slots.enabled`, setup D5, and a certified consent platform for EEA ads: docs/13) |
+| Purpose | Show one Google AdSense ad, labelled "Publicitate", outside the offers table |
+| Legal basis | Art. 6(1)(a) and Law 506/2004 art. 4(5): consent asked in the slot itself (`adsConsent.v1`), separate from the analytics consent |
+| Data subjects | Visitors who accept the ad |
+| Personal data | On our side only the choice in localStorage (`pretoscop.consent.ads`); Google, as an independent controller, receives browser data and may set cookies after consent (non-personalized ads requested) |
+| Recipients | Google (independent controller) |
+| Transfers | Google: DPF (verify) |
+| Retention | The choice: until the visitor clears it or the text version changes; Google: per Google's policy |
+| Security | The CSP lets Google's ad origins in only in a build made with the publisher id; nothing loads before consent |
+| Implementation | `apps/web/src/components/ads/*`, `apps/web/src/lib/csp.ts` |
+
 ## Technical and organisational measures (Art. 32, summary)
 
 EU hosting (Hetzner, Germany); TLS everywhere; secrets only in the server `.env`, never in git; admin behind magic-link auth, an email allowlist and (from M18) Cloudflare Access, every admin mutation in `audit_log`; no raw IP addresses in the database (daily-salted hashes); rate limits on public endpoints; least-privilege API keys with spend limits; dependency audit in CI; nightly backups with restore tests (M18); breach playbook in `docs/07-legal-compliance-checklist.md` §9 (ANSPDCP notification within 72 hours where required).
@@ -219,6 +249,8 @@ EU hosting (Hetzner, Germany); TLS everywhere; secrets only in the server `.env`
 - Retention jobs: P4 (12 months / 3 years), P6 (audit log 3 years) and P9 (merchant accounts, 3 years after closure; M20) are still pending; P2 and P8 run in `alerts.retention` (M19). Event properties (P2) stay until the 13-month deletion; an `events_daily` aggregate would let raw rows go after 90 days.
 - Seller-name suppression action for P7 objections (admin).
 - Controller identity once the SRL exists (B4); mailbox provider and its DPA (`dpa-list.md`).
+- P13: lawyer review of `promotedTerms.v1` and section 5 of the merchant terms (B5); invoices for prepayments through the accountant's e-Factura flow (B4, D3).
+- P14: a Google-certified consent platform (TCF) before ads are switched on in the EEA; lawyer review of `adsConsent.v1`.
 - Lawyer review of this record together with the public pages (B5), including `pushConsent.v1`,
   `telegramConsent.v1` and the classification of push services and Telegram as separate
   controllers (P5b).

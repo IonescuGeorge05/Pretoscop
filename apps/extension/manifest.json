@@ -1,0 +1,34 @@
+{
+  "manifest_version": 3,
+  "name": "Pretoscop – istoricul prețului",
+  "short_name": "Pretoscop",
+  "version": "0.0.0",
+  "description": "Istoricul prețului și cel mai mic preț total din alte magazine, pe paginile de produs eMAG, Altex, Flanco, PC Garage și evoMAG.",
+  "homepage_url": "https://pretoscop.ro",
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "scripts": ["background.js"]
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.emag.ro/*",
+        "https://altex.ro/*",
+        "https://www.altex.ro/*",
+        "https://www.flanco.ro/*",
+        "https://www.pcgarage.ro/*",
+        "https://www.evomag.ro/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "minimum_chrome_version": "121"
+}

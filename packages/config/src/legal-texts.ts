@@ -11,7 +11,7 @@
  *   "Document provizoriu, în curs de revizuire juridică" for legal documents until then.
  */
 
-export type ConsentName = 'alertConsent' | 'analyticsConsent' | 'merchantTerms' | 'pushConsent' | 'telegramConsent';
+export type ConsentName = 'adsConsent' | 'alertConsent' | 'analyticsConsent' | 'merchantTerms' | 'promotedTerms' | 'pushConsent' | 'telegramConsent';
 export type ConsentTextKey = `${ConsentName}.v${number}`;
 
 export interface ConsentText {
@@ -115,20 +115,61 @@ const telegramConsentV1: ConsentText = {
   link: { href: '/confidentialitate#telegram', label: 'Ce date ajung la Telegram' },
 };
 
+/**
+ * Promoted placements (M25): the unticked checkbox before a merchant opens its prepaid wallet.
+ * Stored in `merchant_wallets.terms_version` as `promotedTerms.v1@<version of the terms page>`.
+ */
+const promotedTermsV1: ConsentText = {
+  key: 'promotedTerms.v1',
+  version: 1,
+  effectiveFrom: '2026-11-09',
+  reviewed: false,
+  title: 'Acceptarea condițiilor pentru ofertele promovate',
+  text:
+    'Am citit și accept condițiile pentru ofertele promovate din Termenii pentru magazine. Plătesc în avans, din soldul contului, ' +
+    'doar clicurile valide din spațiile marcate „Promovat”, la prețul rezultat din licitație (cel mult oferta mea pe clic) și în limita plafonului zilnic ales. ' +
+    'Înțeleg că promovarea nu schimbă ordinea listei de oferte.',
+  acceptLabel: 'Activează promovarea',
+  link: { href: '/pentru-magazine/termeni#promovare', label: 'Condițiile pentru ofertele promovate' },
+};
+
+/**
+ * Optional ad slot (M25): asked inside the slot itself, only on builds with an AdSense publisher id
+ * and while the flag `ads.slots.enabled` is on. Nothing from Google loads before "Accept"; the
+ * choice lives in localStorage (`pretoscop.consent.ads`) and can be changed on /cookies.
+ */
+const adsConsentV1: ConsentText = {
+  key: 'adsConsent.v1',
+  version: 1,
+  effectiveFrom: '2026-11-09',
+  reviewed: false,
+  title: 'Publicitate Google',
+  text:
+    'Aici putem afișa o reclamă Google AdSense, separată de oferte. Se încarcă doar cu acordul tău; atunci Google poate folosi cookie-uri ' +
+    'și date despre dispozitiv pentru a afișa și a măsura reclama. Fără acord nu se încarcă nimic, iar site-ul funcționează la fel.',
+  acceptLabel: 'Accept reclama',
+  rejectLabel: 'Nu, mulțumesc',
+  link: { href: '/cookies#publicitate', label: 'Detalii' },
+};
+
 /** Every published version, by name. Never remove an entry. */
 export const legalTexts = {
+  adsConsent: { v1: adsConsentV1 },
   alertConsent: { v1: alertConsentV1 },
   analyticsConsent: { v1: analyticsConsentV1 },
   merchantTerms: { v1: merchantTermsV1 },
+  promotedTerms: { v1: promotedTermsV1 },
   pushConsent: { v1: pushConsentV1 },
   telegramConsent: { v1: telegramConsentV1 },
 } as const satisfies Record<ConsentName, Record<`v${number}`, ConsentText>>;
 
 /** The version shown today for each consent. */
 export const currentVersion = {
+  adsConsent: 'adsConsent.v1',
   alertConsent: 'alertConsent.v1',
   analyticsConsent: 'analyticsConsent.v1',
   merchantTerms: 'merchantTerms.v1',
+  promotedTerms: 'promotedTerms.v1',
   pushConsent: 'pushConsent.v1',
   telegramConsent: 'telegramConsent.v1',
 } as const satisfies Record<ConsentName, ConsentTextKey>;
@@ -165,17 +206,17 @@ export interface LegalDocumentVersion {
 
 export const legalDocuments = {
   about: { path: '/despre', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
-  ranking: { path: '/cum-functioneaza', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
-  money: { path: '/cum-castigam-bani', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
+  ranking: { path: '/cum-functioneaza', kind: 'trust', version: '0.2', updatedAt: '2026-11-09', reviewed: false },
+  money: { path: '/cum-castigam-bani', kind: 'trust', version: '0.2', updatedAt: '2026-11-09', reviewed: false },
   bot: { path: '/bot', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
   methodology: { path: '/metodologie', kind: 'trust', version: '0.3', updatedAt: '2026-10-28', reviewed: false },
   merchants: { path: '/pentru-magazine', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
   contact: { path: '/contact', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
   terms: { path: '/termeni', kind: 'legal', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
-  privacy: { path: '/confidentialitate', kind: 'legal', version: '0.3', updatedAt: '2026-10-28', reviewed: false },
-  cookies: { path: '/cookies', kind: 'legal', version: '0.3', updatedAt: '2026-10-28', reviewed: false },
+  privacy: { path: '/confidentialitate', kind: 'legal', version: '0.5', updatedAt: '2026-11-09', reviewed: false },
+  cookies: { path: '/cookies', kind: 'legal', version: '0.4', updatedAt: '2026-11-09', reviewed: false },
   accessibility: { path: '/accesibilitate', kind: 'legal', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
-  merchantTerms: { path: '/pentru-magazine/termeni', kind: 'legal', version: '0.2', updatedAt: '2026-10-28', reviewed: false },
+  merchantTerms: { path: '/pentru-magazine/termeni', kind: 'legal', version: '0.3', updatedAt: '2026-11-09', reviewed: false },
 } as const satisfies Record<string, LegalDocumentVersion>;
 
 export type LegalDocumentName = keyof typeof legalDocuments;

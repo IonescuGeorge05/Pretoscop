@@ -247,7 +247,7 @@ describe('channel: monthly hard cap (never passed), refusals, ledger', () => {
     // Called anyway (a caller that skipped the gate): refused before the vendor, nothing booked.
     expect(await refusedWith(ch.fetch('https://altex.ro/p9/', listing('altex', true)))).toMatchObject({ code: 'assisted_cap' });
     expect(calls).toHaveLength(6);
-    expect(await ledger.monthToDateCents('2026-01-01')).toBe(9);
+    expect([...ledger.rows.values()].reduce((s, r) => s + r.costCents, 0)).toBe(9); // the whole ledger, whatever today's month
   });
 
   it('concurrent calls (several shops at once) can never pass the cap together', async () => {
@@ -261,7 +261,7 @@ describe('channel: monthly hard cap (never passed), refusals, ledger', () => {
     expect(results.filter((r) => r.status === 'fulfilled')).toHaveLength(5);
     expect(results.filter((r) => r.status === 'rejected').every((r) => (r as PromiseRejectedResult).reason.fetchCode === 'assisted_cap')).toBe(true);
     expect(calls).toHaveLength(5);
-    expect(await ledger.monthToDateCents('2026-01-01')).toBe(5);
+    expect([...ledger.rows.values()].reduce((s, r) => s + r.costCents, 0)).toBe(5); // the whole ledger, whatever today's month
   });
 
   it('a call the vendor does not bill gives its booking back; an aborted one keeps it', async () => {

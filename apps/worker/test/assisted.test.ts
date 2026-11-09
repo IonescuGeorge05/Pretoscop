@@ -200,23 +200,23 @@ describe('assisted shop: a recorder run through the vendor', () => {
     const ledger = new PgAssistedLedger(t.db);
     const memory = new MemoryAssistedLedger();
     const pricing = { httpCentsPer1k: 115, renderCentsPer1k: 1448 };
-    const entry = { day: '2026-11-03', shopSlug: 'flanco', vendor: 'zyte', rendered: true, pricing };
+    const entry = { day: '2020-03-03', shopSlug: 'flanco', vendor: 'zyte', rendered: true, pricing };
     for (const l of [ledger, memory]) {
       for (let i = 0; i < 3; i++) {
-        expect(await l.reserve(entry, '2026-11-01', 100_00)).toBe(true);
+        expect(await l.reserve(entry, '2020-03-01', 100_00)).toBe(true);
         if (i === 2) await l.release(entry); // the vendor did not bill the third call
       }
     }
     const row = await t.db.execute<{ requests: number; rendered_requests: number; successes: number; cost_cents: number }>(sql`
-      SELECT requests, rendered_requests, successes, cost_cents FROM access_costs WHERE day = '2026-11-03'`);
+      SELECT requests, rendered_requests, successes, cost_cents FROM access_costs WHERE day = '2020-03-03'`);
     expect(row.rows[0]).toEqual({ requests: 3, rendered_requests: 3, successes: 2, cost_cents: 3 });
     expect([...memory.rows.values()][0]).toMatchObject({ requests: 3, renderedRequests: 3, successes: 2, costCents: 3 });
-    expect(await ledger.monthToDateCents('2026-11-01')).toBe(3);
+    expect(await ledger.monthToDateCents('2020-03-01')).toBe(3);
     // A booking that would pass the cap books nothing.
-    expect(await ledger.reserve(entry, '2026-11-01', 4)).toBe(false);
-    expect(await ledger.monthToDateCents('2026-11-01')).toBe(3);
-    await expect(ledger.reserve({ ...entry, shopSlug: 'no-such-shop' }, '2026-11-01', 100_00)).rejects.toThrow(/unknown shop/);
-    await t.db.execute(sql`DELETE FROM access_costs WHERE day = '2026-11-03'`);
+    expect(await ledger.reserve(entry, '2020-03-01', 4)).toBe(false);
+    expect(await ledger.monthToDateCents('2020-03-01')).toBe(3);
+    await expect(ledger.reserve({ ...entry, shopSlug: 'no-such-shop' }, '2020-03-01', 100_00)).rejects.toThrow(/unknown shop/);
+    await t.db.execute(sql`DELETE FROM access_costs WHERE day = '2020-03-03'`);
   });
 
   it('concurrent bookings from several connections never pass the cap together (advisory lock)', async () => {
@@ -227,13 +227,13 @@ describe('assisted shop: a recorder run through the vendor', () => {
       const pricing = { httpCentsPer1k: 1000, renderCentsPer1k: 1000 };
       const shops = ['altex', 'flanco', 'cel', 'pcgarage'];
       const results = await Promise.all(
-        Array.from({ length: 24 }, (_, i) => ledgers[i % 4]!.reserve({ day: '2026-11-04', shopSlug: shops[i % 4]!, vendor: 'zyte', rendered: false, pricing }, '2026-11-04', 7)),
+        Array.from({ length: 24 }, (_, i) => ledgers[i % 4]!.reserve({ day: '2020-03-04', shopSlug: shops[i % 4]!, vendor: 'zyte', rendered: false, pricing }, '2020-03-04', 7)),
       );
       expect(results.filter(Boolean)).toHaveLength(7);
-      expect(await ledgers[0]!.monthToDateCents('2026-11-04')).toBe(7);
+      expect(await ledgers[0]!.monthToDateCents('2020-03-04')).toBe(7);
     } finally {
       await Promise.all(pools.map((p) => p.end()));
-      await t.db.execute(sql`DELETE FROM access_costs WHERE day = '2026-11-04'`);
+      await t.db.execute(sql`DELETE FROM access_costs WHERE day = '2020-03-04'`);
     }
   });
 });

@@ -26,9 +26,11 @@ describe('consent texts', () => {
     expect(legalTexts.alertConsent.v1.key).toBe('alertConsent.v1');
     expect(legalTexts.analyticsConsent.v1.key).toBe('analyticsConsent.v1');
     expect(currentVersion).toEqual({
+      adsConsent: 'adsConsent.v1',
       alertConsent: 'alertConsent.v1',
       analyticsConsent: 'analyticsConsent.v1',
       merchantTerms: 'merchantTerms.v1',
+      promotedTerms: 'promotedTerms.v1',
       pushConsent: 'pushConsent.v1',
       telegramConsent: 'telegramConsent.v1',
     });
@@ -118,5 +120,24 @@ describe('legal documents', () => {
     expect(root.legalTexts).toBe(legalTexts);
     expect(root.currentVersion).toBe(currentVersion);
     expect(root.legalDocuments).toBe(legalDocuments);
+  });
+});
+
+describe('M25 consent texts', () => {
+  it('promoted-placement terms name prepayment, valid clicks only, the bid and daily cap, and the untouched ranking', () => {
+    const t = legalTexts.promotedTerms.v1;
+    expect(t.text).toMatch(/în avans/);
+    expect(t.text).toMatch(/clicurile valide/);
+    expect(t.text).toMatch(/„Promovat”/);
+    expect(t.text).toMatch(/plafonului zilnic/);
+    expect(t.text).toMatch(/nu schimbă ordinea listei de oferte/);
+    expect(t.link.href).toBe('/pentru-magazine/termeni#promovare');
+  });
+  it('the ad consent says nothing loads without it, with equal-weight choices', () => {
+    const t = legalTexts.adsConsent.v1;
+    expect(t.text).toMatch(/Fără acord nu se încarcă nimic/);
+    expect(t.acceptLabel).toBeTruthy();
+    expect(t.rejectLabel).toBeTruthy();
+    expect(t.link.href).toBe('/cookies#publicitate');
   });
 });

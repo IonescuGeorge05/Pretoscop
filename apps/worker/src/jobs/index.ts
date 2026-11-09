@@ -11,6 +11,7 @@ import { llmMatchJob } from './llm';
 import { matchPendingJob } from './matching';
 import { opsAlertJob, opsHeartbeatJob, opsSloCheckJob } from './ops';
 import { merchantValidateJob, merchantVerifyDomainJob } from './merchants';
+import { promotedDailyJob, promotedRefreshJob } from './promoted';
 import { fxRatesJob, rollupDailyJob, rollupTouchJob } from './rollup';
 import { searchRebuildJob, searchSyncJob } from './search';
 import { sitemapBuildJob } from './sitemap';
@@ -48,4 +49,6 @@ export const jobs: JobDefinition<any>[] = [
   assistedHealthJob,
   extractorCanaryJob,
   llmMatchJob,
+  promotedRefreshJob,
+  promotedDailyJob,
 ];

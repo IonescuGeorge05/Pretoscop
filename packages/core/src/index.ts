@@ -196,3 +196,6 @@ export * from './books';
 export * from './beauty';
 export { PUBLISHER_SEEDS, NOT_PUBLISHERS, type PublisherSeed } from './publishers-data';
 export { BEAUTY_BRAND_SEEDS, type BeautyBrandSeed } from './beauty-brands-data';
+
+// M25: promoted placements (price bands, floors, second-price auction, click billing, wallets)
+export * from './promoted';

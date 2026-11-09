@@ -13,11 +13,13 @@ export const KNOWN_FLAGS: Record<string, string> = {
   'alerts.telegram.enabled': 'Price alerts on Telegram and the bot commands (M27; needs TELEGRAM_BOT_TOKEN)',
   'telegram.deals.enabled': 'Daily verified-deals post in the Telegram channel (M27; needs TELEGRAM_DEALS_CHAT_ID)',
   'affiliate.links.enabled': 'Use affiliate links in click-outs when the program allows (M24)',
-  'promoted.enabled': 'Promoted placements (M25)',
+  'promoted.enabled': 'Promoted placements (M25): the labelled "Promovat" slots and their click billing; off = no slot, no charge',
+  'ads.slots.enabled': 'Optional ad slot outside the offers table (M25): needs a build with NEXT_PUBLIC_ADSENSE_CLIENT and the consent of each visitor',
   'icecat.enabled': 'Open Icecat enrichment: specs and licensed images (M11); needs an Open Icecat account (B1)',
   'merchants.portal.enabled': 'Merchant self-serve portal: new registrations and submissions (M20)',
   'extractors.canary.enabled': 'Weekly extractor canary: up to 5 live URLs per active shop, field drift alerts (M21)',
   'shops.probe.enabled': 'shops:probe re-probes (M21): at most 3 polite requests per run; on only for a founder probe session',
+  'extension.lookup.enabled': 'Browser extension lookups, GET /api/ext/lookup (M26); config {"disabled_shops": ["emag"]} switches single shops off',
 };
 
 export async function isFlagEnabled(db: Db, key: string): Promise<boolean> {

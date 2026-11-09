@@ -8,7 +8,7 @@ import type { BlobStore } from '@pretoscop/storage';
 export interface FetchLike {
   fetchPolite(
     url: string,
-    opts: { shopSlug?: string; purpose: 'robots' | 'sitemap' | 'listing' | 'product' | 'feed' | 'probe'; runId?: number },
+    opts: { shopSlug?: string; purpose: 'robots' | 'sitemap' | 'listing' | 'product' | 'feed' | 'probe'; runId?: number; sourceId?: number },
   ): Promise<{
     status: number;
     ok: boolean;
@@ -50,4 +50,6 @@ export interface RecorderDeps {
   normalize: NormalizeFn;
   alert: OpsAlert;
   now?: () => Date;
+  /** How often a running source re-reads its own gates (default GATE_RECHECK_MS; tests use 0). */
+  gateRecheckMs?: number;
 }

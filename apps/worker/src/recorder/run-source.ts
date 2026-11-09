@@ -59,12 +59,43 @@ interface Ctx {
   touchedProducts: Set<number>;
   /** Set when the run-level breaker trips: nothing more is recorded. */
   held?: string;
+  /** Set when the source's gates stopped holding during the run (kill switch, disabled, flag off). */
+  stopped?: string;
+  /** When the gates were last read (epoch ms). */
+  gateCheckedAt: number;
   errors: string[];
   blockReason?: string;
   log: RecorderDeps['log'];
 }
 
 const SNAPSHOT_SAMPLE_REJECTS = 20;
+
+/** How often a running source re-reads its own gates before its next request. */
+export const GATE_RECHECK_MS = 15_000;
+
+/**
+ * The gates are checked when a run starts, but a founder who flips this source's kill switch,
+ * disables it or pauses its shop while it runs must stop it too (an eMAG Tier A run lasts about two
+ * hours). The fetch layer re-checks the flags and whole-shop switches on every request; this re-reads
+ * the source's own row before the next request, at most every GATE_RECHECK_MS.
+ */
+async function stopRequested(ctx: Ctx): Promise<boolean> {
+  if (ctx.stopped) return true;
+  const now = Date.now();
+  if (now - ctx.gateCheckedAt < (ctx.deps.gateRecheckMs ?? GATE_RECHECK_MS)) return false;
+  ctx.gateCheckedAt = now;
+  const [row] = await ctx.deps.db
+    .select({ source: shopSources, shop: shops })
+    .from(shopSources)
+    .innerJoin(shops, eq(shops.id, shopSources.shopId))
+    .where(eq(shopSources.id, ctx.sourceId));
+  const gate = row ? await checkGates(ctx.deps.db, ctx.deps.env, { shop: row.shop, source: row.source }) : { ok: false as const, reason: 'source removed' };
+  if (gate.ok) return false;
+  ctx.stopped = gate.reason;
+  ctx.errors.push(`stopped during the run: ${gate.reason}`);
+  ctx.log.info({ reason: gate.reason }, 'source run stopped by its gates');
+  return true;
+}
 
 function cfgNum(config: Record<string, unknown>, key: string, def: number): number {
   const v = config[key];
@@ -174,8 +205,9 @@ async function runListing(ctx: Ctx, source: { url: string; parserKey: string; co
   let url: string | null = source.url;
   let complete = false;
   while (url && ctx.stats.pages < maxPages && !ctx.held) {
+    if (await stopRequested(ctx)) break;
     ctx.stats.pages++;
-    const res = await ctx.deps.fetcher.fetchPolite(url, { shopSlug: ctx.shop.slug, purpose: 'listing', runId: ctx.runId });
+    const res = await ctx.deps.fetcher.fetchPolite(url, { shopSlug: ctx.shop.slug, purpose: 'listing', runId: ctx.runId, sourceId: ctx.sourceId });
     const outcome = fetchOutcome(ctx, res);
     if (outcome !== 'ok') break;
     const observedAt = ctx.deps.now?.() ?? new Date();
@@ -237,9 +269,10 @@ async function discoverSitemap(ctx: Ctx, source: { url: string; config: Record<s
   const queue = [source.url];
   let fetched = 0;
   while (queue.length > 0 && fetched < maxSitemaps) {
+    if (await stopRequested(ctx)) return;
     const url = queue.shift()!;
     fetched++;
-    const res = await ctx.deps.fetcher.fetchPolite(url, { shopSlug: ctx.shop.slug, purpose: 'sitemap', runId: ctx.runId });
+    const res = await ctx.deps.fetcher.fetchPolite(url, { shopSlug: ctx.shop.slug, purpose: 'sitemap', runId: ctx.runId, sourceId: ctx.sourceId });
     const outcome = fetchOutcome(ctx, res);
     if (outcome === 'stop') return;
     if (outcome === 'skip') continue;
@@ -252,9 +285,9 @@ async function discoverSitemap(ctx: Ctx, source: { url: string; config: Record<s
 
 async function fetchProductPages(ctx: Ctx, picks: { id: number; url: string }[], parserKey: string): Promise<void> {
   for (const p of picks) {
-    if (ctx.held) break;
+    if (ctx.held || (await stopRequested(ctx))) break;
     ctx.stats.pages++;
-    const res = await ctx.deps.fetcher.fetchPolite(p.url, { shopSlug: ctx.shop.slug, purpose: 'product', runId: ctx.runId });
+    const res = await ctx.deps.fetcher.fetchPolite(p.url, { shopSlug: ctx.shop.slug, purpose: 'product', runId: ctx.runId, sourceId: ctx.sourceId });
     if (res.skipped && res.skipped !== 'robots_disallowed') {
       fetchOutcome(ctx, res);
       break;
@@ -342,7 +375,7 @@ async function runFeed(ctx: Ctx, source: { url: string; parserKey: string; confi
       }
     }
     const fetcher = merchantId !== null ? (ctx.deps.merchantFetcher ?? ctx.deps.fetcher) : ctx.deps.fetcher;
-    const res = await fetcher.fetchPolite(source.url, { shopSlug: ctx.shop.slug, purpose: 'feed', runId: ctx.runId });
+    const res = await fetcher.fetchPolite(source.url, { shopSlug: ctx.shop.slug, purpose: 'feed', runId: ctx.runId, sourceId: ctx.sourceId });
     if (fetchOutcome(ctx, res) !== 'ok') return { complete: false };
     body = res.body!;
     observedAt = ctx.deps.now?.() ?? new Date();
@@ -409,6 +442,7 @@ export async function runSource(deps: RecorderDeps, sourceId: number, opts: RunO
     snapshot: [],
     touchedOffers: new Set<number>(),
     touchedProducts: new Set<number>(),
+    gateCheckedAt: Date.now(),
     errors: [],
     log,
   };
@@ -465,7 +499,7 @@ export async function runSource(deps: RecorderDeps, sourceId: number, opts: RunO
     await deps.alert(`Run held by the breaker: ${source.key}`, { reason: ctx.held, run_id: run.id });
   } else if (ctx.blockReason) status = 'failed';
   else if (failure || (ctx.stats.parsed === 0 && ctx.stats.errors > 0)) status = 'failed';
-  else if (ctx.stats.errors > 0) status = 'partial';
+  else if (ctx.stats.errors > 0 || ctx.stopped) status = 'partial';
   else status = 'success';
 
   if (status === 'success' && complete) {

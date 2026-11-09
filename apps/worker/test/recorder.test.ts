@@ -144,6 +144,36 @@ describe('eMAG listing → offers, events, snapshot, frontier', () => {
     expect(r.touchedProducts).toEqual([pid]);
   });
 
+  it('a kill switch flipped while a source runs stops it before its next request', async () => {
+    const id = await sourceId('emag:listing:telefoane-mobile');
+    const page1 = 'https://www.emag.ro/telefoane-mobile/c';
+    const page2 = 'https://www.emag.ro/telefoane-mobile/p2/c';
+    // Control: without the flip the run goes on to the second page.
+    const control: string[] = [];
+    const watching: FetchLike = { fetchPolite: async (url, o) => (control.push(url), fetcher.fetchPolite(url, o)) };
+    await runSource({ ...deps(), fetcher: watching, gateRecheckMs: 0 }, id, { trigger: 'manual', maxPages: 2 });
+    expect(control).toEqual([page1, page2]);
+
+    const seen: string[] = [];
+    const flipping: FetchLike = {
+      async fetchPolite(url, o) {
+        seen.push(url);
+        expect(o.sourceId).toBe(id); // fetch-layer logs and request_log carry the source (CLAUDE.md)
+        if (seen.length === 1) await t.db.execute(sql`UPDATE shop_sources SET kill_switch = true WHERE id = ${id}`);
+        return fetcher.fetchPolite(url, o);
+      },
+    };
+    try {
+      const r = await runSource({ ...deps(), fetcher: flipping, gateRecheckMs: 0 }, id, { trigger: 'manual', maxPages: 2 });
+      expect(seen).toEqual([page1]);
+      expect(r.status).toBe('partial');
+      const run = await t.db.execute<{ error_sample: string | null }>(sql`SELECT error_sample FROM ingest_runs WHERE id = ${r.runId}`);
+      expect(run.rows[0]?.error_sample).toMatch(/stopped during the run: source kill switch is on/);
+    } finally {
+      await t.db.execute(sql`UPDATE shop_sources SET kill_switch = false, health = 'ok' WHERE id = ${id}`);
+    }
+  });
+
   it('Tier A ships killed in the registry, so a fresh database never runs it', async () => {
     const id = await sourceId('emag:product:tier-a');
     const row = await t.db.execute<{ kill_switch: boolean }>(sql`SELECT kill_switch FROM shop_sources WHERE id = ${id}`);

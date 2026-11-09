@@ -9,7 +9,7 @@ import type { Db } from '../client';
  *
  * 1. `url` — an offer we recorded at that shop for that page (matched by a rule or a human). eMAG
  *    pages are recognised by their product code (`/pd/<PNK>/`) whatever the slug; other shops by
- *    host + path (query, fragment, `www.` and a trailing slash ignored).
+ *    host + path (query, fragment, `www.` and a trailing slash ignored, case-insensitive).
  * 2. `gtin` — a valid GTIN (check digit, no placeholder or in-store code) in `product_gtins`, else on
  *    matched offers.
  * 3. `brand` + `mpn` — the part number (normalized like the matcher's) of a product of that brand
@@ -34,6 +34,8 @@ export interface ExtResolution {
 }
 
 const MATCHED = sql`('auto','manual')`;
+/** Merge chains longer than this are treated as broken (no product). */
+const MAX_MERGE_HOPS = 5;
 
 /** `https://www.emag.ro/…/pd/DF1MLR2BM/?ref=x` → `{ domain: 'emag.ro', path: '/…/pd/DF1MLR2BM' }`; null when not http(s). */
 export function shopUrlParts(raw: string): { domain: string; path: string } | null {
@@ -44,7 +46,7 @@ export function shopUrlParts(raw: string): { domain: string; path: string } | nu
     return null;
   }
   if (u.protocol !== 'https:' && u.protocol !== 'http:') return null;
-  const domain = u.hostname.toLowerCase().replace(/^www\./, '');
+  const domain = u.hostname.toLowerCase().replace(/\.$/, '').replace(/^www\./, '');
   const path = u.pathname.replace(/\/+$/, '') || '/';
   return { domain, path };
 }
@@ -54,51 +56,43 @@ export function emagProductCode(path: string): string | null {
   return /\/pd\/([A-Z0-9]{6,12})(?:\/|$)/.exec(path)?.[1] ?? null;
 }
 
-/** The active product a product id ends at after following merges (at most 5 hops), or null. */
-async function activeProduct(db: Db, start: number): Promise<number | null> {
-  let id = start;
-  for (let hop = 0; hop <= 5; hop++) {
-    const r = await db.execute<{ status: string; merged_into_id: string | null }>(sql`SELECT status, merged_into_id::text FROM products WHERE id = ${id}`);
-    const row = r.rows[0];
-    if (!row) return null;
-    if (row.status === 'active') return id;
-    if (row.status !== 'merged' || !row.merged_into_id) return null;
-    id = Number(row.merged_into_id);
-  }
-  return null;
-}
-
-/** Distinct active products the ids end at, in input order. */
-async function activeProducts(db: Db, ids: number[]): Promise<number[]> {
-  const out: number[] = [];
-  for (const start of ids) {
-    const id = await activeProduct(db, start);
-    if (id !== null && !out.includes(id)) out.push(id);
-  }
-  return out;
+/**
+ * The distinct active products a set of product ids ends at after following merges (one query;
+ * hidden products, broken or over-long chains end nowhere).
+ */
+export async function activeProductsOf(db: Db, ids: number[]): Promise<number[]> {
+  const start = [...new Set(ids.filter((x) => Number.isSafeInteger(x) && x > 0))];
+  if (start.length === 0) return [];
+  const r = await db.execute<{ id: string }>(sql`
+    WITH RECURSIVE chain AS (
+      SELECT p.id, p.status, p.merged_into_id, 0 AS hop FROM products p WHERE p.id = ANY(${sql.param(start)}::bigint[])
+      UNION ALL
+      SELECT p.id, p.status, p.merged_into_id, c.hop + 1 FROM chain c JOIN products p ON p.id = c.merged_into_id
+      WHERE c.status = 'merged' AND c.hop < ${MAX_MERGE_HOPS}
+    )
+    SELECT DISTINCT id::text FROM chain WHERE status = 'active' ORDER BY 1
+  `);
+  return r.rows.map((x) => Number(x.id));
 }
 
 /** Exactly one active product, or null (none or ambiguous). */
 async function single(db: Db, ids: number[]): Promise<number | null> {
-  const active = await activeProducts(db, ids);
+  const active = await activeProductsOf(db, ids);
   return active.length === 1 ? active[0]! : null;
 }
 
 async function byUrl(db: Db, raw: string): Promise<number | null> {
   const parts = shopUrlParts(raw);
   if (!parts) return null;
-  const shop = await db.execute<{ id: string }>(sql`SELECT id::text FROM shops WHERE domain = ${parts.domain}`);
-  const shopId = shop.rows[0] ? Number(shop.rows[0].id) : null;
-  if (shopId === null) return null;
   const pnk = parts.domain === 'emag.ro' ? emagProductCode(parts.path) : null;
   // Host and path of the stored URL, compared without scheme, `www.`, query, fragment and trailing slash.
   const stored = sql`rtrim(regexp_replace(lower(split_part(split_part(o.url, '#', 1), '?', 1)), '^https?://(www\\.)?', ''), '/')`;
   const match = pnk
-    ? sql`(o.url LIKE ${`%/pd/${pnk}/%`} OR o.url LIKE ${`%/pd/${pnk}`})`
+    ? sql`(o.url LIKE ${`%/pd/${pnk}/%`} OR o.url LIKE ${`%/pd/${pnk}`} OR o.url LIKE ${`%/pd/${pnk}?%`} OR o.url LIKE ${`%/pd/${pnk}#%`})`
     : sql`${stored} = ${`${parts.domain}${parts.path === '/' ? '' : parts.path}`.toLowerCase()}`;
   const r = await db.execute<{ product_id: string }>(sql`
-    SELECT DISTINCT o.product_id::text AS product_id FROM offers o
-    WHERE o.shop_id = ${shopId} AND o.product_id IS NOT NULL AND o.match_status IN ${MATCHED} AND NOT o.blacklisted AND ${match}
+    SELECT DISTINCT o.product_id::text AS product_id FROM offers o JOIN shops s ON s.id = o.shop_id
+    WHERE s.domain = ${parts.domain} AND o.product_id IS NOT NULL AND o.match_status IN ${MATCHED} AND NOT o.blacklisted AND ${match}
   `);
   return single(db, r.rows.map((x) => Number(x.product_id)));
 }
@@ -140,10 +134,10 @@ async function byBrandMpn(db: Db, brand: string, mpn: string): Promise<number | 
     WHERE mpn_norm = ${mpnNorm} AND brand_id = ANY(${ids}::bigint[]) AND status IN ('active','merged')
   `);
   if (products.rows.length > 0) {
-    const all = await activeProducts(db, products.rows.map((x) => Number(x.id)));
+    const all = await activeProductsOf(db, products.rows.map((x) => Number(x.id)));
     if (all.length === 1) return all[0]!;
     // Several: a part number the shop states beats one we guessed from a title.
-    const stated = await activeProducts(db, products.rows.filter((x) => x.field).map((x) => Number(x.id)));
+    const stated = await activeProductsOf(db, products.rows.filter((x) => x.field).map((x) => Number(x.id)));
     return stated.length === 1 ? stated[0]! : null;
   }
   const offered = await db.execute<{ product_id: string }>(sql`
@@ -168,6 +162,20 @@ export async function resolveExtLookup(db: Db, ids: ExtLookupIds): Promise<ExtRe
     if (p !== null) return { productId: p, matchedBy: 'brand_mpn' };
   }
   return null;
+}
+
+/**
+ * The lowest daily total of the default chart series (`product_daily.min_total_price`: new,
+ * in-stock offers sold by shops; marketplace sellers are a separate series) for the observed days
+ * between `from` and `to`, as numeric text (no floats). Days we did not observe are absent.
+ */
+export async function extDailyLows(db: Db, productId: number, from: string, to: string): Promise<Array<[string, string]>> {
+  const r = await db.execute<{ day: string; total: string }>(sql`
+    SELECT day::text, min_total_price::text AS total FROM product_daily
+    WHERE product_id = ${productId} AND day >= ${from}::date AND day <= ${to}::date AND min_total_price IS NOT NULL
+    ORDER BY day
+  `);
+  return r.rows.map((x) => [x.day, x.total]);
 }
 
 export interface ExtResolutionReport {
@@ -223,7 +231,7 @@ export async function extResolutionReport(db: Db, shopSlug: string): Promise<Ext
       report.resolved++;
       report.byMethod[r.matchedBy]++;
       resolvedIds.push(r.productId);
-      const own = o.product_id ? await activeProduct(db, Number(o.product_id)) : null;
+      const own = o.product_id ? ((await activeProductsOf(db, [Number(o.product_id)]))[0] ?? null) : null;
       if (own === null) report.unmatchedOffer++;
       else if (own === r.productId) report.sameProduct++;
       else report.otherProduct++;
@@ -235,7 +243,7 @@ export async function extResolutionReport(db: Db, shopSlug: string): Promise<Ext
       SELECT p.id::text,
         (SELECT count(DISTINCT o.shop_id) FROM offers o JOIN shops s ON s.id = o.shop_id
           WHERE o.product_id = p.id AND o.active AND o.match_status IN ${MATCHED} AND NOT o.blacklisted AND s.status = 'active'
-            AND o.last_checked_at > now() - interval '48 hours')::text AS shops,
+            AND o.availability = 'in_stock' AND o.last_checked_at > now() - interval '48 hours')::text AS shops,
         ps.observations_days AS days
       FROM products p LEFT JOIN product_stats ps ON ps.product_id = p.id
       WHERE p.id = ANY(${sql.param([...new Set(resolvedIds)])}::bigint[])

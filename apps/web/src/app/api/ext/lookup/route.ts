@@ -1,7 +1,7 @@
-import { bucharestToday, getHistory, resolveExtLookup, shopUrlParts, sql, type Db } from '@pretoscop/db';
+import { bucharestToday, extDailyLows, resolveExtLookup, shopUrlParts, sql, type Db } from '@pretoscop/db';
 import { unstable_cache } from 'next/cache';
 import { db, serverEnv } from '@/lib/db';
-import { buildLookupResponse, CORS_HEADERS, createLookupLimiter, EXT_LOOKUP_FLAG, parseLookupQuery } from '@/lib/ext-lookup';
+import { buildLookupResponse, CORS_HEADERS, createLookupLimiter, EXT_LOOKUP_FLAG, historyFrom, parseLookupQuery } from '@/lib/ext-lookup';
 import { clientIp, hashWithDailySalt } from '@/lib/privacy';
 import { getProductPageData } from '@/lib/product';
 
@@ -10,13 +10,17 @@ export const dynamic = 'force-dynamic';
 
 /**
  * In memory, per web process (two replicas in production double the effective limit; documented in
- * the README). Keyed by a daily-salted hash of the client IP, never the raw IP or the User-Agent.
+ * apps/web/README.md "Browser extension API"). Keyed by a daily-salted hash of the client IP, never
+ * the raw IP or the User-Agent; nothing is stored.
  */
 const limiter = createLookupLimiter();
 
-/** The product page's history query, cached per product and invalidated with the page (tags `product:{id}`, `products`). */
-const historyOf = (id: number) =>
-  unstable_cache(() => getHistory(db(), id, '1y'), ['ext-history', String(id)], { tags: [`product:${id}`, 'products'], revalidate: 3600 })();
+/** The default chart series of the last 180 days, cached per product and invalidated with the product page (tags `product:{id}`, `products`). */
+const dailyLowsOf = (id: number, today: string) =>
+  unstable_cache(() => extDailyLows(db(), id, historyFrom(today), today), ['ext-daily-lows', String(id), today], {
+    tags: [`product:${id}`, 'products'],
+    revalidate: 3600,
+  })();
 
 function reply(status: number, body: unknown, cache: 'public' | 'none', extra: Record<string, string> = {}): Response {
   return Response.json(body, {
@@ -52,8 +56,8 @@ export function OPTIONS(): Response {
 
 /**
  * GET /api/ext/lookup?url=&gtin=&brand=&mpn= (M26 contract, apps/web/README.md "Browser extension
- * API"): 200 with the product's prices and history, 404 when nothing resolves (or ambiguously),
- * 400 on malformed input, 429 over the rate limit (Retry-After), 503 while switched off.
+ * API"): 200 with the product's prices and history, 404 when nothing resolves (or only ambiguously),
+ * 400 on malformed input, 429 over the rate limit (Retry-After), 503 while switched off or failing.
  */
 export async function GET(req: Request): Promise<Response> {
   const limit = limiter.hit(hashWithDailySalt('ext-lookup', clientIp(req.headers)));
@@ -67,8 +71,9 @@ export async function GET(req: Request): Promise<Response> {
     if (!found) return reply(404, { error: 'not_found' }, 'public');
     const page = await getProductPageData(found.productId);
     if (!page || page.status !== 'active') return reply(404, { error: 'not_found' }, 'public');
-    const history = await historyOf(found.productId);
-    return reply(200, buildLookupResponse(page, history, found.matchedBy, serverEnv().PUBLIC_BASE_URL, bucharestToday()), 'public');
+    const today = bucharestToday();
+    const lows = await dailyLowsOf(found.productId, today);
+    return reply(200, buildLookupResponse(page, lows, found.matchedBy, serverEnv().PUBLIC_BASE_URL, today), 'public');
   } catch (err) {
     // Identifiers of public product pages only; nothing about the requester is logged.
     console.error(JSON.stringify({ msg: 'ext lookup failed', error: err instanceof Error ? err.message : String(err) }));

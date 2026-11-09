@@ -9,9 +9,11 @@ import {
 import { parseBonamiListing } from './shops/bonami';
 import { parseCarrefourListing } from './shops/carrefour';
 import { parseDedemanListing } from './shops/dedeman';
+import { parseElefantListing, parseElefantProduct } from './shops/elefant';
 import { parseEmagListing, parseEmagProduct } from './shops/emag';
 import { parseFlipProduct } from './shops/flip';
 import { parseItGalaxyListing } from './shops/itgalaxy';
+import { parseLibrisListing } from './shops/libris';
 import { parseVtexListing } from './shops/vtex';
 import { parseStructuredProductPage } from './structured/generic';
 import type { FeedContext, FeedInput, FeedParser, PageContext, PageParseResult, PageParser } from './types';
@@ -28,6 +30,11 @@ export const PAGE_PARSERS: Record<string, PageParser> = {
   'vtex-listing': parseVtexListing,
   'bonami-listing': parseBonamiListing,
   'flip-product': parseFlipProduct,
+  // M29 (books): Libris listings carry prices; Elefant listings only product links (tiles load
+  // through a robots-disallowed endpoint), its product pages carry the prices.
+  'libris-listing': parseLibrisListing,
+  'elefant-listing': parseElefantListing,
+  'elefant-product': parseElefantProduct,
 };
 
 /** Feed parsers keyed by `shop_sources.parser_key`. */

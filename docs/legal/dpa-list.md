@@ -10,6 +10,7 @@ Status: draft v0.1, 2026-10-27 (module M17). Every DPA below is **to sign**: no 
 | Sentry (Functional Software, Inc., US) | Error monitoring (M18) | Stack traces, URLs, browser type; configure `sendDefaultPii: false` and no IP storage | EU data region if chosen at organisation creation (verify), otherwise US | DPF (verify) or SCCs | To sign (M18) |
 | Anthropic (verify contracting entity for EEA customers) | LLM for matching and attribute extraction (M22) | None by design: product titles and attributes only; seller names must stay out of prompts | US | Not needed while no personal data is sent; sign the DPA as a precaution | To sign (before M22 goes live) |
 | Zyte Group Ltd (Ireland) | Assisted-access channel for designated shops (M05B, ADR-015) | Public shop pages, which can contain marketplace seller business names (see `lia-crawl.md`) | Ireland (EU); the vendor's proxy network may be worldwide | EU entity; DPA with SCCs offered (docs/13, A3) | To sign before M05B goes live (setup A10) |
+| Stripe (Stripe Payments Europe, Ltd., Ireland; verify the contracting entity) | Card payments of merchant wallet top-ups (M25, Stripe Checkout) | Merchant contact email, amounts, card data entered directly on Stripe's page (never on ours) | Ireland (EU); Stripe, Inc. (US) as sub-processor | DPF (verify) and SCCs in the Stripe DPA | To sign with the Stripe account (setup D3); Stripe is also an independent controller for its own fraud screening and legal obligations |
 | Mailbox provider for contact@, privacy@ and bot@ (to choose) | Receiving and storing messages sent to our addresses | Senders' addresses and messages | Prefer an EU provider | Depends on the provider | To choose, then to sign |
 
 ## Not processors, or no personal data of users (for completeness)
@@ -23,6 +24,7 @@ Status: draft v0.1, 2026-10-27 (module M17). Every DPA below is **to sign**: no 
 | Google Search Console, Bing Webmaster Tools | No user data sent by us |
 | Affiliate networks (2Performant, Profitshare, Awin, M24) | Independent controllers of their own click tracking; the controller relationship is to be confirmed by the lawyer before M24 |
 | Open Icecat | Product data source; no personal data |
+| Google AdSense (M25 optional ad slot, off) | Independent controller for the ads it serves after the visitor's consent (ROPA P14); Google's publisher terms and EU user consent policy apply instead of a DPA |
 
 ## Checklist per signature
 

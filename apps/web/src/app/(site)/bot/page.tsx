@@ -4,9 +4,15 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { LegalPage } from '@/components/legal/legal-page';
 import { Callout, CodeBlock, DataTable } from '@/components/legal/prose';
-import { BOT_CHANGELOG, BOT_POLICY, BOT_TOKEN, botUserAgents } from '@/lib/bot-policy';
+import { BOT_CHANGELOG, BOT_POLICY, BOT_PROGRAM_STATUS_LABELS, BOT_PROGRAMS, BOT_RDNS_DOMAIN, BOT_TOKEN, botUserAgents } from '@/lib/bot-policy';
 import { serverEnv } from '@/lib/db';
 import { formatLongDate } from '@/lib/legal';
+import { webBotAuthStatus } from '@/lib/web-bot-auth';
+
+// Rendered per request: the egress IPs and the Web Bot Auth key come from the runtime environment
+// (BOT_EGRESS_IPS, WEB_BOT_AUTH_*), like /bot/ips.json and the key directory; a build-time snapshot
+// would show stale addresses after A4 or a key rotation.
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'PretoscopBot, robotul Pretoscop',
@@ -30,6 +36,7 @@ export default function BotPage() {
   const env = serverEnv();
   const ua = botUserAgents(env.BOT_INFO_URL);
   const ips = env.BOT_EGRESS_IPS;
+  const auth = webBotAuthStatus(env);
   const botEmail = legalContacts.bot;
   return (
     <LegalPage
@@ -69,11 +76,23 @@ export default function BotPage() {
                 PretoscopBot nu trimite cookie-uri, nu se autentifică, nu trimite antetul Referer și nu imită un browser. Nu folosește alt nume și nu își
                 schimbă identitatea.
               </p>
-              <h3 id="ip">Adrese IP</h3>
+            </>
+          ),
+        },
+        {
+          id: 'verificare',
+          title: 'Cum verifici că o cerere vine de la noi',
+          content: (
+            <>
+              <p>
+                Oricine poate scrie „PretoscopBot” într-un User-Agent. De aceea îți dăm trei moduri de verificare care nu depind de el; folosește-l pe cel pe care
+                îl suportă serverul sau serviciul tău anti-bot.
+              </p>
+              <h3 id="ip">1. Adresele IP</h3>
               {ips.length > 0 ? (
                 <>
-                  <p>Cererile PretoscopBot pornesc doar de pe aceste adrese:</p>
-                  <ul>
+                  <p>Cererile PretoscopBot pornesc doar de pe aceste adrese, folosite numai de robotul nostru:</p>
+                  <ul data-testid="bot-ips">
                     {ips.map((ip) => (
                       <li key={ip}>
                         <code>{ip}</code>
@@ -81,8 +100,7 @@ export default function BotPage() {
                     ))}
                   </ul>
                   <p>
-                    Aceeași listă, în format citibil automat: <a href="/bot/ips.json">/bot/ips.json</a>. O cerere cu numele PretoscopBot venită de pe altă adresă
-                    nu este a noastră și o poți bloca.
+                    Aceeași listă, în format citibil automat (formatul folosit și de Google pentru Googlebot): <a href="/bot/ips.json">/bot/ips.json</a>.
                   </p>
                 </>
               ) : (
@@ -91,11 +109,45 @@ export default function BotPage() {
                   temporar de pe infrastructura fondatorilor.
                 </p>
               )}
+              <h3 id="reverse-dns">2. Reverse DNS</h3>
               <p>
-                La lansare, fiecare adresă va avea și un nume reverse DNS de forma <code>crawl-N.bot.pretoscop.ro</code>, confirmat și în sens direct, ca să ne
-                poți verifica fără să te bazezi pe User-Agent. Ulterior vom semna criptografic cererile (Web Bot Auth), ca identitatea robotului să poată fi
-                verificată automat.
+                {ips.length > 0 ? 'Fiecare adresă' : 'La lansare, fiecare adresă'} are un nume de forma <code>crawl-N.{BOT_RDNS_DOMAIN}</code>, iar acel nume
+                trimite înapoi la aceeași adresă. Verifici în doi pași, de exemplu pentru o adresă din jurnalele tale:
               </p>
+              <CodeBlock label="Verificare reverse DNS">{`host 203.0.113.10        # → crawl-1.${BOT_RDNS_DOMAIN}
+host crawl-1.${BOT_RDNS_DOMAIN}   # → 203.0.113.10 (aceeași adresă)`}</CodeBlock>
+              <p>Dacă numele nu se termină în {BOT_RDNS_DOMAIN} sau nu trimite înapoi la aceeași adresă, cererea nu este a noastră.</p>
+              <h3 id="web-bot-auth">3. Semnătura criptografică (Web Bot Auth)</h3>
+              {auth.signing ? (
+                <p data-testid="web-bot-auth-status">
+                  Fiecare cerere PretoscopBot este semnată conform RFC 9421 (HTTP Message Signatures) și protocolului Web Bot Auth al IETF, cu o cheie Ed25519. Cererile au antetele{' '}
+                  <code>Signature</code>, <code>Signature-Input</code> (cu <code>tag=&quot;web-bot-auth&quot;</code>) și{' '}
+                  <code>Signature-Agent: {auth.signatureAgentHeader}</code>.
+                </p>
+              ) : (
+                <p data-testid="web-bot-auth-status">
+                  Pregătim semnarea fiecărei cereri conform RFC 9421 (HTTP Message Signatures), cu o cheie Ed25519: antetele <code>Signature</code>,{' '}
+                  <code>Signature-Input</code> (cu <code>tag=&quot;web-bot-auth&quot;</code>) și <code>Signature-Agent: {auth.signatureAgentHeader}</code>.{' '}
+                  {auth.keyPublished
+                    ? 'Cheia publică este deja publicată; semnarea cererilor începe după ce o înregistrăm la serviciile anti-bot.'
+                    : 'O activăm după ce publicăm cheia.'}
+                </p>
+              )}
+              {auth.keyPublished ? (
+                <p>
+                  Cheia publică (JWK, identificator <code>{auth.keyid}</code>) se află în directorul de chei:{' '}
+                  <a href={auth.directoryUrl} data-testid="web-bot-auth-directory">
+                    {auth.directoryUrl}
+                  </a>
+                  . Răspunsul directorului este semnat cu aceeași cheie. Serviciile precum Cloudflare, Akamai și DataDome verifică automat aceste semnături.
+                </p>
+              ) : null}
+              <Callout tone="neutral">
+                <p>
+                  O cerere care se prezintă drept PretoscopBot, dar vine de pe altă adresă, nu are numele reverse DNS corect sau are o semnătură care nu se
+                  verifică nu este a noastră. O poți bloca; te rugăm să ne spui la <a href={`mailto:${botEmail}`}>{botEmail}</a>.
+                </p>
+              </Callout>
             </>
           ),
         },
@@ -190,9 +242,30 @@ export default function BotPage() {
               <CodeBlock label="Oprire completă">{ROBOTS_STOP}</CodeBlock>
               <CodeBlock label="Ritm mai lent și secțiuni excluse">{ROBOTS_SLOW}</CodeBlock>
               <p>
-                Schimbările din robots.txt se aplică în cel mult {BOT_POLICY.robotsCacheHours} de ore. Pentru efect imediat, scrie-ne (vezi mai jos). Dacă
-                folosești un serviciu anti-bot (de exemplu, Cloudflare, Akamai sau DataDome) și vrei să ne permiți accesul, adaugă o regulă pentru User-Agent-ul
-                nostru și, după lansare, pentru adresele IP publicate.
+                Schimbările din robots.txt se aplică în cel mult {BOT_POLICY.robotsCacheHours} de ore. Pentru efect imediat, scrie-ne (vezi mai jos).
+              </p>
+            </>
+          ),
+        },
+        {
+          id: 'servicii-anti-bot',
+          title: 'Dacă folosești un serviciu anti-bot',
+          content: (
+            <>
+              <p>
+                Multe magazine folosesc Cloudflare, Akamai, DataDome sau Fastly, care blochează implicit roboții necunoscuți. Dacă vrei să ne permiți accesul,
+                o regulă care combină User-Agent-ul nostru cu adresele IP publicate (sau cu semnătura Web Bot Auth) este suficientă; doar User-Agent-ul nu ajunge,
+                pentru că poate fi imitat.
+              </p>
+              <DataTable
+                caption="Statutul PretoscopBot la serviciile anti-bot"
+                head={['Serviciu', 'Statut', 'Ce poți face acum']}
+                tableClassName="min-w-[36rem]"
+                rows={BOT_PROGRAMS.map((p) => [p.name, <span key={p.id} data-testid={`bot-program-${p.id}`}>{BOT_PROGRAM_STATUS_LABELS[p.status]}</span>, p.how])}
+              />
+              <p>
+                Dacă ai nevoie de altceva pentru o excepție (de exemplu, un antet convenit doar între noi), scrie-ne la{' '}
+                <a href={`mailto:${botEmail}`}>{botEmail}</a>.
               </p>
             </>
           ),
@@ -219,9 +292,10 @@ export default function BotPage() {
           title: 'Alternativa: feed gratuit',
           content: (
             <p>
-              Preferi să ne trimiți direct prețurile? Folosește feed-ul de produse pe care îl ai deja (Google Merchant, compari.ro sau CSV). Listarea este
-              gratuită, datele sunt exact cele pe care le alegi tu și putem renunța la vizitarea paginilor tale. Detalii pe pagina{' '}
-              <Link href="/pentru-magazine">Pentru magazine</Link>.
+              Preferi să ne trimiți direct prețurile? Folosește feed-ul de produse pe care îl ai deja (Google Merchant, compari.ro sau CSV) și înregistrează-l
+              în <Link href="/pentru-magazine/cont">contul de magazin</Link>. Listarea este gratuită, datele sunt exact cele pe care le alegi tu, iar feed-ul
+              este citit de PretoscopBot-Feed de câteva ori pe zi. După ce feed-ul funcționează, la cererea ta nu mai vizităm paginile site-ului. Detalii pe
+              pagina <Link href="/pentru-magazine">Pentru magazine</Link>.
             </p>
           ),
         },

@@ -38,13 +38,42 @@ pg-boss workers: ingest, crawl, match, rollup, alerts, index, maintenance.
   an email), consent evidence 3 years after withdrawal, sends after 13 months, clicks/events
   minimized after 90 days, expired `verifications` rows (magic-link tokens, send counters). Each
   step runs on its own: a failing step is logged and reported as an ops alert, the others still run.
-- `notify(userId, message, channel)` (`src/alerts/notifier.ts`) is the channel interface; M19
-  implements email through `@pretoscop/mailer`.
+- `notify(userId, message, channel)` (`src/alerts/notifier.ts`) is the channel interface: email
+  through `@pretoscop/mailer` (M19), Web Push and Telegram (M27, below).
 - CLIs: `pnpm --filter @pretoscop/worker alerts:run [--products 1,2]` (evaluate + deliver now) and
   `pnpm alerts:simulate <productId> [percent] [--email <address>]... [--allow-prod]` (a
   "[SIMULARE]" message for the active alerts on the product of the given addresses only, by default
   ADMIN_EMAILS, never other subscribers; refused with APP_ENV=prod unless `--allow-prod`; no price
   event, no change to the alert's state).
+
+## Telegram bot and Web Push (M27)
+
+- Channels: `createAlertServices` adds a push sender when VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY are set
+  and a Telegram client when TELEGRAM_BOT_TOKEN is set; each still needs its flag
+  (`alerts.push.enabled`, `alerts.telegram.enabled`) to be evaluated and delivered. Same rules as
+  email (known price floor, dedupe, one message per user and channel), never 22:00–08:00.
+- Push (`src/alerts/channels.ts`): every browser of the user; 404/410 or an endpoint outside the
+  known push services → the subscription is deleted (none left → push alerts pause); a receipt per
+  browser and the Topic header make a retry idempotent. Never logs endpoints or message text.
+- Telegram: one message to the linked chat; a blocked bot marks the link blocked and pauses its
+  alerts (`/start` in the same chat reactivates it); a receipt makes a retry idempotent; the
+  client spaces messages (25/s overall, 1/s per chat) and holds everything after a 429.
+- The bot (`src/telegram/bot.ts`, ADR-025): long polling in the worker process under an advisory
+  lock, only while `alerts.telegram.enabled` is on. `/start <token>` links the chat to the
+  account that asked on /alerte (one-time token, consent box ticked there); `/urmareste <link or
+  words> [price]` (search offers buttons), `/alertele` (with stop buttons), `/oprire` (unlinks,
+  pauses Telegram alerts, withdraws the consent), `/ajutor`. Private chats only; updates older
+  than 15 minutes dropped; 20 updates a minute per chat; at most 100 alerts per account; buttons
+  only for the chat owner; nothing the person writes is stored or logged.
+- `telegram.deals` (09:15, flag `telegram.deals.enabled`, TELEGRAM_DEALS_CHAT_ID): at most one post
+  a day of the verified drops whose new price level started that day (M15 `getDeals`, the rules of
+  /reduceri: ≥ 3% under the lowest price of the 30 days before, ≥ 14 of them observed, never a
+  provisional product), at most 10, biggest first; none on a day without drops. Links go to
+  Pretoscop's product pages and "Toate reducerile" to /reduceri.
+- Retention also prunes expired link tokens and receipts older than 7 days.
+- CLIs: `pnpm --filter @pretoscop/worker telegram:poll [--once]` (the bot without the worker;
+  refuses while the worker polls), `alerts:run --now <ISO>` (dev/test only: deliver as if at that
+  time), `pnpm --filter @pretoscop/notify vapid:keys` (a new VAPID pair for the server `.env`).
 
 ## Merchant feeds (M20)
 
@@ -68,6 +97,7 @@ pg-boss workers: ingest, crawl, match, rollup, alerts, index, maintenance.
 - The fetcher's dispatcher refuses non-public addresses at connect time (`createGuardedDispatcher`), so a feed URL
   cannot reach the internal network; `FETCH_ALLOW_PRIVATE_HOSTS=true` (everything) or `FETCH_PRIVATE_ALLOWLIST` (exact
   `ip:port` fixtures, what `make verify M=20` uses) lift that in development only.
+
 ## Re-normalization after a rule change
 
 `pnpm --filter @pretoscop/worker renormalize [--shop emag] [--dry-run] [--limit N] [--samples 20]`
@@ -116,3 +146,52 @@ It prints a before/after summary; run `--dry-run` first, then `match:run` (or wa
   yesterday's success was under 90%; `/metrics` exports `pretoscop_assisted_*`.
 - `pnpm assisted:record <shop> <name> <url>` records an extractor fixture through the channel.
 - Procedure for the founders: `infra/runbooks/assisted-access.md`.
+
+## Bot legitimacy (M21)
+
+- **Web Bot Auth**: `services.ts` gives the fetcher a signer when `WEB_BOT_AUTH=true` (key in `WEB_BOT_AUTH_PRIVATE_KEY`,
+  `BOT_INFO_URL` https); the worker logs `crawler requests are signed (Web Bot Auth)` at start. Off by default.
+- **`extractors.canary`** (Monday 04:30 Bucharest; flag `extractors.canary.enabled`, off by default): up to five live URLs
+  per active, directly crawled shop (listing pages, then product pages that answered 200, only from sources that are
+  enabled and not kill-switched) are fetched through the polite fetcher and parsed; per-URL results go to
+  `extractor_canaries`; a page without offers, missing or unusable core fields (id, URL, title, price) or an optional field
+  that disappears compared with the previous week raise one ops alert per shop and parser, and a block the canary runs
+  into raises its own alert (the host is paused for every job). Same gates as source runs (CRAWL_ENABLED, kill switches,
+  `crawl.enabled`, eMAG flag). Nothing is ingested. Idempotent per ISO week.
+- **`pnpm --filter @pretoscop/worker bot:check [--site URL] [--skip-dns]`**: forward-confirmed reverse DNS of every
+  `BOT_EGRESS_IPS` address, `/bot/ips.json`, the key directory (served without a redirect, Content-Digest, one
+  possession proof per key, our key in it); prints the headers a signed request would carry. Contacts DNS and our own
+  site only.
+- **`pnpm --filter @pretoscop/worker shops:probe <slug> --vantage "…" [--url <page>] [--write] [--from-published-ip]`**:
+  re-probe of one shop (docs/12 §2 layer 1).
+  - Off by default: needs `CRAWL_ENABLED=true`, the flags `crawl.enabled` and `shops.probe.enabled` (switch it on for a
+    probe session, then off) and, for eMAG, `source.emag.enabled`.
+  - Refused (exit 2, nothing sent): shops that asked us to stop or said no (status `paused` or `removed`, every source
+    kill-switched, latest outreach `declined`), feed-only shops, and, once `BOT_EGRESS_IPS` is published, any run
+    without `--from-published-ip` (the bot page says other addresses are not ours).
+  - At most three requests (robots.txt, home page, one registry page from a source that is not kill-switched, or `--url`
+    on the shop's domain), at least 5 s apart (spaced before each shared slot reservation; the cap is enforced at the
+    transport by `CappedDispatcher`), no retries, through the polite fetcher with the database's state (pauses shared with
+    the recorder) and request log; stops at the first refusal.
+  - Prints (or with `--write` adds) the registry `probes:` entry and leaves an `audit_log` row (`shops.probe`). Needs the
+    database: from a second vantage point run it with `DATABASE_URL` pointing at production (e.g. over WireGuard).
+
+## LLM matching (M22)
+
+Job `llm.match` (every 15 minutes, singleton) verifies the matching gray zone with Claude: it
+collects ended Message Batches, applies the gray-zone policy (`packages/core/MATCHING.md`) and sends
+the missing questions as one batch within `LLM_MONTHLY_CAP_EUR`. It does nothing without
+`ANTHROPIC_API_KEY` (A9) and the flag `llm.matching.enabled`; switching the flag off cancels batches in
+flight. The hourly SLO check alerts at 80 % and 100 % of the cap and on batches in flight > 26 h.
+
+```bash
+pnpm --filter @pretoscop/worker llm:spend                    # month to date: cap, billed, in flight, by model, cache share
+pnpm --filter @pretoscop/worker llm:match --dry-run          # what would be asked, worst case and estimated cost (no call)
+pnpm --filter @pretoscop/worker llm:match --mock             # whole flow against a local stand-in; prints decisions, writes nothing
+pnpm --filter @pretoscop/worker llm:match [--sync]           # a real pass (key + flag): one batch, or calls now
+pnpm --filter @pretoscop/worker match:eval:llm [--mask]      # eval against the labelled pairs (see MATCHING.md)
+pnpm --filter @pretoscop/worker llm:attributes --mock        # attribute extraction for titles missing a hard attribute
+pnpm --filter @pretoscop/worker llm:categories --mock        # category suggestions for unmapped shop categories
+```
+
+Real (non-mock) CLI calls need the key and the flag, like the job. Every call is in `llm_usage`.

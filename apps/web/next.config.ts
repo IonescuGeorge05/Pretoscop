@@ -77,7 +77,7 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   reactStrictMode: true,
   agentRules: false,
-  transpilePackages: ['@pretoscop/config', '@pretoscop/core', '@pretoscop/db', '@pretoscop/icecat', '@pretoscop/mailer', '@pretoscop/notify', '@pretoscop/report', '@pretoscop/search', '@pretoscop/storage'],
+  transpilePackages: ['@pretoscop/config', '@pretoscop/core', '@pretoscop/db', '@pretoscop/fetch', '@pretoscop/icecat', '@pretoscop/mailer', '@pretoscop/notify', '@pretoscop/report', '@pretoscop/search', '@pretoscop/storage'],
   serverExternalPackages: ['pg', '@aws-sdk/client-s3', '@aws-sdk/lib-storage'],
   // What prerendered pages bake in (root metadata: robots and absolute URLs), inlined at build time;
   // src/instrumentation.ts compares them with the running server's environment (M16).
@@ -90,7 +90,19 @@ const nextConfig: NextConfig = {
     return [{ source: '/c', destination: '/categorii', permanent: true }];
   },
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }];
+    return [
+      { source: '/:path*', headers: securityHeaders },
+      // M27: the service worker is never cached (browser, Cloudflare), so a fixed version reaches
+      // every browser at its next visit; it may control the whole site (scope '/').
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+        ],
+      },
+    ];
   },
 };
 

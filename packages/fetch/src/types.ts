@@ -1,6 +1,7 @@
 import type { DomainPolicy } from '@pretoscop/config/policy';
 import type { Dispatcher } from 'undici';
 import type { DomainStateStore } from './state/types';
+import type { RequestSigner } from './signing';
 
 /** Why a request is made. Drives the Accept header, the User-Agent (feeds) and some policy rules. */
 export type FetchPurpose = 'robots' | 'sitemap' | 'listing' | 'product' | 'feed' | 'probe';
@@ -56,6 +57,8 @@ export type FetchErrorCode =
   | 'invalid_request'
   | 'crawl_disabled'
   | 'assisted_error'
+  /** A tool's own request cap (M21 `shops:probe`): the request was never sent. */
+  | 'request_cap'
   /** The guarded dispatcher refused a private, loopback or otherwise non-public address (SSRF guard, M20). */
   | 'non_public_address'
   /** A transport error that surfaced long after the request's own timeout: this process was suspended (the machine slept), not refused. */
@@ -301,4 +304,9 @@ export interface FetcherDeps {
   connectTimeoutMs?: number;
   /** Retries of transient failures (5xx without challenge markers, timeouts). Default 2 extra attempts, 10 s base back-off. */
   retry?: { maxRetries?: number; baseDelayMs?: number };
+  /**
+   * Web Bot Auth signer (M21, `./signing`). Default: from env (`WEB_BOT_AUTH=1` +
+   * `WEB_BOT_AUTH_PRIVATE_KEY`), else none. `null` turns signing off whatever the env says.
+   */
+  signer?: RequestSigner | null;
 }

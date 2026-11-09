@@ -464,3 +464,13 @@ Source: `research/notes/gaps2_retailers.md`
 | 38 | Profitshare unlabelled figures (affiliate notes, bonus) | CLOSED | Approval rate, approval period, no-phone flag, feed flag; Vexio has feeds | — |
 
 ---
+
+## LLM matching (M22): what is still unverified
+
+| # | Item | Status | Who / how it closes |
+|---|---|---|---|
+| L1 | Precision of the LLM on our gray zone (contract: ≥ 98 % at the chosen threshold) | OPEN: no API key yet (A9); every test ran against a local stand-in | Founders: create the key (A9), label 100 pairs (`match:label`), then `pnpm --filter @pretoscop/worker match:eval:llm --mask` and `match:eval:llm`; switch on `llm.matching.enabled` only on PASS |
+| L2 | Cost per 1,000 pairs | ESTIMATED from the price table (≈ €0.06 per 1,000 Haiku pairs in batches at 150 output tokens per answer; thinking tokens can raise it, Sonnet escalations cost about 20×); the real figure comes from the ledger of the first real eval run | Printed by the same eval run and by `llm:spend` |
+| L3 | Prices and model ids (Haiku 5.5, Sonnet 5.5, batch 50 %, cache multipliers) | From the claude-api reference cached 2026-10-06 (`packages/llm/src/models.ts`) | Check the Anthropic pricing page before enabling; a wrong price only changes the ledger, never the cap logic |
+| L4 | Cache hit rate inside Message Batches (best effort per Anthropic) | UNMEASURED | `llm:spend` shows the share of prompt tokens read from the cache after real runs |
+| L5 | Response shapes in tests are the documented ones, not recordings | PARTIAL | Record a handful of real responses into `packages/llm/test/fixtures/` after A9 |

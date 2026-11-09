@@ -13,6 +13,16 @@ const bool = z
   .transform((v) => (typeof v === 'boolean' ? v : ['1', 'true', 'yes', 'on'].includes(v.trim().toLowerCase())));
 
 const int = (def: number) => z.coerce.number().int().default(def);
+
+/** Shape of a base64url Ed25519 seed (`WEB_BOT_AUTH_PRIVATE_KEY`); the key itself is read in @pretoscop/fetch. */
+const WEB_BOT_AUTH_KEY_FORMAT = /^[A-Za-z0-9_-]{43}=?$/;
+/** RFC 9421 Appendix B.1.4 "test-key-ed25519" (seed and PKCS#8 body): fine in tests, refused in staging/prod. */
+const RFC9421_TEST_KEY_MARKERS = ['n4Ni-HpISpVObnQMW0wOhCKROaIKqKtW_2ZYb2p9KcU', 'MC4CAQAwBQYDK2VwBCIEIJ+DYvh6SEqVTm50DFtMDoQikTmiCqirVv9mWG9qfSnF'];
+/** An https URL, or http on a loopback host (local tests): what a Web Bot Auth Signature-Agent may be. */
+const SIGNATURE_AGENT_URL = /^(https:\/\/[^\s/]+|http:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?)(\/|$)/i;
+function isPublishedTestKey(key: string): boolean {
+  return RFC9421_TEST_KEY_MARKERS.some((m) => key.includes(m));
+}
 const optionalString = z
   .string()
   .optional()
@@ -96,6 +106,14 @@ export const EnvSchema = z
     FETCH_MAX_BODY_BYTES: int(15 * 1024 * 1024),
     /** Lets the worker's fetcher reach private/loopback addresses (local fixture servers). Never in production. */
     FETCH_ALLOW_PRIVATE_HOSTS: bool.default(false),
+    /** Web Bot Auth (M21): the fetcher signs requests (RFC 9421, Ed25519). Off by default. */
+    WEB_BOT_AUTH: bool.default(false),
+    /**
+     * Ed25519 private key for Web Bot Auth and the key directory: base64url seed (from
+     * `pnpm --filter @pretoscop/fetch bot-auth:keygen`) or PKCS#8 PEM. Secret: environment only.
+     */
+    WEB_BOT_AUTH_PRIVATE_KEY: optionalString,
+
     /** Exact private `ip:port` targets the guard lets through (e2e fixture servers) while it stays on for the rest. Never in production. */
     FETCH_PRIVATE_ALLOWLIST: z
       .string()
@@ -160,6 +178,18 @@ export const EnvSchema = z
     // Resend webhook signing secret (`whsec_…`) for bounces and complaints; unset = endpoint off.
     RESEND_WEBHOOK_SECRET: optionalString,
 
+    // Web Push (M27): VAPID key pair (`pnpm --filter @pretoscop/notify vapid:keys`); unset = off.
+    VAPID_PUBLIC_KEY: optionalString,
+    VAPID_PRIVATE_KEY: optionalString,
+    VAPID_SUBJECT: z.string().default('mailto:alerte@pretoscop.ro'),
+
+    // Telegram bot (M27, BotFather token; setup D2); unset = the bot does not run.
+    TELEGRAM_BOT_TOKEN: optionalString,
+    TELEGRAM_BOT_USERNAME: optionalString,
+    TELEGRAM_API_BASE: z.string().default('https://api.telegram.org'),
+    // Channel for the daily verified-deals post (`@pretoscop_reduceri` or a -100… id); unset = no post.
+    TELEGRAM_DEALS_CHAT_ID: optionalString,
+
     // Operations alerts (two consecutive source failures, backups, caps, SLO breaches)
     OPS_ALERT_TELEGRAM_BOT_TOKEN: optionalString,
     OPS_ALERT_TELEGRAM_CHAT_ID: optionalString,
@@ -168,11 +198,25 @@ export const EnvSchema = z
     OPS_HEARTBEAT_URL: optionalString,
     DUMP_HEARTBEAT_URL: optionalString,
 
-    // LLM (M22, ADR-011)
+    // LLM (M22, ADR-011, ADR-024). Without a key nothing is sent; the job also needs the flag
+    // `llm.matching.enabled` (off). The cap covers spend plus calls in flight (hard stop at 100 %).
     ANTHROPIC_API_KEY: optionalString,
-    LLM_MONTHLY_CAP_EUR: z.coerce.number().default(50),
+    // Only for local stand-ins of the API (tests, `--mock` runs); unset in every real environment.
+    ANTHROPIC_BASE_URL: optionalString,
+    LLM_MONTHLY_CAP_EUR: z.coerce.number().min(0).default(50),
     LLM_MODEL_DEFAULT: z.string().default('claude-haiku-5-5'),
     LLM_MODEL_ESCALATION: z.string().default('claude-sonnet-5-5'),
+    // Gray-zone policy: accept one confirmed candidate at ≥ this confidence; reject every candidate
+    // at ≥ LLM_REJECT_CONFIDENCE (when LLM_AUTO_REJECT); anything else stays with a human.
+    LLM_ACCEPT_CONFIDENCE: z.coerce.number().min(0.5).max(1).default(0.9),
+    LLM_REJECT_CONFIDENCE: z.coerce.number().min(0.5).max(1).default(0.9),
+    LLM_AUTO_REJECT: bool.default(true),
+    // Candidates whose lowest price is at least this (lei) are verified by the escalation model.
+    LLM_HIGH_VALUE_RON: z.coerce.number().min(0).default(3000),
+    // Requests per llm.match run (one Message Batch).
+    LLM_BATCH_MAX_REQUESTS: int(2000),
+    // EUR per USD when the ECB rate in fx_rates is missing or older than 10 days (conservative).
+    LLM_EUR_PER_USD_FALLBACK: z.coerce.number().positive().max(10).default(1),
 
     // Icecat (M11). Open Icecat needs only the account name (sent as `shopname`); the tokens are
     // for Full Icecat and are not used. The job also needs the flag `icecat.enabled` (off).
@@ -209,7 +253,40 @@ export const EnvSchema = z
     METRICS_PORT: int(9464),
   })
   .superRefine((env, ctx) => {
+    if ((env.VAPID_PUBLIC_KEY === undefined) !== (env.VAPID_PRIVATE_KEY === undefined)) {
+      ctx.addIssue({ code: 'custom', path: ['VAPID_PRIVATE_KEY'], message: 'set both VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY, or neither' });
+    }
+    if (env.VAPID_PUBLIC_KEY !== undefined && !/^[A-Za-z0-9_-]{86,88}$/.test(env.VAPID_PUBLIC_KEY)) {
+      ctx.addIssue({ code: 'custom', path: ['VAPID_PUBLIC_KEY'], message: 'VAPID_PUBLIC_KEY must be the base64url P-256 public key printed by vapid:keys' });
+    }
+    if (env.VAPID_PRIVATE_KEY !== undefined && !/^[A-Za-z0-9_-]{42,44}$/.test(env.VAPID_PRIVATE_KEY)) {
+      ctx.addIssue({ code: 'custom', path: ['VAPID_PRIVATE_KEY'], message: 'VAPID_PRIVATE_KEY must be the base64url private key printed by vapid:keys' });
+    }
+    if (!/^(mailto:\S+@\S+|https:\/\/\S+)$/.test(env.VAPID_SUBJECT)) {
+      ctx.addIssue({ code: 'custom', path: ['VAPID_SUBJECT'], message: 'VAPID_SUBJECT must be a mailto: address or an https: URL' });
+    }
+    if (env.TELEGRAM_BOT_TOKEN && !env.TELEGRAM_BOT_USERNAME) {
+      ctx.addIssue({ code: 'custom', path: ['TELEGRAM_BOT_USERNAME'], message: 'TELEGRAM_BOT_USERNAME is needed for the t.me link when TELEGRAM_BOT_TOKEN is set' });
+    }
+    if (env.TELEGRAM_BOT_USERNAME !== undefined && !/^[A-Za-z][A-Za-z0-9_]{4,31}$/.test(env.TELEGRAM_BOT_USERNAME)) {
+      ctx.addIssue({ code: 'custom', path: ['TELEGRAM_BOT_USERNAME'], message: 'TELEGRAM_BOT_USERNAME is the bot username without @ (5–32 letters, digits, _)' });
+    }
+    // Never echo the key itself in an error message.
+    const key = env.WEB_BOT_AUTH_PRIVATE_KEY;
+    if (env.WEB_BOT_AUTH && !key) {
+      ctx.addIssue({ code: 'custom', path: ['WEB_BOT_AUTH_PRIVATE_KEY'], message: 'WEB_BOT_AUTH is on but WEB_BOT_AUTH_PRIVATE_KEY is not set' });
+    }
+    if (key && !WEB_BOT_AUTH_KEY_FORMAT.test(key) && !key.startsWith('-----BEGIN')) {
+      ctx.addIssue({ code: 'custom', path: ['WEB_BOT_AUTH_PRIVATE_KEY'], message: 'WEB_BOT_AUTH_PRIVATE_KEY must be a base64url Ed25519 seed (43 characters) or a PKCS#8 PEM block' });
+    }
+    // The Signature-Agent (origin of BOT_INFO_URL) must be https; plain http only on a loopback host (local tests).
+    if (env.WEB_BOT_AUTH && !SIGNATURE_AGENT_URL.test(env.BOT_INFO_URL.trim())) {
+      ctx.addIssue({ code: 'custom', path: ['BOT_INFO_URL'], message: 'WEB_BOT_AUTH needs an https BOT_INFO_URL (its origin is the Signature-Agent that serves the key directory)' });
+    }
     if (env.APP_ENV === 'staging' || env.APP_ENV === 'prod') {
+      if (key && isPublishedTestKey(key)) {
+        ctx.addIssue({ code: 'custom', path: ['WEB_BOT_AUTH_PRIVATE_KEY'], message: 'WEB_BOT_AUTH_PRIVATE_KEY is the public RFC 9421 test key; generate a real one' });
+      }
       for (const key of ['BETTER_AUTH_SECRET', 'REVALIDATE_TOKEN', 'HASH_SALT_SECRET', 'ALERTS_SECRET'] as const) {
         if (env[key] === DEV_SECRET) {
           ctx.addIssue({ code: 'custom', path: [key], message: `${key} must be set outside dev` });
@@ -220,6 +297,10 @@ export const EnvSchema = z
       }
       if (env.FETCH_PRIVATE_ALLOWLIST.length > 0) {
         ctx.addIssue({ code: 'custom', path: ['FETCH_PRIVATE_ALLOWLIST'], message: 'FETCH_PRIVATE_ALLOWLIST is for local development only' });
+      }
+      // M27: the bot token travels in every Telegram request URL: only over TLS outside dev.
+      if (!env.TELEGRAM_API_BASE.startsWith('https://')) {
+        ctx.addIssue({ code: 'custom', path: ['TELEGRAM_API_BASE'], message: 'TELEGRAM_API_BASE must be https outside dev (the bot token is in the URL)' });
       }
       if (!env.ZYTE_API_URL.startsWith('https://')) {
         ctx.addIssue({ code: 'custom', path: ['ZYTE_API_URL'], message: 'ZYTE_API_URL must be https outside development' });

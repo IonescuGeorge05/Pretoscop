@@ -53,8 +53,62 @@ export const BOT_POLICY = {
   stopWithinBusinessDays: 1,
 } as const;
 
+/**
+ * Reverse DNS of the egress IPs (setup A4): each address resolves to `crawl-N.<domain>`, which
+ * resolves back to the same address (forward-confirmed). `pnpm --filter @pretoscop/worker bot:check`
+ * checks it; infra/bot-program/reverse-dns.md has the steps.
+ */
+export const BOT_RDNS_DOMAIN = 'bot.pretoscop.ro';
+
+export type BotProgramStatus = 'pregatire' | 'trimis' | 'acceptat' | 'respins';
+
+/**
+ * Bot verification programmes (setup C2; dossiers in infra/bot-program/). Update the status when a
+ * founder submits or hears back, and add a changelog entry.
+ */
+export const BOT_PROGRAMS: ReadonlyArray<{ id: string; name: string; status: BotProgramStatus; how: string }> = [
+  {
+    id: 'cloudflare',
+    name: 'Cloudflare Verified Bots',
+    status: 'pregatire',
+    how: 'Până la verificare: o regulă WAF de tip „Skip” pentru User-Agent-ul nostru împreună cu adresele IP publicate.',
+  },
+  {
+    id: 'akamai',
+    name: 'Akamai Bot Manager',
+    status: 'pregatire',
+    how: 'O categorie de boți proprie (custom bot category) cu adresele IP publicate și User-Agent-ul nostru.',
+  },
+  {
+    id: 'datadome',
+    name: 'DataDome',
+    status: 'pregatire',
+    how: 'După verificare, permite categoria „Comparators” sau adaugă o excepție pentru adresele IP și User-Agent-ul nostru.',
+  },
+  {
+    id: 'fastly',
+    name: 'Fastly Bot Management',
+    status: 'pregatire',
+    how: 'O excepție pentru adresele IP publicate și User-Agent-ul nostru.',
+  },
+];
+
+export const BOT_PROGRAM_STATUS_LABELS: Record<BotProgramStatus, string> = {
+  pregatire: 'cerere în pregătire',
+  trimis: 'cerere trimisă',
+  acceptat: 'verificat',
+  respins: 'respins',
+};
+
 /** Newest first. Add an entry for every change of behaviour, identity or published IPs. */
 export const BOT_CHANGELOG: ReadonlyArray<{ date: string; change: string }> = [
+  {
+    date: '2026-10-28',
+    change:
+      'Pagina descrie cum ne verifici: lista adreselor IP (și în /bot/ips.json, în formatul folosit de marii operatori de roboți), ' +
+      'numele reverse DNS crawl-N.bot.pretoscop.ro și semnătura criptografică Web Bot Auth (RFC 9421), pe care o activăm după ' +
+      'publicarea cheii. Feed-urile de produse pot fi trimise direct din contul de magazin.',
+  },
   {
     date: '2026-10-27',
     change:
@@ -78,4 +132,20 @@ export function splitEgressIps(list: readonly string[]): { ipv4: string[]; ipv6:
     else if (family === 6) ipv6.push(entry);
   }
   return { ipv4, ipv6 };
+}
+
+/**
+ * The egress list in the format of googlebot.json / Common Crawl (`prefixes: [{ ipv4Prefix }]`),
+ * which WAF tools and bot-verification programmes parse; single addresses become /32 or /128.
+ */
+export type IpPrefix = { ipv4Prefix: string } | { ipv6Prefix: string };
+
+export function ipPrefixes(list: readonly string[]): IpPrefix[] {
+  return list.flatMap((entry): IpPrefix[] => {
+    const [ip = '', bits] = entry.split('/');
+    const family = isIP(ip);
+    if (family === 4) return [{ ipv4Prefix: `${ip}/${bits ?? 32}` }];
+    if (family === 6) return [{ ipv6Prefix: `${ip}/${bits ?? 128}` }];
+    return [];
+  });
 }

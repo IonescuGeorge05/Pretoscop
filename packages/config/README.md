@@ -12,6 +12,10 @@ Contract:
   (`isIpOrCidr()` is exported). Published on `/bot` and `/bot/ips.json`.
 - `FETCH_ALLOW_PRIVATE_HOSTS` (M20): lets the worker's fetcher connect to private, loopback and link-local addresses
   (local fixture servers, e2e). Default off; `getEnv()` refuses it in staging and production.
+- `WEB_BOT_AUTH` / `WEB_BOT_AUTH_PRIVATE_KEY` (M21): request signing on/off (default off) and the Ed25519 key (base64url
+  seed or PKCS#8 PEM; a secret, environment only). `getEnv()` refuses signing without a key and a malformed key without
+  echoing it, a plain-http `BOT_INFO_URL` while signing (the Signature-Agent must be https; loopback http is allowed for local
+  tests), and refuses the public RFC 9421 test key in staging and production. See `infra/bot-program/web-bot-auth.md`.
 - `FETCH_PRIVATE_ALLOWLIST` (M20): comma-separated `ip:port` pairs (IP literals) the worker may reach although they
   are private, while the guard stays on for everything else (`make verify M=20` opens only its fixture feed server, so
   the e2e also proves that any other private address is refused). Empty by default; refused in staging and production.

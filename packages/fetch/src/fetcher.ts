@@ -27,6 +27,7 @@ import { canonicalUrl, hostKey, normalizeHost, sameSite, toOrigin } from './site
 import type { DomainPause, DomainStateStore, RobotsCacheEntry } from './state/types';
 import { bucharestDay, isWithinAllowedHours } from './time';
 import { httpGet } from './transport';
+import { signerFromEnv, type RequestSigner } from './signing';
 import type {
   AssistedChannel,
   AssistedFetchResponse,
@@ -286,6 +287,8 @@ class PoliteFetcher implements Fetcher {
   private readonly ownDispatcher: Agent | null;
   private readonly pageUserAgent: string;
   private readonly feedUserAgent: string;
+  /** Web Bot Auth (M21): adds Signature-Agent, Signature-Input and Signature to direct requests. */
+  private readonly signer: RequestSigner | undefined;
   private readonly defaultTimeoutMs: number;
   private readonly defaultMaxBytes: number;
   private readonly maxRetries: number;
@@ -325,6 +328,7 @@ class PoliteFetcher implements Fetcher {
       this.pageUserAgent = buildUserAgent('page', infoUrl);
       this.feedUserAgent = buildUserAgent('feed', infoUrl);
     }
+    this.signer = deps.signer === undefined ? signerFromEnv(process.env, infoUrl) : (deps.signer ?? undefined);
 
     if (deps.dispatcher) {
       this.dispatcher = deps.dispatcher;
@@ -720,14 +724,17 @@ class PoliteFetcher implements Fetcher {
       return this.assistedHop(url, render, ctx, startedAt, slot.waitMs);
     }
     try {
+      const headers = buildRequestHeaders({
+        userAgent: ctx.purpose === 'feed' ? this.feedUserAgent : this.pageUserAgent,
+        purpose: ctx.purpose,
+        accept: ctx.opts.accept,
+        etag: ctx.opts.etag,
+        lastModified: ctx.opts.lastModified,
+      });
+      // Signed per hop: a redirect to another host gets a signature for that host's authority.
+      if (this.signer) Object.assign(headers, this.signer.sign(url));
       const res = await httpGet(url.href, {
-        headers: buildRequestHeaders({
-          userAgent: ctx.purpose === 'feed' ? this.feedUserAgent : this.pageUserAgent,
-          purpose: ctx.purpose,
-          accept: ctx.opts.accept,
-          etag: ctx.opts.etag,
-          lastModified: ctx.opts.lastModified,
-        }),
+        headers,
         dispatcher: this.dispatcher,
         timeoutMs: ctx.timeoutMs,
         maxBytes: ctx.maxBytes,
@@ -1462,6 +1469,9 @@ class PoliteFetcher implements Fetcher {
       };
     }
     if (result.errorCode === 'too_many_redirects') return failed('too_many_redirects', result.error ?? 'too many redirects');
+    // A tool's own request cap stopped it (M21 shops:probe): nothing reached the site, so nothing is
+    // remembered in the shared state (a cached "unreachable" would stop the recorder on that host).
+    if (result.errorCode === 'request_cap') return null;
     const status = result.status;
     if (status === 0) return failed('unreachable', result.error ?? 'no response');
     if (status >= 200 && status < 300) {

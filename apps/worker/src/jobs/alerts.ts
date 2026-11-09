@@ -16,9 +16,9 @@ export const alertsEvaluateJob = defineJob<{ productIds?: number[] }>({
   queue: { retryLimit: 2, retryDelay: 120, expireInSeconds: 1800 },
   work: { batchSize: 1, localConcurrency: 1 },
   schedule: { cron: '30 7 * * *' },
-  handler: async (job, { db, boss, log }) => {
+  handler: async (job, { db, boss, log, services }) => {
     const ids = Array.isArray(job.data?.productIds) ? [...new Set(job.data.productIds)].filter((n) => Number.isInteger(n)) : null;
-    const channels = await enabledChannels(db);
+    const channels = await enabledChannels(db, services.alerts.channels);
     if (channels.length === 0) return;
     const started = Date.now();
     const r = await evaluateAlerts(db, { productIds: ids, channels, log });
@@ -37,7 +37,7 @@ export const alertsDeliverJob = defineJob({
   queue: { policy: 'stately', retryLimit: 1, retryDelay: 60, expireInSeconds: 1800 },
   schedule: { cron: '*/5 * * * *' },
   handler: async (_job, { db, log, services }) => {
-    const channels = await enabledChannels(db);
+    const channels = await enabledChannels(db, services.alerts.channels);
     if (channels.length === 0) return;
     const r = await deliverAlerts({ db, log, ...services.alerts }, { channels });
     if (r.messages + r.recovered + r.skipped > 0) log.info({ channels, ...r }, 'alerts delivered');

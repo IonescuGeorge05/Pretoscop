@@ -54,6 +54,34 @@ describe('getEnv', () => {
     expect(emailComplianceProblems({ ...identity, MAIL_DRIVER: 'smtp' })).toEqual([]);
   });
 
+  it('push and Telegram settings come in pairs (M27)', () => {
+    expect(getEnv({}).VAPID_SUBJECT).toBe('mailto:alerte@pretoscop.ro');
+    expect(() => getEnv({ VAPID_PUBLIC_KEY: 'abc' })).toThrow(/VAPID_PRIVATE_KEY/);
+    expect(() => getEnv({ TELEGRAM_BOT_TOKEN: '1:x' })).toThrow(/TELEGRAM_BOT_USERNAME/);
+    expect(getEnv({ TELEGRAM_BOT_TOKEN: '1:x', TELEGRAM_BOT_USERNAME: 'PretoscopBot' }).TELEGRAM_API_BASE).toBe('https://api.telegram.org');
+  });
+
+  it('checks the shape of the M27 settings (keys, contact, bot username) and keeps the token on TLS outside dev', () => {
+    const pub = `B${'A'.repeat(86)}`;
+    const priv = 'A'.repeat(43);
+    expect(getEnv({ VAPID_PUBLIC_KEY: pub, VAPID_PRIVATE_KEY: priv }).VAPID_PUBLIC_KEY).toBe(pub);
+    expect(() => getEnv({ VAPID_PUBLIC_KEY: 'short', VAPID_PRIVATE_KEY: priv })).toThrow(/VAPID_PUBLIC_KEY must be/);
+    expect(() => getEnv({ VAPID_PUBLIC_KEY: pub, VAPID_PRIVATE_KEY: 'x' })).toThrow(/VAPID_PRIVATE_KEY must be/);
+    expect(() => getEnv({ VAPID_SUBJECT: 'alerte@pretoscop.ro' })).toThrow(/VAPID_SUBJECT must be/);
+    expect(getEnv({ VAPID_SUBJECT: 'https://pretoscop.ro/contact' }).VAPID_SUBJECT).toBe('https://pretoscop.ro/contact');
+    expect(() => getEnv({ TELEGRAM_BOT_TOKEN: '1:x', TELEGRAM_BOT_USERNAME: '@PretoscopBot' })).toThrow(/without @/);
+    expect(() => getEnv({ TELEGRAM_BOT_TOKEN: '1:x', TELEGRAM_BOT_USERNAME: 'Pretoscop?start=x' })).toThrow(/without @/);
+    const prod = {
+      APP_ENV: 'staging',
+      BETTER_AUTH_SECRET: 'a'.repeat(32),
+      REVALIDATE_TOKEN: 'b'.repeat(32),
+      HASH_SALT_SECRET: 'c'.repeat(32),
+      ALERTS_SECRET: 'd'.repeat(32),
+    };
+    expect(() => getEnv({ ...prod, TELEGRAM_API_BASE: 'http://127.0.0.1:3481' })).toThrow(/TELEGRAM_API_BASE must be https/);
+    expect(getEnv({ ...prod, TELEGRAM_API_BASE: 'http://127.0.0.1:3481', APP_ENV: 'dev' }).TELEGRAM_API_BASE).toBe('http://127.0.0.1:3481');
+  });
+
   it('reports invalid enums readably', () => {
     expect(() => getEnv({ APP_ENV: 'qa' })).toThrow(/APP_ENV/);
   });
@@ -72,6 +100,38 @@ describe('getEnv', () => {
     expect(() => getEnv({ BOT_EGRESS_IPS: '203.0.113.0/33' })).toThrow(/BOT_EGRESS_IPS/);
     expect(() => getEnv({ BOT_EGRESS_IPS: '2001:db8::/129' })).toThrow(/BOT_EGRESS_IPS/);
     expect(() => getEnv({ BOT_EGRESS_IPS: '256.1.1.1' })).toThrow(/BOT_EGRESS_IPS/);
+  });
+
+  it('keeps Web Bot Auth off by default and refuses signing without a well-formed key, never echoing it', () => {
+    expect(getEnv({}).WEB_BOT_AUTH).toBe(false);
+    expect(getEnv({}).WEB_BOT_AUTH_PRIVATE_KEY).toBeUndefined();
+    expect(() => getEnv({ WEB_BOT_AUTH: 'true' })).toThrow(/WEB_BOT_AUTH is on but WEB_BOT_AUTH_PRIVATE_KEY is not set/);
+    const secret = 'abc-not-a-key-0123456789';
+    let message = '';
+    try {
+      getEnv({ WEB_BOT_AUTH_PRIVATE_KEY: secret });
+    } catch (err) {
+      message = (err as Error).message;
+    }
+    expect(message).toMatch(/must be a base64url Ed25519 seed/);
+    expect(message).not.toContain(secret);
+    const seed = 'A'.repeat(43);
+    expect(getEnv({ WEB_BOT_AUTH: '1', WEB_BOT_AUTH_PRIVATE_KEY: seed })).toMatchObject({ WEB_BOT_AUTH: true, WEB_BOT_AUTH_PRIVATE_KEY: seed });
+  });
+
+  it('signs only for an https Signature-Agent (http on loopback for local tests)', () => {
+    const seed = 'A'.repeat(43);
+    expect(() => getEnv({ WEB_BOT_AUTH: '1', WEB_BOT_AUTH_PRIVATE_KEY: seed, BOT_INFO_URL: 'http://pretoscop.ro/bot' })).toThrow(/https BOT_INFO_URL/);
+    expect(() => getEnv({ WEB_BOT_AUTH: '1', WEB_BOT_AUTH_PRIVATE_KEY: seed, BOT_INFO_URL: 'http://localhost.evil.example/bot' })).toThrow(/https BOT_INFO_URL/);
+    expect(getEnv({ WEB_BOT_AUTH: '1', WEB_BOT_AUTH_PRIVATE_KEY: seed, BOT_INFO_URL: 'http://localhost:3450/bot' }).WEB_BOT_AUTH).toBe(true);
+    // Signing off: any BOT_INFO_URL is accepted as before.
+    expect(getEnv({ BOT_INFO_URL: 'http://pretoscop.test/bot' }).WEB_BOT_AUTH).toBe(false);
+  });
+
+  it('accepts the public RFC 9421 test key in dev only', () => {
+    const testKey = 'n4Ni-HpISpVObnQMW0wOhCKROaIKqKtW_2ZYb2p9KcU';
+    expect(getEnv({ WEB_BOT_AUTH_PRIVATE_KEY: testKey }).WEB_BOT_AUTH_PRIVATE_KEY).toBe(testKey);
+    expect(() => getEnv({ APP_ENV: 'staging', WEB_BOT_AUTH_PRIVATE_KEY: testKey })).toThrow(/public RFC 9421 test key/);
   });
 
   it('parses the e2e fixture allowlist of the SSRF guard, and refuses it (and the open switch) outside development', () => {

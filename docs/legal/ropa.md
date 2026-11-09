@@ -96,6 +96,21 @@ The consent choice itself is stored only in the visitor's browser (`localStorage
 | Security | Double opt-in, `List-Unsubscribe` in every email, export and delete tools (M19) |
 | Implementation | `users`, `alerts`, `alert_sends`, `consent_records` (evidence ledger keyed by an HMAC of the address, kept 3 years after withdrawal), `email_suppressions` (hashes only); retention job `alerts.retention`: pending requests deleted after 7 days, accounts inactive 24 months warned then deleted 30 days later, evidence pruned after 3 years, sent alerts after 13 months; self-service export and deletion on `/alerte`, admin tool on `/admin/alerte`; complaints and bounces from Resend stop alerts (`/api/webhooks/resend`) |
 
+### P5b. Price alerts in the browser (Web Push) and on Telegram
+
+| Field | Record |
+|---|---|
+| Status | built (M27); off until `alerts.push.enabled` / `alerts.telegram.enabled` are turned on and the VAPID keys and the bot token exist (setup D2) |
+| Purpose | Send the price alerts a person chose on another channel than email; answer the bot's commands (`/urmareste`, `/alertele`, `/oprire`); a daily public channel post of verified drops (no personal data) |
+| Legal basis | Consent, per channel: Art. 6(1)(a) GDPR; for Web Push also Law 506/2004 art. 4(5) (a subscription is stored on the device). Texts `pushConsent.v1` (box next to "Activează notificările", then the browser's own permission) and `telegramConsent.v1` (box next to "Conectează Telegram", confirmed by pressing Start in Telegram) |
+| Data subjects | Account holders who turn on a channel |
+| Personal data | Web Push: the endpoint URL issued by the browser's push service, its two encryption keys, a device label ("Chrome · Android", never the User-Agent), consent time, text version and IP hash (daily salt), last success. Telegram: the private chat id, link status, consent time and text version, the last Telegram error; one-time link tokens as SHA-256 hashes for 15 minutes. Not stored: Telegram names, usernames, phone numbers, the messages people send to the bot. Idempotency receipts (`channel_deliveries`) hold only a hash and a subscription number |
+| Recipients | Hetzner (database). The browser's push service (Google FCM for Chrome, Edge on Android, Opera and Samsung Internet; Mozilla for Firefox; Apple for Safari; Microsoft WNS for Edge on Windows) receives the endpoint and the encrypted notification, which it cannot read; Telegram receives the messages the bot sends. Both are chosen by the person and work under their own terms; we treat them as separate controllers, not processors (no DPA is possible with push services). **To confirm with the lawyer (B5).** |
+| Transfers | Push services and Telegram may process outside the EEA (Google, Apple, Microsoft, Mozilla: US companies; Telegram: its own terms). Only the encrypted payload goes to push services |
+| Retention | Push: until the person turns it off, removes the device, the push service reports the endpoint gone (404/410), or the account is deleted (inactivity rules of P5 apply to accounts that only keep a channel). Telegram: until `/oprire`, "Deconectează", or the account is deleted; a block pauses sending. Consent evidence 3 years after withdrawal (P5); link tokens 15 minutes; receipts 7 days |
+| Security | Endpoints accepted only on the push services' hosts over https and never followed through redirects (no SSRF); VAPID private key and bot token only in the server `.env`; the token is redacted from errors; link tokens 192-bit, one-time, 15 minutes, never in URLs; same-origin checks and size caps on the push endpoints; per-chat and per-account limits; nothing a person writes to the bot is logged |
+| Implementation | `push_subscriptions`, `telegram_links`, `telegram_link_tokens`, `channel_deliveries`, `channel_posts` (migration 0017), `/alerte` "Canale de notificare", `/api/push/*`, `apps/worker/src/telegram`, `apps/worker/src/alerts/channels.ts`; export and deletion with the account (M19 tools) |
+
 ### P6. Admin accounts and audit log
 
 | Field | Record |
@@ -180,6 +195,21 @@ The consent choice itself is stored only in the visitor's browser (`localStorage
 | Retention | Rolling window (35 days proposed; confirm in M18); deletions propagate when old backups expire |
 | Security | Encryption at rest (R2 default), scoped API tokens, weekly restore test |
 
+### P12. Retailer outreach
+
+| Field | Record |
+|---|---|
+| Status | live (M21, `/admin/contactari`) |
+| Purpose | Asking shops for a product feed or for allowlisting PretoscopBot, and keeping track of their answers |
+| Legal basis | Art. 6(1)(f): legitimate interest in B2B contact about listing the shop; the shop can object at any time |
+| Data subjects | Shop staff behind a business channel. Mostly none (role addresses, contact forms, switchboards); a named business address of the shop (e.g. first.last@shop.ro) can occur and is erased on request |
+| Personal data | The business contact channel (`contact`: a role address, a form, a switchboard), the dates, the answer summary; the admin who logged it |
+| Recipients | Hetzner (database); the email provider the founders send from |
+| Transfers | None beyond the mailbox provider (`dpa-list.md`) |
+| Retention | While the shop is in the registry; deleted with the shop, or at once on request (confirmed delete in `/admin/contactari`) |
+| Security | Admin only (magic link + email allowlist); every change in `audit_log`, which records which fields were set but never the contact or the answer; the form refuses names and free-mailbox addresses (business channels only: role address, form URL, switchboard); guidance to never store guessed personal addresses (`infra/bot-program/outreach-templates.md`) |
+| Implementation | `outreach` (migration 0018), `/admin/contactari` |
+
 ## Technical and organisational measures (Art. 32, summary)
 
 EU hosting (Hetzner, Germany); TLS everywhere; secrets only in the server `.env`, never in git; admin behind magic-link auth, an email allowlist and (from M18) Cloudflare Access, every admin mutation in `audit_log`; no raw IP addresses in the database (daily-salted hashes); rate limits on public endpoints; least-privilege API keys with spend limits; dependency audit in CI; nightly backups with restore tests (M18); breach playbook in `docs/07-legal-compliance-checklist.md` §9 (ANSPDCP notification within 72 hours where required).
@@ -189,4 +219,6 @@ EU hosting (Hetzner, Germany); TLS everywhere; secrets only in the server `.env`
 - Retention jobs: P4 (12 months / 3 years), P6 (audit log 3 years) and P9 (merchant accounts, 3 years after closure; M20) are still pending; P2 and P8 run in `alerts.retention` (M19). Event properties (P2) stay until the 13-month deletion; an `events_daily` aggregate would let raw rows go after 90 days.
 - Seller-name suppression action for P7 objections (admin).
 - Controller identity once the SRL exists (B4); mailbox provider and its DPA (`dpa-list.md`).
-- Lawyer review of this record together with the public pages (B5).
+- Lawyer review of this record together with the public pages (B5), including `pushConsent.v1`,
+  `telegramConsent.v1` and the classification of push services and Telegram as separate
+  controllers (P5b).

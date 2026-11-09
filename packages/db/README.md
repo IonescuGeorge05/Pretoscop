@@ -41,6 +41,8 @@ products ─┬─< product_gtins (gtin14 PK)
 offer_aliases (shop_id, external_id) → product         sticky human decisions
 product_merges                                         merge log, undo, 301s
 feature_flags · audit_log · request_log (30 days) · crawl_domain_state (per-host politeness state)
+shops ─< merchants (portal account, M20) · shops ─< outreach (retailer contacts, M21)
+shops ─< extractor_canaries (weekly canary results per URL, M21)
 ```
 
 Column-level details follow `docs/03-architecture.md` §5; the Drizzle files in `src/schema/` are
@@ -82,6 +84,12 @@ authoritative. Additions beyond §5: `shops.shipping_verified`, `shops.vat_inclu
   `confirmProvisionalByIcecat`, `reserveIcecatUsage` / `icecatUsage` (monthly datasheet counter,
   interim rows of `fetch_domain_daily` keyed `icecat:<LANG>`), `icecatCoverage`. Icecat content never
   enters `products` or `product_gtins` (ADR-016); readers of `product_specs` filter on `source`.
+- Bot legitimacy (M21): `extractor_canaries` (written by the worker's weekly canary, migration 0017),
+  `outreach` (admin tracker, migration 0018; business channels only, deleted with the shop) and
+  `assistedMigrationStatus(db)` (`queries/outreach.ts`): every `access_mode = 'assisted'` shop with its
+  30-day request count and success rate from `request_log` (assisted channel), this month's vendor cost
+  (`access_costs`), whether a replacement
+  feed source succeeded in the last 3 days, and its latest outreach entry.
 
 ## Price alerts (M19)
 
@@ -115,6 +123,20 @@ Contract (`src/queries/alerts.ts`):
   `markRetentionNotice`, `usersDueRetentionDeletion`, `pruneConsentRecords`, `pruneAlertSends`,
   `repointMergedAlerts`, `minimizeClicksAndEvents` (clicks/events: identifiers dropped after 90
   days, rows deleted after 13 months).
+- M27 channels (`src/queries/channels.ts`, migration `0017_channels`): `savePushSubscription`
+  (consent in the row and the ledger; ≤ 10 per account; an endpoint moves between accounts),
+  `userPushSubscriptions` (worker), `userPushDevices` (web: no endpoint or keys, its SHA-256),
+  `deletePushSubscription`, `markPushResult`; `createTelegramLinkToken` (hash only, 15 minutes,
+  one per account), `consumeTelegramLinkToken` (one-time under a row lock; a chat moves between
+  accounts), `telegramLinkTokenPending`, `telegramLinkByChat/ByUser`, `unlinkTelegram`,
+  `markTelegramBlocked`, `reactivateTelegramLink`, `pruneTelegramLinkTokens`,
+  `searchProductsForBot`; receipts `hasDeliveryReceipt`/`recordDeliveryReceipt`/
+  `pruneDeliveryReceipts`; `claimChannelPost`/
+  `completeChannelPost`/`releaseChannelPost` for the daily deals post (its drops: M15 `getDeals`). Losing a channel pauses its
+  alerts (`channel_unavailable`) and withdraws its channel consent; setting it up again resumes them.
+  `updateAlert` on a channel change withdraws the old per-alert consent and records the new one;
+  `exportUserData` includes browsers (no keys) and the Telegram link; deleting a user removes both
+  (cascade). Inactive accounts that only keep a channel get the 24-month notice too.
 - `recordObservation` also returns `productId` (the matched product), so a source run can queue
   `rollup.touch` for products whose offers changed price.
 - E2E fixture for alerts: `createAlertsFixture`, `alertsFixturePrice`, `alertsFixtureState`,

@@ -40,6 +40,7 @@ Practical guidance distilled from `docs/01-research-report.md` §4 and the legal
 | 3.3 | Privacy policy: controller identity, purposes, legal bases, processors (Hetzner, Cloudflare, Resend, Sentry, Anthropic), retention, rights, ANSPDCP contact | `/confidentialitate` | M17 |
 | 3.4 | Data minimization and retention: hashed IPs/UAs in click logs; aggregate after 90 days; delete inactive alert accounts after 24 months | Rotating salt, retention job | M13, M19 |
 | 3.5 | Data subject requests: export and delete | Admin tool | M09, M19 |
+| 3.5a | Alerts in the browser (Web Push) and on Telegram: separate, explicit consent per channel (GDPR art. 6(1)(a); Law 506/2004 art. 4(5) for the push subscription stored on the device), easy withdrawal, push services and Telegram named as recipients | Unticked boxes with `pushConsent.v1` / `telegramConsent.v1` recorded in `consent_records`; withdrawal on /alerte, with `/oprire` or in the browser; removed with the account; privacy page "Notificări de preț în browser" and "Alerte de preț pe Telegram"; flags off until the lawyer has read the texts (B5) | M27 |
 | 3.6 | Processor agreements (DPA) with Resend, Cloudflare, Hetzner, Anthropic, Sentry; international transfers covered by DPF/SCCs | Keep signed DPAs in `infra/legal/` (not in git if confidential) | B-phase setup |
 | 3.7 | Records of processing (GDPR art. 30) — small but keep it | `docs/legal/ropa.md` template | M17 |
 | 3.8 | Do not collect CNPs except where B2C e-Factura requires one (a consumer who gives none is invoiced with 13 zeros); Law 190/2018 restricts CNP processing | Invoicing flow | M25, M28 |
@@ -96,7 +97,7 @@ Practical guidance distilled from `docs/01-research-report.md` §4 and the legal
 | Methodology page (discount verification, data collection incl. assisted channel wording) | `/metodologie` | founders | M17 (placeholder), M23 |
 | Bot page with IPs, rDNS, Web Bot Auth keys | `/bot`, `/bot/ips.json`, `/.well-known/http-message-signatures-directory` | implementer | M17, M21 |
 | Merchant terms (P2B: ranking, suspension reasons, complaints) | `/pentru-magazine/termeni` | founders + lawyer | M20 |
-| Alert consent texts (versioned) | `packages/config/legal-texts.ts` | founders + lawyer | M17, M19 |
+| Alert consent texts (versioned: email, push, Telegram) | `packages/config/legal-texts.ts` | founders + lawyer | M17, M19, M27 |
 | Records of processing (ROPA), legitimate-interest assessment for crawled data, processor/DPA list | `docs/legal/ropa.md`, `docs/legal/lia-crawl.md`, `docs/legal/dpa-list.md` | founders | M17 |
 | Written legal opinion on the assisted-access channel, with scope | `infra/legal/` (outside git) | founders + lawyer | Setup A10, before M05B goes live |
 | eMAG decision record and (if any) written opinion on eMAG's terms | `docs/progress.md`, `infra/legal/` | founders | Setup A8 |

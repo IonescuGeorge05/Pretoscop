@@ -1,14 +1,15 @@
-import { sql } from '@pretoscop/db';
+import { bucharestMonthStart, llmSpendSummary, sql } from '@pretoscop/db';
 import { Health, Section, Stat, Table, Td } from '@/components/admin/ui';
 import { requireAdmin } from '@/lib/auth';
-import { db } from '@/lib/db';
-import { formatDateTime, formatRelative } from '@/lib/format';
+import { db, serverEnv } from '@/lib/db';
+import { formatDateTime, formatEur, formatRelative } from '@/lib/format';
 
 export default async function Dashboard() {
   // Each admin page checks the session itself: the layout guard does not stop a segment from rendering.
   await requireAdmin();
   const d = db();
-  const [totals, sources, queues, assisted] = await Promise.all([
+  const llmMonth = await bucharestMonthStart(d);
+  const [totals, sources, queues, assisted, llm] = await Promise.all([
     d.execute<Record<string, string>>(sql`
       SELECT
         (SELECT count(*) FROM offers WHERE active)::text AS offers,
@@ -39,7 +40,13 @@ export default async function Dashboard() {
     d.execute<{ requests: string; cost: string }>(sql`
       SELECT coalesce(sum(requests),0)::text AS requests, coalesce(sum(cost_cents),0)::text AS cost
       FROM access_costs WHERE day >= date_trunc('month', now())::date`),
+    llmSpendSummary(d, llmMonth),
   ]);
+  // LLM spend (M22): billed plus requests in flight against the hard monthly cap.
+  const llmCap = serverEnv().LLM_MONTHLY_CAP_EUR;
+  const llmUsed = (llm.spentEurNanos + llm.reservedEurNanos) / 1e9;
+  const llmRatio = llmCap > 0 ? llmUsed / llmCap : 1;
+  const llmState = llmCap <= 0 ? 'oprit: plafon 0' : llmRatio >= 1 ? 'OPRIT: plafon atins' : llmRatio >= 0.8 ? 'atenție: peste 80 %' : `${Math.round(llmRatio * 100)} % din plafon`;
   const t = totals.rows[0] ?? {};
   const offers = Number(t.offers ?? 0);
   const fresh = Number(t.fresh ?? 0);
@@ -53,7 +60,13 @@ export default async function Dashboard() {
         <Stat label="Produse" value={Number(t.products ?? 0).toLocaleString('ro-RO')} hint={`${t.products2 ?? 0} cu ≥ 2 oferte`} />
         <Stat label="Evenimente azi" value={Number(t.events_today ?? 0).toLocaleString('ro-RO')} hint={`${Number(t.events_total ?? 0).toLocaleString('ro-RO')} în total`} />
         <Stat label="De revizuit" value={Number(t.review ?? 0).toLocaleString('ro-RO')} hint={`${t.quarantine ?? 0} în carantină`} />
-        <Stat label="Acces asistat (luna)" value={`€${(Number(assisted.rows[0]?.cost ?? 0) / 100).toFixed(2)}`} hint={`${assisted.rows[0]?.requests ?? 0} cereri; LLM: —`} />
+        <Stat label="Acces asistat (luna)" value={`€${(Number(assisted.rows[0]?.cost ?? 0) / 100).toFixed(2)}`} hint={`${assisted.rows[0]?.requests ?? 0} cereri`} />
+        <Stat
+          testId="stat-llm"
+          label="LLM (luna)"
+          value={`${formatEur(llmUsed)} / ${formatEur(llmCap, 0)}`}
+          hint={`${llmState} · ${llm.calls} cereri${llm.reservedEurNanos > 0 ? ` · ${formatEur(llm.reservedEurNanos / 1e9)} în curs` : ''} · ${llm.decisions.accept} acceptate, ${llm.decisions.reject} respinse`}
+        />
       </div>
       <Section title="Surse">
         <Table head={['Sursă', 'Stare', 'Ultima rulare', 'Prospețime vs SLO', 'Parsate', 'Schimbări', 'Erori', 'Blocaje']}>

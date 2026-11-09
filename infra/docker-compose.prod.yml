@@ -53,6 +53,9 @@ x-web: &web
     TWOPERFORMANT_PASSWORD: ''
     PROFITSHARE_API_KEY: ''
     OPS_ALERT_TELEGRAM_BOT_TOKEN: ''
+    # M27: the alert bot's token (the web only needs TELEGRAM_BOT_USERNAME). The web keeps the VAPID
+    # pair: it sends the "test notification" itself (ADR-025).
+    TELEGRAM_BOT_TOKEN: ''
   depends_on:
     postgres:
       condition: service_healthy

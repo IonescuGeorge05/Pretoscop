@@ -124,6 +124,11 @@ export function ReviewQueue({ items }: { items: ReviewItem[] }) {
                     #{c.productId} · {c.offerCount} oferte · {formatLeiNumeric(c.minTotal)}
                     {c.conflicts.length > 0 && <span className="text-high"> · conflicte: {c.conflicts.join(', ')}</span>}
                   </div>
+                  {c.llm && (
+                    <div className="text-xs text-ink-soft" data-testid="review-llm-opinion">
+                      LLM ({c.llm.model.replace(/^claude-/, '')}): {c.llm.same ? 'același produs' : 'alt produs'} {c.llm.confidence.toFixed(2)} · {c.llm.reason}
+                    </div>
+                  )}
                 </div>
                 <button type="button" disabled={pending} onClick={() => decide(it, 'accept', c.productId)} className="shrink-0 rounded bg-good-bg px-2 py-1 text-xs font-semibold text-good">
                   Acceptă ({n + 1})

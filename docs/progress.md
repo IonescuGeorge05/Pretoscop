@@ -1,8 +1,12 @@
-| M16 | SEO: structured data, sitemaps, performance | review | `mod/M16-seo` (merged into `daniel`) | | Server-rendered 404s, robots (Icecat AI block), sitemaps, JSON-LD; JS budget needs a founder decision || M15 | Deals page and discount verdict UI | review | `mod/M15-deals` (merged into `daniel`) | | No real drops before ~10 Nov (14 days of history needed); stricter badge rule after review || M14 | Search, category, brand and shop pages | review | `mod/M14-search` (merged into `daniel`) | | Meilisearch on the real catalogue (2,679 products); reviewed independently || M05B | Assisted-access channel for blocked shops (prototype) | review | `mod/M05B-assisted` (merged into `daniel`) | | Shipped off (no shop assisted, no vendor); cap booked before every call; shop extractors wait for A10 (vendor account, written legal opinion) |# Pretoscop — Progress tracker
+| M29 | Category expansion playbook and CSS enrolment readiness | in progress | `mod/M29-categories` (paused) | | Stopped just after starting on 28 Oct (usage cap) || M28 | B2B price intelligence MVP | in progress | `mod/M28-b2b` (paused) | | Stopped just after starting on 28 Oct (usage cap) || M27 | Telegram bot and web push | review | `mod/M27-telegram-push` (merged into `daniel`) | | Flags off; needs D2 (bot token, VAPID keys); migration 0020_channels; ADR-025 || M26 | Browser extension (MV3) | in progress | `mod/M26-extension` (paused) | | Stopped mid-work on 28 Oct (usage cap); unreviewed work uncommitted in `.claude/worktrees/M26` || M25 | Promoted placements and merchant billing; optional ad slots | in progress | `mod/M25-promoted` (paused) | | Stopped mid-work on 28 Oct (usage cap); unreviewed work uncommitted in `.claude/worktrees/M25` on the laptop || M22 | LLM-assisted matching and attribute extraction | review | `mod/M22-llm-matching` (merged into `daniel`) | | Flag off; needs A9 (API key) and 100 labels; precision unmeasured until then; migration 0019_llm_usage; ADR-024 || M16 | SEO: structured data, sitemaps, performance | review | `mod/M16-seo` (merged into `daniel`) | | Server-rendered 404s, robots (Icecat AI block), sitemaps, JSON-LD; JS budget needs a founder decision || M15 | Deals page and discount verdict UI | review | `mod/M15-deals` (merged into `daniel`) | | No real drops before ~10 Nov (14 days of history needed); stricter badge rule after review || M14 | Search, category, brand and shop pages | review | `mod/M14-search` (merged into `daniel`) | | Meilisearch on the real catalogue (2,679 products); reviewed independently || M05B | Assisted-access channel for blocked shops (prototype) | review | `mod/M05B-assisted` (merged into `daniel`) | | Shipped off (no shop assisted, no vendor); cap booked before every call; shop extractors wait for A10 (vendor account, written legal opinion) |# Pretoscop — Progress tracker
 
 Single page the founders read to supervise the build. The implementing agent updates it at the start and end of every module. Statuses: `todo` → `in_progress` → `review` (founder verifies with the module's checklist) → `done`, or `blocked` (say on what). Phase gates (G0–G4) require explicit founder approval before the next phase starts.
 
 Last updated: 2026-10-28 (build resumed on the Windows laptop; see below).
+
+## Build paused (28 Oct 2026, ≈ 12:30 UTC): Claude usage cap
+
+Daniel asked to stop all work once the weekly Claude usage reaches 75 % (it read 71 %). Merged and verified on `daniel` by then: every module except M25, M26, M28 and M29. Those four agents were stopped mid-work. Their unreviewed changes stay **uncommitted on the laptop** in `.claude/worktrees/M25|M26|M28|M29`, each with its own database `pretoscop_m25|m26|m28|m29`; they were not pushed, because unreviewed work must not go to the public repo. To resume: relaunch one agent per module in its worktree with the brief, then the lead reviews, merges and verifies as for the others. The M22 and M27 reports are short placeholders until then; their verify summaries are below. The recorder keeps running and uses no Claude usage.
 
 ## Build session resumed on the Windows laptop (28 Oct 2026)
 
@@ -64,7 +68,7 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 |---|---|---|---|---|---|
 | M19 | Accounts and price alerts | review | `mod/M19-alerts` (merged into `daniel`) | | Independently reviewed; all high/medium findings fixed; flag `alerts.email.enabled` off until B2/B4/B5 |
 | M20 | Merchant self-serve feed portal (free listing) | review | `mod/M20-merchants` (merged into `daniel`) | | Independently reviewed; all high/medium findings fixed; migration 0015_merchants; `merchants.portal.enabled` off until B5 and the founders open it |
-| M21 | Bot legitimacy program and source adapters batch 2 | in progress | `mod/M21-bot-legitimacy` (WIP) | | Stopped mid-work for the machine move |
+| M21 | Bot legitimacy program and source adapters batch 2 | review | `mod/M21-bot-legitimacy` (merged into `daniel`) | | Signing, canary and probes all off by default; reviewed independently; migrations 0017/0018; needs A4, C2, C3 |
 | M22 | LLM-assisted matching and attribute extraction | todo | `mod/M22-llm-matching` (empty) | | Brief in docs/HANDOFF.md §7 |
 | M23 | Black Friday / fake-discount report tooling | review | `mod/M23-reports` (merged locally into `daniel`) | | Generator deterministic, reconciled with SQL; BF 2026 page waits for approved data |
 
@@ -626,3 +630,95 @@ Founder checklist: `scripts/verify/M05B.checklist.md`.
 Human tasks needed: A10 (Zyte account with a spend limit; check one real answer on toscrape.com; the written legal opinion naming the vendor and the shops); to record fixtures, a founder sets one shop to `status: active`, `access_mode: assisted` with a `legal.basis_ref` and one on-demand source.
 Risks / open questions: vendor answer shapes and prices are synthetic until the first real call; the cel.ro challenge markers come from research notes, not a recorded page; the path deny-list fails safe (may refuse a legitimate page whose path segment is a word such as `cont`); auto-pause needs ≥ 20 assisted requests a day for 7 days; the prototype's legal clearance needs written re-confirmation before Gate G2 (docs/12 §0).
 Next module: the founders' A10, then per-shop activation.
+
+### M21 — Bot legitimacy program and source adapters batch 2 — 2026-10-28
+(Built by a delegated Opus agent on top of M20 before the machine move and stopped mid-work; finished by a second Opus agent, which had it independently reviewed; merged and re-verified by the lead.)
+Scope delivered:
+- **Web Bot Auth signing.**
+  - `packages/fetch/src/signing.ts` signs every direct hop per draft-ietf-webbotauth-httpsig-protocol-00 (September 2026): Ed25519, 60 s validity, a fresh nonce, `Signature-Agent` covered by the signature. The assisted channel is never signed.
+  - **Off unless `WEB_BOT_AUTH=1`.** Production refuses to start with signing on but no key, a malformed key, a non-https `BOT_INFO_URL`, or the public RFC 9421 test key.
+  - `bot-auth:keygen` generates the key; the verify checks git for any committed key.
+  - The key directory `/.well-known/http-message-signatures-directory` exposes public members only, with Content-Digest and a proof signature.
+  - Test vectors (RFC 9421 B.2.6, the draft's E.2.1–E.2.3) reproduce byte for byte.
+- **`/bot` page.**
+  - It follows the agreed draft: purpose, user-agents, IPs from `BOT_EGRESS_IPS`, reverse DNS `crawl-N.bot.pretoscop.ro`, signature status, rate and back-off rules, what we store, how to block, slow us or send a feed, the anti-bot services, and a changelog.
+  - It describes PretoscopBot only and links to the methodology for other sources. It is rendered per request, so the IP list and key status are live.
+  - `/bot/ips.json` uses googlebot.json's format. `bot:check` verifies FCrDNS, `ips.json` and the key directory against our own site.
+- **Weekly extractor canary** (migration `0017_extractor_canaries`): behind flag `extractors.canary.enabled`, **off**, plus `CRAWL_ENABLED`, kill switches, `crawl.enabled` and eMAG's ADR-013 flag. It runs through the shared polite fetcher, with drift alerts and an alert when the canary itself triggers a block.
+- **`shops:probe`:**
+  - Behind flag `shops.probe.enabled`, **off**, plus the crawl gates.
+  - It refuses removed, paused, fully kill-switched and feed-only shops, and shops whose last outreach was declined (the independent review's high finding).
+  - At most 3 requests including robots.txt and redirects, enforced in the transport (`CappedDispatcher`); ≥ 5 s spacing on the shared host slots; no retries.
+  - Pauses are shared with the recorder; every run is audited.
+- **Admin `/admin/contactari`** (migration `0018_outreach`):
+  - The retailer outreach tracker accepts business channels only, with audit rows that never store the contact or the answer text.
+  - The assisted-access exit tracker shows, per assisted shop, the 30-day success rate, this month's vendor cost, whether a replacement feed is live, and the latest outreach.
+- **Docs:** application dossiers and runbooks in `infra/bot-program/`; outreach templates (a stop request ends every collection channel); ADR-023; RoPA P12.
+Out of scope / deferred:
+- The manual-observation admin tool, which needs a founder decision on its label and on whether manual prices enter ranking, verdicts and history.
+- Awin/CJ/Tradedoubler feed mappers (accounts and real sample feeds needed, C4).
+- Adapters for shops that open up (none yet; C2/C3).
+- The optional `crawler-ro` node.
+- Key-rotation overlap (documented, not built).
+Deviations from plan:
+- Signing follows the newer working-group draft.
+- `shops:probe` needs the database (gates, shared pauses, audit); probe outcomes are kept in the YAML registry plus `audit_log`.
+- eMAG probes are gated by `source.emag.enabled`.
+- `@pretoscop/fetch` is now a web dependency; `packages/fetch` gains `request_cap` and `CappedDispatcher`.
+Verification:
+- `make verify M=21` on `daniel`: services; migrated (flags absent, so off); lint/typecheck/tests green (fetch 318, worker 138, web 94, db 87, config 54); keygen fine and no key in git; `shops:probe` refused with `CRAWL_ENABLED=false` (exit 2); production build; `ips.json` and the signed key directory check out with signing off; Playwright 4/4; clean.
+- Full suite on `daniel`: 42/42 tasks. No live request to any shop was made.
+Founder checklist: `scripts/verify/M21.checklist.md` (11 steps, including optional live probes only by a founder's decision).
+Human tasks needed: A4 (fixed egress IPs with PTR and A records); C2 (Cloudflare Verified Bots, Akamai, DataDome, Fastly applications, submitted by a founder; nothing has been submitted); C3 (outreach emails until ≥ 8 shops are contacted); C4 (affiliate network accounts); A1/B4 (domain, SRL details on `/bot` and in the dossiers); the production signing key once A1 exists.
+Risks / open questions:
+- The Web Bot Auth draft may change again; it is pinned in one place, with test vectors.
+- Signatures cover only the host, so a captured header can be replayed on the same site for up to 60 s.
+- `WEB_BOT_AUTH` must be set the same way on web and worker.
+- The canary uses up to 5 of each shop's daily requests on Mondays.
+- `legal.spec.ts` and `merchant.spec.ts` fall back to the main database when `DATABASE_URL` is not exported.
+Next module: M22, M27.
+
+### M22 — LLM-assisted matching and attribute extraction — 2026-10-28
+(Built by a delegated Opus agent; merged and re-verified by the lead.)
+Scope delivered:
+- `packages/llm` on the official `@anthropic-ai/sdk` (the SDK's own retries off: every retry would reserve budget again):
+  - model routing: Claude Haiku 5.5 by default; Claude Sonnet 5.5 for unsure, contradictory or unusable answers, and directly for offers or candidates at or above `LLM_HIGH_VALUE_RON` (3,000 lei);
+  - Message Batches ordered by prompt prefix, with a 1-hour cache on the system prompt; structured JSON output;
+  - a price table in integer nano-dollars;
+  - versioned prompts `pair_verify@1`, `attributes@1`, `category@1` (Romanian-aware; shop text is treated as data, never as instructions; fingerprints pinned by a test).
+- Cost safety: the ledger `llm_usage` reserves every request at its worst case before it is sent, under an advisory lock, so billed + estimated + reserved spend never passes `LLM_MONTHLY_CAP_EUR` (Bucharest month). Rows are settled after the call, released when the API did not process them, or kept as estimates when the outcome is unknown. Alerts fire at 80 % and 100 % and on batches stuck over 26 h. `llm_results` stores one answer per request hash, so nothing is asked twice.
+- Gray-zone policy (`packages/core/src/llm-policy.ts`): accept exactly one candidate confirmed at ≥ 0.9 with no conflicting attribute and no look-alike; reject only when every viable candidate is denied at ≥ 0.9 (`LLM_AUTO_REJECT`); everything else stays with a human; M07's hard conflicts are never overridden; decisions are `decided_by = 'llm:<model>'`, reversible from the admin.
+- Job `llm.match` (every 15 minutes; needs the API key and the flag `llm.matching.enabled`, off). Admin: the spend card, a "Decizii LLM" list with undo (`llm.revert`, audited), and the LLM's opinion next to each review candidate.
+- Eval: `match:eval:llm` reports precision, recall and review rate at thresholds 0.80–0.98, and the cost per 1,000 pairs (`--mask`, `--model escalation`, `--resume`, `--mock` labelled "not a measurement"). The eval set was rebuilt from multi-shop data: 525 pairs.
+- Data guard enforced in code: prompt inputs are whitelisted; Icecat data and seller/email/phone/user/URL fields are refused; emails and phone numbers in titles are redacted. Tests plant a seller name and Icecat specs and prove neither reaches a request body. The key comes from env only and is never logged.
+Out of scope / deferred: the real eval (no API key, A9, and no founder labels), so **precision ≥ 98 % is unmeasured**; category suggestions are a CLI only; real recorded responses after A9.
+Deviations from plan: automatic LLM rejects (configurable); attribute extraction used only as an extra conflict check; ADR-024.
+Verification: `make verify M=22` on `daniel` → tests green (llm 41, core 818, db 100+, worker 146+); M07 eval 525 pairs PASS; mock eval and a dry run on the real queue (230 items; nothing written; a real pass refused without a key); build; Playwright 5/5. Price-table estimate ≈ €0.055 per 1,000 Haiku pairs in batches (not a ledger figure).
+Founder checklist: `scripts/verify/M22.checklist.md`.
+Human tasks needed: A9 (API key with a spend limit; `LLM_MONTHLY_CAP_EUR` at or below it); 100 labels (`match:label`); run `match:eval:llm --mask` and `match:eval:llm`, and switch the flag on only on PASS at 0.90; confirm the price table against Anthropic's pricing page.
+Risks / open questions: precision unmeasured; worst-case reservations are large (≈ €0.02 per Sonnet request); the 3,000-lei high-value threshold sends many phones to Sonnet (≈ 20× Haiku cost).
+Next module: none (Phase 3 complete apart from human tasks).
+
+### M27 — Telegram bot and web push — 2026-10-28
+(Built by a delegated Opus agent on top of M19 before the machine move; finished and verified by a second Opus agent; merged by the lead with its migration regenerated as 0020_channels and its ADR renumbered to ADR-025; re-verified.)
+Scope delivered:
+- Telegram bot in the worker:
+  - `/start <token>` links the chat. The token is 192 bits, lasts 15 minutes, works once, only its SHA-256 is stored, and it reaches `/alerte` in an httpOnly cookie, never in a URL.
+  - `/urmareste <link or words> [price]`, `/alertele` with stop buttons, `/oprire` (unlinks, pauses and withdraws consent), `/ajutor`.
+  - Private chats only; stale updates dropped; per-chat limits; nothing the person writes is stored or logged.
+- Transport: long polling under an advisory lock in the single worker process (ADR-025: no inbound route, no webhook secret), one client and rate limiter for everything (25 msgs/s overall, 1/s per chat, a 429 holds every send); the token is redacted from errors and blanked for the web replicas.
+- Alerts on Telegram and Web Push use M19's evaluation, outbox and rules unchanged (known price floor, 24 h dedupe, one message per user and channel, quiet hours 22:00–08:00), with an idempotency receipt per send (`channel_deliveries`) plus the Web Push `Topic`; lost channels (404/410, blocked bot) pause their alerts.
+- Daily deals post (`telegram.deals`, 09:15) on M15's `/reduceri` rules: at most 10 drops, once a day, links to Pretoscop only.
+- Web Push:
+  - subscribe/unsubscribe/test routes with same-origin checks and capped bodies;
+  - endpoints only on the browsers' push services (FCM, Mozilla, Apple, WNS), re-checked before every send, with no redirects (no SSRF);
+  - a service worker with no fetch handler and no caching; manifest and the iOS Home Screen note.
+- `/alerte` channel preferences with a separate unticked consent per channel (`pushConsent.v1`, `telegramConsent.v1`, recorded with a daily-salted IP hash); export and delete include browsers and the Telegram link; privacy and cookies pages v0.3; RoPA P5b.
+- Migration `0020_channels` (push_subscriptions, telegram_links, telegram_link_tokens, channel_deliveries, channel_posts); flags `alerts.push.enabled`, `alerts.telegram.enabled`, `telegram.deals.enabled`, all off.
+Out of scope / deferred: a `pushsubscriptionchange` handler (a rotated subscription is removed on its 410); "any variant" in the bot; a per-account alert cap in the web form (the bot enforces 100); webhook mode; WhatsApp.
+Deviations from plan: ADR-025 (long polling; push endpoint allowlist; the web keeps the VAPID pair for the test notification); push services and Telegram classified as separate controllers (for the lawyer, B5).
+Verification: `make verify M=27` on `daniel` → 21/21 turbo tasks, CLI refusals, build under the CSP, Playwright 14/14 (5 channel tests + the 9 M19 alert tests); M19 verify re-run 9/9; nothing contacted Telegram or a real push service (mocks, test VAPID keys).
+Founder checklist: `scripts/verify/M27.checklist.md`.
+Human tasks needed: D2 (the bot from BotFather, an optional deals channel, VAPID keys from `pnpm --filter @pretoscop/notify vapid:keys`, kept in both password managers; a separate staging bot or none); B5 (consent texts, recipient classification).
+Risks / open questions: no real Telegram or push service exercised yet (iOS untested); web replicas hold the VAPID private key; the push-host allowlist needs updating if a vendor adds hosts; staging must not reuse the production bot token.
+Next module: M25 (Phase 4).

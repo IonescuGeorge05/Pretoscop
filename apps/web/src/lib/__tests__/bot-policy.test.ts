@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { BOT_CHANGELOG, BOT_POLICY, botPolicyUpdated, botUserAgents, resolveBotInfoUrl, splitEgressIps } from '../bot-policy';
+import {
+  BOT_CHANGELOG,
+  BOT_POLICY,
+  BOT_PROGRAM_STATUS_LABELS,
+  BOT_PROGRAMS,
+  botPolicyUpdated,
+  botUserAgents,
+  ipPrefixes,
+  resolveBotInfoUrl,
+  splitEgressIps,
+} from '../bot-policy';
 
 describe('bot identity', () => {
   it('publishes the exact User-Agent strings of the polite fetcher (M02)', () => {
@@ -37,5 +47,27 @@ describe('splitEgressIps', () => {
       ipv6: ['2001:db8::1', '2001:db8:1::/48'],
     });
     expect(splitEgressIps([])).toEqual({ ipv4: [], ipv6: [] });
+  });
+});
+
+describe('ipPrefixes (googlebot.json format)', () => {
+  it('turns addresses into /32 and /128 prefixes and keeps CIDR prefixes', () => {
+    expect(ipPrefixes(['203.0.113.10', '198.51.100.0/28', '2001:db8::1', '2001:db8:1::/48'])).toEqual([
+      { ipv4Prefix: '203.0.113.10/32' },
+      { ipv4Prefix: '198.51.100.0/28' },
+      { ipv6Prefix: '2001:db8::1/128' },
+      { ipv6Prefix: '2001:db8:1::/48' },
+    ]);
+    expect(ipPrefixes([])).toEqual([]);
+  });
+});
+
+describe('verification programmes', () => {
+  it('lists every programme with a Romanian status and advice for shop owners', () => {
+    expect(BOT_PROGRAMS.map((p) => p.id)).toEqual(['cloudflare', 'akamai', 'datadome', 'fastly']);
+    for (const p of BOT_PROGRAMS) {
+      expect(BOT_PROGRAM_STATUS_LABELS[p.status]).toBeTruthy();
+      expect(p.how.length).toBeGreaterThan(20);
+    }
   });
 });

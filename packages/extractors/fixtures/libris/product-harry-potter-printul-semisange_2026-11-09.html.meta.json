@@ -1,0 +1,15 @@
+{
+  "url": "https://www.libris.ro/carte/harry-potter-si-printul-semisange-j-k-rowling/42444997",
+  "final_url": "https://www.libris.ro/carte/harry-potter-si-printul-semisange-j-k-rowling/42444997",
+  "status": 200,
+  "recorded_at": "2026-11-09T06:52:58+00:00",
+  "user_agent": "Mozilla/5.0 (compatible; PretoscopBot/1.0; +https://pretoscop.ro/bot)",
+  "content_type": "text/html;charset=utf-8",
+  "bytes": 138960,
+  "recorded_with": "@pretoscop/fetch record (robots.txt obeyed, per-host interval, block detection)",
+  "robots_group": "*",
+  "redactions": [
+    "Google reCAPTCHA site key in `const RECAPTCHA_SITE_KEY` replaced by the same-length placeholder REDACTEDXXX… (M29, 2026-11-09; public repo, GitHub push protection). The parsers never read it."
+  ],
+  "edit_note": "The redaction step (sed in text mode on Windows) also turned 61 CRLF line endings into LF, so the file has 138899 bytes instead of the 138960 recorded. Whitespace only; markup and text are as recorded. Re-recording would have exceeded the three-page budget of the session."
+}

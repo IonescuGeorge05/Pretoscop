@@ -1,0 +1,4288 @@
+[
+ {
+  "id": "libris:alt:44403653",
+  "offer": {
+   "title": "Fetita care a salvat Craciunul - Matt Haig",
+   "brand": "Nemira",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Matt Haig"
+    ],
+    "bookPublisher": "NEMIRA"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Fetița care a salvat Crăciunul - Matt Haig",
+   "brand": "Nemira",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Matt Haig"
+    ],
+    "bookPublisher": "NEMIRA"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:690489",
+  "offer": {
+   "title": "Pisicile Razboinice Vol.1: In inima padurii - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 1,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Pisicile Razboinice Vol.1: În inima pădurii - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 1,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:981111",
+  "offer": {
+   "title": "Theodora Tenpenny si tabloul pierdut - Laura Marx Fitzgerald",
+   "brand": "Booklet",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Laura Marx Fitzgerald"
+    ],
+    "bookPublisher": "BOOKLET"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Theodora Tenpenny și tabloul pierdut - Laura Marx Fitzgerald",
+   "brand": "Booklet",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Laura Marx Fitzgerald"
+    ],
+    "bookPublisher": "BOOKLET"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:44403331",
+  "offer": {
+   "title": "Eu si Mos Craciun - Matt Haig",
+   "brand": "Nemira",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Matt Haig"
+    ],
+    "bookPublisher": "NEMIRA"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Eu și Moș Crăciun - Matt Haig",
+   "brand": "Nemira",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Matt Haig"
+    ],
+    "bookPublisher": "NEMIRA"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:28026446",
+  "offer": {
+   "title": "Scanteia neimblanzita - Vashti Hardy",
+   "brand": "Corint",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Vashti Hardy"
+    ],
+    "bookPublisher": "CORINT"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Scânteia neîmblânzită - Vashti Hardy",
+   "brand": "Corint",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Vashti Hardy"
+    ],
+    "bookPublisher": "CORINT"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:34456723",
+  "offer": {
+   "title": "Spiridusa adevarului merge la scoala - Matt Haig",
+   "brand": "Nemira",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Matt Haig"
+    ],
+    "bookPublisher": "NEMIRA"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Spiridușa adevărului merge la școală - Matt Haig",
+   "brand": "Nemira",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Matt Haig"
+    ],
+    "bookPublisher": "NEMIRA"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:48828262",
+  "offer": {
+   "title": "Maniunea, aniversarea lui Ba si alte patanii Seria Maniunea Vol.3 - Narine Abgarian",
+   "brand": "Frontiera",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Narine Abgarian"
+    ],
+    "bookVolume": 3,
+    "bookPublisher": "FRONTIERA"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Maniunea, aniversarea lui Ba și alte pățanii Seria Maniunea Vol.3 - Narine Abgarian",
+   "brand": "Frontiera",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Narine Abgarian"
+    ],
+    "bookVolume": 3,
+    "bookPublisher": "FRONTIERA"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:42444997",
+  "offer": {
+   "title": "Harry Potter si Printul Semisange - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "beletristica",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Harry Potter și Prințul Semisânge - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "beletristica",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:48334251",
+  "offer": {
+   "title": "Harry Potter si talismanele mortii - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Harry Potter și talismanele morții - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:27009073",
+  "offer": {
+   "title": "Spiridusa Adevarului - Matt Haig",
+   "brand": "Nemira",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Matt Haig"
+    ],
+    "bookPublisher": "NEMIRA"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Spiridușa Adevărului - Matt Haig",
+   "brand": "Nemira",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Matt Haig"
+    ],
+    "bookPublisher": "NEMIRA"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:46193056",
+  "offer": {
+   "title": "Portalul magic. Misiunile Merlin: Povestea castelului bantuit - Mary Pope Osborne",
+   "brand": "Paralela 45",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Mary Pope Osborne"
+    ],
+    "bookPublisher": "PARALELA 45"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Portalul magic. Misiunile Merlin: Povestea castelului bântuit - Mary Pope Osborne",
+   "brand": "Paralela 45",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Mary Pope Osborne"
+    ],
+    "bookPublisher": "PARALELA 45"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:35096621",
+  "offer": {
+   "title": "Harry Potter. Almanah Vrajitoresc - J. K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "beletristica",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J. K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Harry Potter. Almanah Vrăjitoresc - J. K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "beletristica",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J. K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:372457",
+  "offer": {
+   "title": "Tom Inima-Curata si tinutul Povestilor Intunecate - Ian Beck",
+   "brand": "RAO",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Ian Beck"
+    ],
+    "bookPublisher": "RAO"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Tom Inimă-Curată și ținutul Poveștilor Întunecate - Ian Beck",
+   "brand": "RAO",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Ian Beck"
+    ],
+    "bookPublisher": "RAO"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:48574526",
+  "offer": {
+   "title": "Scoala de magie si alte povestiri - Michael Ende",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Michael Ende"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Școala de magie și alte povestiri - Michael Ende",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Michael Ende"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:27727175",
+  "offer": {
+   "title": "Dragonii parjolitori. Seria Elementalii Vol.2 - Amie Kaufman",
+   "brand": "Corint",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "young-adult",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Amie Kaufman"
+    ],
+    "bookVolume": 2,
+    "bookPublisher": "CORINT"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dragonii pârjolitori. Seria Elementalii Vol.2 - Amie Kaufman",
+   "brand": "Corint",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "young-adult",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Amie Kaufman"
+    ],
+    "bookVolume": 2,
+    "bookPublisher": "CORINT"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:29163911",
+  "offer": {
+   "title": "Cronicile din Narnia Vol.5: Calatorie cu zori de zi - C. S. Lewis",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "C. S. Lewis"
+    ],
+    "bookVolume": 5,
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Cronicile din Narnia Vol.5: Călătorie cu zori de zi - C. S. Lewis",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "C. S. Lewis"
+    ],
+    "bookVolume": 5,
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:42445235",
+  "offer": {
+   "title": "Harry Potter si Ordinul Phoenix Ed. Ilustrata - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookIllustrated": true,
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Harry Potter și Ordinul Phoenix Ed. Ilustrată - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookIllustrated": true,
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:43699082",
+  "offer": {
+   "title": "Aventurile lui Dunga Cenusie: Razboinicul ratacit. Seria Pisicile Razboinice. Manga Partea 1 - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "benzi-desenate-manga",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 1,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Aventurile lui Dungă Cenușie: Războinicul rătăcit. Seria Pisicile Războinice. Manga Partea 1 - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "benzi-desenate-manga",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 1,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:44472064",
+  "offer": {
+   "title": "Anxionautii. Pierduti prin Cosmos - Iv Cel Naiv",
+   "brand": "Humanitas",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Iv Cel Naiv"
+    ],
+    "bookPublisher": "HUMANITAS"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Anxionații. Pierduți prin Cosmos - Iv Cel Naiv",
+   "brand": "Humanitas",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Iv Cel Naiv"
+    ],
+    "bookPublisher": "HUMANITAS"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:47002781",
+  "offer": {
+   "title": "Cronicile din Narnia Vol.6: Jiltul de argint - C. S. Lewis",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "C. S. Lewis"
+    ],
+    "bookVolume": 6,
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Cronicile din Narnia Vol.6: Jilțul de argint - C. S. Lewis",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "C. S. Lewis"
+    ],
+    "bookVolume": 6,
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:38414880",
+  "offer": {
+   "title": "Trezirea Dragonilor Gecko. Seria Scoala secreta a dragonilor Vol.4 - Emily Skye",
+   "brand": "Nomina",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Emily Skye"
+    ],
+    "bookVolume": 4,
+    "bookPublisher": "NOMINA"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Trezirea Dragonilor Gecko. Seria Școala secretă a dragonilor Vol.4 - Emily Skye",
+   "brand": "Nomina",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Emily Skye"
+    ],
+    "bookVolume": 4,
+    "bookPublisher": "NOMINA"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:45324874",
+  "offer": {
+   "title": "Sange de cerneala - Cornelia Funke",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Cornelia Funke"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Sânge de cerneală - Cornelia Funke",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Cornelia Funke"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:47010453",
+  "offer": {
+   "title": "Baiatul de foc - J.M. Joseph",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.M. Joseph"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Băiatul de foc - J.M. Joseph",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.M. Joseph"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:48751682",
+  "offer": {
+   "title": "Motanic - Arthur Lazar-Abdulvoap",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Arthur Lazar-Abdulvoap"
+    ],
+    "bookPublisher": "BUCURESTI"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Motanic - Arthur Lazăr-Abdulvoap",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Arthur Lazăr-Abdulvoap"
+    ],
+    "bookPublisher": "BUCURESTI"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:857051",
+  "offer": {
+   "title": "Pisicile Razboinice Vol.2: Foc si gheata - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 2,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Pisicile Războinice Vol.2: Foc și gheață - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 2,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:13149820",
+  "offer": {
+   "title": "O istorie secreta a Tarii Vampirilor 2: Cartea fetitei-vampir - Adina Popescu",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Adina Popescu"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "O istorie secretă a Țării Vampirilor 2: Cartea fetiței-vampir - Adina Popescu",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Adina Popescu"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:28173369",
+  "offer": {
+   "title": "Ramona si tata. Vol.4 - Beverly Cleary",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Beverly Cleary"
+    ],
+    "bookVolume": 4,
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Ramona și tata. Vol.4 - Beverly Cleary",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Beverly Cleary"
+    ],
+    "bookVolume": 4,
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:29034432",
+  "offer": {
+   "title": "Nascuti din lupta. Seria Elementalii Vol.3 - Amie Kaufman",
+   "brand": "Corint",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Amie Kaufman"
+    ],
+    "bookVolume": 3,
+    "bookPublisher": "CORINT"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Născuți din luptă. Seria Elementalii Vol.3 - Amie Kaufman",
+   "brand": "Corint",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Amie Kaufman"
+    ],
+    "bookVolume": 3,
+    "bookPublisher": "CORINT"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:45943828",
+  "offer": {
+   "title": "Aventurile lui Dunga Cenusie: Intoarcerea Razboinicului. Seria Pisicile Razboinice. Manga Partea 3 - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 3,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Aventurile lui Dungă Cenușie: Întoarcerea Razboinicului . Seria Pisicile Războinice. Manga Partea 3 - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 3,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:47022535",
+  "offer": {
+   "title": "Rowley prezinta: Povesti de groaza superformidabile - Jeff Kinney",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Jeff Kinney"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Rowley prezintă: Povești de groază superformidabile - Jeff Kinney",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Jeff Kinney"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:1071887",
+  "offer": {
+   "title": "Povestea lui Slither - Joseph Delaney",
+   "brand": "Corint",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Joseph Delaney"
+    ],
+    "bookPublisher": "CORINT"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Poveștea lui Slither - Joseph Delaney",
+   "brand": "Corint",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Joseph Delaney"
+    ],
+    "bookPublisher": "CORINT"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:27131643",
+  "offer": {
+   "title": "Harry Potter si prizonierul din Azkaban - J. K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J. K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Harry Potter și prizonierul din Azkaban - J. K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J. K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:42309456",
+  "offer": {
+   "title": "Aventurile lui Dunga Cenusie: Refugiul Razboinicului. Seria Pisicile Razboinice. Manga Partea 2 - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "benzi-desenate-manga",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 2,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Aventurile lui Dungă Cenușie: Refugiul Războinicului. Seria Pisicile Războinice. Manga Partea 2 - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "benzi-desenate-manga",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 2,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:47981367",
+  "offer": {
+   "title": "Peter Pan. Editie completa - James M. Barrie",
+   "brand": "Didactica Publishing House",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "James M. Barrie"
+    ],
+    "bookPublisher": "DIDACTICA PUBLISHING HOUSE"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Peter Pan. Ediție completă - James M. Barrie",
+   "brand": "Didactica Publishing House",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "James M. Barrie"
+    ],
+    "bookPublisher": "DIDACTICA PUBLISHING HOUSE"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:alt:48475399",
+  "offer": {
+   "title": "Regele hotilor - Cornelia Maria Funke",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Cornelia Maria Funke"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Regele hoților - Cornelia Maria Funke",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Cornelia Maria Funke"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "card title vs cover alt text"
+ },
+ {
+  "id": "libris:page:42444997",
+  "offer": {
+   "title": "Harry Potter si Printul Semisange - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "beletristica",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Harry Potter si Printul Semisange - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": "09786303218656",
+   "category": "beletristica",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookFormat": "hardcover",
+    "bookLanguage": "ro",
+    "bookPages": 616,
+    "bookYear": 2025,
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "fixture",
+  "note": "listing card (no ISBN) vs product page (ISBN)"
+ },
+ {
+  "id": "libris:series:44403653:44403331",
+  "offer": {
+   "title": "Fetita care a salvat Craciunul - Matt Haig",
+   "brand": "Nemira",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Matt Haig"
+    ],
+    "bookPublisher": "NEMIRA"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Eu si Mos Craciun - Matt Haig",
+   "brand": "Nemira",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Matt Haig"
+    ],
+    "bookPublisher": "NEMIRA"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:44403653:34456723",
+  "offer": {
+   "title": "Fetita care a salvat Craciunul - Matt Haig",
+   "brand": "Nemira",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Matt Haig"
+    ],
+    "bookPublisher": "NEMIRA"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Spiridusa adevarului merge la scoala - Matt Haig",
+   "brand": "Nemira",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Matt Haig"
+    ],
+    "bookPublisher": "NEMIRA"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:44403653:27009073",
+  "offer": {
+   "title": "Fetita care a salvat Craciunul - Matt Haig",
+   "brand": "Nemira",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Matt Haig"
+    ],
+    "bookPublisher": "NEMIRA"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Spiridusa Adevarului - Matt Haig",
+   "brand": "Nemira",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Matt Haig"
+    ],
+    "bookPublisher": "NEMIRA"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:690489:43699082",
+  "offer": {
+   "title": "Pisicile Razboinice Vol.1: In inima padurii - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 1,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Aventurile lui Dunga Cenusie: Razboinicul ratacit. Seria Pisicile Razboinice. Manga Partea 1 - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "benzi-desenate-manga",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 1,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:690489:857051",
+  "offer": {
+   "title": "Pisicile Razboinice Vol.1: In inima padurii - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 1,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Pisicile Razboinice Vol.2: Foc si gheata - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 2,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:690489:45943828",
+  "offer": {
+   "title": "Pisicile Razboinice Vol.1: In inima padurii - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 1,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Aventurile lui Dunga Cenusie: Intoarcerea Razboinicului. Seria Pisicile Razboinice. Manga Partea 3 - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 3,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:690489:42309456",
+  "offer": {
+   "title": "Pisicile Razboinice Vol.1: In inima padurii - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 1,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Aventurile lui Dunga Cenusie: Refugiul Razboinicului. Seria Pisicile Razboinice. Manga Partea 2 - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "benzi-desenate-manga",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 2,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:44403331:34456723",
+  "offer": {
+   "title": "Eu si Mos Craciun - Matt Haig",
+   "brand": "Nemira",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Matt Haig"
+    ],
+    "bookPublisher": "NEMIRA"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Spiridusa adevarului merge la scoala - Matt Haig",
+   "brand": "Nemira",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Matt Haig"
+    ],
+    "bookPublisher": "NEMIRA"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:44403331:27009073",
+  "offer": {
+   "title": "Eu si Mos Craciun - Matt Haig",
+   "brand": "Nemira",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Matt Haig"
+    ],
+    "bookPublisher": "NEMIRA"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Spiridusa Adevarului - Matt Haig",
+   "brand": "Nemira",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Matt Haig"
+    ],
+    "bookPublisher": "NEMIRA"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:34456723:27009073",
+  "offer": {
+   "title": "Spiridusa adevarului merge la scoala - Matt Haig",
+   "brand": "Nemira",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Matt Haig"
+    ],
+    "bookPublisher": "NEMIRA"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Spiridusa Adevarului - Matt Haig",
+   "brand": "Nemira",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Matt Haig"
+    ],
+    "bookPublisher": "NEMIRA"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:42444997:48334251",
+  "offer": {
+   "title": "Harry Potter si Printul Semisange - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "beletristica",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Harry Potter si talismanele mortii - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:42444997:35096621",
+  "offer": {
+   "title": "Harry Potter si Printul Semisange - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "beletristica",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Harry Potter. Almanah Vrajitoresc - J. K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "beletristica",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J. K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:42444997:42445235",
+  "offer": {
+   "title": "Harry Potter si Printul Semisange - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "beletristica",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Harry Potter si Ordinul Phoenix Ed. Ilustrata - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookIllustrated": true,
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:42444997:27131643",
+  "offer": {
+   "title": "Harry Potter si Printul Semisange - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "beletristica",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Harry Potter si prizonierul din Azkaban - J. K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J. K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:48334251:35096621",
+  "offer": {
+   "title": "Harry Potter si talismanele mortii - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Harry Potter. Almanah Vrajitoresc - J. K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "beletristica",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J. K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:48334251:42445235",
+  "offer": {
+   "title": "Harry Potter si talismanele mortii - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Harry Potter si Ordinul Phoenix Ed. Ilustrata - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookIllustrated": true,
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:48334251:27131643",
+  "offer": {
+   "title": "Harry Potter si talismanele mortii - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Harry Potter si prizonierul din Azkaban - J. K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J. K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:35096621:42445235",
+  "offer": {
+   "title": "Harry Potter. Almanah Vrajitoresc - J. K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "beletristica",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J. K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Harry Potter si Ordinul Phoenix Ed. Ilustrata - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookIllustrated": true,
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:35096621:27131643",
+  "offer": {
+   "title": "Harry Potter. Almanah Vrajitoresc - J. K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "beletristica",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J. K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Harry Potter si prizonierul din Azkaban - J. K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J. K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:27727175:29034432",
+  "offer": {
+   "title": "Dragonii parjolitori. Seria Elementalii Vol.2 - Amie Kaufman",
+   "brand": "Corint",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "young-adult",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Amie Kaufman"
+    ],
+    "bookVolume": 2,
+    "bookPublisher": "CORINT"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Nascuti din lupta. Seria Elementalii Vol.3 - Amie Kaufman",
+   "brand": "Corint",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Amie Kaufman"
+    ],
+    "bookVolume": 3,
+    "bookPublisher": "CORINT"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:27727175:24350144",
+  "offer": {
+   "title": "Dragonii parjolitori. Seria Elementalii Vol.2 - Amie Kaufman",
+   "brand": "Corint",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "young-adult",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Amie Kaufman"
+    ],
+    "bookVolume": 2,
+    "bookPublisher": "CORINT"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Lupii ghetii. Seria Elementalii Vol.1 - Amie Kaufman",
+   "brand": "Corint",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Amie Kaufman"
+    ],
+    "bookVolume": 1,
+    "bookPublisher": "CORINT"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:29163911:47002781",
+  "offer": {
+   "title": "Cronicile din Narnia Vol.5: Calatorie cu zori de zi - C. S. Lewis",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "C. S. Lewis"
+    ],
+    "bookVolume": 5,
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Cronicile din Narnia Vol.6: Jiltul de argint - C. S. Lewis",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "C. S. Lewis"
+    ],
+    "bookVolume": 6,
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:42445235:27131643",
+  "offer": {
+   "title": "Harry Potter si Ordinul Phoenix Ed. Ilustrata - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookIllustrated": true,
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Harry Potter si prizonierul din Azkaban - J. K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J. K. Rowling"
+    ],
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:43699082:857051",
+  "offer": {
+   "title": "Aventurile lui Dunga Cenusie: Razboinicul ratacit. Seria Pisicile Razboinice. Manga Partea 1 - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "benzi-desenate-manga",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 1,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Pisicile Razboinice Vol.2: Foc si gheata - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 2,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:43699082:45943828",
+  "offer": {
+   "title": "Aventurile lui Dunga Cenusie: Razboinicul ratacit. Seria Pisicile Razboinice. Manga Partea 1 - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "benzi-desenate-manga",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 1,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Aventurile lui Dunga Cenusie: Intoarcerea Razboinicului. Seria Pisicile Razboinice. Manga Partea 3 - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 3,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:43699082:42309456",
+  "offer": {
+   "title": "Aventurile lui Dunga Cenusie: Razboinicul ratacit. Seria Pisicile Razboinice. Manga Partea 1 - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "benzi-desenate-manga",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 1,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Aventurile lui Dunga Cenusie: Refugiul Razboinicului. Seria Pisicile Razboinice. Manga Partea 2 - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "benzi-desenate-manga",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 2,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:857051:45943828",
+  "offer": {
+   "title": "Pisicile Razboinice Vol.2: Foc si gheata - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 2,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Aventurile lui Dunga Cenusie: Intoarcerea Razboinicului. Seria Pisicile Razboinice. Manga Partea 3 - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 3,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:857051:42309456",
+  "offer": {
+   "title": "Pisicile Razboinice Vol.2: Foc si gheata - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 2,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Aventurile lui Dunga Cenusie: Refugiul Razboinicului. Seria Pisicile Razboinice. Manga Partea 2 - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "benzi-desenate-manga",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 2,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:29034432:24350144",
+  "offer": {
+   "title": "Nascuti din lupta. Seria Elementalii Vol.3 - Amie Kaufman",
+   "brand": "Corint",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Amie Kaufman"
+    ],
+    "bookVolume": 3,
+    "bookPublisher": "CORINT"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Lupii ghetii. Seria Elementalii Vol.1 - Amie Kaufman",
+   "brand": "Corint",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Amie Kaufman"
+    ],
+    "bookVolume": 1,
+    "bookPublisher": "CORINT"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "libris:series:45943828:42309456",
+  "offer": {
+   "title": "Aventurile lui Dunga Cenusie: Intoarcerea Razboinicului. Seria Pisicile Razboinice. Manga Partea 3 - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 3,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Aventurile lui Dunga Cenusie: Refugiul Razboinicului. Seria Pisicile Razboinice. Manga Partea 2 - Erin Hunter",
+   "brand": "All",
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "benzi-desenate-manga",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Erin Hunter"
+    ],
+    "bookVolume": 2,
+    "bookPublisher": "ALL"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same author, other book"
+ },
+ {
+  "id": "elefant:series:11aaa32a-65af-48af-af31-76ac85de8235:063bf7c3-3e02-4c72-b33a-26bcb6b3cea0",
+  "offer": {
+   "title": "jurnalul unui fotbalist de buzunar suturi sosete si secrete cartea intai",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 1
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "jurnalul unui fotbalist de buzunar serenade salate si surprize cartea a doua",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 2
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:11aaa32a-65af-48af-af31-76ac85de8235:7bc660e7-0c20-4ead-8635-2d23d877f6de",
+  "offer": {
+   "title": "jurnalul unui fotbalist de buzunar suturi sosete si secrete cartea intai",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 1
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "jurnalul unui fotbalist de buzunar tactici texte si tobogane cartea a treia",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 3
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:063bf7c3-3e02-4c72-b33a-26bcb6b3cea0:7bc660e7-0c20-4ead-8635-2d23d877f6de",
+  "offer": {
+   "title": "jurnalul unui fotbalist de buzunar serenade salate si surprize cartea a doua",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 2
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "jurnalul unui fotbalist de buzunar tactici texte si tobogane cartea a treia",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 3
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:d5566ae4-f147-4c46-948c-1c817d6ae3a1:f4f8f35e-6799-4c6a-8eb1-1b82186c612d",
+  "offer": {
+   "title": "tup imposibil e doar un cuvant cartea intai editia a iii a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 1,
+    "bookEdition": 3
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "tup salvatoarea iernii cartea a doua editia a ii a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 2,
+    "bookEdition": 2
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:d5566ae4-f147-4c46-948c-1c817d6ae3a1:e1120136-80df-4d20-aadf-72b0aafde6dd",
+  "offer": {
+   "title": "tup imposibil e doar un cuvant cartea intai editia a iii a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 1,
+    "bookEdition": 3
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "tup in lumea noua cartea a cincea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 5
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:d5566ae4-f147-4c46-948c-1c817d6ae3a1:2bc27c80-0855-447b-ac8d-b9d6b7e8bb6e",
+  "offer": {
+   "title": "tup imposibil e doar un cuvant cartea intai editia a iii a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 1,
+    "bookEdition": 3
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "tup si padurea incremenita cartea a treia",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 3
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:d5566ae4-f147-4c46-948c-1c817d6ae3a1:0fee875d-6d7a-4ce6-bd07-e9d4bf71aa95",
+  "offer": {
+   "title": "tup imposibil e doar un cuvant cartea intai editia a iii a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 1,
+    "bookEdition": 3
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "tup si influenterii binelui cartea a sasea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 6
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:d5566ae4-f147-4c46-948c-1c817d6ae3a1:7d82d37b-e3c3-4dad-a642-53500e5b4110",
+  "offer": {
+   "title": "tup imposibil e doar un cuvant cartea intai editia a iii a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 1,
+    "bookEdition": 3
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "tup regasirea seria povestile cristinei cartea a saptea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 7
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:d5566ae4-f147-4c46-948c-1c817d6ae3a1:172d40f3-3367-4600-8ae5-63a62cb99738",
+  "offer": {
+   "title": "tup imposibil e doar un cuvant cartea intai editia a iii a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 1,
+    "bookEdition": 3
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "tup nu ai nevoie de aripi ca sa poti zbura cartea a patra",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 4
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:cb51cf61-22f9-4bc4-ac27-d38ad300b847:e8f85e36-bfa2-49cd-a730-fff4872f7103",
+  "offer": {
+   "title": "micul print",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "micul urs",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:f4f8f35e-6799-4c6a-8eb1-1b82186c612d:e1120136-80df-4d20-aadf-72b0aafde6dd",
+  "offer": {
+   "title": "tup salvatoarea iernii cartea a doua editia a ii a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 2,
+    "bookEdition": 2
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "tup in lumea noua cartea a cincea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 5
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:f4f8f35e-6799-4c6a-8eb1-1b82186c612d:2bc27c80-0855-447b-ac8d-b9d6b7e8bb6e",
+  "offer": {
+   "title": "tup salvatoarea iernii cartea a doua editia a ii a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 2,
+    "bookEdition": 2
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "tup si padurea incremenita cartea a treia",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 3
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:f4f8f35e-6799-4c6a-8eb1-1b82186c612d:0fee875d-6d7a-4ce6-bd07-e9d4bf71aa95",
+  "offer": {
+   "title": "tup salvatoarea iernii cartea a doua editia a ii a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 2,
+    "bookEdition": 2
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "tup si influenterii binelui cartea a sasea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 6
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:f4f8f35e-6799-4c6a-8eb1-1b82186c612d:7d82d37b-e3c3-4dad-a642-53500e5b4110",
+  "offer": {
+   "title": "tup salvatoarea iernii cartea a doua editia a ii a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 2,
+    "bookEdition": 2
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "tup regasirea seria povestile cristinei cartea a saptea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 7
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:f4f8f35e-6799-4c6a-8eb1-1b82186c612d:172d40f3-3367-4600-8ae5-63a62cb99738",
+  "offer": {
+   "title": "tup salvatoarea iernii cartea a doua editia a ii a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 2,
+    "bookEdition": 2
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "tup nu ai nevoie de aripi ca sa poti zbura cartea a patra",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 4
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:e1120136-80df-4d20-aadf-72b0aafde6dd:2bc27c80-0855-447b-ac8d-b9d6b7e8bb6e",
+  "offer": {
+   "title": "tup in lumea noua cartea a cincea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 5
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "tup si padurea incremenita cartea a treia",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 3
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:e1120136-80df-4d20-aadf-72b0aafde6dd:0fee875d-6d7a-4ce6-bd07-e9d4bf71aa95",
+  "offer": {
+   "title": "tup in lumea noua cartea a cincea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 5
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "tup si influenterii binelui cartea a sasea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 6
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:e1120136-80df-4d20-aadf-72b0aafde6dd:7d82d37b-e3c3-4dad-a642-53500e5b4110",
+  "offer": {
+   "title": "tup in lumea noua cartea a cincea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 5
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "tup regasirea seria povestile cristinei cartea a saptea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 7
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:e1120136-80df-4d20-aadf-72b0aafde6dd:172d40f3-3367-4600-8ae5-63a62cb99738",
+  "offer": {
+   "title": "tup in lumea noua cartea a cincea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 5
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "tup nu ai nevoie de aripi ca sa poti zbura cartea a patra",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 4
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:416844a6-a0a9-42e0-911c-02fed1e07775:22572652-8d9e-4a02-b0e3-0d232c70fef1",
+  "offer": {
+   "title": "salvatorii seria invatatorii de grija cartea i",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 1
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "adam copilul viitorului seria invatatorii de grija cartea a iv a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 4
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:416844a6-a0a9-42e0-911c-02fed1e07775:6efa3ea7-0c20-46f8-9bb5-77a90fab4eca",
+  "offer": {
+   "title": "salvatorii seria invatatorii de grija cartea i",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 1
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "rocky seria invatatorii de grija cartea a ii a editia a ii a revizuita",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 2,
+    "bookEdition": 2
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:416844a6-a0a9-42e0-911c-02fed1e07775:0224e95e-168a-4dbe-9bb2-2bea79e7ea79",
+  "offer": {
+   "title": "salvatorii seria invatatorii de grija cartea i",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 1
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "sanziana fata soarelui seria invatatorii de grija cartea a iii a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 3
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:416844a6-a0a9-42e0-911c-02fed1e07775:8eff89a0-cd90-4c00-bbe8-6aff7c6fc834",
+  "offer": {
+   "title": "salvatorii seria invatatorii de grija cartea i",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 1
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "fiul flasnetarului seria invatatorii de grija cartea a v a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 5
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:2bc27c80-0855-447b-ac8d-b9d6b7e8bb6e:0fee875d-6d7a-4ce6-bd07-e9d4bf71aa95",
+  "offer": {
+   "title": "tup si padurea incremenita cartea a treia",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 3
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "tup si influenterii binelui cartea a sasea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 6
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:2bc27c80-0855-447b-ac8d-b9d6b7e8bb6e:7d82d37b-e3c3-4dad-a642-53500e5b4110",
+  "offer": {
+   "title": "tup si padurea incremenita cartea a treia",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 3
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "tup regasirea seria povestile cristinei cartea a saptea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 7
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:2bc27c80-0855-447b-ac8d-b9d6b7e8bb6e:172d40f3-3367-4600-8ae5-63a62cb99738",
+  "offer": {
+   "title": "tup si padurea incremenita cartea a treia",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 3
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "tup nu ai nevoie de aripi ca sa poti zbura cartea a patra",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 4
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:0fee875d-6d7a-4ce6-bd07-e9d4bf71aa95:7d82d37b-e3c3-4dad-a642-53500e5b4110",
+  "offer": {
+   "title": "tup si influenterii binelui cartea a sasea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 6
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "tup regasirea seria povestile cristinei cartea a saptea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 7
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:0fee875d-6d7a-4ce6-bd07-e9d4bf71aa95:172d40f3-3367-4600-8ae5-63a62cb99738",
+  "offer": {
+   "title": "tup si influenterii binelui cartea a sasea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 6
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "tup nu ai nevoie de aripi ca sa poti zbura cartea a patra",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 4
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:7d82d37b-e3c3-4dad-a642-53500e5b4110:172d40f3-3367-4600-8ae5-63a62cb99738",
+  "offer": {
+   "title": "tup regasirea seria povestile cristinei cartea a saptea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 7
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "tup nu ai nevoie de aripi ca sa poti zbura cartea a patra",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 4
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:22572652-8d9e-4a02-b0e3-0d232c70fef1:6efa3ea7-0c20-46f8-9bb5-77a90fab4eca",
+  "offer": {
+   "title": "adam copilul viitorului seria invatatorii de grija cartea a iv a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 4
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "rocky seria invatatorii de grija cartea a ii a editia a ii a revizuita",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 2,
+    "bookEdition": 2
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:22572652-8d9e-4a02-b0e3-0d232c70fef1:0224e95e-168a-4dbe-9bb2-2bea79e7ea79",
+  "offer": {
+   "title": "adam copilul viitorului seria invatatorii de grija cartea a iv a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 4
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "sanziana fata soarelui seria invatatorii de grija cartea a iii a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 3
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:22572652-8d9e-4a02-b0e3-0d232c70fef1:8eff89a0-cd90-4c00-bbe8-6aff7c6fc834",
+  "offer": {
+   "title": "adam copilul viitorului seria invatatorii de grija cartea a iv a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 4
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "fiul flasnetarului seria invatatorii de grija cartea a v a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 5
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:63ccd707-9103-4558-bac7-01ffd468de5e:cbfcf6ab-09b1-4a75-a4f2-a79efa1d28fd",
+  "offer": {
+   "title": "monstrul apelor seria capitanul codita si micii exploratori volumul 2",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 2
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "monstrul care nu era",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:6efa3ea7-0c20-46f8-9bb5-77a90fab4eca:0224e95e-168a-4dbe-9bb2-2bea79e7ea79",
+  "offer": {
+   "title": "rocky seria invatatorii de grija cartea a ii a editia a ii a revizuita",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 2,
+    "bookEdition": 2
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "sanziana fata soarelui seria invatatorii de grija cartea a iii a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 3
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:6efa3ea7-0c20-46f8-9bb5-77a90fab4eca:8eff89a0-cd90-4c00-bbe8-6aff7c6fc834",
+  "offer": {
+   "title": "rocky seria invatatorii de grija cartea a ii a editia a ii a revizuita",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 2,
+    "bookEdition": 2
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "fiul flasnetarului seria invatatorii de grija cartea a v a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 5
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:0224e95e-168a-4dbe-9bb2-2bea79e7ea79:8eff89a0-cd90-4c00-bbe8-6aff7c6fc834",
+  "offer": {
+   "title": "sanziana fata soarelui seria invatatorii de grija cartea a iii a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 3
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "fiul flasnetarului seria invatatorii de grija cartea a v a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 5
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:0c7251a1-9a02-469a-9a1b-f370ec833d23:cbc53219-f477-4522-8c0d-77b3a2041025",
+  "offer": {
+   "title": "printesa si bobul de mazare nivelul 2 carte cu majuscule prima mea lectura",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "vulpea si barza nivelul 2 carte cu majuscule prima mea lectura",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:0c7251a1-9a02-469a-9a1b-f370ec833d23:b5185762-075e-4e80-abd5-59e3ddfc0068",
+  "offer": {
+   "title": "printesa si bobul de mazare nivelul 2 carte cu majuscule prima mea lectura",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "mica sirena nivelul 2 carte cu despartiri in silabe prima mea lectura",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:series:11604db4-f991-409f-be86-8221fd5dc90e:b6197f92-7ee9-4dc2-9310-ab3d4a98a174",
+  "offer": {
+   "title": "odiseea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "odiseea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same title, two products (other edition)"
+ },
+ {
+  "id": "elefant:series:cbc53219-f477-4522-8c0d-77b3a2041025:b5185762-075e-4e80-abd5-59e3ddfc0068",
+  "offer": {
+   "title": "vulpea si barza nivelul 2 carte cu majuscule prima mea lectura",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "mica sirena nivelul 2 carte cu despartiri in silabe prima mea lectura",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "same series, other volume"
+ },
+ {
+  "id": "elefant:tup:f4f8f35e-6799-4c6a-8eb1-1b82186c612d",
+  "offer": {
+   "title": "tup salvatoarea iernii cartea a doua editia a ii a",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 2,
+    "bookEdition": 2
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Tup. Imposibil e doar un cuvant. Cartea intai. Editia a III-a",
+   "brand": "Curtea Veche",
+   "mpnNorm": null,
+   "gtin14": "09786064402332",
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Alex Donovici"
+    ],
+    "bookFormat": "hardcover",
+    "bookVolume": 1,
+    "bookEdition": 3,
+    "bookLanguage": "ro",
+    "bookPages": 96,
+    "bookYear": 2019,
+    "bookPublisher": "Curtea Veche Publishing"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "Tup volume vs the recorded Tup 1 page"
+ },
+ {
+  "id": "elefant:tup:e1120136-80df-4d20-aadf-72b0aafde6dd",
+  "offer": {
+   "title": "tup in lumea noua cartea a cincea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 5
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Tup. Imposibil e doar un cuvant. Cartea intai. Editia a III-a",
+   "brand": "Curtea Veche",
+   "mpnNorm": null,
+   "gtin14": "09786064402332",
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Alex Donovici"
+    ],
+    "bookFormat": "hardcover",
+    "bookVolume": 1,
+    "bookEdition": 3,
+    "bookLanguage": "ro",
+    "bookPages": 96,
+    "bookYear": 2019,
+    "bookPublisher": "Curtea Veche Publishing"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "Tup volume vs the recorded Tup 1 page"
+ },
+ {
+  "id": "elefant:tup:2bc27c80-0855-447b-ac8d-b9d6b7e8bb6e",
+  "offer": {
+   "title": "tup si padurea incremenita cartea a treia",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 3
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Tup. Imposibil e doar un cuvant. Cartea intai. Editia a III-a",
+   "brand": "Curtea Veche",
+   "mpnNorm": null,
+   "gtin14": "09786064402332",
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Alex Donovici"
+    ],
+    "bookFormat": "hardcover",
+    "bookVolume": 1,
+    "bookEdition": 3,
+    "bookLanguage": "ro",
+    "bookPages": 96,
+    "bookYear": 2019,
+    "bookPublisher": "Curtea Veche Publishing"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "Tup volume vs the recorded Tup 1 page"
+ },
+ {
+  "id": "elefant:tup:0fee875d-6d7a-4ce6-bd07-e9d4bf71aa95",
+  "offer": {
+   "title": "tup si influenterii binelui cartea a sasea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 6
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Tup. Imposibil e doar un cuvant. Cartea intai. Editia a III-a",
+   "brand": "Curtea Veche",
+   "mpnNorm": null,
+   "gtin14": "09786064402332",
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Alex Donovici"
+    ],
+    "bookFormat": "hardcover",
+    "bookVolume": 1,
+    "bookEdition": 3,
+    "bookLanguage": "ro",
+    "bookPages": 96,
+    "bookYear": 2019,
+    "bookPublisher": "Curtea Veche Publishing"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "Tup volume vs the recorded Tup 1 page"
+ },
+ {
+  "id": "elefant:tup:7d82d37b-e3c3-4dad-a642-53500e5b4110",
+  "offer": {
+   "title": "tup regasirea seria povestile cristinei cartea a saptea",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 7
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Tup. Imposibil e doar un cuvant. Cartea intai. Editia a III-a",
+   "brand": "Curtea Veche",
+   "mpnNorm": null,
+   "gtin14": "09786064402332",
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Alex Donovici"
+    ],
+    "bookFormat": "hardcover",
+    "bookVolume": 1,
+    "bookEdition": 3,
+    "bookLanguage": "ro",
+    "bookPages": 96,
+    "bookYear": 2019,
+    "bookPublisher": "Curtea Veche Publishing"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "Tup volume vs the recorded Tup 1 page"
+ },
+ {
+  "id": "elefant:tup:172d40f3-3367-4600-8ae5-63a62cb99738",
+  "offer": {
+   "title": "tup nu ai nevoie de aripi ca sa poti zbura cartea a patra",
+   "brand": null,
+   "mpnNorm": null,
+   "gtin14": null,
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookVolume": 4
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Tup. Imposibil e doar un cuvant. Cartea intai. Editia a III-a",
+   "brand": "Curtea Veche",
+   "mpnNorm": null,
+   "gtin14": "09786064402332",
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Alex Donovici"
+    ],
+    "bookFormat": "hardcover",
+    "bookVolume": 1,
+    "bookEdition": 3,
+    "bookLanguage": "ro",
+    "bookPages": 96,
+    "bookYear": 2019,
+    "bookPublisher": "Curtea Veche Publishing"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family",
+  "note": "Tup volume vs the recorded Tup 1 page"
+ },
+ {
+  "id": "synthetic:hp6:elefant-style",
+  "offer": {
+   "title": "Harry Potter și Prințul Semisânge",
+   "brand": "Arthur",
+   "mpnNorm": null,
+   "gtin14": "09786303218656",
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookFormat": "hardcover",
+    "bookLanguage": "ro"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Harry Potter si Printul Semisange - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": "09786303218656",
+   "category": "beletristica",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookFormat": "hardcover",
+    "bookLanguage": "ro",
+    "bookPages": 616,
+    "bookYear": 2025,
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic",
+  "note": "same ISBN, Elefant style"
+ },
+ {
+  "id": "synthetic:tup1:libris-style",
+  "offer": {
+   "title": "Tup. IMPOSIBIL e doar un cuvant. Cartea intai - Alex Donovici",
+   "brand": "Curtea Veche",
+   "mpnNorm": null,
+   "gtin14": "09786064402332",
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Alex Donovici"
+    ],
+    "bookVolume": 1,
+    "bookPublisher": "CURTEA VECHE"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Tup. Imposibil e doar un cuvant. Cartea intai. Editia a III-a",
+   "brand": "Curtea Veche",
+   "mpnNorm": null,
+   "gtin14": "09786064402332",
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Alex Donovici"
+    ],
+    "bookFormat": "hardcover",
+    "bookVolume": 1,
+    "bookEdition": 3,
+    "bookLanguage": "ro",
+    "bookPages": 96,
+    "bookYear": 2019,
+    "bookPublisher": "Curtea Veche Publishing"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic",
+  "note": "same ISBN, Libris style"
+ },
+ {
+  "id": "synthetic:hp6:other-isbn",
+  "offer": {
+   "title": "Harry Potter si Printul Semisange - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": "09786303218700",
+   "category": "beletristica",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookFormat": "paperback",
+    "bookLanguage": "ro",
+    "bookPages": 616,
+    "bookYear": 2025,
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Harry Potter si Printul Semisange - J.K. Rowling",
+   "brand": "Art",
+   "mpnNorm": null,
+   "gtin14": "09786303218656",
+   "category": "beletristica",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "J.K. Rowling"
+    ],
+    "bookFormat": "hardcover",
+    "bookLanguage": "ro",
+    "bookPages": 616,
+    "bookYear": 2025,
+    "bookPublisher": "GRUPUL EDITORIAL ART"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "synthetic",
+  "note": "same title, other ISBN (paperback)"
+ },
+ {
+  "id": "synthetic:tup1:other-edition",
+  "offer": {
+   "title": "Tup. Imposibil e doar un cuvant. Cartea intai. Editia a II-a",
+   "brand": "Curtea Veche",
+   "mpnNorm": null,
+   "gtin14": "09786064409904",
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Alex Donovici"
+    ],
+    "bookFormat": "hardcover",
+    "bookVolume": 1,
+    "bookEdition": 2,
+    "bookLanguage": "ro",
+    "bookPages": 96,
+    "bookYear": 2019,
+    "bookPublisher": "Curtea Veche Publishing"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Tup. Imposibil e doar un cuvant. Cartea intai. Editia a III-a",
+   "brand": "Curtea Veche",
+   "mpnNorm": null,
+   "gtin14": "09786064402332",
+   "category": "carti-pentru-copii",
+   "attributes": {
+    "kind": "book",
+    "bookSet": false,
+    "bookAuthors": [
+     "Alex Donovici"
+    ],
+    "bookFormat": "hardcover",
+    "bookVolume": 1,
+    "bookEdition": 3,
+    "bookLanguage": "ro",
+    "bookPages": 96,
+    "bookYear": 2019,
+    "bookPublisher": "Curtea Veche Publishing"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "synthetic",
+  "note": "edition 2 vs edition 3"
+ }
+]

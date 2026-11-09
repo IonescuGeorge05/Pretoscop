@@ -1,0 +1,3480 @@
+[
+ {
+  "id": "beauty:sauvage:edt60:0-1",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage, 60 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000079199",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 60,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Eau de Toilette 60ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000079199",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 60,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:sauvage:edt60:0-2",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage, 60 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000079199",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 60,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "DIOR Sauvage EDT 60 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000079199",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 60,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:sauvage:edt100:0-1",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage, 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000158382",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Eau de Toilette 100ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000158382",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:sauvage:edt100:0-2",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage, 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000158382",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "DIOR Sauvage EDT 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000158382",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:sauvage:edt200:0-1",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage, 200 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000237575",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 200,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Eau de Toilette 200ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000237575",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 200,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:sauvage:edt200:0-2",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage, 200 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000237575",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 200,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "DIOR Sauvage EDT 200 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000237575",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 200,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:sauvage:edp100:0-1",
+  "offer": {
+   "title": "Apă de parfum Dior Sauvage, 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000316768",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Eau de Parfum 100ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000316768",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:sauvage:edp100:0-2",
+  "offer": {
+   "title": "Apă de parfum Dior Sauvage, 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000316768",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "DIOR Sauvage EDP 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000316768",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:sauvage:parfum100:0-1",
+  "offer": {
+   "title": "Parfum Dior Sauvage, 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000395954",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Parfum 100ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000395954",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "parfum"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:sauvage:parfum100:0-2",
+  "offer": {
+   "title": "Parfum Dior Sauvage, 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000395954",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "DIOR Sauvage Parfum 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000395954",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "parfum"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:sauvage:elixir60:0-1",
+  "offer": {
+   "title": "Parfum Dior Sauvage Elixir, 60 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000475144",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 60
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Elixir Parfum 60ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000475144",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 60,
+    "concentration": "parfum"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:sauvage:elixir60:0-2",
+  "offer": {
+   "title": "Parfum Dior Sauvage Elixir, 60 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000475144",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 60
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "DIOR Sauvage Elixir Parfum 60 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000475144",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 60,
+    "concentration": "parfum"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:sauvage:edt100tester:0-1",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage Tester, 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000554337",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": true,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Eau de Toilette Tester 100ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000554337",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": true,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:sauvage:edt100tester:0-2",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage Tester, 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000554337",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": true,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "DIOR Sauvage EDT Tester 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000554337",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": true,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:sauvage:edt60~edt100",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage, 60 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000079199",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 60,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Eau de Toilette 100ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000158382",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:sauvage:edt60~edt200",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage, 60 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000079199",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 60,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Eau de Toilette 200ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000237575",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 200,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:sauvage:edt60~edp100",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage, 60 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000079199",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 60,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Eau de Parfum 100ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000316768",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:sauvage:edt60~parfum100",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage, 60 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000079199",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 60,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Parfum 100ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000395954",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "parfum"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:sauvage:edt60~elixir60",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage, 60 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000079199",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 60,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Elixir Parfum 60ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000475144",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 60,
+    "concentration": "parfum"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:sauvage:edt60~edt100tester",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage, 60 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000079199",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 60,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Eau de Toilette Tester 100ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000554337",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": true,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:sauvage:edt100~edt200",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage, 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000158382",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Eau de Toilette 200ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000237575",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 200,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:sauvage:edt100~edp100",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage, 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000158382",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Eau de Parfum 100ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000316768",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:sauvage:edt100~parfum100",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage, 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000158382",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Parfum 100ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000395954",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "parfum"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:sauvage:edt100~elixir60",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage, 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000158382",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Elixir Parfum 60ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000475144",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 60,
+    "concentration": "parfum"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:sauvage:edt100~edt100tester",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage, 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000158382",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Eau de Toilette Tester 100ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000554337",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": true,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:sauvage:edt200~edp100",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage, 200 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000237575",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 200,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Eau de Parfum 100ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000316768",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:sauvage:edt200~parfum100",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage, 200 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000237575",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 200,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Parfum 100ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000395954",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "parfum"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:sauvage:edt200~elixir60",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage, 200 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000237575",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 200,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Elixir Parfum 60ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000475144",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 60,
+    "concentration": "parfum"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:sauvage:edt200~edt100tester",
+  "offer": {
+   "title": "Apă de toaletă Dior Sauvage, 200 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000237575",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 200,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Eau de Toilette Tester 100ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000554337",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": true,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:sauvage:edp100~parfum100",
+  "offer": {
+   "title": "Apă de parfum Dior Sauvage, 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000316768",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Parfum 100ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000395954",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "parfum"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:sauvage:edp100~elixir60",
+  "offer": {
+   "title": "Apă de parfum Dior Sauvage, 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000316768",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Elixir Parfum 60ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000475144",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 60,
+    "concentration": "parfum"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:sauvage:edp100~edt100tester",
+  "offer": {
+   "title": "Apă de parfum Dior Sauvage, 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000316768",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Eau de Toilette Tester 100ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000554337",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": true,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:sauvage:parfum100~elixir60",
+  "offer": {
+   "title": "Parfum Dior Sauvage, 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000395954",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Elixir Parfum 60ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000475144",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 60,
+    "concentration": "parfum"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:sauvage:parfum100~edt100tester",
+  "offer": {
+   "title": "Parfum Dior Sauvage, 100 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000395954",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Eau de Toilette Tester 100ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000554337",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": true,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:sauvage:elixir60~edt100tester",
+  "offer": {
+   "title": "Parfum Dior Sauvage Elixir, 60 ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000475144",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 60
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Dior Sauvage Eau de Toilette Tester 100ml",
+   "brand": "Dior",
+   "mpnNorm": null,
+   "gtin14": "05941000554337",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": true,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:coco:edp50:0-1",
+  "offer": {
+   "title": "Apă de parfum Chanel Coco Mademoiselle, 50 ml",
+   "brand": "Chanel",
+   "mpnNorm": null,
+   "gtin14": "05941000633520",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Chanel Coco Mademoiselle Eau de Parfum 50ml",
+   "brand": "Chanel",
+   "mpnNorm": null,
+   "gtin14": "05941000633520",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:coco:edp50:0-2",
+  "offer": {
+   "title": "Apă de parfum Chanel Coco Mademoiselle, 50 ml",
+   "brand": "Chanel",
+   "mpnNorm": null,
+   "gtin14": "05941000633520",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "CHANEL Coco Mademoiselle EDP 50 ml",
+   "brand": "Chanel",
+   "mpnNorm": null,
+   "gtin14": "05941000633520",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:coco:edp100:0-1",
+  "offer": {
+   "title": "Apă de parfum Chanel Coco Mademoiselle, 100 ml",
+   "brand": "Chanel",
+   "mpnNorm": null,
+   "gtin14": "05941000712713",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Chanel Coco Mademoiselle Eau de Parfum 100ml",
+   "brand": "Chanel",
+   "mpnNorm": null,
+   "gtin14": "05941000712713",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:coco:edp100:0-2",
+  "offer": {
+   "title": "Apă de parfum Chanel Coco Mademoiselle, 100 ml",
+   "brand": "Chanel",
+   "mpnNorm": null,
+   "gtin14": "05941000712713",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "CHANEL Coco Mademoiselle EDP 100 ml",
+   "brand": "Chanel",
+   "mpnNorm": null,
+   "gtin14": "05941000712713",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:coco:edt100:0-1",
+  "offer": {
+   "title": "Apă de toaletă Chanel Coco Mademoiselle, 100 ml",
+   "brand": "Chanel",
+   "mpnNorm": null,
+   "gtin14": "05941000791909",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Chanel Coco Mademoiselle Eau de Toilette 100ml",
+   "brand": "Chanel",
+   "mpnNorm": null,
+   "gtin14": "05941000791909",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:coco:edt100:0-2",
+  "offer": {
+   "title": "Apă de toaletă Chanel Coco Mademoiselle, 100 ml",
+   "brand": "Chanel",
+   "mpnNorm": null,
+   "gtin14": "05941000791909",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "CHANEL Coco Mademoiselle EDT 100 ml",
+   "brand": "Chanel",
+   "mpnNorm": null,
+   "gtin14": "05941000791909",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:coco:edp50~edp100",
+  "offer": {
+   "title": "Apă de parfum Chanel Coco Mademoiselle, 50 ml",
+   "brand": "Chanel",
+   "mpnNorm": null,
+   "gtin14": "05941000633520",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Chanel Coco Mademoiselle Eau de Parfum 100ml",
+   "brand": "Chanel",
+   "mpnNorm": null,
+   "gtin14": "05941000712713",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:coco:edp50~edt100",
+  "offer": {
+   "title": "Apă de parfum Chanel Coco Mademoiselle, 50 ml",
+   "brand": "Chanel",
+   "mpnNorm": null,
+   "gtin14": "05941000633520",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Chanel Coco Mademoiselle Eau de Toilette 100ml",
+   "brand": "Chanel",
+   "mpnNorm": null,
+   "gtin14": "05941000791909",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:coco:edp100~edt100",
+  "offer": {
+   "title": "Apă de parfum Chanel Coco Mademoiselle, 100 ml",
+   "brand": "Chanel",
+   "mpnNorm": null,
+   "gtin14": "05941000712713",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Chanel Coco Mademoiselle Eau de Toilette 100ml",
+   "brand": "Chanel",
+   "mpnNorm": null,
+   "gtin14": "05941000791909",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:million:edt50:0-1",
+  "offer": {
+   "title": "Apă de toaletă Rabanne 1 Million, 50 ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941000871090",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Rabanne 1 Million Eau de Toilette 50ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941000871090",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:million:edt50:0-2",
+  "offer": {
+   "title": "Apă de toaletă Rabanne 1 Million, 50 ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941000871090",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "RABANNE 1 Million EDT 50 ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941000871090",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:million:edt100:0-1",
+  "offer": {
+   "title": "Apă de toaletă Rabanne 1 Million, 100 ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941000950283",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Rabanne 1 Million Eau de Toilette 100ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941000950283",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:million:edt100:0-2",
+  "offer": {
+   "title": "Apă de toaletă Rabanne 1 Million, 100 ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941000950283",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "RABANNE 1 Million EDT 100 ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941000950283",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:million:set100:0-1",
+  "offer": {
+   "title": "Apă de toaletă Rabanne 1 Million Set cadou + Deodorant 150 ml, 100 ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941001029476",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": true,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 150,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Rabanne 1 Million Eau de Toilette Set cadou + Deodorant 150 ml 100ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941001029476",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": true,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 150,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:million:set100:0-2",
+  "offer": {
+   "title": "Apă de toaletă Rabanne 1 Million Set cadou + Deodorant 150 ml, 100 ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941001029476",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": true,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 150,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "RABANNE 1 Million EDT Set cadou + Deodorant 150 ml 100 ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941001029476",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": true,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 150,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:million:elixir100:0-1",
+  "offer": {
+   "title": "Parfum Rabanne 1 Million Elixir, 100 ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941001108669",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Rabanne 1 Million Elixir Parfum 100ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941001108669",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "parfum"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:million:elixir100:0-2",
+  "offer": {
+   "title": "Parfum Rabanne 1 Million Elixir, 100 ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941001108669",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "RABANNE 1 Million Elixir Parfum 100 ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941001108669",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "parfum"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:million:edt50~edt100",
+  "offer": {
+   "title": "Apă de toaletă Rabanne 1 Million, 50 ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941000871090",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Rabanne 1 Million Eau de Toilette 100ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941000950283",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:million:edt50~set100",
+  "offer": {
+   "title": "Apă de toaletă Rabanne 1 Million, 50 ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941000871090",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Rabanne 1 Million Eau de Toilette Set cadou + Deodorant 150 ml 100ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941001029476",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": true,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 150,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:million:edt50~elixir100",
+  "offer": {
+   "title": "Apă de toaletă Rabanne 1 Million, 50 ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941000871090",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Rabanne 1 Million Elixir Parfum 100ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941001108669",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "parfum"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:million:edt100~set100",
+  "offer": {
+   "title": "Apă de toaletă Rabanne 1 Million, 100 ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941000950283",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Rabanne 1 Million Eau de Toilette Set cadou + Deodorant 150 ml 100ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941001029476",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": true,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 150,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:million:edt100~elixir100",
+  "offer": {
+   "title": "Apă de toaletă Rabanne 1 Million, 100 ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941000950283",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Rabanne 1 Million Elixir Parfum 100ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941001108669",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "parfum"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:million:set100~elixir100",
+  "offer": {
+   "title": "Apă de toaletă Rabanne 1 Million Set cadou + Deodorant 150 ml, 100 ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941001029476",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": true,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 150,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Rabanne 1 Million Elixir Parfum 100ml",
+   "brand": "Rabanne",
+   "mpnNorm": null,
+   "gtin14": "05941001108669",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "parfum"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:viebelle:edp50:0-1",
+  "offer": {
+   "title": "Apă de parfum Lancôme La Vie Est Belle, 50 ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001187855",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Lancôme La Vie Est Belle Eau de Parfum 50ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001187855",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:viebelle:edp50:0-2",
+  "offer": {
+   "title": "Apă de parfum Lancôme La Vie Est Belle, 50 ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001187855",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "LANCÔME La Vie Est Belle EDP 50 ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001187855",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:viebelle:edp100:0-1",
+  "offer": {
+   "title": "Apă de parfum Lancôme La Vie Est Belle, 100 ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001267045",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Lancôme La Vie Est Belle Eau de Parfum 100ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001267045",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:viebelle:edp100:0-2",
+  "offer": {
+   "title": "Apă de parfum Lancôme La Vie Est Belle, 100 ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001267045",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "LANCÔME La Vie Est Belle EDP 100 ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001267045",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:viebelle:edp100refill:0-1",
+  "offer": {
+   "title": "Apă de parfum Lancôme La Vie Est Belle Refill, 100 ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001346238",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": true,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Lancôme La Vie Est Belle Eau de Parfum Refill 100ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001346238",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": true,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:viebelle:edp100refill:0-2",
+  "offer": {
+   "title": "Apă de parfum Lancôme La Vie Est Belle Refill, 100 ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001346238",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": true,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "LANCÔME La Vie Est Belle EDP Refill 100 ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001346238",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": true,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:viebelle:intense50:0-1",
+  "offer": {
+   "title": "Apă de parfum Lancôme La Vie Est Belle Intense, 50 ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001425421",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Lancôme La Vie Est Belle Eau de Parfum Intense 50ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001425421",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:viebelle:intense50:0-2",
+  "offer": {
+   "title": "Apă de parfum Lancôme La Vie Est Belle Intense, 50 ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001425421",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "LANCÔME La Vie Est Belle EDP Intense 50 ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001425421",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:viebelle:edp50~edp100",
+  "offer": {
+   "title": "Apă de parfum Lancôme La Vie Est Belle, 50 ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001187855",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Lancôme La Vie Est Belle Eau de Parfum 100ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001267045",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:viebelle:edp50~edp100refill",
+  "offer": {
+   "title": "Apă de parfum Lancôme La Vie Est Belle, 50 ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001187855",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Lancôme La Vie Est Belle Eau de Parfum Refill 100ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001346238",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": true,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:viebelle:edp50~intense50",
+  "offer": {
+   "title": "Apă de parfum Lancôme La Vie Est Belle, 50 ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001187855",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Lancôme La Vie Est Belle Eau de Parfum Intense 50ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001425421",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:viebelle:edp100~edp100refill",
+  "offer": {
+   "title": "Apă de parfum Lancôme La Vie Est Belle, 100 ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001267045",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Lancôme La Vie Est Belle Eau de Parfum Refill 100ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001346238",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": true,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:viebelle:edp100~intense50",
+  "offer": {
+   "title": "Apă de parfum Lancôme La Vie Est Belle, 100 ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001267045",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Lancôme La Vie Est Belle Eau de Parfum Intense 50ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001425421",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:viebelle:edp100refill~intense50",
+  "offer": {
+   "title": "Apă de parfum Lancôme La Vie Est Belle Refill, 100 ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001346238",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": true,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Lancôme La Vie Est Belle Eau de Parfum Intense 50ml",
+   "brand": "Lancôme",
+   "mpnNorm": null,
+   "gtin14": "05941001425421",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:bottled:edt100:0-1",
+  "offer": {
+   "title": "Apă de toaletă Hugo Boss Boss Bottled, 100 ml",
+   "brand": "Hugo Boss",
+   "mpnNorm": null,
+   "gtin14": "05941001504614",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Hugo Boss Boss Bottled Eau de Toilette 100ml",
+   "brand": "Hugo Boss",
+   "mpnNorm": null,
+   "gtin14": "05941001504614",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:bottled:edt100:0-2",
+  "offer": {
+   "title": "Apă de toaletă Hugo Boss Boss Bottled, 100 ml",
+   "brand": "Hugo Boss",
+   "mpnNorm": null,
+   "gtin14": "05941001504614",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "HUGO BOSS Boss Bottled EDT 100 ml",
+   "brand": "Hugo Boss",
+   "mpnNorm": null,
+   "gtin14": "05941001504614",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:bottled:edt200:0-1",
+  "offer": {
+   "title": "Apă de toaletă Hugo Boss Boss Bottled, 200 ml",
+   "brand": "Hugo Boss",
+   "mpnNorm": null,
+   "gtin14": "05941001583800",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 200,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Hugo Boss Boss Bottled Eau de Toilette 200ml",
+   "brand": "Hugo Boss",
+   "mpnNorm": null,
+   "gtin14": "05941001583800",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 200,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:bottled:edt200:0-2",
+  "offer": {
+   "title": "Apă de toaletă Hugo Boss Boss Bottled, 200 ml",
+   "brand": "Hugo Boss",
+   "mpnNorm": null,
+   "gtin14": "05941001583800",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 200,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "HUGO BOSS Boss Bottled EDT 200 ml",
+   "brand": "Hugo Boss",
+   "mpnNorm": null,
+   "gtin14": "05941001583800",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 200,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:bottled:edp100:0-1",
+  "offer": {
+   "title": "Apă de parfum Hugo Boss Boss Bottled, 100 ml",
+   "brand": "Hugo Boss",
+   "mpnNorm": null,
+   "gtin14": "05941001662994",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Hugo Boss Boss Bottled Eau de Parfum 100ml",
+   "brand": "Hugo Boss",
+   "mpnNorm": null,
+   "gtin14": "05941001662994",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:bottled:edp100:0-2",
+  "offer": {
+   "title": "Apă de parfum Hugo Boss Boss Bottled, 100 ml",
+   "brand": "Hugo Boss",
+   "mpnNorm": null,
+   "gtin14": "05941001662994",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "HUGO BOSS Boss Bottled EDP 100 ml",
+   "brand": "Hugo Boss",
+   "mpnNorm": null,
+   "gtin14": "05941001662994",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:bottled:edt100~edt200",
+  "offer": {
+   "title": "Apă de toaletă Hugo Boss Boss Bottled, 100 ml",
+   "brand": "Hugo Boss",
+   "mpnNorm": null,
+   "gtin14": "05941001504614",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Hugo Boss Boss Bottled Eau de Toilette 200ml",
+   "brand": "Hugo Boss",
+   "mpnNorm": null,
+   "gtin14": "05941001583800",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 200,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:bottled:edt100~edp100",
+  "offer": {
+   "title": "Apă de toaletă Hugo Boss Boss Bottled, 100 ml",
+   "brand": "Hugo Boss",
+   "mpnNorm": null,
+   "gtin14": "05941001504614",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Hugo Boss Boss Bottled Eau de Parfum 100ml",
+   "brand": "Hugo Boss",
+   "mpnNorm": null,
+   "gtin14": "05941001662994",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:bottled:edt200~edp100",
+  "offer": {
+   "title": "Apă de toaletă Hugo Boss Boss Bottled, 200 ml",
+   "brand": "Hugo Boss",
+   "mpnNorm": null,
+   "gtin14": "05941001583800",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 200,
+    "concentration": "edt"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Hugo Boss Boss Bottled Eau de Parfum 100ml",
+   "brand": "Hugo Boss",
+   "mpnNorm": null,
+   "gtin14": "05941001662994",
+   "category": "parfumuri",
+   "attributes": {
+    "kind": "fragrance",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 100,
+    "concentration": "edp"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:superstay:s20:0-1",
+  "offer": {
+   "title": "Ruj lichid Maybelline SuperStay Matte Ink, nuanța 20",
+   "brand": "Maybelline",
+   "mpnNorm": null,
+   "gtin14": "05941001742184",
+   "category": "machiaj",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "shade": "20"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "MAYBELLINE SuperStay Matte Ink ruj de buze mat nr. 20",
+   "brand": "Maybelline",
+   "mpnNorm": null,
+   "gtin14": "05941001742184",
+   "category": "frumusete",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "shade": "20"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:superstay:s20:0-2",
+  "offer": {
+   "title": "Ruj lichid Maybelline SuperStay Matte Ink, nuanța 20",
+   "brand": "Maybelline",
+   "mpnNorm": null,
+   "gtin14": "05941001742184",
+   "category": "machiaj",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "shade": "20"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Maybelline SuperStay Matte Ink Liquid Lipstick shade 20",
+   "brand": "Maybelline",
+   "mpnNorm": null,
+   "gtin14": "05941001742184",
+   "category": "frumusete",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "shade": "20"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:superstay:s65:0-1",
+  "offer": {
+   "title": "Ruj lichid Maybelline SuperStay Matte Ink, nuanța 65",
+   "brand": "Maybelline",
+   "mpnNorm": null,
+   "gtin14": "05941001821377",
+   "category": "machiaj",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "shade": "65"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "MAYBELLINE SuperStay Matte Ink ruj de buze mat nr. 65",
+   "brand": "Maybelline",
+   "mpnNorm": null,
+   "gtin14": "05941001821377",
+   "category": "frumusete",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "shade": "65"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:superstay:s65:0-2",
+  "offer": {
+   "title": "Ruj lichid Maybelline SuperStay Matte Ink, nuanța 65",
+   "brand": "Maybelline",
+   "mpnNorm": null,
+   "gtin14": "05941001821377",
+   "category": "machiaj",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "shade": "65"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Maybelline SuperStay Matte Ink Liquid Lipstick shade 65",
+   "brand": "Maybelline",
+   "mpnNorm": null,
+   "gtin14": "05941001821377",
+   "category": "frumusete",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "shade": "65"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:superstay:s120:0-1",
+  "offer": {
+   "title": "Ruj lichid Maybelline SuperStay Matte Ink, nuanța 120",
+   "brand": "Maybelline",
+   "mpnNorm": null,
+   "gtin14": "05941001900560",
+   "category": "machiaj",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "shade": "120"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "MAYBELLINE SuperStay Matte Ink ruj de buze mat nr. 120",
+   "brand": "Maybelline",
+   "mpnNorm": null,
+   "gtin14": "05941001900560",
+   "category": "frumusete",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "shade": "120"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:superstay:s120:0-2",
+  "offer": {
+   "title": "Ruj lichid Maybelline SuperStay Matte Ink, nuanța 120",
+   "brand": "Maybelline",
+   "mpnNorm": null,
+   "gtin14": "05941001900560",
+   "category": "machiaj",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "shade": "120"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Maybelline SuperStay Matte Ink Liquid Lipstick shade 120",
+   "brand": "Maybelline",
+   "mpnNorm": null,
+   "gtin14": "05941001900560",
+   "category": "frumusete",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "shade": "120"
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:superstay:s20~s65",
+  "offer": {
+   "title": "Ruj lichid Maybelline SuperStay Matte Ink, nuanța 20",
+   "brand": "Maybelline",
+   "mpnNorm": null,
+   "gtin14": "05941001742184",
+   "category": "machiaj",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "shade": "20"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "MAYBELLINE SuperStay Matte Ink ruj de buze mat nr. 65",
+   "brand": "Maybelline",
+   "mpnNorm": null,
+   "gtin14": "05941001821377",
+   "category": "frumusete",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "shade": "65"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:superstay:s20~s120",
+  "offer": {
+   "title": "Ruj lichid Maybelline SuperStay Matte Ink, nuanța 20",
+   "brand": "Maybelline",
+   "mpnNorm": null,
+   "gtin14": "05941001742184",
+   "category": "machiaj",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "shade": "20"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "MAYBELLINE SuperStay Matte Ink ruj de buze mat nr. 120",
+   "brand": "Maybelline",
+   "mpnNorm": null,
+   "gtin14": "05941001900560",
+   "category": "frumusete",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "shade": "120"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:superstay:s65~s120",
+  "offer": {
+   "title": "Ruj lichid Maybelline SuperStay Matte Ink, nuanța 65",
+   "brand": "Maybelline",
+   "mpnNorm": null,
+   "gtin14": "05941001821377",
+   "category": "machiaj",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "shade": "65"
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "MAYBELLINE SuperStay Matte Ink ruj de buze mat nr. 120",
+   "brand": "Maybelline",
+   "mpnNorm": null,
+   "gtin14": "05941001900560",
+   "category": "frumusete",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "shade": "120"
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ },
+ {
+  "id": "beauty:q10:zi50:0-1",
+  "offer": {
+   "title": "Cremă de zi Nivea Q10 Power pentru față, 50 ml",
+   "brand": "Nivea",
+   "mpnNorm": null,
+   "gtin14": "05941001979757",
+   "category": "ingrijire-ten",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Nivea Q10 Power cremă de zi antirid 50ml",
+   "brand": "Nivea",
+   "mpnNorm": null,
+   "gtin14": "05941001979757",
+   "category": "ingrijire-ten",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:q10:zi50:0-2",
+  "offer": {
+   "title": "Cremă de zi Nivea Q10 Power pentru față, 50 ml",
+   "brand": "Nivea",
+   "mpnNorm": null,
+   "gtin14": "05941001979757",
+   "category": "ingrijire-ten",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Crema de fata de zi Nivea Q10 Power 50 ml",
+   "brand": "Nivea",
+   "mpnNorm": null,
+   "gtin14": "05941001979757",
+   "category": "ingrijire-ten",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:q10:noapte50:0-1",
+  "offer": {
+   "title": "Cremă de noapte Nivea Q10 Power pentru față, 50 ml",
+   "brand": "Nivea",
+   "mpnNorm": null,
+   "gtin14": "05941002058949",
+   "category": "ingrijire-ten",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Nivea Q10 Power cremă de noapte antirid 50ml",
+   "brand": "Nivea",
+   "mpnNorm": null,
+   "gtin14": "05941002058949",
+   "category": "ingrijire-ten",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:q10:noapte50:0-2",
+  "offer": {
+   "title": "Cremă de noapte Nivea Q10 Power pentru față, 50 ml",
+   "brand": "Nivea",
+   "mpnNorm": null,
+   "gtin14": "05941002058949",
+   "category": "ingrijire-ten",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Crema de fata de noapte Nivea Q10 Power 50 ml",
+   "brand": "Nivea",
+   "mpnNorm": null,
+   "gtin14": "05941002058949",
+   "category": "ingrijire-ten",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50
+   },
+   "mpnFromTitle": false
+  },
+  "same": true,
+  "source": "synthetic"
+ },
+ {
+  "id": "beauty:q10:zi50~noapte50",
+  "offer": {
+   "title": "Cremă de zi Nivea Q10 Power pentru față, 50 ml",
+   "brand": "Nivea",
+   "mpnNorm": null,
+   "gtin14": "05941001979757",
+   "category": "ingrijire-ten",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50
+   },
+   "mpnFromTitle": false
+  },
+  "product": {
+   "title": "Nivea Q10 Power cremă de noapte antirid 50ml",
+   "brand": "Nivea",
+   "mpnNorm": null,
+   "gtin14": "05941002058949",
+   "category": "ingrijire-ten",
+   "attributes": {
+    "kind": "cosmetics",
+    "giftSet": false,
+    "refill": false,
+    "tester": false,
+    "volumeMl": 50
+   },
+   "mpnFromTitle": false
+  },
+  "same": false,
+  "source": "family"
+ }
+]

@@ -23,6 +23,8 @@ import {
   inviteB2bMember,
   listB2bApiKeys,
   listB2bApiUsage,
+  exportUserData,
+  pruneB2bLogs,
   recordObservation,
   removeB2bMember,
   removeB2bSku,
@@ -145,6 +147,21 @@ describe('workspaces, invitations and the tenant gate', () => {
     await expect(removeB2bMember(t.db, ws, owner.id)).rejects.toBeInstanceOf(B2bError);
     expect(await removeB2bMember(t.db, ws, member.id)).toBe(true);
     expect(await removeB2bMember(t.db, ws, member.id)).toBe(false);
+  });
+
+  it('the account export lists memberships and open invitations; retention drops answered or old invitations', async () => {
+    const ws = await workspace();
+    const u = await user();
+    await inviteB2bMember(t.db, ws, u.email, 'member', 'admin');
+    expect((await exportUserData(t.db, u.id, null))?.b2bInvitations).toHaveLength(1);
+    await acceptB2bInvites(t.db, u.id, u.email);
+    const data = await exportUserData(t.db, u.id, null);
+    expect(data?.b2bMemberships).toEqual([expect.objectContaining({ workspace_id: String(ws), role: 'member', digest: true })]);
+    await inviteB2bMember(t.db, ws, 'nimeni@firma.ro', 'member', 'admin');
+    await t.db.execute(sql`UPDATE b2b_invites SET created_at = now() - interval '91 days' WHERE email = 'nimeni@firma.ro'`);
+    const r = await pruneB2bLogs(t.db);
+    expect(r.invites).toBeGreaterThanOrEqual(2);
+    expect((await t.db.execute(sql`SELECT 1 FROM b2b_invites WHERE workspace_id = ${ws}`)).rows).toHaveLength(0);
   });
 
   it('a merchant workspace needs its shop', async () => {

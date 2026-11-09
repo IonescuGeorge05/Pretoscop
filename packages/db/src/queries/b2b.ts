@@ -945,11 +945,15 @@ export async function listB2bApiUsage(db: Exec, workspaceId: number, days = 30):
   return r.rows.map((x) => ({ day: x.day, requests: Number(x.requests), refused: Number(x.refused) }));
 }
 
-/** Retention: usage counters older than 400 days and digest receipts older than 90 days. */
-export async function pruneB2bLogs(db: Exec): Promise<{ usage: number; digests: number }> {
+/**
+ * Retention: usage counters after 400 days, digest receipts after 90, and invitations (an email
+ * address) once accepted or after 90 days unanswered.
+ */
+export async function pruneB2bLogs(db: Exec): Promise<{ usage: number; digests: number; invites: number }> {
   const u = await db.execute(sql`DELETE FROM b2b_api_usage WHERE day < current_date - 400`);
   const d = await db.execute(sql`DELETE FROM b2b_digests WHERE day < current_date - 90`);
-  return { usage: u.rowCount ?? 0, digests: d.rowCount ?? 0 };
+  const i = await db.execute(sql`DELETE FROM b2b_invites WHERE accepted_at IS NOT NULL OR created_at < now() - interval '90 days'`);
+  return { usage: u.rowCount ?? 0, digests: d.rowCount ?? 0, invites: i.rowCount ?? 0 };
 }
 
 // ---------------------------------------------------------------------------------------------

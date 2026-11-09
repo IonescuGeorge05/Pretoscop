@@ -46,7 +46,7 @@ describe('parseB2bImport', () => {
     expect(parseB2bImport('mpn,name\n"AB-12,3","Cablu ""USB"""').lines[0]).toMatchObject({ mpn: 'AB123', label: 'Cablu "USB"' });
   });
   it('without a header reads one code per line: valid GTINs, else MPNs (numeric part codes too)', () => {
-    const r = parseB2bImport('﻿8806095426280\r\n\r\nMQ6T3RX/A\n12345678\n');
+    const r = parseB2bImport('\uFEFF8806095426280\r\n\r\nMQ6T3RX/A\n12345678\n');
     expect(r.columns).toEqual([]);
     expect(r.lines.map((l) => [l.line, l.gtin, l.mpn])).toEqual([
       [1, '08806095426280', null],
@@ -153,7 +153,7 @@ describe('CSV', () => {
     expect(csvNumber(Number.NaN)).toBe('');
   });
   it('writes a BOM, a quoted header and CRLF lines', () => {
-    expect(toCsv(['sku', 'pret'], [[{ text: 'A' }, { num: '1.00' }], [{ text: '=x' }, { num: null }]])).toBe('﻿"sku","pret"\r\n"A",1.00\r\n"\'=x",\r\n');
+    expect(toCsv(['sku', 'pret'], [[{ text: 'A' }, { num: '1.00' }], [{ text: '=x' }, { num: null }]])).toBe('\uFEFF"sku","pret"\r\n"A",1.00\r\n"\'=x",\r\n');
   });
   it('formats bani as lei decimals', () => {
     expect(baniToLeiString(123456)).toBe('1234.56');

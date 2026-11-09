@@ -168,7 +168,7 @@ function cleanField(v: string | undefined): string | null {
  * an error on that line only.
  */
 export function parseB2bImport(text: string): B2bImportParse {
-  const raw = text.replace(/^﻿/, '').split(/\r\n|\n|\r/);
+  const raw = text.replace(/^\uFEFF/, '').split(/\r\n|\n|\r/);
   const numbered = raw.map((t, i) => ({ t, n: i + 1 })).filter((l) => l.t.trim() !== '');
   if (numbered.length === 0) return { columns: [], lines: [], errors: ['Lista este goală.'] };
   const delimiter = detectDelimiter(numbered[0]!.t);
@@ -351,7 +351,7 @@ const DECIMAL = /^-?\d+(\.\d+)?$/;
 export function csvText(value: string | null | undefined): string {
   if (value === null || value === undefined || value === '') return '';
   let v = String(value);
-  if (FORMULA_START.test(v) || FORMULA_START.test(v.replace(/^[  ]+/, ''))) v = `'${v}`;
+  if (FORMULA_START.test(v) || FORMULA_START.test(v.replace(/^[ \u00a0]+/, ''))) v = `'${v}`;
   return `"${v.replace(/"/g, '""')}"`;
 }
 
@@ -369,7 +369,7 @@ export function csvCell(cell: CsvCell): string {
 /** A whole file: BOM, quoted header, one CRLF-terminated line per row. */
 export function toCsv(header: readonly string[], rows: readonly (readonly CsvCell[])[]): string {
   const lines = [header.map((h) => csvText(h)).join(','), ...rows.map((r) => r.map(csvCell).join(','))];
-  return `﻿${lines.join('\r\n')}\r\n`;
+  return `\uFEFF${lines.join('\r\n')}\r\n`;
 }
 
 /** Bani as a plain decimal in lei ("1234.56") for CSV and API payloads; null stays null. */

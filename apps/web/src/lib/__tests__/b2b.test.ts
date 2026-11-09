@@ -52,7 +52,7 @@ function row(over: Partial<B2bPositionRow> = {}): B2bPositionRow {
 
 /** Parses a CSV written by tableCsv (RFC 4180, CRLF, BOM). */
 function readCsv(text: string): string[][] {
-  expect(text.startsWith('﻿')).toBe(true);
+  expect(text.startsWith('\uFEFF')).toBe(true);
   const out: string[][] = [];
   let cell = '';
   let rowCells: string[] = [];

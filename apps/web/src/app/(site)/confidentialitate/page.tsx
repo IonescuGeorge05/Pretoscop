@@ -203,6 +203,19 @@ export default function PrivacyPage() {
                 ]}
               />
               <InfoCard
+                id="b2b"
+                title="Conturile clienților B2B (analize de preț pentru firme)"
+                items={[
+                  [
+                    'Ce date',
+                    'Adresa de email a fiecărui membru al spațiului de lucru, rolul lui, alegerea privind rezumatul zilnic, cine a acceptat termenii și când, datele de facturare ale firmei, cheile API (doar amprenta lor) și numărul zilnic de cereri API, fără adresa IP. Invitațiile păstrează adresa invitată până la acceptare, cel mult 90 de zile.',
+                  ],
+                  ['De ce', 'Ca să oferim serviciul contractat de firmă, să trimitem rezumatul zilnic celor care îl vor și să facturăm.'],
+                  ['Temeiul legal', `Executarea contractului cu firma și interesul ei legitim de a-și da acces angajaților (${GDPR_F}); obligațiile fiscale pentru facturi (art. 6 alin. (1) lit. c) GDPR).`],
+                  ['Cât timp', 'Cât timp ești membru; contorul cererilor API 400 de zile; facturile cât cere legea contabilității.'],
+                ]}
+              />
+              <InfoCard
                 id="conturi"
                 title="Conturile de administrare"
                 items={[

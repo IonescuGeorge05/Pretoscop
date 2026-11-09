@@ -82,7 +82,7 @@ Daniel asked the implementing agent to build the whole plan while the founders a
 | M25 | Promoted placements and merchant billing; optional ad slots | todo | | | |
 | M26 | Browser extension (MV3) | todo | | | |
 | M27 | Telegram bot and web push | in progress | `mod/M27-telegram-push` (WIP) | | Stopped mid-work for the machine move |
-| M28 | B2B price intelligence MVP | todo | | | |
+| M28 | B2B price intelligence MVP | in_progress | `mod/M28-b2b` | | Resumed 9 Nov 2026 in `.claude/worktrees/M28` (database `pretoscop_m28`) |
 | M29 | Category expansion playbook and CSS enrolment readiness | todo | | | |
 
 **Gate G4** — first revenue month recorded; extension published; B2B pilot customer. Approved: ☐ date: ____

@@ -48,10 +48,14 @@ test.describe('admin', () => {
     await expect(page.getByTestId('kill-dedeman:sitemap:produse')).toHaveText(before ?? '');
 
     await page.goto('/admin/flaguri');
+    // Like the kill switch: wait for each toggle to render before the next click. The button's form
+    // carries the value from the last render, so a second click before it would send "on" again.
     const flag = page.getByTestId('flag-promoted.enabled');
+    const flagBefore = (await flag.textContent())?.trim();
     await flag.click();
-    await page.getByTestId('flag-promoted.enabled').click(); // restore (off)
-    await expect(page.getByTestId('flag-promoted.enabled')).toHaveText('Pornește');
+    await expect(flag).not.toHaveText(flagBefore ?? '');
+    await flag.click(); // restore
+    await expect(flag).toHaveText(flagBefore ?? '');
 
     await page.goto('/admin/audit');
     await expect(page.getByText('source.kill').first()).toBeVisible();

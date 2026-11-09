@@ -11,7 +11,17 @@ move from the Mac to the Windows laptop, 28 Oct) is in `docs/archive/`.
   to GitHub (`daniel` and every `mod/*` branch).
 - Every module is in status **`review`**: each still needs your 5-minute check from
   `scripts/verify/MXX.checklist.md`. The phase gates G0–G4 need your approval.
-- **Final regression (9 Nov):** `<<SWEEP>>`
+- **Final regression (9 Nov): all 31 pass.** Every module's `make verify` ran again, one after
+  another, on the final `daniel` on this laptop. 27 passed at once. The other four failed on
+  problems the run itself exposed; each is fixed and verified again:
+  - M00's heartbeat check competed with the recorder for the job (it now uses a throwaway
+    database);
+  - M12 ran every later module's e2e specs together (it now runs its own);
+  - M14's no-result search used a word that real products now contain;
+  - a Windows-only lock race in M02's file state store (seen in M10).
+
+  Two specs had also left a flag on in the recorder's database (`merchants.portal.enabled` from
+  M20's, `promoted.enabled` from M09's). Both flags are off again (audited) and both specs fixed.
 - Modules that handle personal data, money or third-party input had an independent review on top
   of their own tests. For M19 alerts, M20 merchants, M14–M16 search/deals/SEO and M21 bot program,
   every high and medium finding was fixed.
@@ -47,8 +57,8 @@ move from the Mac to the Windows laptop, 28 Oct) is in `docs/archive/`.
 - **Catalogue:** 31,082 products and 57,428 offers from 8 shops. 4,861 products have offers from
   two or more shops; on 28 Oct there were 153.
 - **Price history** starts 27 Oct but has a **gap from 29 Oct 01:38 UTC to 9 Nov 06:37 UTC**
-  (section 2). Verdicts and deals need 14 observed days: 27–29 Oct plus one per night from 9 Nov puts the first
-  ones around 20 Nov.
+  (section 2). Verdicts and deals need 14 observed days: 27–29 Oct plus one per night from 9 Nov
+  puts the first ones around 20 Nov.
 
 ## 2. What happened between 28 Oct and 9 Nov
 
@@ -61,10 +71,16 @@ move from the Mac to the Windows laptop, 28 Oct) is in `docs/archive/`.
 2. **On 9 Nov the lead:**
    - restarted Docker;
    - took a backup (`data/blobs/backups/pg/2026-11-09/`);
-   - rebuilt the recorder from `daniel` (all merged code; every new flag off);
+   - rebuilt the recorder from `daniel` (every new flag off), and at 09:07 UTC again from the
+     final commit, so it runs all 31 modules (the previous image is kept as
+     `pretoscop-worker:pre-final-2026-11-09`);
    - let each source run once to catch up (M05's design: one catch-up run, never a backfill);
    - ran the eMAG part-number renormalization planned since 28 Oct (3,887 offers rewritten; no human
-     decision touched).
+     decision touched);
+   - gave the recorder's user ownership of `data/blobs`. The old image ran as root, so the
+     hardened one (user `node`) could not write into folders the old one had made: 27 catch-up runs
+     (forIT, IT Galaxy) kept no raw snapshot (their prices were recorded), and tonight's backup
+     would have failed. A backup run inside the container afterwards succeeded.
 3. **Two shops now push back. The fetch layer paused each for 24 hours, as it must.**
    - **Carrefour:** answers HTTP 403 from Cloudflare (bot management) since 9 Nov.
    - **IT Galaxy:** connections time out (10 s connect timeout); either a network problem or IT
@@ -80,8 +96,11 @@ move from the Mac to the Windows laptop, 28 Oct) is in `docs/archive/`.
    - **Recommended: a small server.** M18's production setup is ready; it needs A3, A4, B8–B12
      (`infra/runbooks/`, `docs/09-external-setup-checklist.md`). The recorder then runs 24/7.
    - **Or keep this laptop and configure it:**
-     - Docker Desktop → Settings → General → **Start Docker Desktop when you sign in**;
-     - Windows → Power → sleep **Never** on power, and lid → **Do nothing** on power;
+     - Docker Desktop → Settings → General → **Start Docker Desktop when you sign in**. It is
+       **off** (checked 9 Nov): after the 2 Nov update reboot nothing started Docker again;
+     - Windows → Power → sleep **Never** on power (it is 10 minutes), and lid → **Do nothing** on
+       power. Until then a hidden keep-awake helper started on 9 Nov stops the idle sleep; it ends
+       at the next reboot;
      - pause Windows Update;
      - never sign out (locking the screen is fine);
      - check `make recorder-logs` or http://localhost:9464/health now and then.
@@ -134,7 +153,9 @@ move from the Mac to the Windows laptop, 28 Oct) is in `docs/archive/`.
     - A10: the Zyte account with a spend limit, and the written legal opinion;
     - then set one shop's `access_mode: assisted` in its YAML, record fixtures through the channel,
       and write the shop parsers.
-13. **Matching quality:**
+13. **Matching quality.** 20,149 active offers (35 %) wait in the match queue, so they are not on
+    the site yet: 17,564 unmatched and 2,585 pending, mostly IT Galaxy, eMAG and forIT listings
+    without a GTIN or part number. The SLO is under 500. M07's report expected this until M22.
     - label 100 pairs: `pnpm --filter @pretoscop/worker match:label`;
     - A9: an Anthropic API key with a spend limit, for M22 (`match:eval:llm`; switch
       `llm.matching.enabled` on only if precision reaches 98 %);
@@ -195,6 +216,8 @@ make recorder-logs       # follow it; health: http://localhost:9464/health
 make dev                 # website on http://localhost:3000, admin at /admin, mail at http://localhost:8025
 make test                # lint, typecheck, all unit and integration tests
 make verify M=13         # one module's acceptance checks (any of 00–29, 05B)
+# every module in turn (about 45 minutes; stops at the first failure)
+for m in 00 01 02 03 04 05 05B 06 07 08 09 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29; do make verify M=$m || break; done
 pnpm --filter @pretoscop/worker backup   # manual database backup into data/blobs/backups
 ```
 
@@ -204,6 +227,12 @@ Windows notes:
 - `core.autocrlf` must stay `false`; the repo's `.gitattributes` keeps LF.
 - **Known flake:** `make test` occasionally fails with `EPERM … node_modules/.vitest-cache` (two
   test processes cleaning the shared cache at once). Run it again.
+- **`make verify` on this laptop shares the recorder's database.** The e2e fixtures are throwaway
+  products that each run deletes again, and the scripts that start a worker give it a database of
+  its own (M00, M20). With `CRAWL_ENABLED=true` in `.env`, M05 also compares at most two live eMAG
+  listing pages with what was recorded (identified and polite). Run one verify at a time: several
+  share the web build in `apps/web/.next`. The recorder may log a failed `rollup.touch` for a
+  fixture product deleted mid-job; that is harmless (the app itself never deletes products).
 
 ## 6. Known gaps and technical debt
 
@@ -231,6 +260,9 @@ Windows notes:
   `CRAWL_ENABLED=false`. `scripts/verify/lib.sh` reads `DATABASE_URL` and `E2E_PORT` from each
   checkout's `.env`.
   - Remove a worktree with `git -c core.longpaths=true worktree remove --force`.
-- Never stop or recreate the compose project `pretoscop`: the live recorder runs in it.
+- Never stop or recreate the compose project `pretoscop`: the live recorder runs in it. New code
+  reaches the recorder through `make recorder`, which rebuilds and replaces the worker container.
+  It would also recreate PostgreSQL if `infra/docker-compose.dev.yml` changed the postgres service,
+  so check that first, or add `--no-deps`.
 - **The founders' Claude usage is limited.** Stop all agents if Daniel says the weekly usage is
   near 75 %; Claude cannot read the meter itself.

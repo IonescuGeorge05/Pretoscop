@@ -8,6 +8,8 @@ Last updated: 2026-11-09 (every module built; see `docs/HANDOFF.md` for the bloc
 
 Every module of the plan (M00–M29 and M05B) is merged into `daniel`, verified on the Windows laptop with its `make verify`, reported below and pushed; all are in `review` for the founders' 5-minute checks, and the gates G0–G4 await approval. Everything that sends messages, moves money, calls a paid vendor or adds a new kind of request is behind a flag that is off. **Start with `docs/HANDOFF.md`**: what works today, what happened between 28 Oct and 9 Nov (the recorder was down from 29 Oct 01:38 to 9 Nov 06:37 UTC, Black Friday included), and every blocker that needs the founders, in priority order.
 
+Final regression the same day: every module's `make verify` ran again in sequence on the final `daniel`, and all 31 pass. Four failed on the first pass and were fixed and re-verified (commits prefixed M00, M02, M12, M14): M00's heartbeat check competed with the recorder for the job, M12 ran every later module's specs together, M14's no-result search used a word real products now contain, and a Windows-only lock race in the CLI's file state store. Two specs (M20's merchant flow, M09's flag toggle) had left a flag on in the recorder's database; both flags were turned off (audited) and both specs fixed. The recorder was rebuilt from the final commit, and its data folder was made writable for the hardened image's user (snapshots, nightly backup).
+
 ## Build session resumed on the Windows laptop (28 Oct 2026)
 
 The build moved from the old Mac to Daniel's Windows 11 laptop on 28 Oct 2026 (`docs/HANDOFF.md`).

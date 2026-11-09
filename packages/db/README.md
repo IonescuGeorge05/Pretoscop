@@ -170,3 +170,41 @@ Contract (`src/queries/alerts.ts`):
   the sum of a merchant's ledger equals its balance (integration test).
 - E2E fixture: `createPromotedFixture`, `promotedFixtureState`, `setPromotedFlag`,
   `dropPromotedFixture` (`pnpm --filter @pretoscop/db e2e:fixture promoted-…`).
+
+## B2B price intelligence (M28, `src/queries/b2b.ts`, migration `0022_b2b`)
+
+- Tenancy: every function that reads or writes customer data takes the workspace id and filters on
+  it; a SKU, key, invite or digest of another workspace is "not found" (`null`/`false`), never an
+  error that tells it exists. `b2bMembership(db, ws, user)` is the gate the web runs first.
+- Icecat exclusion: catalogue data only through the view `b2b_products` (no specs, images,
+  attributes or image pointers); the module never names `products`, `product_specs`,
+  `product_images` or a consumer table (integration test with an Icecat sentinel + a static check
+  in `scripts/verify/M28.sh`).
+- Workspaces and members: `createB2bWorkspace`, `updateB2bWorkspace`, `getB2bWorkspace`,
+  `inviteB2bMember`, `acceptB2bInvites` (the signed-in address), `listB2bMembers`,
+  `listB2bInvites`, `cancelB2bInvite`, `removeB2bMember` (the last owner stays), `setB2bDigest`,
+  `acceptB2bTerms`, `b2bWorkspacesForUser`, `b2bWorkspaceSummaries` (admin).
+- SKUs: `resolveB2bLines` (GTIN via `product_gtins`, else brand + MPN, else MPN alone; one
+  candidate or `ambiguous`/`unmatched`), `importB2bSkus` (batches of 1,000 under a per-workspace
+  advisory lock, never past the SKU limit, duplicates by `identity`), `addB2bCatalogueSku`,
+  `updateB2bSku`, `removeB2bSku`, `reresolveB2bSkus` (nightly: merges followed, new matches),
+  `searchB2bCatalogue`, `b2bSkuCounts`, `b2bSkuCount`.
+- Positions: `b2bPositions(db, ws, { skuIds, status, limit, offset })` is the one source of the
+  page, the CSV and the API: own offer (merchant) or reference price (brand), comparable
+  competitor offers (product-page eligibility plus fresh within the shop's SLO, in stock, new, no
+  bundle, no pending quarantine), core `computePosition` (min, median, rank, gap), every offer with
+  its freshness; `b2bSkuPosition`, `b2bSkuProductId` (history chart).
+- Digest: `b2bChanges(db, ws, from, to)` (observed price/stock changes with the state before, from
+  `price_events` only), `b2bDigestRecipients`, `claimB2bDigest` / `finishB2bDigest` (one per
+  workspace, day and member; failed ones re-claimable, stuck ones after 30 minutes).
+- API: `createB2bApiKey` (returns the key once; stores SHA-256 of the secret), `verifyB2bApiKey`
+  (lookup by public id, constant-time compare, a dummy compare for unknown ids), `revokeB2bApiKey`,
+  `listB2bApiKeys`, `touchB2bApiKey` (at most once a minute), `consumeB2bApiQuota` (one atomic
+  upsert: concurrent requests never pass the limit; refusals counted), `listB2bApiUsage`.
+- Billing: `applyB2bBillingEvent(db, provider, eventId, type, input)` applies one verified
+  provider event once (event id recorded in the same transaction; `unknown_workspace` rolls back so
+  the retry can apply it); a cancelled subscription suspends the workspace with
+  `B2B_BILLING_LAPSED_REASON`, a new one lifts only that suspension; `invoice_paid` writes a
+  `b2b_invoices` row with the buyer data copied at payment; `listB2bInvoices`, `setB2bInvoiceFiscal`.
+- Retention: `pruneB2bLogs` (usage 400 days, digest receipts 90 days, invitations once accepted
+  or after 90 days); `exportUserData` lists B2B memberships and open invitations.

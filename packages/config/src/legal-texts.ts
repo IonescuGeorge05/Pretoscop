@@ -11,7 +11,7 @@
  *   "Document provizoriu, în curs de revizuire juridică" for legal documents until then.
  */
 
-export type ConsentName = 'adsConsent' | 'alertConsent' | 'analyticsConsent' | 'merchantTerms' | 'promotedTerms' | 'pushConsent' | 'telegramConsent';
+export type ConsentName = 'adsConsent' | 'alertConsent' | 'analyticsConsent' | 'b2bTerms' | 'merchantTerms' | 'promotedTerms' | 'pushConsent' | 'telegramConsent';
 export type ConsentTextKey = `${ConsentName}.v${number}`;
 
 export interface ConsentText {
@@ -80,6 +80,24 @@ const merchantTermsV1: ConsentText = {
     'că datele din feed (prețuri, disponibilitate, livrare) sunt corecte și actualizate.',
   acceptLabel: 'Trimite spre aprobare',
   link: { href: '/pentru-magazine/termeni', label: 'Termenii pentru magazine' },
+};
+
+/**
+ * B2B data-usage terms (M28): the unticked checkbox a workspace owner ticks before the workspace
+ * shows any data. Stored in `b2b_workspaces.terms_version` as `b2bTerms.v1@<version of the terms
+ * page>`, with who accepted and when.
+ */
+const b2bTermsV1: ConsentText = {
+  key: 'b2bTerms.v1',
+  version: 1,
+  effectiveFrom: '2026-11-09',
+  reviewed: false,
+  title: 'Acceptarea termenilor pentru clienții B2B',
+  text:
+    'Am citit și accept Termenii pentru clienții B2B în numele firmei. Folosim datele Pretoscop doar pentru deciziile noastre interne: ' +
+    'nu le revindem, nu le publicăm și nu le dăm altora, nu construim din ele un serviciu concurent și nu le folosim pentru antrenarea modelelor de inteligență artificială.',
+  acceptLabel: 'Accept termenii',
+  link: { href: '/pentru-companii/termeni', label: 'Termenii pentru clienții B2B' },
 };
 
 /**
@@ -157,6 +175,7 @@ export const legalTexts = {
   adsConsent: { v1: adsConsentV1 },
   alertConsent: { v1: alertConsentV1 },
   analyticsConsent: { v1: analyticsConsentV1 },
+  b2bTerms: { v1: b2bTermsV1 },
   merchantTerms: { v1: merchantTermsV1 },
   promotedTerms: { v1: promotedTermsV1 },
   pushConsent: { v1: pushConsentV1 },
@@ -168,6 +187,7 @@ export const currentVersion = {
   adsConsent: 'adsConsent.v1',
   alertConsent: 'alertConsent.v1',
   analyticsConsent: 'analyticsConsent.v1',
+  b2bTerms: 'b2bTerms.v1',
   merchantTerms: 'merchantTerms.v1',
   promotedTerms: 'promotedTerms.v1',
   pushConsent: 'pushConsent.v1',
@@ -207,16 +227,17 @@ export interface LegalDocumentVersion {
 export const legalDocuments = {
   about: { path: '/despre', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
   ranking: { path: '/cum-functioneaza', kind: 'trust', version: '0.2', updatedAt: '2026-11-09', reviewed: false },
-  money: { path: '/cum-castigam-bani', kind: 'trust', version: '0.2', updatedAt: '2026-11-09', reviewed: false },
+  money: { path: '/cum-castigam-bani', kind: 'trust', version: '0.3', updatedAt: '2026-11-09', reviewed: false },
   bot: { path: '/bot', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
   methodology: { path: '/metodologie', kind: 'trust', version: '0.3', updatedAt: '2026-10-28', reviewed: false },
   merchants: { path: '/pentru-magazine', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
   contact: { path: '/contact', kind: 'trust', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
   terms: { path: '/termeni', kind: 'legal', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
-  privacy: { path: '/confidentialitate', kind: 'legal', version: '0.5', updatedAt: '2026-11-09', reviewed: false },
+  privacy: { path: '/confidentialitate', kind: 'legal', version: '0.6', updatedAt: '2026-11-09', reviewed: false },
   cookies: { path: '/cookies', kind: 'legal', version: '0.4', updatedAt: '2026-11-09', reviewed: false },
   accessibility: { path: '/accesibilitate', kind: 'legal', version: '0.1', updatedAt: '2026-10-27', reviewed: false },
   merchantTerms: { path: '/pentru-magazine/termeni', kind: 'legal', version: '0.3', updatedAt: '2026-11-09', reviewed: false },
+  b2bTerms: { path: '/pentru-companii/termeni', kind: 'legal', version: '0.1', updatedAt: '2026-11-09', reviewed: false },
 } as const satisfies Record<string, LegalDocumentVersion>;
 
 export type LegalDocumentName = keyof typeof legalDocuments;

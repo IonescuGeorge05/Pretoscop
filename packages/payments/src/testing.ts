@@ -22,6 +22,8 @@ export interface StripeMock {
   url: string;
   port: number;
   sessions: MockCheckout[];
+  /** M28: customer-portal sessions asked for (`POST /v1/billing_portal/sessions`). */
+  portals: Array<{ params: Record<string, string>; authorization: string | null }>;
   /** Next POST answers with this HTTP status and Stripe-style error (once). */
   failNext(status: number, message: string): void;
   close(): Promise<void>;
@@ -29,6 +31,7 @@ export interface StripeMock {
 
 export async function startStripeMock(opts: { port?: number; host?: string } = {}): Promise<StripeMock> {
   const sessions: MockCheckout[] = [];
+  const portals: StripeMock['portals'] = [];
   const byKey = new Map<string, MockCheckout>();
   let fail: { status: number; message: string } | null = null;
   let base = '';
@@ -56,6 +59,15 @@ export async function startStripeMock(opts: { port?: number; host?: string } = {
         if (key) byKey.set(key, s);
         return send(200, { id, object: 'checkout.session', url: s.url, expires_at: Number(params.expires_at), payment_status: 'unpaid' });
       }
+      if (req.method === 'POST' && req.url === '/v1/billing_portal/sessions') {
+        if (fail) {
+          const f = fail;
+          fail = null;
+          return send(f.status, { error: { message: f.message, type: 'invalid_request_error', code: 'mock_failure' } });
+        }
+        portals.push({ params: Object.fromEntries(new URLSearchParams(Buffer.concat(chunks).toString('utf8'))), authorization: req.headers.authorization ?? null });
+        return send(200, { id: `bps_test_${portals.length}`, object: 'billing_portal.session', url: `${base}/portal/${portals.length}` });
+      }
       const pay = /^\/pay\/([\w-]+)$/.exec(req.url ?? '');
       const s = pay ? sessions.find((x) => x.id === pay[1]) : undefined;
       if (req.method === 'GET' && s) {
@@ -81,6 +93,7 @@ export async function startStripeMock(opts: { port?: number; host?: string } = {
     url: base,
     port,
     sessions,
+    portals,
     failNext: (status, message) => {
       fail = { status, message };
     },

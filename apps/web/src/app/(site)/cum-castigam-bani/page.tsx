@@ -121,12 +121,21 @@ export default async function MoneyPage() {
         },
         {
           id: 'firme',
-          title: 'Analize de preț pentru firme (în viitor)',
+          title: 'Analize de preț pentru firme',
           content: (
-            <p>
-              Plănuim să oferim magazinelor și producătorilor rapoarte despre prețurile din piață, construite din baza noastră de date: doar prețuri și
-              disponibilitate, agregate, fără date personale și fără specificații sau imagini din catalogul Open Icecat.
-            </p>
+            <>
+              <p>
+                Oferim magazinelor și producătorilor, contra unui abonament lunar (planurile Starter, Pro și Enterprise; acum doar clienți pilot), un spațiu de lucru în
+                care văd cum se compară prețurile lor cu ale altor magazine pentru produsele pe care le urmăresc, istoricul observat, un rezumat zilnic pe email,
+                export CSV și un API.
+              </p>
+              <ul>
+                <li>conțin doar prețuri, livrare și disponibilitate observate public, cu ora verificării, fără date personale ale vizitatorilor Pretoscop;</li>
+                <li>nu conțin specificații sau imagini din catalogul Open Icecat;</li>
+                <li>clienții le pot folosi doar intern, fără revânzare sau publicare (<Link href="/pentru-companii/termeni">Termenii pentru clienții B2B</Link>);</li>
+                <li>un abonament nu schimbă nimic pe site: nici ordinea ofertelor, nici verdictele de preț.</li>
+              </ul>
+            </>
           ),
         },
         {

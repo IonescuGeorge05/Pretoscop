@@ -865,6 +865,14 @@ export async function exportUserData(db: Exec, userId: string, emailHash: string
     SELECT endpoint, device_label, consent_at, consent_text_version, created_at, last_success_at FROM push_subscriptions WHERE user_id = ${userId} ORDER BY id`);
   const telegram = await db.execute<Record<string, unknown>>(sql`
     SELECT chat_id::text, status, consent_at, consent_text_version, linked_at FROM telegram_links WHERE user_id = ${userId}`);
+  // M28: B2B workspace memberships and open invitations for the address.
+  const b2b = await db.execute<Record<string, unknown>>(sql`
+    SELECT w.id::text AS workspace_id, w.name AS workspace, m.role, m.digest, m.created_at,
+      (w.terms_accepted_by = ${userId}) AS accepted_terms_for_workspace
+    FROM b2b_members m JOIN b2b_workspaces w ON w.id = m.workspace_id WHERE m.user_id = ${userId} ORDER BY w.id`);
+  const b2bInvites = await db.execute<Record<string, unknown>>(sql`
+    SELECT i.workspace_id::text, i.role, i.created_at FROM b2b_invites i JOIN users u ON u.email = i.email
+    WHERE u.id = ${userId} AND i.accepted_at IS NULL ORDER BY i.id`);
   return {
     user: u.rows[0],
     alerts: alertsRows.rows,
@@ -874,6 +882,8 @@ export async function exportUserData(db: Exec, userId: string, emailHash: string
     emailSuppression: suppression.rows[0] ?? null,
     pushSubscriptions: push.rows,
     telegram: telegram.rows[0] ?? null,
+    b2bMemberships: b2b.rows,
+    b2bInvitations: b2bInvites.rows,
   };
 }
 

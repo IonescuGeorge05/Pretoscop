@@ -1,4 +1,5 @@
 import { alertsDeliverJob, alertsEvaluateJob, alertsRetentionJob } from './alerts';
+import { b2bDigestJob, b2bPruneJob, b2bResolveJob } from './b2b';
 import { affiliateSyncJob, commissionsImportJob } from './affiliate';
 import { telegramDealsJob } from './telegram';
 import { assistedHealthJob } from './assisted';
@@ -51,4 +52,7 @@ export const jobs: JobDefinition<any>[] = [
   llmMatchJob,
   promotedRefreshJob,
   promotedDailyJob,
+  b2bDigestJob,
+  b2bResolveJob,
+  b2bPruneJob,
 ];

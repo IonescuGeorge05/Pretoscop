@@ -346,3 +346,26 @@ any other client may use it: it serves only what `/p/{slug}` already shows.
 
 E2E (the built extension in Chromium, shop pages from local fixtures, nothing fetched from a shop):
 `E2E_SHARED_FIXTURE=0 pnpm exec playwright test e2e/extension.spec.ts --project=desktop --workers=1`.
+
+## B2B price intelligence (M28)
+
+- Pages under `/b2b` (noindex, dynamic): `/b2b` (workspaces of the signed-in address; open
+  invitations are accepted there), `/b2b/autentificare` (magic link), `/b2b/{ws}` (data-usage terms
+  first, then the position table), `/b2b/{ws}/sku/{id}`, `/b2b/{ws}/import`, `/b2b/{ws}/api`,
+  `/b2b/{ws}/setari`, `/b2b/{ws}/export?tip=pozitii|oferte[&stare=…]` (CSV).
+- Tenant gate: `requireB2bWorkspace(param)` / `requireB2bData(param)` in `src/lib/b2b.ts`, called by
+  every page and every server action in `src/app/b2b/actions.ts` (a non-member gets "not found");
+  admins may open any workspace (support, preview while `b2b.enabled` is off).
+- One definition for the table and the CSV: `POSITION_COLUMNS` / `OFFER_COLUMNS` in
+  `src/lib/b2b-table.ts`; cells carry `data-value` (the CSV's value) so the e2e compares them.
+  CSV text cells are formula-safe (`csvText` in `@pretoscop/core`).
+- API v1: `/api/v1/b2b/{positions,skus,skus/{id},skus/{id}/history,changes,usage}` behind
+  `withB2bApi` (`src/lib/b2b-api.ts`: flag, key, workspace state, terms, plan, burst limit, daily
+  quota); contract = zod schemas in `src/lib/b2b-api-schema.ts`, published as
+  `/api/v1/b2b/openapi.json` and `docs/api/b2b-v1.openapi.json` (`pnpm --filter @pretoscop/web b2b:openapi`
+  after a change; a unit test fails while the file drifts).
+- Billing: subscribe and portal actions use M25's provider (`src/lib/b2b-billing-server.ts`); B2B
+  events arrive on the shared `/api/webhooks/stripe` and are applied by `handleB2bBillingEvent`.
+- Admin: `/admin/b2b` (provisioning, plans, limits, invitations, keys, usage),
+  `/admin/b2b/facturi` (+ `/csv`) for the accountant; every page and action calls `requireAdmin()`.
+- Public: `/pentru-companii/termeni` (terms `b2bTerms.v1`), the B2B section of `/cum-castigam-bani`.

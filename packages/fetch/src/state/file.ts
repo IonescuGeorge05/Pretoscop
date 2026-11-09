@@ -34,6 +34,16 @@ export interface FileDomainStateStoreOptions {
 const emptyState = (): FileState => ({ version: 1, hosts: {}, robots: {} });
 
 /**
+ * Windows reports a file that another process still holds open or is deleting (a released lock
+ * that a third process is reading is "delete pending") as EPERM, EACCES or EBUSY: a moment later
+ * the same call succeeds.
+ */
+function busyOnWindows(error: unknown): boolean {
+  const code = (error as NodeJS.ErrnoException).code;
+  return process.platform === 'win32' && (code === 'EPERM' || code === 'EACCES' || code === 'EBUSY');
+}
+
+/**
  * State in one JSON file, shared by several processes on one machine (the CLI demo: two
  * invocations within 5 s are throttled). Each update takes an exclusive lock file
  * (`<file>.lock`, created with O_EXCL), reads, changes and atomically replaces the JSON file.
@@ -81,7 +91,19 @@ export class FileDomainStateStore implements DomainStateStore {
   private async save(state: FileState): Promise<void> {
     const tmp = `${this.filePath}.tmp-${process.pid}-${Math.random().toString(36).slice(2)}`;
     await writeFile(tmp, `${JSON.stringify(state, null, 2)}\n`, 'utf8');
-    await rename(tmp, this.filePath);
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await rename(tmp, this.filePath);
+        return;
+      } catch (error) {
+        // On Windows a lock-free reader (the getters) holding the file open blocks the replace briefly.
+        if (attempt >= 20 || !busyOnWindows(error)) {
+          await rm(tmp, { force: true }).catch(() => undefined);
+          throw error;
+        }
+        await delay(10 + attempt * 5);
+      }
+    }
   }
 
   /** True when the lock file at `path` was left by a dead process or is older than `staleLockMs`. */
@@ -137,7 +159,8 @@ export class FileDomainStateStore implements DomainStateStore {
         }
         return () => rm(this.lockPath, { force: true });
       } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+        // EEXIST: another process holds the lock; on Windows its released lock may still be deleting.
+        if ((error as NodeJS.ErrnoException).code !== 'EEXIST' && !busyOnWindows(error)) throw error;
       }
       if (await this.isStale(this.lockPath)) {
         await this.breakStaleLock();
